@@ -60,6 +60,7 @@ export default function LoginScreen() {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role, kyc_status')
+        .eq('id', data.user.id)
         .maybeSingle();
 
       if (profileError) {
