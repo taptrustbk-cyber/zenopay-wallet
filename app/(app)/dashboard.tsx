@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Image, TextInput, RefreshControl } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Image, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 import { Wallet } from '@/lib/types';
-import { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 
 const ActionButton = ({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) => (
   <TouchableOpacity style={styles.actionBtn} onPress={onPress}>
@@ -25,65 +25,13 @@ const NavItem = ({ icon, label, active, onPress }: { icon: any; label: string; a
   </TouchableOpacity>
 );
 
-interface CryptoData {
-  id: string;
-  symbol: string;
-  name: string;
-  image: string;
-  current_price: number;
-  price_change_percentage_24h: number;
-  market_cap: number;
-  total_volume: number;
-}
 
-const fetchCryptoPrices = async (): Promise<CryptoData[]> => {
-  const response = await fetch(
-    'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false'
-  );
-  if (!response.ok) throw new Error('Failed to fetch crypto prices');
-  return response.json();
-};
-
-const CryptoCard = ({ crypto, theme }: { crypto: CryptoData; theme: any }) => {
-  const isPositive = crypto.price_change_percentage_24h >= 0;
-
-  return (
-    <View style={[styles.cryptoCard, { backgroundColor: theme.colors.card }]}>
-      <View style={styles.cryptoLeft}>
-        <Image source={{ uri: crypto.image }} style={styles.cryptoIcon} />
-        <View style={styles.cryptoInfo}>
-          <Text style={[styles.cryptoName, { color: theme.colors.text }]}>{crypto.name}</Text>
-          <Text style={[styles.cryptoSymbol, { color: theme.colors.textSecondary }]}>
-            {crypto.symbol.toUpperCase()}
-          </Text>
-        </View>
-      </View>
-      <View style={styles.cryptoRight}>
-        <Text style={[styles.cryptoPrice, { color: theme.colors.text }]}>
-          ${crypto.current_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </Text>
-        <View style={[styles.changeContainer, { backgroundColor: isPositive ? '#10B98120' : '#EF444420' }]}>
-          <Ionicons 
-            name={isPositive ? 'trending-up' : 'trending-down'} 
-            size={14} 
-            color={isPositive ? theme.colors.success : '#EF4444'} 
-          />
-          <Text style={[styles.changeText, { color: isPositive ? theme.colors.success : '#EF4444' }]}>
-            {Math.abs(crypto.price_change_percentage_24h).toFixed(2)}%
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-};
 
 export default function DashboardScreen() {
   const router = useRouter();
   const { user, profile, hardRefresh } = useAuth();
   const { theme } = useTheme();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTab, setSelectedTab] = useState<'popular' | 'all'>('popular');
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
@@ -114,34 +62,16 @@ export default function DashboardScreen() {
 
 
 
-  const cryptoQuery = useQuery({
-    queryKey: ['crypto-prices'],
-    queryFn: fetchCryptoPrices,
-    refetchInterval: 30000,
-    staleTime: 30000,
-  });
-
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
       await hardRefresh();
-      await Promise.all([
-        walletQuery.refetch(),
-        cryptoQuery.refetch(),
-      ]);
+      await walletQuery.refetch();
     } finally {
       setIsRefreshing(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hardRefresh, walletQuery.refetch, cryptoQuery.refetch]);
-
-  const filteredCryptos = cryptoQuery.data?.filter(crypto =>
-    crypto.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    crypto.symbol.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
-
-  const popularCryptos = filteredCryptos.slice(0, 10);
-  const displayCryptos = selectedTab === 'popular' ? popularCryptos : filteredCryptos;
+  }, [hardRefresh, walletQuery.refetch]);
 
   if (!profile) {
     return (
@@ -187,7 +117,7 @@ export default function DashboardScreen() {
 
           <View style={styles.verifiedAccount}>
             <Ionicons name="shield-checkmark" size={22} color="#10B981" />
-            <Text style={styles.verifiedAccountText}>{i18n.t('verifiedAccount')}</Text>
+            <Text style={styles.verifiedAccountText}>{i18n.t('accountStatusActive')}</Text>
           </View>
         </View>
 
@@ -217,105 +147,24 @@ export default function DashboardScreen() {
           />
         </View>
 
-        <View style={[styles.cryptoSection, { backgroundColor: theme.colors.surface }]}>
-          <View style={styles.cryptoHeader}>
-            <Text style={[styles.cryptoTitle, { color: theme.colors.text }]}>{i18n.t('cryptoTrade')}</Text>
-            <View style={styles.comingSoonBadge}>
-              <Text style={styles.comingSoonText}>{i18n.t('comingSoon')}</Text>
+        <TouchableOpacity 
+          style={[styles.portfolioCard, { backgroundColor: theme.colors.card }]}
+          onPress={() => router.push('/(app)/portfolio' as any)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.portfolioHeader}>
+            <View style={styles.portfolioIcon}>
+              <Ionicons name="wallet" size={28} color="#60A5FA" />
             </View>
-          </View>
-
-          <View style={styles.cryptoButtonRow}>
-            <TouchableOpacity style={[styles.cryptoActionBtn, { backgroundColor: '#10B981' }]}>
-              <Ionicons name="arrow-down" size={20} color="white" />
-              <Text style={styles.cryptoActionText}>{i18n.t('buyCrypto')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.cryptoActionBtn, { backgroundColor: '#EF4444' }]}>
-              <Ionicons name="arrow-up" size={20} color="white" />
-              <Text style={styles.cryptoActionText}>{i18n.t('sellCrypto')}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={[styles.searchBar, { backgroundColor: theme.colors.card }]}>
-            <Ionicons name="search" size={20} color={theme.colors.textSecondary} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.colors.text }]}
-              placeholder={i18n.t('searchCrypto')}
-              placeholderTextColor={theme.colors.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color={theme.colors.textSecondary} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={styles.tabContainer}>
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                { borderBottomColor: selectedTab === 'popular' ? '#60A5FA' : 'transparent' },
-              ]}
-              onPress={() => setSelectedTab('popular')}
-            >
-              <Text style={[
-                styles.tabText,
-                { color: selectedTab === 'popular' ? '#60A5FA' : theme.colors.textSecondary }
-              ]}>
-                {i18n.t('popular')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                { borderBottomColor: selectedTab === 'all' ? '#60A5FA' : 'transparent' },
-              ]}
-              onPress={() => setSelectedTab('all')}
-            >
-              <Text style={[
-                styles.tabText,
-                { color: selectedTab === 'all' ? '#60A5FA' : theme.colors.textSecondary }
-              ]}>
-                {i18n.t('allCoins')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {cryptoQuery.isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#60A5FA" />
-              <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
-                {i18n.t('loadingPrices')}
+            <View style={styles.portfolioContent}>
+              <Text style={[styles.portfolioTitle, { color: theme.colors.text }]}>{i18n.t('portfolio')}</Text>
+              <Text style={[styles.portfolioSubtitle, { color: theme.colors.textSecondary }]}>
+                {i18n.t('viewPortfolio')}
               </Text>
             </View>
-          ) : cryptoQuery.isError ? (
-            <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={48} color="#EF4444" />
-              <Text style={[styles.errorText, { color: theme.colors.text }]}>
-                {i18n.t('failedToLoad')}
-              </Text>
-              <TouchableOpacity 
-                style={styles.retryButton}
-                onPress={() => cryptoQuery.refetch()}
-              >
-                <Text style={styles.retryText}>{i18n.t('retry')}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : displayCryptos.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="search" size={48} color={theme.colors.textSecondary} />
-              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                {i18n.t('noCryptoFound')}
-              </Text>
-            </View>
-          ) : (
-            displayCryptos.map(crypto => (
-              <CryptoCard key={crypto.id} crypto={crypto} theme={theme} />
-            ))
-          )}
-        </View>
+            <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
+          </View>
+        </TouchableOpacity>
 
 
       </ScrollView>
@@ -642,5 +491,37 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     textAlign: 'center' as const,
+  },
+  portfolioCard: {
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 100,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  portfolioHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    gap: 16,
+  },
+  portfolioIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(96, 165, 250, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  portfolioContent: {
+    flex: 1,
+  },
+  portfolioTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    marginBottom: 4,
+  },
+  portfolioSubtitle: {
+    fontSize: 14,
   },
 });

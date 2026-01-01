@@ -1,7 +1,6 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, StyleSheet, Modal, Platform, Pressable } from 'react-native';
 import { useMemo, useState } from 'react';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -39,9 +38,7 @@ export default function CreateAccount() {
   const [tempDob, setTempDob] = useState<Date>(new Date(1995, 0, 1));
   const [isCreating, setIsCreating] = useState<boolean>(false);
 
-  const [idFront, setIdFront] = useState<any>(null);
-  const [idBack, setIdBack] = useState<any>(null);
-  const [selfie, setSelfie] = useState<any>(null);
+
 
   function handleDobChange(date: Date) {
     if (!isAtLeast18(date)) {
@@ -53,13 +50,7 @@ export default function CreateAccount() {
     setDobError(null);
   }
 
-  async function pickImage(setter: Function) {
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-    if (!res.canceled) setter(res.assets[0]);
-  }
+
 
   async function createAccount() {
     if (!fullName || !email || !password || !city || !phone) {
@@ -78,10 +69,7 @@ export default function CreateAccount() {
       return;
     }
 
-    if (!idFront || !idBack || !selfie) {
-      Alert.alert(i18n.t('error'), i18n.t('uploadAllKycDocs'));
-      return;
-    }
+
 
     setIsCreating(true);
     try {
@@ -96,9 +84,6 @@ export default function CreateAccount() {
             country,
             phone: `+964${phone}`,
             date_of_birth: dob.toISOString().split('T')[0],
-            kyc_front_uri: idFront.uri,
-            kyc_back_uri: idBack.uri,
-            kyc_selfie_uri: selfie.uri,
           },
         },
       });
@@ -331,19 +316,7 @@ export default function CreateAccount() {
             />
           </View>
 
-          <Text style={styles.sectionTitle}>{i18n.t('kycDocuments')}</Text>
 
-          <TouchableOpacity onPress={() => pickImage(setIdFront)} style={styles.uploadBtn}>
-            <Text style={styles.uploadText}>{idFront ? `${i18n.t('idFrontSelected')} ✅` : i18n.t('uploadIDFront')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => pickImage(setIdBack)} style={styles.uploadBtn}>
-            <Text style={styles.uploadText}>{idBack ? `${i18n.t('idBackSelected')} ✅` : i18n.t('uploadIDBack')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => pickImage(setSelfie)} style={styles.uploadBtn}>
-            <Text style={styles.uploadText}>{selfie ? `${i18n.t('selfieSelected')} ✅` : i18n.t('uploadSelfie')}</Text>
-          </TouchableOpacity>
 
           <TouchableOpacity
             onPress={createAccount}

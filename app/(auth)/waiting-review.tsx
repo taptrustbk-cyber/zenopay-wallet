@@ -1,15 +1,55 @@
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Clock, Mail, RefreshCw } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import i18n from '@/lib/i18n';
 
 export default function WaitingReviewScreen() {
   const { user, signOut, hardRefresh } = useAuth();
   const router = useRouter();
   const [checking, setChecking] = useState(false);
+  const [idFront, setIdFront] = useState<any>(null);
+  const [idBack, setIdBack] = useState<any>(null);
+  const [selfie, setSelfie] = useState<any>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function pickImage(setter: Function) {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+    });
+    if (!res.canceled) setter(res.assets[0]);
+  }
+
+  async function uploadKYCDocuments() {
+    if (!idFront || !idBack || !selfie) {
+      Alert.alert(i18n.t('error'), i18n.t('uploadAllKycDocs'));
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          kyc_front_uri: idFront.uri,
+          kyc_back_uri: idBack.uri,
+          kyc_selfie_uri: selfie.uri,
+        },
+      });
+
+      if (error) throw error;
+
+      Alert.alert(i18n.t('success'), 'KYC documents uploaded successfully!');
+    } catch (error: any) {
+      Alert.alert(i18n.t('error'), error.message);
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const checkStatus = async () => {
     if (!user) return;
@@ -45,7 +85,7 @@ export default function WaitingReviewScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
       >
-        <View style={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.iconContainer}>
             <Clock size={80} color="#F59E0B" strokeWidth={1.5} />
           </View>
@@ -92,10 +132,45 @@ export default function WaitingReviewScreen() {
             )}
           </TouchableOpacity>
 
+          <View style={styles.kycSection}>
+            <Text style={styles.kycTitle}>{i18n.t('kycDocuments')}</Text>
+            <Text style={styles.kycSubtitle}>Upload your documents to complete verification</Text>
+
+            <TouchableOpacity onPress={() => pickImage(setIdFront)} style={styles.uploadBtn}>
+              <Text style={styles.uploadText}>
+                {idFront ? `${i18n.t('idFrontSelected')} ✅` : i18n.t('uploadIDFront')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => pickImage(setIdBack)} style={styles.uploadBtn}>
+              <Text style={styles.uploadText}>
+                {idBack ? `${i18n.t('idBackSelected')} ✅` : i18n.t('uploadIDBack')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => pickImage(setSelfie)} style={styles.uploadBtn}>
+              <Text style={styles.uploadText}>
+                {selfie ? `${i18n.t('selfieSelected')} ✅` : i18n.t('uploadSelfie')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.uploadKYCButton, (!idFront || !idBack || !selfie || uploading) && styles.uploadKYCButtonDisabled]}
+              onPress={uploadKYCDocuments}
+              disabled={!idFront || !idBack || !selfie || uploading}
+            >
+              {uploading ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.uploadKYCButtonText}>Upload Documents</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity style={styles.signOutButton} onPress={signOut}>
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </LinearGradient>
     </View>
   );
@@ -199,6 +274,54 @@ const styles = StyleSheet.create({
   signOutText: {
     color: '#94A3B8',
     fontSize: 15,
+    fontWeight: '600' as const,
+  },
+  kycSection: {
+    marginTop: 32,
+    width: '100%',
+  },
+  kycTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  kycSubtitle: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginBottom: 20,
+  },
+  uploadBtn: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderStyle: 'dashed' as const,
+    alignItems: 'center',
+  },
+  uploadText: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    fontWeight: '600' as const,
+  },
+  uploadKYCButton: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    width: '100%',
+  },
+  uploadKYCButtonDisabled: {
+    opacity: 0.5,
+  },
+  uploadKYCButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600' as const,
   },
 });
