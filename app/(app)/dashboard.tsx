@@ -43,10 +43,12 @@ export default function DashboardScreen() {
       const { data, error } = await supabase
         .from('wallets')
         .select('id, user_id, balance, currency, is_locked')
+        .eq('user_id', user.id)
         .maybeSingle();
       
       if (error) {
-        throw new Error('Failed to fetch wallet');
+        console.error('Wallet fetch error:', error);
+        throw error;
       }
       
       if (!data) {
@@ -55,7 +57,7 @@ export default function DashboardScreen() {
       
       return data as Wallet;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!profile,
     staleTime: 0,
     gcTime: 0,
   });
