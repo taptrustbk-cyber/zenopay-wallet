@@ -26,6 +26,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       const { data: existingWallet, error: fetchError } = await supabase
         .from('wallets')
         .select('id, user_id, balance, currency')
+        .eq('user_id', userId)
         .maybeSingle();
 
       if (existingWallet) {
@@ -63,6 +64,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, email, full_name, avatar_url, role, kyc_status, approval_pending_until, approved_at, force_active, wait_time_minutes, created_at')
+        .eq('id', userId)
         .maybeSingle();
 
       if (error) {
