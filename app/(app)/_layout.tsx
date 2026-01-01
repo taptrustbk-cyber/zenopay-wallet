@@ -1,0 +1,234 @@
+import { Stack } from 'expo-router';
+import { ErrorBoundary } from 'react-error-boundary';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
+import { Clock, Shield } from 'lucide-react-native';
+
+function ErrorFallback({ error, resetErrorBoundary }: any) {
+  return (
+    <View style={styles.errorContainer}>
+      <Text style={styles.errorTitle}>Something went wrong</Text>
+      <Text style={styles.errorMessage}>{error.message}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={resetErrorBoundary}>
+        <Text style={styles.retryText}>Try again</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function KycPendingScreen() {
+  const { signOut } = useAuth();
+  
+  return (
+    <View style={styles.kycContainer}>
+      <View style={styles.kycContent}>
+        <View style={styles.kycIconContainer}>
+          <Shield size={64} color="#F59E0B" strokeWidth={1.5} />
+        </View>
+        
+        <Text style={styles.kycTitle}>KYC Verification Required</Text>
+        <Text style={styles.kycSubtitle}>
+          Your account is pending KYC verification. Our team is reviewing your submitted documents.
+        </Text>
+        
+        <View style={styles.kycInfoBox}>
+          <Clock size={20} color="#94A3B8" style={styles.kycInfoIcon} />
+          <View style={styles.kycInfoContent}>
+            <Text style={styles.kycInfoTitle}>What&apos;s Next?</Text>
+            <Text style={styles.kycInfoText}>
+              • Our team will review your documents{"\n"}
+              • You&apos;ll receive an email once approved{"\n"}
+              • Verification typically takes 1-24 hours
+            </Text>
+          </View>
+        </View>
+        
+        <View style={styles.kycSecurityNote}>
+          <Text style={styles.kycSecurityText}>
+            🔒 Your documents are securely stored and encrypted
+          </Text>
+        </View>
+        
+        <TouchableOpacity style={styles.kycSignOutButton} onPress={signOut}>
+          <Text style={styles.kycSignOutText}>Sign Out</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+export default function AppLayout() {
+  const { profile, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3B82F6" />
+      </View>
+    );
+  }
+  
+  if (profile && profile.kyc_status !== 'approved') {
+    return <KycPendingScreen />;
+  }
+  
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <Stack
+        screenOptions={{
+          headerBackTitle: '',
+          headerTitleAlign: 'center',
+          headerTintColor: '#E2E8F0',
+          headerStyle: {
+            backgroundColor: '#0F172A',
+          },
+          headerTitleStyle: {
+            color: '#E2E8F0',
+            fontWeight: '700',
+          },
+          headerShadowVisible: false,
+          contentStyle: {
+            backgroundColor: '#0B1220',
+          },
+        }}
+      >
+        <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+        <Stack.Screen name="profile" options={{ title: 'Profile' }} />
+        <Stack.Screen name="kyc" options={{ title: 'KYC Verification' }} />
+        <Stack.Screen name="send" options={{ title: 'Send Money' }} />
+        <Stack.Screen name="receive" options={{ title: 'Receive Money' }} />
+        <Stack.Screen name="transactions" options={{ title: 'Transactions' }} />
+        <Stack.Screen name="withdraw" options={{ title: 'Withdraw' }} />
+        <Stack.Screen name="consulate" options={{ title: 'Consulate' }} />
+        <Stack.Screen name="settings" options={{ headerShown: false }} />
+        <Stack.Screen name="admin" options={{ title: 'Admin Panel' }} />
+        <Stack.Screen name="privacy-policy" options={{ title: 'Privacy Policy' }} />
+        <Stack.Screen name="terms-conditions" options={{ title: 'Terms & Conditions' }} />
+        <Stack.Screen name="security" options={{ title: 'Security' }} />
+        <Stack.Screen name="crypto" options={{ headerShown: false }} />
+      </Stack>
+    </ErrorBoundary>
+  );
+}
+
+const styles = StyleSheet.create({
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#0F172A',
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#EF4444',
+    marginBottom: 16,
+  },
+  errorMessage: {
+    fontSize: 16,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: '#60A5FA',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+  },
+  kycContainer: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+  },
+  kycContent: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  kycIconContainer: {
+    marginBottom: 24,
+    padding: 20,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 100,
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  kycTitle: {
+    fontSize: 24,
+    fontWeight: 'bold' as const,
+    color: '#FFFFFF',
+    textAlign: 'center' as const,
+    marginBottom: 12,
+  },
+  kycSubtitle: {
+    fontSize: 15,
+    color: '#94A3B8',
+    textAlign: 'center' as const,
+    marginBottom: 32,
+    lineHeight: 22,
+    paddingHorizontal: 20,
+  },
+  kycInfoBox: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+    width: '100%',
+    alignItems: 'flex-start',
+  },
+  kycInfoIcon: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  kycInfoContent: {
+    flex: 1,
+  },
+  kycInfoTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  kycInfoText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    lineHeight: 22,
+  },
+  kycSecurityNote: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 32,
+    width: '100%',
+  },
+  kycSecurityText: {
+    fontSize: 14,
+    color: '#CBD5E1',
+    textAlign: 'center' as const,
+  },
+  kycSignOutButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  kycSignOutText: {
+    color: '#94A3B8',
+    fontSize: 15,
+    fontWeight: '600' as const,
+  },
+});
