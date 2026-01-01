@@ -55,12 +55,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const loadProfile = useCallback(async (userId: string, bypassCache = false) => {
     if (isLoadingProfileRef.current) {
+      console.log('[AuthContext] Profile already loading, skipping');
       return;
     }
     
     isLoadingProfileRef.current = true;
+    console.log('[AuthContext] Starting profile load for userId:', userId);
+    
     try {
-      
       const { data, error } = await supabase
         .from('profiles')
         .select('id, email, full_name, avatar_url, role, kyc_status, approval_pending_until, approved_at, force_active, wait_time_minutes, created_at')
@@ -68,16 +70,21 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         .maybeSingle();
 
       if (error) {
+        console.error('[AuthContext] Profile fetch error:', error);
         setProfile(null);
         setLoading(false);
+        isLoadingProfileRef.current = false;
         return;
       }
       
       if (!data) {
+        console.log('[AuthContext] No profile found, creating new profile');
         const { data: authData } = await supabase.auth.getUser();
         
         if (!authData?.user) {
+          console.error('[AuthContext] No auth user found');
           setLoading(false);
+          isLoadingProfileRef.current = false;
           return;
         }
 
@@ -90,10 +97,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           });
 
         if (insertError) {
+          console.error('[AuthContext] Profile insert error:', insertError);
           setLoading(false);
+          isLoadingProfileRef.current = false;
           return;
         }
 
+        console.log('[AuthContext] Profile created successfully');
         setProfile({
           id: userId,
           email: authData.user.email || '',
@@ -115,10 +125,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           approval_pending_until: null,
         });
         setLoading(false);
+        isLoadingProfileRef.current = false;
         pendingNavigationRef.current = '/(auth)/waiting-review';
         return;
       }
       
+      console.log('[AuthContext] Profile loaded successfully:', data.email);
       setProfile({
         ...data,
         date_of_birth: null,
@@ -129,23 +141,28 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         kyc_back_photo: null,
         kyc_selfie_photo: null,
       });
+      
+      console.log('[AuthContext] Ensuring wallet exists');
       await ensureWalletExists(userId);
+      console.log('[AuthContext] Wallet check complete');
       
       if (bypassCache) {
         queryClient.invalidateQueries({ queryKey: ['wallet', userId] });
         queryClient.invalidateQueries({ queryKey: ['transactions'] });
       }
     } catch (error: any) {
+      console.error('[AuthContext] Profile load error:', error);
       const errorMessage = error?.message?.toLowerCase() || '';
       
       if (errorMessage.includes('1.4 expected') || 
           errorMessage.includes('parsing') ||
           errorMessage.includes('json')) {
-        // Suppress parsing errors
+        console.warn('[AuthContext] JSON parsing error suppressed');
       }
       
       setProfile(null);
     } finally {
+      console.log('[AuthContext] Profile load complete, setting loading to false');
       setLoading(false);
       isLoadingProfileRef.current = false;
     }
