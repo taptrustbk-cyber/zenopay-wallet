@@ -70,7 +70,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         .maybeSingle();
 
       if (error) {
-        console.error('[AuthContext] Profile fetch error:', error);
+        console.error(
+          '[AuthContext] Profile fetch error:',
+          JSON.stringify(error, null, 2)
+        );
         setProfile(null);
         setLoading(false);
         isLoadingProfileRef.current = false;
