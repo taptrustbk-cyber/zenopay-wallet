@@ -13,14 +13,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import i18n, { setLanguage, getCurrentLanguage } from '@/lib/i18n';
 import { Eye, EyeOff, Mail, Lock, Globe } from 'lucide-react-native';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -55,46 +54,12 @@ export default function LoginScreen() {
         throw new Error('Login failed');
       }
 
-      console.log('Login successful, fetching profile...');
-      
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role, kyc_status')
-        .eq('id', data.user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        console.error('Profile fetch error:', profileError);
-        await supabase.auth.signOut();
-        throw new Error('PROFILE_ERROR: ' + profileError.message);
-      }
-
-      if (!profile) {
-        console.log('No profile found, user may need to create one');
-        await supabase.auth.signOut();
-        throw new Error('PROFILE_NOT_FOUND');
-      }
-      
-      console.log('Profile loaded:', profile);
-
-      if (profile.role === 'admin') {
-        queryClient.clear();
-        return { redirectTo: '/(app)/admin' };
-      }
-
-      if (profile.kyc_status === 'approved') {
-        queryClient.clear();
-        return { redirectTo: '/(app)/dashboard' };
-      }
-
-      return { redirectTo: '/(auth)/kyc-wait' };
+      console.log('Login successful, AuthContext will handle profile loading and navigation');
+      return { success: true };
     },
     onSuccess: (data) => {
       if (data?.redirectHandled) {
         return;
-      }
-      if (data.redirectTo) {
-        router.replace(data.redirectTo as any);
       }
     },
     onError: (error: any) => {

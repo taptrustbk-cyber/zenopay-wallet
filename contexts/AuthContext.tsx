@@ -151,6 +151,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         queryClient.invalidateQueries({ queryKey: ['wallet', userId] });
         queryClient.invalidateQueries({ queryKey: ['transactions'] });
       }
+      
+      setLoading(false);
+      isLoadingProfileRef.current = false;
     } catch (error: any) {
       console.error(
         '[AuthContext] Profile load error:',
@@ -293,7 +296,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     }
 
     if (session && profile && currentScreen === 'login') {
-      if (profile.kyc_status === 'approved') {
+      if (profile.role === 'admin') {
+        router.replace('/(app)/admin' as any);
+      } else if (profile.kyc_status === 'approved') {
         router.replace('/(app)/dashboard' as any);
       } else {
         router.replace('/(auth)/kyc-wait' as any);
