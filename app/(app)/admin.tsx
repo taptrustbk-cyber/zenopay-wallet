@@ -268,7 +268,7 @@ export default function AdminScreen() {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, avatar_url, role, kyc_status, approval_pending_until, approved_at, force_active, wait_time_minutes, created_at')
+        .select('id, email, full_name, role, kyc_status, approval_pending_until, approved_at, force_active, wait_time_minutes, created_at')
         .eq('kyc_status', 'approved')
         .order('approved_at', { ascending: true });
       
@@ -279,7 +279,16 @@ export default function AdminScreen() {
       
       console.log('✅ Fetched waiting users:', data?.length || 0);
       
-      return (data || []) as Profile[];
+      return (data || []).map(d => ({
+        ...d,
+        date_of_birth: null,
+        country: null,
+        city: null,
+        phone_number: null,
+        kyc_front_photo: null,
+        kyc_back_photo: null,
+        kyc_selfie_photo: null,
+      })) as Profile[];
     },
     enabled: selectedTab === 'waiting_users',
   });

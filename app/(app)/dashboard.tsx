@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Image, RefreshControl } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -120,10 +120,6 @@ export default function DashboardScreen() {
             <Ionicons name="shield-checkmark" size={28} color="#60A5FA" />
             <Text style={[styles.logo, { color: theme.colors.text }]}> ZENOPAY</Text>
           </View>
-          <Image
-            source={{ uri: profile?.avatar_url || 'https://i.pravatar.cc/150' }}
-            style={styles.avatar}
-          />
         </View>
 
         <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
@@ -215,11 +211,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700' as const,
   },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-  },
+
   actionRow: {
     flexDirection: 'row',
     gap: 10,

@@ -65,7 +65,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, avatar_url, role, kyc_status, approval_pending_until, approved_at, force_active, wait_time_minutes, created_at')
+        .select('id, email, full_name, role, kyc_status, approval_pending_until, approved_at, force_active, wait_time_minutes, created_at')
         .eq('id', userId)
         .maybeSingle();
 
@@ -115,7 +115,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           force_active: null,
           wait_time_minutes: null,
           full_name: null,
-          avatar_url: null,
           date_of_birth: null,
           country: null,
           city: null,

@@ -6,7 +6,6 @@ export interface Profile {
   id: string;
   email: string;
   full_name: string | null;
-  avatar_url: string | null;
   date_of_birth: string | null;
   country: string | null;
   city: string | null;
