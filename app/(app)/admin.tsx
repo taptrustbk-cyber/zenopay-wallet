@@ -245,7 +245,7 @@ export default function AdminScreen() {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, created_at, wait_time_minutes, kyc_status')
+        .select('id, email, full_name, created_at, kyc_status')
         .eq('kyc_status', 'pending')
         .order('created_at', { ascending: true });
       
@@ -268,7 +268,7 @@ export default function AdminScreen() {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, role, kyc_status, approval_pending_until, approved_at, force_active, wait_time_minutes, created_at')
+        .select('id, email, full_name, role, kyc_status, approval_pending_until, approved_at, force_active, created_at')
         .eq('kyc_status', 'approved')
         .order('approved_at', { ascending: true });
       
@@ -298,7 +298,7 @@ export default function AdminScreen() {
     if (!profile.approved_at) return null;
 
     const approvedAt = new Date(profile.approved_at).getTime();
-    const waitTimeMinutes = profile.wait_time_minutes || 120;
+    const waitTimeMinutes = 120;
     const unlockAt = approvedAt + waitTimeMinutes * 60 * 1000;
     const diff = unlockAt - Date.now();
 
@@ -1001,24 +1001,7 @@ export default function AdminScreen() {
                     </Text>
                   </View>
 
-                  <View style={styles.cardInfo}>
-                    <Text style={styles.infoLabel}>Wait Time:</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={styles.infoValue}>
-                        {profile.wait_time_minutes || 120} minutes
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setWaitTimeUserId(profile.id);
-                          setWaitTimeValue(String(profile.wait_time_minutes || 120));
-                          setShowWaitTimeModal(true);
-                        }}
-                        style={styles.editWaitTimeBtn}
-                      >
-                        <Text style={styles.editWaitTimeBtnText}>Edit</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+
 
                   <View style={styles.actionButtons}>
                     <TouchableOpacity
@@ -1139,24 +1122,7 @@ export default function AdminScreen() {
 
 
 
-                    <View style={styles.cardInfo}>
-                      <Text style={styles.infoLabel}>Wait Time:</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={styles.infoValue}>
-                          {profile.wait_time_minutes || 120} minutes
-                        </Text>
-                        <TouchableOpacity
-                          onPress={() => {
-                            setWaitTimeUserId(profile.id);
-                            setWaitTimeValue(String(profile.wait_time_minutes || 120));
-                            setShowWaitTimeModal(true);
-                          }}
-                          style={styles.editWaitTimeBtn}
-                        >
-                          <Text style={styles.editWaitTimeBtnText}>Edit</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
+
 
                     <TouchableOpacity
                       style={styles.activateNowButton}

@@ -72,7 +72,7 @@ export default function WaitingTimerScreen() {
 
     const startAtIso = profile.approved_at ?? profile.created_at;
     const startAt = new Date(startAtIso).getTime();
-    const waitTimeMinutes = profile.wait_time_minutes ?? 120;
+    const waitTimeMinutes = 120;
     const unlockAt = startAt + waitTimeMinutes * 60 * 1000;
     const diff = unlockAt - Date.now();
     console.log('⏳ WaitingTimer: using fallback approved_at/created_at + wait_time_minutes', {

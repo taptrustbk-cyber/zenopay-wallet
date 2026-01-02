@@ -18,7 +18,6 @@ export interface Profile {
   approval_pending_until: string | null;
   approved_at: string | null;
   force_active: boolean | null;
-  wait_time_minutes: number | null;
   created_at: string;
 }
 
