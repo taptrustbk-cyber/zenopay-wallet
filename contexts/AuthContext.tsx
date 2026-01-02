@@ -151,20 +151,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         queryClient.invalidateQueries({ queryKey: ['transactions'] });
       }
     } catch (error: any) {
-      console.error('[AuthContext] Profile load error:', error);
-      const errorMessage = error?.message?.toLowerCase() || '';
-      
-      if (errorMessage.includes('1.4 expected') || 
-          errorMessage.includes('parsing') ||
-          errorMessage.includes('json')) {
-        console.warn('[AuthContext] JSON parsing error suppressed');
-      }
-      
+      console.error(
+        '[AuthContext] Profile load error:',
+        JSON.stringify(error, null, 2)
+      );
+
       setProfile(null);
-    } finally {
-      console.log('[AuthContext] Profile load complete, setting loading to false');
       setLoading(false);
       isLoadingProfileRef.current = false;
+
+      return;
+    } finally {
+      console.log('[AuthContext] Profile load complete');
     }
   }, [ensureWalletExists, queryClient]);
 

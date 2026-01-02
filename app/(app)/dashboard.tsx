@@ -47,12 +47,31 @@ export default function DashboardScreen() {
         .maybeSingle();
       
       if (error) {
-        console.error('Wallet fetch error:', error);
+        console.error(
+          'Wallet fetch error:',
+          JSON.stringify(error, null, 2)
+        );
         throw error;
       }
       
       if (!data) {
-        return { user_id: user.id, balance: 0, currency: 'USD', is_locked: false } as Wallet;
+        const { data: newWallet, error: insertError } = await supabase
+          .from('wallets')
+          .insert({
+            user_id: user.id,
+            balance: 0,
+            currency: 'USD',
+            is_locked: false,
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('Wallet create error:', insertError);
+          throw insertError;
+        }
+
+        return newWallet as Wallet;
       }
       
       return data as Wallet;
