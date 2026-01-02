@@ -46,13 +46,7 @@ export const adminRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       console.log("Approving user:", input.userId);
 
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("wait_time_minutes")
-        .eq("id", input.userId)
-        .single();
-
-      const waitTimeMinutes = profile?.wait_time_minutes || 120;
+      const waitTimeMinutes = 120;
 
       const { error } = await supabaseAdmin
         .from("profiles")
