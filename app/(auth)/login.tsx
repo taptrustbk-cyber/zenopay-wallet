@@ -119,6 +119,8 @@ export default function LoginScreen() {
       newLang = 'ar';
     } else if (currentLang === 'ar') {
       newLang = 'ckb';
+    } else if (currentLang === 'ckb') {
+      newLang = 'kmr';
     } else {
       newLang = 'en';
     }
@@ -130,7 +132,8 @@ export default function LoginScreen() {
   const getLanguageDisplayText = () => {
     const currentLang = getCurrentLanguage();
     if (currentLang === 'en') return 'العربية';
-    if (currentLang === 'ar') return 'کوردی';
+    if (currentLang === 'ar') return 'کوردی سۆرانی';
+    if (currentLang === 'ckb') return 'کوردی بادینی';
     return 'English';
   };
 

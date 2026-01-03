@@ -51,10 +51,8 @@ export const adminRouter = createTRPCRouter({
       const { error } = await supabaseAdmin
         .from("profiles")
         .update({
-          status: "approved",
+          kyc_status: "approved",
           approved_at: new Date().toISOString(),
-          can_deposit: true,
-          can_withdraw: true,
         })
         .eq("id", input.userId);
 
@@ -77,7 +75,7 @@ export const adminRouter = createTRPCRouter({
 
       const { error } = await supabaseAdmin
         .from("profiles")
-        .update({ status: "rejected" })
+        .update({ kyc_status: "rejected" })
         .eq("id", input.userId);
 
       if (error) {
@@ -97,11 +95,9 @@ export const adminRouter = createTRPCRouter({
       const { error } = await supabaseAdmin
         .from("profiles")
         .update({
-          status: "active",
+          kyc_status: "approved",
           force_active: true,
           approved_at: new Date().toISOString(),
-          can_deposit: true,
-          can_withdraw: true,
         })
         .eq("id", input.userId);
 
