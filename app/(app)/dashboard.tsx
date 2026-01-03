@@ -126,6 +126,19 @@ export default function DashboardScreen() {
           <Text style={[styles.label, { color: theme.colors.textSecondary }]}>{i18n.t('accountBalance')}</Text>
           {walletQuery.isLoading ? (
             <ActivityIndicator color="#60A5FA" />
+          ) : walletQuery.isError ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={32} color="#EF4444" />
+              <Text style={[styles.errorText, { color: theme.colors.text }]}>
+                {i18n.t('failedToLoadBalance')}
+              </Text>
+              <TouchableOpacity 
+                style={styles.retryButton}
+                onPress={() => walletQuery.refetch()}
+              >
+                <Text style={styles.retryText}>{i18n.t('retry')}</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <Text style={[styles.balance, { color: theme.colors.text }]}>
               ${walletQuery.data?.balance?.toFixed(2) || '0.00'}

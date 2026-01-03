@@ -1,6 +1,7 @@
-import { StyleSheet, View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
@@ -53,6 +54,28 @@ export default function TransactionsScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
         <ActivityIndicator color="#667eea" style={styles.loader} />
+      </SafeAreaView>
+    );
+  }
+
+  if (transactionsQuery.isError) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
+        <View style={styles.errorStateContainer}>
+          <Ionicons name="alert-circle" size={64} color="#EF4444" />
+          <Text style={[styles.errorTitle, { color: theme.colors.text }]}>
+            {i18n.t('failedToLoad')}
+          </Text>
+          <Text style={[styles.errorMessage, { color: theme.colors.textSecondary }]}>
+            {i18n.t('errorLoadingTransactions')}
+          </Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => transactionsQuery.refetch()}
+          >
+            <Text style={styles.retryButtonText}>{i18n.t('retry')}</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
@@ -254,5 +277,34 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
+  },
+  errorStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    textAlign: 'center' as const,
+  },
+  errorMessage: {
+    fontSize: 15,
+    textAlign: 'center' as const,
+    lineHeight: 22,
+  },
+  retryButton: {
+    backgroundColor: '#60A5FA',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
 });
