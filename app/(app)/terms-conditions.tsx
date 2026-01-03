@@ -77,19 +77,19 @@ export default function TermsConditionsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>{i18n.t('tcSection5Title')}</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>{i18n.t('tcSection4Title')}</Text>
           <View style={styles.bulletList}>
-            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection5Item1')}</Text>
-            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection5Item2')}</Text>
-            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection5Item3')}</Text>
+            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection4Item1')}</Text>
+            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection4Item2')}</Text>
+            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection4Item3')}</Text>
           </View>
           <Text style={[styles.sectionText, { color: theme.colors.textSecondary, marginTop: 12 }]}>
-            {i18n.t('tcSection5Text')}
+            {i18n.t('tcSection4Text')}
           </Text>
           <View style={styles.bulletList}>
-            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection5Item4')}</Text>
-            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection5Item5')}</Text>
-            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection5Item6')}</Text>
+            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection4Item4')}</Text>
+            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection4Item5')}</Text>
+            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection4Item6')}</Text>
           </View>
         </View>
 

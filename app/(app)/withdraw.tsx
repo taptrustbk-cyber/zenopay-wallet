@@ -126,7 +126,7 @@ export default function WithdrawScreen() {
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['withdraw_orders'] });
-      Alert.alert(i18n.t('success'), 'Withdrawal request submitted successfully. Admin will review your request.');
+      Alert.alert(i18n.t('success'), i18n.t('withdrawSuccessMessage'));
       router.back();
     },
     onError: (error: any) => {

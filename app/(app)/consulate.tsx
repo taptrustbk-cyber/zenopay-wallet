@@ -113,19 +113,7 @@ export default function ConsulateScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
-      <View style={[styles.header, { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.push('/(app)/dashboard' as any)}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
-          <Text style={[styles.backButtonText, { color: theme.colors.text }]}>{i18n.t('back')}</Text>
-        </TouchableOpacity>
-        <Text style={[styles.title, { color: theme.colors.text }]}>
-          {i18n.t('consulateInfo')}
-        </Text>
-        <View style={{ width: 80 }} />
-      </View>
+      
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {Object.entries(groupedByCity).map(([city, cityConsulates]) => (

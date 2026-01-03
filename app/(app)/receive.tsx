@@ -75,7 +75,8 @@ export default function DepositScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
+      allowsEditing: true,
+      aspect: [4, 3],
       quality: 0.8,
       allowsMultipleSelection: false,
     });
@@ -120,7 +121,7 @@ export default function DepositScreen() {
           <View style={[styles.successCard, { backgroundColor: theme.colors.card }]}>
             <Text style={[styles.successTitle, { color: theme.colors.success }]}>{i18n.t('orderSubmitted')}</Text>
             <Text style={[styles.successText, { color: theme.colors.textSecondary }]}>
-              {i18n.t('waitForApproval')}
+              {i18n.t('depositSuccessMessage')}
             </Text>
             <TouchableOpacity
               style={styles.doneButton}
