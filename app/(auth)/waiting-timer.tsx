@@ -144,6 +144,11 @@ export default function WaitingTimerScreen() {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace('/(auth)/login' as any);
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -228,7 +233,7 @@ export default function WaitingTimerScreen() {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity testID="waiting-timer-signout" style={styles.signOutButton} onPress={signOut}>
+          <TouchableOpacity testID="waiting-timer-signout" style={styles.signOutButton} onPress={handleSignOut}>
             <Text style={styles.signOutText}>{i18n.t('signOut')}</Text>
           </TouchableOpacity>
           </View>

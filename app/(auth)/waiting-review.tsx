@@ -77,6 +77,11 @@ export default function WaitingReviewScreen() {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace('/(auth)/login' as any);
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -167,7 +172,7 @@ export default function WaitingReviewScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.signOutButton} onPress={signOut}>
+          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
         </ScrollView>
