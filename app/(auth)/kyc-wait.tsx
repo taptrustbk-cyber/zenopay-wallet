@@ -4,8 +4,10 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 import { Upload, CheckCircle } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 export default function KycWait() {
+  const router = useRouter();
   const { user, signOut } = useAuth();
   const [idFront, setIdFront] = useState<{ uri: string; mimeType: string } | null>(null);
   const [idBack, setIdBack] = useState<{ uri: string; mimeType: string } | null>(null);
@@ -89,6 +91,7 @@ export default function KycWait() {
 
   const handleBackToLogin = async () => {
     await signOut();
+    router.replace('/(auth)/login');
   };
 
   if (submitted) {
