@@ -245,8 +245,8 @@ export default function AdminScreen() {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, created_at, kyc_status')
-        .eq('kyc_status', 'pending')
+        .select('id, email, full_name, created_at, kyc_status, status')
+        .eq('status', 'pending')
         .order('created_at', { ascending: true });
       
       if (error) {
@@ -431,23 +431,43 @@ export default function AdminScreen() {
     },
   });
 
-  const approveAccountMutation = trpc.admin.approveUser.useMutation({
+  const approveAccountMutation = useMutation({
+    mutationFn: async ({ userId }: { userId: string }) => {
+      console.log('✅ Approving account:', userId);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status: 'approved' })
+        .eq('id', userId);
+      if (error) throw error;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
-      Alert.alert('Success', 'Account approved! User will be able to login after 2 hours.');
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      Alert.alert('Success', 'Account approved successfully!');
     },
     onError: (error: any) => {
-      Alert.alert('Error', error.message);
+      console.error('❌ Approve error:', error);
+      Alert.alert('Error', error.message || 'Failed to approve account');
     },
   });
 
-  const rejectAccountMutation = trpc.admin.rejectUser.useMutation({
+  const rejectAccountMutation = useMutation({
+    mutationFn: async ({ userId }: { userId: string }) => {
+      console.log('❌ Rejecting account:', userId);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status: 'rejected' })
+        .eq('id', userId);
+      if (error) throw error;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
       Alert.alert('Success', 'Account rejected.');
     },
     onError: (error: any) => {
-      Alert.alert('Error', error.message);
+      console.error('❌ Reject error:', error);
+      Alert.alert('Error', error.message || 'Failed to reject account');
     },
   });
 
@@ -972,13 +992,17 @@ export default function AdminScreen() {
 
         {selectedTab === 'account_approval' && (
           <>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 16 }]}>Pending Account Approvals</Text>
             {pendingAccountsQuery.isLoading ? (
-              <ActivityIndicator color="#60A5FA" size="large" />
+              <View style={{ alignItems: 'center', padding: 40 }}>
+                <ActivityIndicator color="#60A5FA" size="large" />
+                <Text style={[styles.emptyText, { marginTop: 16 }]}>Loading pending accounts...</Text>
+              </View>
             ) : pendingAccountsQuery.data && pendingAccountsQuery.data.length > 0 ? (
-              pendingAccountsQuery.data.map((profile) => (
+              pendingAccountsQuery.data.map((profile: any) => (
                 <View key={profile.id} style={styles.card}>
                   <View style={styles.cardHeader}>
-                    <View>
+                    <View style={{ flex: 1 }}>
                       <Text style={styles.cardTitle}>
                         {profile.full_name || 'Unknown User'}
                       </Text>
@@ -987,12 +1011,24 @@ export default function AdminScreen() {
                     <View style={[styles.statusBadge]}>
                       <Clock size={14} color="#F59E0B" />
                       <Text style={[styles.statusText]}>
-                        PENDING
+                        {profile.status?.toUpperCase() || 'PENDING'}
                       </Text>
                     </View>
                   </View>
 
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.infoLabel}>KYC Status:</Text>
+                    <Text style={styles.infoValue}>
+                      {profile.kyc_status || 'N/A'}
+                    </Text>
+                  </View>
 
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.infoLabel}>Status:</Text>
+                    <Text style={styles.infoValue}>
+                      {profile.status || 'N/A'}
+                    </Text>
+                  </View>
 
                   <View style={styles.cardInfo}>
                     <Text style={styles.infoLabel}>Registered:</Text>
@@ -1001,15 +1037,13 @@ export default function AdminScreen() {
                     </Text>
                   </View>
 
-
-
                   <View style={styles.actionButtons}>
                     <TouchableOpacity
                       style={styles.approveButton}
                       onPress={() =>
                         Alert.alert(
                           'Approve Account',
-                          `Approve ${profile.full_name || profile.email}? User will be able to login after 2 hours.`,
+                          `Approve ${profile.full_name || profile.email}?`,
                           [
                             { text: 'Cancel', style: 'cancel' },
                             {
@@ -1020,7 +1054,7 @@ export default function AdminScreen() {
                           ]
                         )
                       }
-                      disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending || activateNowMutation.isPending}
+                      disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
                     >
                       <CheckCircle size={16} color="#FFF" />
                       <Text style={styles.actionButtonText}>Approve</Text>
@@ -1042,37 +1076,24 @@ export default function AdminScreen() {
                           ]
                         )
                       }
-                      disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending || activateNowMutation.isPending}
+                      disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
                     >
                       <XCircle size={16} color="#FFF" />
                       <Text style={styles.actionButtonText}>Reject</Text>
                     </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    style={styles.activateNowButton}
-                    onPress={() =>
-                      Alert.alert(
-                        'Activate Account Now',
-                        `⚠️ This will bypass the waiting period and activate ${profile.full_name || profile.email} immediately.\n\nUser can login right away.`,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'Activate Now',
-                            onPress: () =>
-                              activateNowMutation.mutate({ userId: profile.id }),
-                          },
-                        ]
-                      )
-                    }
-                    disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending || activateNowMutation.isPending}
-                  >
-                    <CheckCircle size={16} color="#FFF" />
-                    <Text style={styles.actionButtonText}>Activate Account Now</Text>
-                  </TouchableOpacity>
                 </View>
               ))
             ) : (
-              <Text style={styles.emptyText}>No pending accounts</Text>
+              <View style={{ padding: 20 }}>
+                <Text style={styles.emptyText}>No pending accounts</Text>
+                <TouchableOpacity
+                  style={[styles.backButton, { marginTop: 16, alignSelf: 'center' }]}
+                  onPress={() => pendingAccountsQuery.refetch()}
+                >
+                  <Text style={styles.backButtonText}>Refresh</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </>
         )}
