@@ -179,8 +179,22 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setIsReady(true);
     }, 50);
     
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (!mounted) return;
+      
+      if (error) {
+        console.error('[AuthContext] Session error:', error.message);
+        if (error.message?.includes('Invalid Refresh Token') || error.message?.includes('Refresh Token')) {
+          console.log('[AuthContext] Clearing invalid session');
+          supabase.auth.signOut().catch(() => {});
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+        }
+        setLoading(false);
+        return;
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -188,10 +202,30 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       } else {
         setLoading(false);
       }
+    }).catch((err) => {
+      console.error('[AuthContext] Get session failed:', err);
+      if (mounted) {
+        setLoading(false);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
+      
+      console.log('[AuthContext] Auth state changed:', _event);
+      
+      if (_event === 'TOKEN_REFRESHED') {
+        console.log('[AuthContext] Token refreshed successfully');
+      }
+      
+      if (_event === 'SIGNED_OUT') {
+        console.log('[AuthContext] User signed out');
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
       
       if (_event === 'PASSWORD_RECOVERY') {
         setTimeout(() => {
