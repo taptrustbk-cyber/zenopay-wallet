@@ -1,110 +1,198 @@
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Clock } from 'lucide-react-native';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import i18n from '@/lib/i18n';
+import * as ImagePicker from 'expo-image-picker';
+import { Upload, CheckCircle } from 'lucide-react-native';
 
 export default function KycWait() {
-  const router = useRouter();
   const { user, signOut } = useAuth();
-  const [isChecking, setIsChecking] = useState(false);
-  const intervalRef = useRef<any>(null);
+  const [idFront, setIdFront] = useState<string | null>(null);
+  const [idBack, setIdBack] = useState<string | null>(null);
+  const [selfie, setSelfie] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
-  const checkKycStatus = useCallback(async () => {
-    if (!user) return;
+  const canSubmit = idFront && idBack && selfie;
+
+  const pickImage = async (type: 'idFront' | 'idBack' | 'selfie') => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+      base64: false,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      if (type === 'idFront') setIdFront(uri);
+      else if (type === 'idBack') setIdBack(uri);
+      else if (type === 'selfie') setSelfie(uri);
+    }
+  };
+
+  const submitKycDocuments = async () => {
+    if (!canSubmit || !user) return;
+
+    setLoading(true);
 
     try {
-      setIsChecking(true);
-      console.log('🔍 Checking KYC status...');
-      
-      const { data: profile, error } = await supabase
+      const uploadFile = async (uri: string, filename: string) => {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const arrayBuffer = await new Response(blob).arrayBuffer();
+        const file = new Uint8Array(arrayBuffer);
+
+        const path = `${user.id}/${filename}`;
+        const { error } = await supabase.storage
+          .from('kyc-documents')
+          .upload(path, file, { 
+            upsert: true,
+            contentType: 'image/jpeg'
+          });
+        
+        if (error) throw error;
+      };
+
+      await uploadFile(idFront!, 'id_front.jpg');
+      await uploadFile(idBack!, 'id_back.jpg');
+      await uploadFile(selfie!, 'selfie.jpg');
+
+      const { error: updateError } = await supabase
         .from('profiles')
-        .select('kyc_status')
-        .eq('id', user.id)
-        .single();
+        .update({
+          kyc_status: 'pending',
+          kyc_submitted_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
 
-      if (error) {
-        console.error('❌ Error checking KYC status:', error);
-        return;
-      }
+      if (updateError) throw updateError;
 
-      console.log('📋 KYC Status:', profile?.kyc_status);
-
-      if (profile?.kyc_status === 'approved') {
-        console.log('✅ KYC approved! Redirecting to dashboard...');
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-        router.replace('/(app)/dashboard' as any);
-      }
+      setIdFront(null);
+      setIdBack(null);
+      setSelfie(null);
+      setSubmitted(true);
     } catch (error) {
-      console.error('❌ Error checking KYC:', error);
+      console.error('KYC submission error:', error);
+      Alert.alert('Error', 'Failed to submit KYC documents. Please try again.');
     } finally {
-      setIsChecking(false);
+      setLoading(false);
     }
-  }, [user, router]);
-
-  useEffect(() => {
-    checkKycStatus();
-
-    intervalRef.current = setInterval(() => {
-      checkKycStatus();
-    }, 5000);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [checkKycStatus]);
+  };
 
   const handleBackToLogin = async () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
     await signOut();
   };
 
+  if (submitted) {
+    return (
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.successIconContainer}>
+            <CheckCircle size={80} color="#10B981" strokeWidth={2} />
+          </View>
+
+          <Text style={styles.successTitle}>Your documents were successfully submitted!</Text>
+
+          <Text style={styles.successText}>
+            Please wait for Zenopay to approve your account. Approval time is between{' '}
+            <Text style={styles.boldText}>1 to 6 hours</Text>.
+          </Text>
+
+          <Text style={styles.successText}>
+            If you need assistance, contact support at:{' '}
+            <Text style={styles.emailText}>info@zenopay.bond</Text>
+          </Text>
+
+          <Text style={styles.securityText}>
+            Your documents are stored securely and are safe within the Zenopay app.
+          </Text>
+
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={handleBackToLogin}
+          >
+            <Text style={styles.backButtonText}>Back to Login</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>ZenoPay</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.header}>ZenoPay</Text>
 
-      <View style={styles.iconContainer}>
-        <Clock size={80} color="#3B82F6" strokeWidth={1.5} />
-        {isChecking && (
-          <View style={styles.checkingIndicator}>
-            <ActivityIndicator size="small" color="#3B82F6" />
-          </View>
-        )}
-      </View>
-
-      <Text style={styles.title}>{i18n.t('kycInProgress')}</Text>
-
-      <Text style={styles.description}>
-        {i18n.t('kycReviewMessage')}
-      </Text>
-
-      <Text style={styles.timeInfo}>
-        {i18n.t('kycTimeInfo')}
-      </Text>
-
-      <View style={styles.supportContainer}>
-        <Text style={styles.supportTitle}>{i18n.t('contactSupportTitle')}</Text>
-        <Text style={styles.supportEmail}>{i18n.t('supportEmail')}</Text>
-        <Text style={styles.supportInfo}>
-          {i18n.t('supportContactInfo')}
+        <Text style={styles.title}>PLEASE UPLOAD KYC DOCUMENTS</Text>
+        
+        <Text style={styles.description}>
+          To approve your account and login successfully, please upload the required documents below.
         </Text>
-      </View>
 
-      <TouchableOpacity 
-        style={styles.button}
-        onPress={handleBackToLogin}
-      >
-        <Text style={styles.buttonText}>{i18n.t('backToSignIn')}</Text>
-      </TouchableOpacity>
+        <View style={styles.uploadsContainer}>
+          <View style={styles.uploadSection}>
+            <Text style={styles.label}>Government ID (Front)</Text>
+            <TouchableOpacity 
+              style={styles.uploadButton}
+              onPress={() => pickImage('idFront')}
+            >
+              {idFront ? (
+                <Image source={{ uri: idFront }} style={styles.previewImage} />
+              ) : (
+                <View style={styles.uploadPlaceholder}>
+                  <Upload size={32} color="#64748B" />
+                  <Text style={styles.uploadText}>Tap to upload</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.uploadSection}>
+            <Text style={styles.label}>Government ID (Back)</Text>
+            <TouchableOpacity 
+              style={styles.uploadButton}
+              onPress={() => pickImage('idBack')}
+            >
+              {idBack ? (
+                <Image source={{ uri: idBack }} style={styles.previewImage} />
+              ) : (
+                <View style={styles.uploadPlaceholder}>
+                  <Upload size={32} color="#64748B" />
+                  <Text style={styles.uploadText}>Tap to upload</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.uploadSection}>
+            <Text style={styles.label}>Selfie with ID</Text>
+            <TouchableOpacity 
+              style={styles.uploadButton}
+              onPress={() => pickImage('selfie')}
+            >
+              {selfie ? (
+                <Image source={{ uri: selfie }} style={styles.previewImage} />
+              ) : (
+                <View style={styles.uploadPlaceholder}>
+                  <Upload size={32} color="#64748B" />
+                  <Text style={styles.uploadText}>Tap to upload</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
+          onPress={submitKycDocuments}
+          disabled={!canSubmit || loading}
+        >
+          <Text style={styles.submitButtonText}>
+            {loading ? 'Submitting...' : 'Submit KYC Documents'}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 }
@@ -112,92 +200,130 @@ export default function KycWait() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
     backgroundColor: '#0F172A',
   },
+  scrollContent: {
+    padding: 24,
+    paddingTop: 60,
+  },
   header: {
-    position: 'absolute',
-    top: 60,
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: '800' as const,
     color: '#3B82F6',
     textAlign: 'center',
-  },
-  iconContainer: {
     marginBottom: 32,
-    position: 'relative' as const,
-  },
-  checkingIndicator: {
-    position: 'absolute' as const,
-    bottom: -20,
-    alignSelf: 'center',
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '700' as const,
     color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   description: {
-    fontSize: 16,
-    color: '#CBD5E1',
-    textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 24,
-    paddingHorizontal: 16,
-  },
-  timeInfo: {
     fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    marginBottom: 32,
-    fontStyle: 'italic',
+    color: '#CBD5E1',
+    lineHeight: 20,
+    marginBottom: 24,
   },
-  supportContainer: {
-    marginBottom: 36,
-    paddingHorizontal: 20,
-    alignItems: 'center',
+  uploadsContainer: {
+    marginBottom: 24,
   },
-  supportTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 12,
+  uploadSection: {
+    marginBottom: 20,
   },
-  supportEmail: {
+  label: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#3B82F6',
-    textAlign: 'center',
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
     marginBottom: 8,
   },
-  supportInfo: {
-    fontSize: 13,
-    color: '#94A3B8',
-    textAlign: 'center',
-    lineHeight: 20,
+  uploadButton: {
+    borderWidth: 2,
+    borderColor: '#334155',
+    borderRadius: 12,
+    borderStyle: 'dashed' as const,
+    overflow: 'hidden',
   },
-  button: {
+  uploadPlaceholder: {
+    height: 140,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+  },
+  uploadText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#64748B',
+  },
+  previewImage: {
+    width: '100%',
+    height: 140,
+    resizeMode: 'cover',
+  },
+  submitButton: {
     backgroundColor: '#3B82F6',
-    paddingHorizontal: 40,
     paddingVertical: 16,
     borderRadius: 12,
-    minWidth: 220,
+    alignItems: 'center',
     shadowColor: '#3B82F6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
-  buttonText: {
+  submitButtonDisabled: {
+    backgroundColor: '#475569',
+    shadowOpacity: 0,
+  },
+  submitButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600' as const,
+  },
+  successIconContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: 40,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: '700' as const,
+    color: '#10B981',
     textAlign: 'center',
+    marginBottom: 20,
+  },
+  successText: {
+    fontSize: 15,
+    color: '#CBD5E1',
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 22,
+  },
+  boldText: {
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+  },
+  emailText: {
+    color: '#3B82F6',
+    textDecorationLine: 'underline' as const,
+  },
+  securityText: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 32,
+    lineHeight: 20,
+  },
+  backButton: {
+    backgroundColor: '#475569',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  backButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
 });
