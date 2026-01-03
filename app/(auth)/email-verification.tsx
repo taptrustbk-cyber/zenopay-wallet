@@ -120,7 +120,7 @@ export default function EmailVerificationScreen() {
         if (error.message?.includes('session') || error.message?.includes('Auth session missing')) {
           Alert.alert(
             i18n.t('verifyYourEmail'),
-            i18n.t('pleaseConfirmEmail') + '\n\n' + 'Click the link in your email to verify your account, then try again.',
+            i18n.t('clickVerificationLink'),
             [{ text: 'OK' }]
           );
           setChecking(false);
@@ -139,7 +139,7 @@ export default function EmailVerificationScreen() {
       } else {
         console.log('⏳ Email not verified yet');
         Alert.alert(
-          i18n.t('verifyYourEmail'),
+          i18n.t('emailNotVerifiedYet'),
           i18n.t('pleaseConfirmEmail'),
           [{ text: 'OK' }]
         );
@@ -168,7 +168,7 @@ export default function EmailVerificationScreen() {
 
       if (error) throw error;
       
-      Alert.alert('Success', 'Verification email resent. Please check your inbox.');
+      Alert.alert(i18n.t('success'), i18n.t('verificationEmailResent'));
       console.log('✅ Verification email resent');
     } catch (error: any) {
       console.error('Error resending email:', error);
