@@ -12,7 +12,6 @@ const LANGUAGES = [
   { code: 'en', name: 'English' },
   { code: 'ar', name: 'العربية' },
   { code: 'ckb', name: 'کوردی سۆرانی' },
-  { code: 'kmr', name: 'کوردی بادینی' },
 ];
 
 export default function SettingsScreen() {

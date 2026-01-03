@@ -84,7 +84,7 @@ const CONSULATES: Consulate[] = [
     capital: 'Brussels',
     address: '15 Avenue de l\'Europe, Baghdad',
     contact: '+964 770 444 5555',
-    image: 'https://images.unsplash.com/photo-1559564484-e48bf0d43468?w=400',
+    image: 'https://images.unsplash.com/photo-1559564484-e48bf0d43468?w=400&q=80',
   },
   {
     id: 9,

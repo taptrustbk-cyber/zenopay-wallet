@@ -102,9 +102,9 @@ export default function AppLayout() {
         <Stack.Screen name="consulate" options={{ title: 'Consulate' }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
         <Stack.Screen name="admin" options={{ title: 'Admin Panel' }} />
-        <Stack.Screen name="privacy-policy" options={{ title: 'Privacy Policy' }} />
-        <Stack.Screen name="terms-conditions" options={{ title: 'Terms & Conditions' }} />
-        <Stack.Screen name="security" options={{ title: 'Security' }} />
+        <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+        <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
+        <Stack.Screen name="security" options={{ headerShown: false }} />
         <Stack.Screen name="crypto" options={{ headerShown: false }} />
       </Stack>
     </ErrorBoundary>
