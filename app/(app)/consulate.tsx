@@ -114,9 +114,7 @@ export default function ConsulateScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
       <View style={[styles.header, { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
-        </TouchableOpacity>
+        <View style={{ width: 24 }} />
         <Text style={[styles.title, { color: theme.colors.text }]}>
           {i18n.t('consulateInfo')}
         </Text>
@@ -124,7 +122,6 @@ export default function ConsulateScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-
         {Object.entries(groupedByCity).map(([city, cityConsulates]) => (
           <View key={city} style={styles.citySection}>
             <Text style={[styles.cityTitle, { color: theme.colors.text }]}>{city}</Text>
@@ -171,6 +168,16 @@ export default function ConsulateScreen() {
             </View>
           </View>
         ))}
+        
+        <View style={styles.bottomButtonContainer}>
+          <TouchableOpacity 
+            style={[styles.backToDashboardButton, { backgroundColor: theme.colors.primary }]}
+            onPress={() => router.push('/(app)/dashboard' as any)}
+          >
+            <Ionicons name="arrow-back" size={20} color="white" />
+            <Text style={styles.backToDashboardText}>{i18n.t('backToDashboard')}</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -252,5 +259,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 4,
     fontWeight: '500' as const,
+  },
+  bottomButtonContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    marginTop: 20,
+  },
+  backToDashboardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 10,
+  },
+  backToDashboardText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
 });

@@ -63,7 +63,6 @@ export default function TermsConditionsScreen() {
           </Text>
           <View style={styles.bulletList}>
             <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection3Item1')}</Text>
-            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection3Item2')}</Text>
           </View>
           <Text style={[styles.sectionText, { color: theme.colors.textSecondary, marginTop: 12 }]}>
             {i18n.t('tcSection3Text2')}
@@ -74,20 +73,6 @@ export default function TermsConditionsScreen() {
           </View>
           <Text style={[styles.sectionText, { color: theme.colors.textSecondary, marginTop: 12 }]}>
             {i18n.t('tcSection3Text3')}
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>{i18n.t('tcSection4Title')}</Text>
-          <Text style={[styles.sectionText, { color: theme.colors.textSecondary }]}>
-            {i18n.t('tcSection4Text')}
-          </Text>
-          <View style={styles.bulletList}>
-            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection4Item1')}</Text>
-            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('tcSection4Item2')}</Text>
-          </View>
-          <Text style={[styles.sectionText, { color: theme.colors.textSecondary, marginTop: 12 }]}>
-            {i18n.t('tcSection4Text2')}
           </Text>
         </View>
 

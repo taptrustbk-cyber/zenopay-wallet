@@ -41,9 +41,7 @@ export default function PrivacyPolicyScreen() {
             <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('ppSection2Item1')}</Text>
             <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('ppSection2Item2')}</Text>
             <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('ppSection2Item3')}</Text>
-            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('ppSection2Item4')}</Text>
             <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('ppSection2Item5')}</Text>
-            <Text style={[styles.bulletItem, { color: theme.colors.textSecondary }]}>{i18n.t('ppSection2Item6')}</Text>
           </View>
         </View>
 
