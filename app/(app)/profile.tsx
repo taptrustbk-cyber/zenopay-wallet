@@ -59,12 +59,48 @@ export default function ProfileScreen() {
             onChangeText={setFullName}
           />
 
-          <Text style={[styles.label, { color: theme.colors.text }]}>{i18n.t('kycStatus')}</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>{i18n.t('accountActive')}</Text>
           <View style={[styles.infoBox, { backgroundColor: theme.colors.cardSecondary }]}>
             <Text style={[styles.infoText, { color: theme.colors.text }]}>
-              {i18n.t(profile?.kyc_status === 'not_started' ? 'notStarted' : profile?.kyc_status || 'notStarted')}
+              {profile?.kyc_status === 'approved' ? i18n.t('active') : i18n.t(profile?.kyc_status || 'notStarted')}
             </Text>
           </View>
+
+          {profile?.date_of_birth && (
+            <>
+              <Text style={[styles.label, { color: theme.colors.text }]}>{i18n.t('dateOfBirthLabel')}</Text>
+              <View style={[styles.infoBox, { backgroundColor: theme.colors.cardSecondary }]}>
+                <Text style={[styles.infoText, { color: theme.colors.text }]}>{profile.date_of_birth}</Text>
+              </View>
+            </>
+          )}
+
+          {profile?.phone_number && (
+            <>
+              <Text style={[styles.label, { color: theme.colors.text }]}>{i18n.t('phoneLabel')}</Text>
+              <View style={[styles.infoBox, { backgroundColor: theme.colors.cardSecondary }]}>
+                <Text style={[styles.infoText, { color: theme.colors.text }]}>{profile.phone_number}</Text>
+              </View>
+            </>
+          )}
+
+          {profile?.city && (
+            <>
+              <Text style={[styles.label, { color: theme.colors.text }]}>{i18n.t('cityLabel')}</Text>
+              <View style={[styles.infoBox, { backgroundColor: theme.colors.cardSecondary }]}>
+                <Text style={[styles.infoText, { color: theme.colors.text }]}>{profile.city}</Text>
+              </View>
+            </>
+          )}
+
+          {profile?.country && (
+            <>
+              <Text style={[styles.label, { color: theme.colors.text }]}>{i18n.t('countryLabel')}</Text>
+              <View style={[styles.infoBox, { backgroundColor: theme.colors.cardSecondary }]}>
+                <Text style={[styles.infoText, { color: theme.colors.text }]}>{profile.country}</Text>
+              </View>
+            </>
+          )}
 
           <TouchableOpacity
             style={styles.updateButton}

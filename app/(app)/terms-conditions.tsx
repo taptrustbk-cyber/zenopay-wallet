@@ -171,7 +171,7 @@ export default function TermsConditionsScreen() {
           </Text>
           <View style={[styles.contactBox, { backgroundColor: theme.colors.card }]}>
             <Ionicons name="mail" size={20} color={theme.colors.primary} />
-            <Text style={[styles.contactEmail, { color: theme.colors.primary }]}>{i18n.t('tcContactEmail')}</Text>
+            <Text style={[styles.contactEmail, { color: theme.colors.primary }]}>info@zenopay.bond</Text>
           </View>
         </View>
 

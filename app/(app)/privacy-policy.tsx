@@ -108,7 +108,7 @@ export default function PrivacyPolicyScreen() {
           </Text>
           <View style={[styles.contactBox, { backgroundColor: theme.colors.card }]}>
             <Ionicons name="mail" size={20} color={theme.colors.primary} />
-            <Text style={[styles.contactEmail, { color: theme.colors.primary }]}>zenopay.noreply@gmail.com</Text>
+            <Text style={[styles.contactEmail, { color: theme.colors.primary }]}>info@zenopay.bond</Text>
           </View>
         </View>
 

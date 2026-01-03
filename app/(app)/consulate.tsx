@@ -1,5 +1,7 @@
-import { StyleSheet, View, Text, ScrollView, Image } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import i18n from '@/lib/i18n';
 
@@ -84,7 +86,7 @@ const CONSULATES: Consulate[] = [
     capital: 'Brussels',
     address: '15 Avenue de l\'Europe, Baghdad',
     contact: '+964 770 444 5555',
-    image: 'https://images.unsplash.com/photo-1559564484-e48bf0d43468?w=400&q=80',
+    image: 'https://images.unsplash.com/photo-1559113202-c916b8e44373?w=400&q=80',
   },
   {
     id: 9,
@@ -99,6 +101,7 @@ const CONSULATES: Consulate[] = [
 
 export default function ConsulateScreen() {
   const { theme } = useTheme();
+  const router = useRouter();
 
   const groupedByCity = CONSULATES.reduce((acc, consulate) => {
     if (!acc[consulate.city]) {
@@ -110,12 +113,17 @@ export default function ConsulateScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
+      <View style={[styles.header, { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.border }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
+        </TouchableOpacity>
+        <Text style={[styles.title, { color: theme.colors.text }]}>
+          {i18n.t('consulateInfo')}
+        </Text>
+        <View style={{ width: 24 }} />
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={[styles.header, { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.border }]}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>
-            {i18n.t('consulateInfo')}
-          </Text>
-        </View>
 
         {Object.entries(groupedByCity).map(([city, cityConsulates]) => (
           <View key={city} style={styles.citySection}>
@@ -133,7 +141,7 @@ export default function ConsulateScreen() {
                   />
                   <View style={styles.cardContent}>
                     <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
-                      {consulate.country} Consulate
+                      {consulate.country} {i18n.t('consulate')}
                     </Text>
                     <View style={styles.infoRow}>
                       <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
@@ -173,10 +181,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 50,
     paddingBottom: 20,
     borderBottomWidth: 1,
+  },
+  backButton: {
+    padding: 4,
   },
   title: {
     fontSize: 28,
