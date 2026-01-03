@@ -151,7 +151,7 @@ export default function DepositScreen() {
 
           <Text style={[styles.label, { color: theme.colors.textSecondary }]}>{i18n.t('selectPaymentMethod')}</Text>
           <View style={styles.cryptoGrid}>
-            {(['BTC', 'ETH', 'USDT_TRC20', 'XRP', 'DOGE'] as CryptoType[]).map((crypto) => (
+            {(['USDT_TRC20'] as CryptoType[]).map((crypto) => (
               <TouchableOpacity
                 key={crypto}
                 style={[

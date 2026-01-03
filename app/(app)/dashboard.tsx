@@ -189,7 +189,7 @@ export default function DashboardScreen() {
       <View style={[styles.bottomNav, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
         <NavItem icon="home" label={i18n.t('home')} active onPress={() => {}} />
         <NavItem icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
-        <NavItem icon="chatbox" label={i18n.t('consulate')} onPress={() => router.push('/(app)/consulate' as any)} />
+        <NavItem icon="chatbox" label={i18n.t('consulateInfo')} onPress={() => router.push('/(app)/consulate' as any)} />
         <NavItem icon="settings" label={i18n.t('settings')} onPress={() => router.push('/(app)/settings' as any)} />
       </View>
     </View>
