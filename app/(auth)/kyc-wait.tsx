@@ -7,9 +7,9 @@ import { Upload, CheckCircle } from 'lucide-react-native';
 
 export default function KycWait() {
   const { user, signOut } = useAuth();
-  const [idFront, setIdFront] = useState<string | null>(null);
-  const [idBack, setIdBack] = useState<string | null>(null);
-  const [selfie, setSelfie] = useState<string | null>(null);
+  const [idFront, setIdFront] = useState<{ uri: string; mimeType: string } | null>(null);
+  const [idBack, setIdBack] = useState<{ uri: string; mimeType: string } | null>(null);
+  const [selfie, setSelfie] = useState<{ uri: string; mimeType: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -24,10 +24,14 @@ export default function KycWait() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      if (type === 'idFront') setIdFront(uri);
-      else if (type === 'idBack') setIdBack(uri);
-      else if (type === 'selfie') setSelfie(uri);
+      const asset = result.assets[0];
+      const uri = asset.uri;
+      const mimeType = asset.mimeType || 'image/jpeg';
+      
+      const imageData = { uri, mimeType };
+      if (type === 'idFront') setIdFront(imageData);
+      else if (type === 'idBack') setIdBack(imageData);
+      else if (type === 'selfie') setSelfie(imageData);
     }
   };
 
@@ -37,26 +41,29 @@ export default function KycWait() {
     setLoading(true);
 
     try {
-      const uploadFile = async (uri: string, filename: string) => {
-        const response = await fetch(uri);
+      const uploadFile = async (imageData: { uri: string; mimeType: string }, basename: string) => {
+        const response = await fetch(imageData.uri);
         const blob = await response.blob();
         const arrayBuffer = await new Response(blob).arrayBuffer();
         const file = new Uint8Array(arrayBuffer);
 
+        const extension = imageData.mimeType.split('/')[1] || 'jpg';
+        const filename = `${basename}.${extension}`;
         const path = `${user.id}/${filename}`;
+        
         const { error } = await supabase.storage
           .from('kyc-documents')
           .upload(path, file, { 
             upsert: true,
-            contentType: 'image/jpeg'
+            contentType: imageData.mimeType
           });
         
         if (error) throw error;
       };
 
-      await uploadFile(idFront!, 'id_front.jpg');
-      await uploadFile(idBack!, 'id_back.jpg');
-      await uploadFile(selfie!, 'selfie.jpg');
+      await uploadFile(idFront!, 'id_front');
+      await uploadFile(idBack!, 'id_back');
+      await uploadFile(selfie!, 'selfie');
 
       const { error: updateError } = await supabase
         .from('profiles')
@@ -138,7 +145,7 @@ export default function KycWait() {
               onPress={() => pickImage('idFront')}
             >
               {idFront ? (
-                <Image source={{ uri: idFront }} style={styles.previewImage} />
+                <Image source={{ uri: idFront.uri }} style={styles.previewImage} />
               ) : (
                 <View style={styles.uploadPlaceholder}>
                   <Upload size={32} color="#64748B" />
@@ -155,7 +162,7 @@ export default function KycWait() {
               onPress={() => pickImage('idBack')}
             >
               {idBack ? (
-                <Image source={{ uri: idBack }} style={styles.previewImage} />
+                <Image source={{ uri: idBack.uri }} style={styles.previewImage} />
               ) : (
                 <View style={styles.uploadPlaceholder}>
                   <Upload size={32} color="#64748B" />
@@ -172,7 +179,7 @@ export default function KycWait() {
               onPress={() => pickImage('selfie')}
             >
               {selfie ? (
-                <Image source={{ uri: selfie }} style={styles.previewImage} />
+                <Image source={{ uri: selfie.uri }} style={styles.previewImage} />
               ) : (
                 <View style={styles.uploadPlaceholder}>
                   <Upload size={32} color="#64748B" />
