@@ -31,19 +31,28 @@ export default function EmailVerificationScreen() {
 
   useEffect(() => {
     let isMounted = true;
+    let pollingInterval: ReturnType<typeof setInterval>;
 
     const checkEmailVerification = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { user }, error } = await supabase.auth.getUser();
         
-        if (isMounted && session?.user?.email_confirmed_at) {
-          console.log('✅ Email verified, redirecting to login...');
+        if (error) {
+          console.error('Error fetching user:', error);
+          return;
+        }
+
+        console.log('🔍 Checking email verification status...');
+        
+        if (isMounted && user?.email_confirmed_at) {
+          console.log('✅ Email verified! Redirecting to login...');
           setVerified(true);
+          await supabase.auth.signOut();
           setTimeout(() => {
             if (isMounted) {
               router.replace('/(auth)/login' as any);
             }
-          }, 2000);
+          }, 1500);
         }
       } catch (error) {
         console.error('Error checking verification:', error);
@@ -51,6 +60,12 @@ export default function EmailVerificationScreen() {
     };
 
     checkEmailVerification();
+
+    pollingInterval = setInterval(() => {
+      if (!verified) {
+        checkEmailVerification();
+      }
+    }, 5000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       console.log('🔄 Auth state changed:', _event);
@@ -64,13 +79,14 @@ export default function EmailVerificationScreen() {
             if (isMounted) {
               router.replace('/(auth)/login' as any);
             }
-          }, 2000);
+          }, 1500);
         }
       }
     });
 
     return () => {
       isMounted = false;
+      clearInterval(pollingInterval);
       subscription.unsubscribe();
     };
   }, [router, verified]);
@@ -182,7 +198,7 @@ export default function EmailVerificationScreen() {
               📂 {i18n.t('checkSpamFolder')}
             </Text>
             <Text style={styles.infoText}>
-              🔄 {i18n.t('clickRefreshAfterVerifying')}
+              ✨ {i18n.t('autoCheckingStatus')}
             </Text>
           </View>
 
