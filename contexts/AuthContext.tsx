@@ -298,8 +298,17 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     if (session && profile && currentScreen === 'login') {
       if (profile.role === 'admin') {
         router.replace('/(app)/admin' as any);
+        return;
+      }
+
+      if (!profile.kyc_status || profile.kyc_status === 'not_started') {
+        router.replace('/(auth)/kyc-wait' as any);
+      } else if (profile.kyc_status === 'pending') {
+        router.replace('/(auth)/waiting-review' as any);
       } else if (profile.kyc_status === 'approved') {
         router.replace('/(app)/dashboard' as any);
+      } else if (profile.kyc_status === 'rejected') {
+        router.replace('/(auth)/kyc-wait' as any);
       } else {
         router.replace('/(auth)/kyc-wait' as any);
       }
