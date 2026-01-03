@@ -114,11 +114,17 @@ export default function ConsulateScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
       <View style={[styles.header, { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.border }]}>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.push('/(app)/dashboard' as any)}
+        >
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+          <Text style={[styles.backButtonText, { color: theme.colors.text }]}>{i18n.t('back')}</Text>
+        </TouchableOpacity>
         <Text style={[styles.title, { color: theme.colors.text }]}>
           {i18n.t('consulateInfo')}
         </Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 80 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -197,7 +203,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     padding: 4,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
   title: {
     fontSize: 28,

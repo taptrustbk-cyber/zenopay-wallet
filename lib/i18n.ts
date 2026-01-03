@@ -506,6 +506,7 @@ const i18n = new I18n({
     noPendingAccountsFound: 'No pending accounts found',
     noAccountsPending: 'No accounts are pending approval.',
     adminPanelTitle: 'Admin Panel',
+    back: 'Back',
   },
   ar: {
     welcome: 'مرحباً بك في زينو باي',
@@ -999,6 +1000,7 @@ const i18n = new I18n({
     noPendingAccountsFound: 'لم يتم العثور على حسابات معلقة',
     noAccountsPending: 'لا توجد حسابات في انتظار الموافقة.',
     adminPanelTitle: 'لوحة الإدارة',
+    back: 'رجوع',
   },
   ckb: {
     welcome: 'بەخێربێیت بۆ زینۆپەی',
@@ -1347,6 +1349,7 @@ const i18n = new I18n({
     withdraw_button: 'دەرهێنان',
     accessDeniedDesc: 'مۆڵەتت نییە بۆ دەستڕاگەیشتن بەم لاپەڕەیە.',
     adminPanelTitle: 'پانێڵی بەڕێوەبەر',
+    back: 'گەڕانەوە',
     noWithdrawalsYet: 'هێشتا دەرهێنان نییە',
     network: 'تۆڕ',
     address: 'ناونیشان',
