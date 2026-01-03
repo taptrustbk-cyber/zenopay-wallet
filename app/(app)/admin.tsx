@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   TextInput,
   Modal,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
@@ -269,8 +270,7 @@ export default function AdminScreen() {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, email, full_name, kyc_status, status, kyc_front_photo, kyc_back_photo, kyc_selfie_photo, created_at')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error('❌ KYC documents query error:', JSON.stringify(error, null, 2));
@@ -1597,52 +1597,73 @@ export default function AdminScreen() {
                     <View style={styles.kycDocLinks}>
                       <TouchableOpacity
                         style={styles.docLinkButton}
-                        onPress={() => {
+                        onPress={async () => {
                           if (userKYC.kyc_front_photo) {
-                            Alert.alert('ID Front', `URL: ${userKYC.kyc_front_photo}`, [
-                              { text: 'Close', style: 'cancel' }
-                            ]);
+                            try {
+                              const canOpen = await Linking.canOpenURL(userKYC.kyc_front_photo);
+                              if (canOpen) {
+                                await Linking.openURL(userKYC.kyc_front_photo);
+                              } else {
+                                Alert.alert('Error', 'Cannot open this URL');
+                              }
+                            } catch {
+                              Alert.alert('Error', 'Failed to open document');
+                            }
                           } else {
                             Alert.alert('No File', 'ID Front photo not uploaded');
                           }
                         }}
                       >
-                        <FileText size={16} color="#60A5FA" />
-                        <Text style={styles.docLinkText}>ID Front</Text>
+                        <FileText size={16} color={userKYC.kyc_front_photo ? "#60A5FA" : "#6B7280"} />
+                        <Text style={[styles.docLinkText, !userKYC.kyc_front_photo && { color: '#6B7280' }]}>ID Front</Text>
                         {userKYC.kyc_front_photo && <ExternalLink size={14} color="#60A5FA" />}
                       </TouchableOpacity>
 
                       <TouchableOpacity
                         style={styles.docLinkButton}
-                        onPress={() => {
+                        onPress={async () => {
                           if (userKYC.kyc_back_photo) {
-                            Alert.alert('ID Back', `URL: ${userKYC.kyc_back_photo}`, [
-                              { text: 'Close', style: 'cancel' }
-                            ]);
+                            try {
+                              const canOpen = await Linking.canOpenURL(userKYC.kyc_back_photo);
+                              if (canOpen) {
+                                await Linking.openURL(userKYC.kyc_back_photo);
+                              } else {
+                                Alert.alert('Error', 'Cannot open this URL');
+                              }
+                            } catch {
+                              Alert.alert('Error', 'Failed to open document');
+                            }
                           } else {
                             Alert.alert('No File', 'ID Back photo not uploaded');
                           }
                         }}
                       >
-                        <FileText size={16} color="#60A5FA" />
-                        <Text style={styles.docLinkText}>ID Back</Text>
+                        <FileText size={16} color={userKYC.kyc_back_photo ? "#60A5FA" : "#6B7280"} />
+                        <Text style={[styles.docLinkText, !userKYC.kyc_back_photo && { color: '#6B7280' }]}>ID Back</Text>
                         {userKYC.kyc_back_photo && <ExternalLink size={14} color="#60A5FA" />}
                       </TouchableOpacity>
 
                       <TouchableOpacity
                         style={styles.docLinkButton}
-                        onPress={() => {
+                        onPress={async () => {
                           if (userKYC.kyc_selfie_photo) {
-                            Alert.alert('Selfie', `URL: ${userKYC.kyc_selfie_photo}`, [
-                              { text: 'Close', style: 'cancel' }
-                            ]);
+                            try {
+                              const canOpen = await Linking.canOpenURL(userKYC.kyc_selfie_photo);
+                              if (canOpen) {
+                                await Linking.openURL(userKYC.kyc_selfie_photo);
+                              } else {
+                                Alert.alert('Error', 'Cannot open this URL');
+                              }
+                            } catch {
+                              Alert.alert('Error', 'Failed to open document');
+                            }
                           } else {
                             Alert.alert('No File', 'Selfie photo not uploaded');
                           }
                         }}
                       >
-                        <FileText size={16} color="#60A5FA" />
-                        <Text style={styles.docLinkText}>Selfie</Text>
+                        <FileText size={16} color={userKYC.kyc_selfie_photo ? "#60A5FA" : "#6B7280"} />
+                        <Text style={[styles.docLinkText, !userKYC.kyc_selfie_photo && { color: '#6B7280' }]}>Selfie</Text>
                         {userKYC.kyc_selfie_photo && <ExternalLink size={14} color="#60A5FA" />}
                       </TouchableOpacity>
                     </View>
