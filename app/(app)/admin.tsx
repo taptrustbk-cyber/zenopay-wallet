@@ -436,7 +436,10 @@ export default function AdminScreen() {
       console.log('✅ Approving account:', userId);
       const { error } = await supabase
         .from('profiles')
-        .update({ status: 'approved' })
+        .update({ 
+          status: 'approved',
+          kyc_status: 'approved'
+        })
         .eq('id', userId);
       if (error) throw error;
     },
@@ -456,7 +459,10 @@ export default function AdminScreen() {
       console.log('❌ Rejecting account:', userId);
       const { error } = await supabase
         .from('profiles')
-        .update({ status: 'rejected' })
+        .update({ 
+          status: 'rejected',
+          kyc_status: 'rejected'
+        })
         .eq('id', userId);
       if (error) throw error;
     },
