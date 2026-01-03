@@ -12,9 +12,9 @@ export interface Profile {
   phone_number: string | null;
   role: string | null;
   kyc_status: KYCStatus;
-  kyc_front_photo: string | null;
-  kyc_back_photo: string | null;
-  kyc_selfie_photo: string | null;
+  id_front: string | null;
+  id_back: string | null;
+  selfie: string | null;
   approval_pending_until: string | null;
   approved_at: string | null;
   force_active: boolean | null;

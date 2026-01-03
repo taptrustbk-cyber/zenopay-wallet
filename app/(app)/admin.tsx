@@ -269,7 +269,7 @@ export default function AdminScreen() {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, kyc_status, status, kyc_front_photo, kyc_back_photo, kyc_selfie_photo, created_at')
+        .select('id, email, full_name, kyc_status, status, id_front, id_back, selfie, created_at')
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -308,9 +308,9 @@ export default function AdminScreen() {
         country: null,
         city: null,
         phone_number: null,
-        kyc_front_photo: null,
-        kyc_back_photo: null,
-        kyc_selfie_photo: null,
+        id_front: null,
+        id_back: null,
+        selfie: null,
       })) as Profile[];
     },
     enabled: selectedTab === 'waiting_users',
@@ -1598,11 +1598,11 @@ export default function AdminScreen() {
                       <TouchableOpacity
                         style={styles.docLinkButton}
                         onPress={async () => {
-                          if (userKYC.kyc_front_photo) {
+                          if (userKYC.id_front) {
                             try {
-                              const canOpen = await Linking.canOpenURL(userKYC.kyc_front_photo);
+                              const canOpen = await Linking.canOpenURL(userKYC.id_front);
                               if (canOpen) {
-                                await Linking.openURL(userKYC.kyc_front_photo);
+                                await Linking.openURL(userKYC.id_front);
                               } else {
                                 Alert.alert('Error', 'Cannot open this URL');
                               }
@@ -1614,19 +1614,19 @@ export default function AdminScreen() {
                           }
                         }}
                       >
-                        <FileText size={16} color={userKYC.kyc_front_photo ? "#60A5FA" : "#6B7280"} />
-                        <Text style={[styles.docLinkText, !userKYC.kyc_front_photo && { color: '#6B7280' }]}>ID Front</Text>
-                        {userKYC.kyc_front_photo && <ExternalLink size={14} color="#60A5FA" />}
+                        <FileText size={16} color={userKYC.id_front ? "#60A5FA" : "#6B7280"} />
+                        <Text style={[styles.docLinkText, !userKYC.id_front && { color: '#6B7280' }]}>ID Front</Text>
+                        {userKYC.id_front && <ExternalLink size={14} color="#60A5FA" />}
                       </TouchableOpacity>
 
                       <TouchableOpacity
                         style={styles.docLinkButton}
                         onPress={async () => {
-                          if (userKYC.kyc_back_photo) {
+                          if (userKYC.id_back) {
                             try {
-                              const canOpen = await Linking.canOpenURL(userKYC.kyc_back_photo);
+                              const canOpen = await Linking.canOpenURL(userKYC.id_back);
                               if (canOpen) {
-                                await Linking.openURL(userKYC.kyc_back_photo);
+                                await Linking.openURL(userKYC.id_back);
                               } else {
                                 Alert.alert('Error', 'Cannot open this URL');
                               }
@@ -1638,19 +1638,19 @@ export default function AdminScreen() {
                           }
                         }}
                       >
-                        <FileText size={16} color={userKYC.kyc_back_photo ? "#60A5FA" : "#6B7280"} />
-                        <Text style={[styles.docLinkText, !userKYC.kyc_back_photo && { color: '#6B7280' }]}>ID Back</Text>
-                        {userKYC.kyc_back_photo && <ExternalLink size={14} color="#60A5FA" />}
+                        <FileText size={16} color={userKYC.id_back ? "#60A5FA" : "#6B7280"} />
+                        <Text style={[styles.docLinkText, !userKYC.id_back && { color: '#6B7280' }]}>ID Back</Text>
+                        {userKYC.id_back && <ExternalLink size={14} color="#60A5FA" />}
                       </TouchableOpacity>
 
                       <TouchableOpacity
                         style={styles.docLinkButton}
                         onPress={async () => {
-                          if (userKYC.kyc_selfie_photo) {
+                          if (userKYC.selfie) {
                             try {
-                              const canOpen = await Linking.canOpenURL(userKYC.kyc_selfie_photo);
+                              const canOpen = await Linking.canOpenURL(userKYC.selfie);
                               if (canOpen) {
-                                await Linking.openURL(userKYC.kyc_selfie_photo);
+                                await Linking.openURL(userKYC.selfie);
                               } else {
                                 Alert.alert('Error', 'Cannot open this URL');
                               }
@@ -1662,9 +1662,9 @@ export default function AdminScreen() {
                           }
                         }}
                       >
-                        <FileText size={16} color={userKYC.kyc_selfie_photo ? "#60A5FA" : "#6B7280"} />
-                        <Text style={[styles.docLinkText, !userKYC.kyc_selfie_photo && { color: '#6B7280' }]}>Selfie</Text>
-                        {userKYC.kyc_selfie_photo && <ExternalLink size={14} color="#60A5FA" />}
+                        <FileText size={16} color={userKYC.selfie ? "#60A5FA" : "#6B7280"} />
+                        <Text style={[styles.docLinkText, !userKYC.selfie && { color: '#6B7280' }]}>Selfie</Text>
+                        {userKYC.selfie && <ExternalLink size={14} color="#60A5FA" />}
                       </TouchableOpacity>
                     </View>
                   </View>

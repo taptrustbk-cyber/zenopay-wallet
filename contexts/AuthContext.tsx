@@ -120,9 +120,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           phone_number: null,
           role: null,
           kyc_status: 'not_started',
-          kyc_front_photo: null,
-          kyc_back_photo: null,
-          kyc_selfie_photo: null,
+          id_front: null,
+          id_back: null,
+          selfie: null,
           approval_pending_until: null,
         });
         setLoading(false);
@@ -138,9 +138,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         country: null,
         city: null,
         phone_number: null,
-        kyc_front_photo: null,
-        kyc_back_photo: null,
-        kyc_selfie_photo: null,
+        id_front: null,
+        id_back: null,
+        selfie: null,
       });
       
       console.log('[AuthContext] Ensuring wallet exists');
