@@ -20,9 +20,13 @@ export default function EmailVerificationScreen() {
       if (emailParam && typeof emailParam === 'string') {
         setUserEmail(emailParam);
       } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.email) {
-          setUserEmail(user.email);
+        try {
+          const { data: { user }, error } = await supabase.auth.getUser();
+          if (!error && user?.email) {
+            setUserEmail(user.email);
+          }
+        } catch {
+          console.log('Could not load user email, session may be missing');
         }
       }
     };
@@ -31,13 +35,20 @@ export default function EmailVerificationScreen() {
 
   useEffect(() => {
     let isMounted = true;
-    let pollingInterval: ReturnType<typeof setInterval>;
+    let pollingInterval: ReturnType<typeof setInterval> | undefined;
 
     const checkEmailVerification = async () => {
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
         
         if (error) {
+          if (error.message?.includes('session') || error.message?.includes('Auth session missing')) {
+            console.log('⏸️ No active session, stopping polling');
+            if (pollingInterval) {
+              clearInterval(pollingInterval);
+            }
+            return;
+          }
           console.error('Error fetching user:', error);
           return;
         }
@@ -54,7 +65,14 @@ export default function EmailVerificationScreen() {
             }
           }, 1500);
         }
-      } catch (error) {
+      } catch (error: any) {
+        if (error.message?.includes('session') || error.message?.includes('Auth session missing')) {
+          console.log('⏸️ No active session, stopping polling');
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+          }
+          return;
+        }
         console.error('Error checking verification:', error);
       }
     };
@@ -86,7 +104,9 @@ export default function EmailVerificationScreen() {
 
     return () => {
       isMounted = false;
-      clearInterval(pollingInterval);
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
       subscription.unsubscribe();
     };
   }, [router, verified]);
@@ -96,7 +116,18 @@ export default function EmailVerificationScreen() {
     try {
       const { data: { user }, error } = await supabase.auth.getUser();
       
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes('session') || error.message?.includes('Auth session missing')) {
+          Alert.alert(
+            i18n.t('verifyYourEmail'),
+            i18n.t('pleaseConfirmEmail') + '\n\n' + 'Click the link in your email to verify your account, then try again.',
+            [{ text: 'OK' }]
+          );
+          setChecking(false);
+          return;
+        }
+        throw error;
+      }
       
       if (user?.email_confirmed_at) {
         console.log('✅ Email verified, redirecting to login...');
