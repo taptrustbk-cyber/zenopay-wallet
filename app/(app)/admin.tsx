@@ -1600,13 +1600,22 @@ export default function AdminScreen() {
                         onPress={async () => {
                           if (userKYC.id_front) {
                             try {
-                              const canOpen = await Linking.canOpenURL(userKYC.id_front);
-                              if (canOpen) {
-                                await Linking.openURL(userKYC.id_front);
+                              const { data } = supabase.storage
+                                .from('kyc-documents')
+                                .getPublicUrl(userKYC.id_front);
+                              
+                              if (data?.publicUrl) {
+                                const canOpen = await Linking.canOpenURL(data.publicUrl);
+                                if (canOpen) {
+                                  await Linking.openURL(data.publicUrl);
+                                } else {
+                                  Alert.alert('Error', 'Cannot open this URL');
+                                }
                               } else {
-                                Alert.alert('Error', 'Cannot open this URL');
+                                Alert.alert('Error', 'Failed to get document URL');
                               }
-                            } catch {
+                            } catch (err) {
+                              console.error('Error opening ID Front:', err);
                               Alert.alert('Error', 'Failed to open document');
                             }
                           } else {
@@ -1624,13 +1633,22 @@ export default function AdminScreen() {
                         onPress={async () => {
                           if (userKYC.id_back) {
                             try {
-                              const canOpen = await Linking.canOpenURL(userKYC.id_back);
-                              if (canOpen) {
-                                await Linking.openURL(userKYC.id_back);
+                              const { data } = supabase.storage
+                                .from('kyc-documents')
+                                .getPublicUrl(userKYC.id_back);
+                              
+                              if (data?.publicUrl) {
+                                const canOpen = await Linking.canOpenURL(data.publicUrl);
+                                if (canOpen) {
+                                  await Linking.openURL(data.publicUrl);
+                                } else {
+                                  Alert.alert('Error', 'Cannot open this URL');
+                                }
                               } else {
-                                Alert.alert('Error', 'Cannot open this URL');
+                                Alert.alert('Error', 'Failed to get document URL');
                               }
-                            } catch {
+                            } catch (err) {
+                              console.error('Error opening ID Back:', err);
                               Alert.alert('Error', 'Failed to open document');
                             }
                           } else {
@@ -1648,13 +1666,22 @@ export default function AdminScreen() {
                         onPress={async () => {
                           if (userKYC.selfie) {
                             try {
-                              const canOpen = await Linking.canOpenURL(userKYC.selfie);
-                              if (canOpen) {
-                                await Linking.openURL(userKYC.selfie);
+                              const { data } = supabase.storage
+                                .from('kyc-documents')
+                                .getPublicUrl(userKYC.selfie);
+                              
+                              if (data?.publicUrl) {
+                                const canOpen = await Linking.canOpenURL(data.publicUrl);
+                                if (canOpen) {
+                                  await Linking.openURL(data.publicUrl);
+                                } else {
+                                  Alert.alert('Error', 'Cannot open this URL');
+                                }
                               } else {
-                                Alert.alert('Error', 'Cannot open this URL');
+                                Alert.alert('Error', 'Failed to get document URL');
                               }
-                            } catch {
+                            } catch (err) {
+                              console.error('Error opening Selfie:', err);
                               Alert.alert('Error', 'Failed to open document');
                             }
                           } else {
