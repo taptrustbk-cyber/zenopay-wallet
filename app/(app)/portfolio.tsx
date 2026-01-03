@@ -1,41 +1,43 @@
-
-import { StyleSheet, View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { StyleSheet, View, Text, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
+import { useState } from 'react';
 
-interface PortfolioAsset {
+interface PortfolioItem {
   id: string;
   user_id: string;
-  asset: string;
-  amount: number;
-  value_usd: number;
-  status: string;
-  created_at: string;
+  name: string;
+  value: number;
+  created_at?: string;
 }
 
 export default function PortfolioScreen() {
   const { theme } = useTheme();
   const { user } = useAuth();
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [editValues, setEditValues] = useState<{ [key: string]: string }>({});
 
   const portfolioQuery = useQuery({
-    queryKey: ['portfolio', user?.id],
+    queryKey: ['portfolios', user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error('User not found');
 
       const { data, error } = await supabase
-        .from('portfolio')
+        .from('portfolios')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return (data || []) as PortfolioAsset[];
+      if (error) {
+        console.error('[Portfolio] Fetch error:', error);
+        throw error;
+      }
+      return (data || []) as PortfolioItem[];
     },
     enabled: !!user?.id,
   });
@@ -51,13 +53,66 @@ export default function PortfolioScreen() {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Wallet] Fetch error:', error);
+        throw error;
+      }
       return data?.balance || 0;
     },
     enabled: !!user?.id,
   });
 
-  const totalPortfolioValue = portfolioQuery.data?.reduce((sum, asset) => sum + asset.value_usd, 0) || 0;
+  const updatePortfolioMutation = useMutation({
+    mutationFn: async ({ id, value }: { id: string; value: number }) => {
+      console.log('[Portfolio] Updating portfolio item:', id, 'value:', value);
+      const { error } = await supabase
+        .from('portfolios')
+        .update({ value })
+        .eq('id', id);
+
+      if (error) {
+        console.error('[Portfolio] Update error:', error);
+        throw error;
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['portfolios', user?.id] });
+      await updateWalletBalance();
+    },
+    onError: (error) => {
+      console.error('[Portfolio] Mutation error:', error);
+      Alert.alert(i18n.t('error'), i18n.t('updateFailed'));
+    },
+  });
+
+  const updateWalletBalance = async () => {
+    if (!user?.id || !portfolioQuery.data) return;
+
+    const totalValue = portfolioQuery.data.reduce((sum, item) => sum + item.value, 0);
+    console.log('[Wallet] Updating balance to:', totalValue);
+
+    const { error } = await supabase
+      .from('wallets')
+      .update({ balance: totalValue })
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('[Wallet] Update error:', error);
+    } else {
+      await queryClient.invalidateQueries({ queryKey: ['wallet', user?.id] });
+    }
+  };
+
+  const handleUpdateValue = (id: string, currentValue: number) => {
+    const newValue = editValues[id] ? parseFloat(editValues[id]) : currentValue;
+    
+    if (isNaN(newValue) || newValue < 0) {
+      Alert.alert(i18n.t('error'), i18n.t('invalidValue'));
+      return;
+    }
+
+    updatePortfolioMutation.mutate({ id, value: newValue });
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -79,45 +134,28 @@ export default function PortfolioScreen() {
 
         <View style={[styles.balanceCard, { backgroundColor: theme.colors.card }]}>
           <Text style={[styles.balanceLabel, { color: theme.colors.textSecondary }]}>
-            {i18n.t('totalBalance')}
+            {i18n.t('walletBalance')}
           </Text>
           {walletQuery.isLoading ? (
             <ActivityIndicator color="#60A5FA" />
           ) : (
             <Text style={[styles.balanceValue, { color: theme.colors.text }]}>
-              ${walletQuery.data?.toFixed(2) || '0.00'}
+              ${typeof walletQuery.data === 'number' ? walletQuery.data.toFixed(2) : '0.00'}
             </Text>
           )}
           <Text style={[styles.balanceCurrency, { color: theme.colors.textSecondary }]}>USD</Text>
-
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#10B981' }]}
-              onPress={() => router.push('/(app)/receive' as any)}
-            >
-              <Ionicons name="download" size={20} color="white" />
-              <Text style={styles.actionButtonText}>{i18n.t('deposit')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
-              onPress={() => router.push('/(app)/withdraw' as any)}
-            >
-              <Ionicons name="cash" size={20} color="white" />
-              <Text style={styles.actionButtonText}>{i18n.t('withdraw')}</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            {i18n.t('portfolioAssets')}
+            {i18n.t('portfolioItems')}
           </Text>
 
           {portfolioQuery.isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator color="#60A5FA" size="large" />
               <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
-                {i18n.t('loadingAssets')}
+                {i18n.t('loadingPortfolio')}
               </Text>
             </View>
           ) : portfolioQuery.isError ? (
@@ -135,51 +173,77 @@ export default function PortfolioScreen() {
             </View>
           ) : portfolioQuery.data && portfolioQuery.data.length > 0 ? (
             <>
-              <View style={[styles.totalCard, { backgroundColor: theme.colors.card }]}>
-                <Text style={[styles.totalLabel, { color: theme.colors.textSecondary }]}>
-                  {i18n.t('totalPortfolioValue')}
-                </Text>
-                <Text style={[styles.totalValue, { color: '#10B981' }]}>
-                  ${totalPortfolioValue.toFixed(2)}
+              <View style={[styles.infoCard, { backgroundColor: theme.colors.card }]}>
+                <Ionicons name="information-circle" size={20} color={theme.colors.primary} />
+                <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>
+                  {i18n.t('portfolioSyncInfo')}
                 </Text>
               </View>
 
-              {portfolioQuery.data.map((asset) => {
-                const percentage = walletQuery.data 
-                  ? ((asset.value_usd / (walletQuery.data + totalPortfolioValue)) * 100)
-                  : 0;
+              {portfolioQuery.data.map((item) => {
+                const currentEditValue = editValues[item.id] ?? item.value.toString();
 
                 return (
-                  <View key={asset.id} style={[styles.assetCard, { backgroundColor: theme.colors.card }]}>
-                    <View style={styles.assetHeader}>
-                      <View style={styles.assetInfo}>
-                        <Text style={[styles.assetName, { color: theme.colors.text }]}>
-                          {asset.asset}
+                  <View key={item.id} style={[styles.portfolioCard, { backgroundColor: theme.colors.card }]}>
+                    <View style={styles.portfolioHeader}>
+                      <View style={styles.portfolioInfo}>
+                        <Text style={[styles.portfolioName, { color: theme.colors.text }]}>
+                          {item.name}
                         </Text>
-                        <Text style={[styles.assetAmount, { color: theme.colors.textSecondary }]}>
-                          {asset.amount.toFixed(4)} {asset.asset}
-                        </Text>
-                      </View>
-                      <View style={styles.assetValue}>
-                        <Text style={[styles.assetUSD, { color: theme.colors.text }]}>
-                          ${asset.value_usd.toFixed(2)}
-                        </Text>
-                        <View style={[styles.percentageBadge, { backgroundColor: '#10B98120' }]}>
-                          <Text style={[styles.percentageText, { color: '#10B981' }]}>
-                            {percentage.toFixed(1)}%
-                          </Text>
-                        </View>
                       </View>
                     </View>
+
+                    <View style={styles.portfolioRow}>
+                      <Text style={[styles.portfolioLabel, { color: theme.colors.textSecondary }]}>
+                        {i18n.t('value')}:
+                      </Text>
+                      <View style={styles.inputContainer}>
+                        <Text style={[styles.dollarSign, { color: theme.colors.textSecondary }]}>$</Text>
+                        <TextInput
+                          style={[
+                            styles.valueInput,
+                            { 
+                              color: theme.colors.text,
+                              backgroundColor: theme.colors.background,
+                              borderColor: theme.colors.border,
+                            }
+                          ]}
+                          value={currentEditValue}
+                          onChangeText={(text) => setEditValues({ ...editValues, [item.id]: text })}
+                          keyboardType="decimal-pad"
+                          placeholder="0.00"
+                          placeholderTextColor={theme.colors.textSecondary}
+                        />
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.updateButton,
+                        { backgroundColor: theme.colors.primary },
+                        updatePortfolioMutation.isPending && styles.updateButtonDisabled,
+                      ]}
+                      onPress={() => handleUpdateValue(item.id, item.value)}
+                      disabled={updatePortfolioMutation.isPending}
+                    >
+                      {updatePortfolioMutation.isPending ? (
+                        <ActivityIndicator color="white" size="small" />
+                      ) : (
+                        <>
+                          <Ionicons name="checkmark" size={18} color="white" />
+                          <Text style={styles.updateButtonText}>{i18n.t('update')}</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
                   </View>
                 );
               })}
             </>
           ) : (
             <View style={styles.emptyContainer}>
-              <Ionicons name="wallet-outline" size={64} color={theme.colors.textSecondary} />
+              <Ionicons name="briefcase-outline" size={64} color={theme.colors.textSecondary} />
               <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                {i18n.t('noAssets')}
+                {i18n.t('noPortfolioItems')}
               </Text>
             </View>
           )}
@@ -232,26 +296,6 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     marginTop: 4,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 24,
-    width: '100%',
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 14,
-    borderRadius: 12,
-    gap: 8,
-  },
-  actionButtonText: {
-    color: 'white',
-    fontSize: 15,
-    fontWeight: '600' as const,
-  },
   sectionContainer: {
     paddingHorizontal: 20,
     paddingTop: 24,
@@ -261,58 +305,79 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     marginBottom: 16,
   },
-  totalCard: {
+  infoCard: {
+    flexDirection: 'row',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 12,
+    alignItems: 'center',
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  portfolioCard: {
     padding: 20,
     borderRadius: 16,
     marginBottom: 16,
-    alignItems: 'center',
   },
-  totalLabel: {
-    fontSize: 14,
-    fontWeight: '500' as const,
+  portfolioHeader: {
+    marginBottom: 16,
   },
-  totalValue: {
-    fontSize: 32,
-    fontWeight: '700' as const,
-    marginTop: 8,
-  },
-  assetCard: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-  assetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  assetInfo: {
+  portfolioInfo: {
     flex: 1,
   },
-  assetName: {
-    fontSize: 18,
+  portfolioName: {
+    fontSize: 20,
     fontWeight: '700' as const,
-    marginBottom: 4,
   },
-  assetAmount: {
-    fontSize: 14,
+  portfolioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
   },
-  assetValue: {
-    alignItems: 'flex-end',
+  portfolioLabel: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    width: 50,
   },
-  assetUSD: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    marginBottom: 6,
+  inputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  percentageBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+  dollarSign: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    marginRight: 8,
   },
-  percentageText: {
-    fontSize: 13,
-    fontWeight: '700' as const,
+  valueInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600' as const,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  updateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  updateButtonDisabled: {
+    opacity: 0.6,
+  },
+  updateButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
   loadingContainer: {
     alignItems: 'center',
