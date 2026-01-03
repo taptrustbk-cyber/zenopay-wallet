@@ -17,7 +17,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { DepositOrder, Profile, WithdrawOrder } from '@/lib/types';
 import { useRouter } from 'expo-router';
-import { CheckCircle, XCircle, Clock, LogOut } from 'lucide-react-native';
+import { CheckCircle, XCircle, Clock, LogOut, FileText, ExternalLink } from 'lucide-react-native';
 import { trpc } from '@/lib/trpc';
 
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
@@ -27,7 +27,7 @@ export default function AdminScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [selectedTab, setSelectedTab] = useState<'dashboard' | 'account_approval' | 'waiting_users' | 'deposits' | 'withdrawals' | 'add_balance' | 'withdraw_balance'>('dashboard');
+  const [selectedTab, setSelectedTab] = useState<'dashboard' | 'account_approval' | 'waiting_users' | 'deposits' | 'withdrawals' | 'add_balance' | 'withdraw_balance' | 'kyc_documents'>('dashboard');
   const [showAddBalanceModal, setShowAddBalanceModal] = useState(false);
   const [showWithdrawBalanceModal, setShowWithdrawBalanceModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
@@ -259,6 +259,29 @@ export default function AdminScreen() {
       return data || [];
     },
     enabled: selectedTab === 'account_approval',
+  });
+
+  const kycDocumentsQuery = useQuery({
+    queryKey: ['admin-kyc-documents'],
+    queryFn: async () => {
+      console.log('📊 Fetching KYC documents...');
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, kyc_status, status, kyc_front_photo, kyc_back_photo, kyc_selfie_photo, created_at')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true });
+      
+      if (error) {
+        console.error('❌ KYC documents query error:', JSON.stringify(error, null, 2));
+        throw error;
+      }
+      
+      console.log('✅ Fetched KYC documents:', data?.length || 0);
+      
+      return data || [];
+    },
+    enabled: selectedTab === 'kyc_documents',
   });
 
   const waitingUsersQuery = useQuery({
@@ -811,6 +834,16 @@ export default function AdminScreen() {
             style={[styles.gridButtonText, { color: theme.colors.text }, selectedTab === 'withdraw_balance' && styles.gridButtonTextActive]}
           >
             Withdraw Balance
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.gridButton, { backgroundColor: theme.colors.cardSecondary }, selectedTab === 'kyc_documents' && [styles.gridButtonActive, { backgroundColor: theme.colors.primary }]]}
+          onPress={() => setSelectedTab('kyc_documents')}
+        >
+          <Text
+            style={[styles.gridButtonText, { color: theme.colors.text }, selectedTab === 'kyc_documents' && styles.gridButtonTextActive]}
+          >
+            KYC Document
           </Text>
         </TouchableOpacity>
       </View>
@@ -1519,6 +1552,163 @@ export default function AdminScreen() {
           </>
         )}
 
+        {selectedTab === 'kyc_documents' && (
+          <>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 16 }]}>KYC Verification Panel</Text>
+            {kycDocumentsQuery.isLoading ? (
+              <View style={{ alignItems: 'center', padding: 40 }}>
+                <ActivityIndicator color="#60A5FA" size="large" />
+                <Text style={[styles.emptyText, { marginTop: 16 }]}>Loading KYC documents...</Text>
+              </View>
+            ) : kycDocumentsQuery.data && kycDocumentsQuery.data.length > 0 ? (
+              kycDocumentsQuery.data.map((userKYC: any) => (
+                <View key={userKYC.id} style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardTitle}>
+                        {userKYC.full_name || 'Unknown User'}
+                      </Text>
+                      <Text style={styles.cardSubtitle}>{userKYC.email}</Text>
+                    </View>
+                    <View style={[styles.statusBadge]}>
+                      <Clock size={14} color="#F59E0B" />
+                      <Text style={[styles.statusText]}>
+                        {userKYC.kyc_status?.toUpperCase() || 'PENDING'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.infoLabel}>KYC Status:</Text>
+                    <Text style={styles.infoValue}>
+                      {userKYC.kyc_status || 'N/A'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.infoLabel}>Status:</Text>
+                    <Text style={styles.infoValue}>
+                      {userKYC.status || 'N/A'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.kycPhotos}>
+                    <Text style={styles.kycPhotosTitle}>KYC Documents</Text>
+                    <View style={styles.kycDocLinks}>
+                      <TouchableOpacity
+                        style={styles.docLinkButton}
+                        onPress={() => {
+                          if (userKYC.kyc_front_photo) {
+                            Alert.alert('ID Front', `URL: ${userKYC.kyc_front_photo}`, [
+                              { text: 'Close', style: 'cancel' }
+                            ]);
+                          } else {
+                            Alert.alert('No File', 'ID Front photo not uploaded');
+                          }
+                        }}
+                      >
+                        <FileText size={16} color="#60A5FA" />
+                        <Text style={styles.docLinkText}>ID Front</Text>
+                        {userKYC.kyc_front_photo && <ExternalLink size={14} color="#60A5FA" />}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.docLinkButton}
+                        onPress={() => {
+                          if (userKYC.kyc_back_photo) {
+                            Alert.alert('ID Back', `URL: ${userKYC.kyc_back_photo}`, [
+                              { text: 'Close', style: 'cancel' }
+                            ]);
+                          } else {
+                            Alert.alert('No File', 'ID Back photo not uploaded');
+                          }
+                        }}
+                      >
+                        <FileText size={16} color="#60A5FA" />
+                        <Text style={styles.docLinkText}>ID Back</Text>
+                        {userKYC.kyc_back_photo && <ExternalLink size={14} color="#60A5FA" />}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.docLinkButton}
+                        onPress={() => {
+                          if (userKYC.kyc_selfie_photo) {
+                            Alert.alert('Selfie', `URL: ${userKYC.kyc_selfie_photo}`, [
+                              { text: 'Close', style: 'cancel' }
+                            ]);
+                          } else {
+                            Alert.alert('No File', 'Selfie photo not uploaded');
+                          }
+                        }}
+                      >
+                        <FileText size={16} color="#60A5FA" />
+                        <Text style={styles.docLinkText}>Selfie</Text>
+                        {userKYC.kyc_selfie_photo && <ExternalLink size={14} color="#60A5FA" />}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      style={styles.approveButton}
+                      onPress={() =>
+                        Alert.alert(
+                          'Approve KYC',
+                          `Approve KYC for ${userKYC.full_name || userKYC.email}?`,
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Approve',
+                              onPress: () =>
+                                approveAccountMutation.mutate({ userId: userKYC.id }),
+                            },
+                          ]
+                        )
+                      }
+                      disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
+                    >
+                      <CheckCircle size={16} color="#FFF" />
+                      <Text style={styles.actionButtonText}>Approve</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.rejectButton}
+                      onPress={() =>
+                        Alert.alert(
+                          'Reject KYC',
+                          `Reject KYC for ${userKYC.full_name || userKYC.email}?`,
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Reject',
+                              style: 'destructive',
+                              onPress: () =>
+                                rejectAccountMutation.mutate({ userId: userKYC.id }),
+                            },
+                          ]
+                        )
+                      }
+                      disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
+                    >
+                      <XCircle size={16} color="#FFF" />
+                      <Text style={styles.actionButtonText}>Reject</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            ) : (
+              <View style={{ padding: 20 }}>
+                <Text style={styles.emptyText}>No pending KYC documents</Text>
+                <TouchableOpacity
+                  style={[styles.backButton, { marginTop: 16, alignSelf: 'center' }]}
+                  onPress={() => kycDocumentsQuery.refetch()}
+                >
+                  <Text style={styles.backButtonText}>Refresh</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
+        )}
+
         {selectedTab === 'withdraw_balance' && (
           <>
             {usersQuery.isLoading ? (
@@ -2198,6 +2388,25 @@ const styles = StyleSheet.create({
   },
   quickActionText: {
     fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  kycDocLinks: {
+    gap: 12,
+  },
+  docLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#111A2E',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  docLinkText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#60A5FA',
     fontWeight: '600' as const,
   },
 });
