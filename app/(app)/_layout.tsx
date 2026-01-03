@@ -97,7 +97,21 @@ export default function AppLayout() {
         <Stack.Screen name="dashboard" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ title: 'Profile' }} />
         <Stack.Screen name="kyc" options={{ title: 'KYC Verification' }} />
-        <Stack.Screen name="send" options={{ title: 'Send Money' }} />
+        <Stack.Screen 
+          name="send" 
+          options={({ navigation }) => ({
+            title: i18n.t('sendMoney'),
+            headerLeft: () => (
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('dashboard')}
+                style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+              </TouchableOpacity>
+            ),
+          })}
+        />
         <Stack.Screen 
           name="receive" 
           options={({ navigation }) => ({
@@ -114,8 +128,36 @@ export default function AppLayout() {
           })}
         />
         <Stack.Screen name="transactions" options={{ title: 'Transactions' }} />
-        <Stack.Screen name="withdraw" options={{ title: 'Withdraw' }} />
-        <Stack.Screen name="consulate" options={{ title: 'Consulate' }} />
+        <Stack.Screen 
+          name="withdraw" 
+          options={({ navigation }) => ({
+            title: i18n.t('withdraw'),
+            headerLeft: () => (
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('dashboard')}
+                style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+              </TouchableOpacity>
+            ),
+          })}
+        />
+        <Stack.Screen 
+          name="consulate" 
+          options={({ navigation }) => ({
+            title: i18n.t('consulateInfo'),
+            headerLeft: () => (
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('dashboard')}
+                style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+              </TouchableOpacity>
+            ),
+          })}
+        />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
         <Stack.Screen name="admin" options={{ title: 'Admin Panel' }} />
         <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
