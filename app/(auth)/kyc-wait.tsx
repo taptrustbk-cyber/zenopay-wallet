@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 import { Upload, CheckCircle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import i18n from '@/lib/i18n';
 
 export default function KycWait() {
   const router = useRouter();
@@ -102,27 +103,26 @@ export default function KycWait() {
             <CheckCircle size={80} color="#10B981" strokeWidth={2} />
           </View>
 
-          <Text style={styles.successTitle}>Your documents were successfully submitted!</Text>
+          <Text style={styles.successTitle}>{i18n.t('kycDocsSubmitted')}</Text>
 
           <Text style={styles.successText}>
-            Please wait for Zenopay to approve your account. Approval time is between{' '}
-            <Text style={styles.boldText}>1 to 6 hours</Text>.
+            {i18n.t('waitForApproval2')}
           </Text>
 
           <Text style={styles.successText}>
-            If you need assistance, contact support at:{' '}
+            {i18n.t('contactSupport')}{' '}
             <Text style={styles.emailText}>info@zenopay.bond</Text>
           </Text>
 
           <Text style={styles.securityText}>
-            Your documents are stored securely and are safe within the Zenopay app.
+            {i18n.t('docsSecure')}
           </Text>
 
           <TouchableOpacity 
             style={styles.backButton}
             onPress={handleBackToLogin}
           >
-            <Text style={styles.backButtonText}>Back to Login</Text>
+            <Text style={styles.backButtonText}>{i18n.t('backToLogin2')}</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -134,15 +134,15 @@ export default function KycWait() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.header}>ZenoPay</Text>
 
-        <Text style={styles.title}>PLEASE UPLOAD KYC DOCUMENTS</Text>
+        <Text style={styles.title}>{i18n.t('uploadKycDocs')}</Text>
         
         <Text style={styles.description}>
-          To approve your account and login successfully, please upload the required documents below.
+          {i18n.t('approveAccountPrompt')}
         </Text>
 
         <View style={styles.uploadsContainer}>
           <View style={styles.uploadSection}>
-            <Text style={styles.label}>Government ID (Front)</Text>
+            <Text style={styles.label}>{i18n.t('governmentIDFront')}</Text>
             <TouchableOpacity 
               style={styles.uploadButton}
               onPress={() => pickImage('idFront')}
@@ -152,14 +152,14 @@ export default function KycWait() {
               ) : (
                 <View style={styles.uploadPlaceholder}>
                   <Upload size={32} color="#64748B" />
-                  <Text style={styles.uploadText}>Tap to upload</Text>
+                  <Text style={styles.uploadText}>{i18n.t('tapToUpload')}</Text>
                 </View>
               )}
             </TouchableOpacity>
           </View>
 
           <View style={styles.uploadSection}>
-            <Text style={styles.label}>Government ID (Back)</Text>
+            <Text style={styles.label}>{i18n.t('governmentIDBack')}</Text>
             <TouchableOpacity 
               style={styles.uploadButton}
               onPress={() => pickImage('idBack')}
@@ -169,14 +169,14 @@ export default function KycWait() {
               ) : (
                 <View style={styles.uploadPlaceholder}>
                   <Upload size={32} color="#64748B" />
-                  <Text style={styles.uploadText}>Tap to upload</Text>
+                  <Text style={styles.uploadText}>{i18n.t('tapToUpload')}</Text>
                 </View>
               )}
             </TouchableOpacity>
           </View>
 
           <View style={styles.uploadSection}>
-            <Text style={styles.label}>Selfie with ID</Text>
+            <Text style={styles.label}>{i18n.t('selfieWithID')}</Text>
             <TouchableOpacity 
               style={styles.uploadButton}
               onPress={() => pickImage('selfie')}
@@ -186,7 +186,7 @@ export default function KycWait() {
               ) : (
                 <View style={styles.uploadPlaceholder}>
                   <Upload size={32} color="#64748B" />
-                  <Text style={styles.uploadText}>Tap to upload</Text>
+                  <Text style={styles.uploadText}>{i18n.t('tapToUpload')}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -199,7 +199,7 @@ export default function KycWait() {
           disabled={!canSubmit || loading}
         >
           <Text style={styles.submitButtonText}>
-            {loading ? 'Submitting...' : 'Submit KYC Documents'}
+            {loading ? i18n.t('submitting') : i18n.t('submitKycDocuments')}
           </Text>
         </TouchableOpacity>
       </ScrollView>
