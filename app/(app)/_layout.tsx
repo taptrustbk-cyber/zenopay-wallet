@@ -28,31 +28,29 @@ function KycPendingScreen() {
           <Shield size={64} color="#F59E0B" strokeWidth={1.5} />
         </View>
         
-        <Text style={styles.kycTitle}>KYC Verification Required</Text>
+        <Text style={styles.kycTitle}>{i18n.t('kycVerificationRequired')}</Text>
         <Text style={styles.kycSubtitle}>
-          Your account is pending KYC verification. Our team is reviewing your submitted documents.
+          {i18n.t('kycPendingMessage')}
         </Text>
         
         <View style={styles.kycInfoBox}>
           <Clock size={20} color="#94A3B8" style={styles.kycInfoIcon} />
           <View style={styles.kycInfoContent}>
-            <Text style={styles.kycInfoTitle}>What&apos;s Next?</Text>
+            <Text style={styles.kycInfoTitle}>{i18n.t('whatsNext')}</Text>
             <Text style={styles.kycInfoText}>
-              • Our team will review your documents{"\n"}
-              • You&apos;ll receive an email once approved{"\n"}
-              • Verification typically takes 1-24 hours
+              {i18n.t('kycNextSteps')}
             </Text>
           </View>
         </View>
         
         <View style={styles.kycSecurityNote}>
           <Text style={styles.kycSecurityText}>
-            🔒 Your documents are securely stored and encrypted
+            {i18n.t('documentsSecure')}
           </Text>
         </View>
         
         <TouchableOpacity style={styles.kycSignOutButton} onPress={signOut}>
-          <Text style={styles.kycSignOutText}>Sign Out</Text>
+          <Text style={styles.kycSignOutText}>{i18n.t('signOut')}</Text>
         </TouchableOpacity>
       </View>
     </View>
