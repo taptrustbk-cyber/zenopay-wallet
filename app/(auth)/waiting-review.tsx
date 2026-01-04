@@ -43,7 +43,7 @@ export default function WaitingReviewScreen() {
 
       if (error) throw error;
 
-      Alert.alert(i18n.t('success'), 'KYC documents uploaded successfully!');
+      Alert.alert(i18n.t('success'), i18n.t('kycDocsUploadedSuccess'));
     } catch (error: any) {
       Alert.alert(i18n.t('error'), error.message);
     } finally {
@@ -95,30 +95,30 @@ export default function WaitingReviewScreen() {
             <Clock size={80} color="#F59E0B" strokeWidth={1.5} />
           </View>
 
-          <Text style={styles.title}>Pending Admin Review</Text>
+          <Text style={styles.title}>{i18n.t('pendingAdminReview')}</Text>
           <Text style={styles.subtitle}>
-            Your account is currently under review by our team.
+            {i18n.t('accountUnderReview')}
           </Text>
 
           <View style={styles.infoCard}>
             <Mail size={24} color="#3B82F6" style={styles.cardIcon} />
             <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>Email Notification</Text>
+              <Text style={styles.cardTitle}>{i18n.t('emailNotification')}</Text>
               <Text style={styles.cardDescription}>
-                You will receive an email from ZenoPay Support once your account is approved.
+                {i18n.t('emailNotificationDesc')}
               </Text>
             </View>
           </View>
 
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
-              📧 Check your email regularly for updates
+              {i18n.t('checkEmailRegularly')}
             </Text>
             <Text style={styles.infoText}>
-              ⏱️ Review typically takes 1-24 hours
+              {i18n.t('reviewTakes1To6Hours')}
             </Text>
             <Text style={styles.infoText}>
-              🔒 Your information is secure
+              {i18n.t('infoSecure')}
             </Text>
           </View>
 
@@ -132,14 +132,14 @@ export default function WaitingReviewScreen() {
             ) : (
               <>
                 <RefreshCw size={20} color="#FFF" />
-                <Text style={styles.refreshButtonText}>Check Status</Text>
+                <Text style={styles.refreshButtonText}>{i18n.t('checkStatus')}</Text>
               </>
             )}
           </TouchableOpacity>
 
           <View style={styles.kycSection}>
             <Text style={styles.kycTitle}>{i18n.t('kycDocuments')}</Text>
-            <Text style={styles.kycSubtitle}>Upload your documents to complete verification</Text>
+            <Text style={styles.kycSubtitle}>{i18n.t('uploadDocsToComplete')}</Text>
 
             <TouchableOpacity onPress={() => pickImage(setIdFront)} style={styles.uploadBtn}>
               <Text style={styles.uploadText}>
@@ -167,13 +167,13 @@ export default function WaitingReviewScreen() {
               {uploading ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.uploadKYCButtonText}>Upload Documents</Text>
+                <Text style={styles.uploadKYCButtonText}>{i18n.t('uploadDocuments')}</Text>
               )}
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-            <Text style={styles.signOutText}>Sign Out</Text>
+            <Text style={styles.signOutText}>{i18n.t('signOut')}</Text>
           </TouchableOpacity>
         </ScrollView>
       </LinearGradient>
