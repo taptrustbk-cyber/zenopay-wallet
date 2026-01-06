@@ -19,6 +19,7 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const { theme, themeMode, toggleTheme } = useTheme();
   const [showLanguages, setShowLanguages] = useState(false);
+  const [showSupport, setShowSupport] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [, forceUpdate] = useState({});
   const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
@@ -56,6 +57,85 @@ export default function SettingsScreen() {
       ]
     );
   };
+
+  const supportItems = [
+    {
+      id: 'email',
+      label: 'Email Support',
+      icon: 'mail' as const,
+      url: 'mailto:info@zenopay.bond',
+      color: themeMode === 'dark' ? '#7C2D12' : '#FED7AA',
+      iconColor: themeMode === 'dark' ? '#FB923C' : '#EA580C',
+    },
+    {
+      id: 'facebook',
+      label: 'Facebook',
+      icon: 'logo-facebook' as const,
+      url: 'https://www.facebook.com/profile.php?id=61586118897855',
+      color: themeMode === 'dark' ? '#1E3A8A' : '#DBEAFE',
+      iconColor: theme.colors.primary,
+    },
+    {
+      id: 'instagram',
+      label: 'Instagram',
+      icon: 'logo-instagram' as const,
+      url: 'https://www.instagram.com/zenopaywallet/',
+      color: themeMode === 'dark' ? '#7C2D12' : '#FED7AA',
+      iconColor: themeMode === 'dark' ? '#FB923C' : '#EA580C',
+    },
+    {
+      id: 'tiktok',
+      label: 'TikTok',
+      icon: 'logo-tiktok' as const,
+      url: 'https://www.tiktok.com/@zenopaywallet?lang=en',
+      color: themeMode === 'dark' ? '#1E3A8A' : '#DBEAFE',
+      iconColor: theme.colors.primary,
+    },
+  ];
+
+  const handleSupportItemPress = async (url: string) => {
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open this link');
+      }
+    } catch (error) {
+      console.error('Error opening URL:', error);
+      Alert.alert('Error', 'Failed to open link');
+    }
+  };
+
+  if (showSupport) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
+          <TouchableOpacity onPress={() => setShowSupport(false)} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>{i18n.t('support')}</Text>
+          <View style={{ width: 24 }} />
+        </View>
+
+        <ScrollView style={styles.supportList}>
+          {supportItems.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[styles.supportItem, { backgroundColor: theme.colors.cardSecondary }]}
+              onPress={() => handleSupportItemPress(item.url)}
+            >
+              <View style={[styles.menuIconContainer, { backgroundColor: item.color }]}>
+                <Ionicons name={item.icon} size={22} color={item.iconColor} />
+              </View>
+              <Text style={[styles.supportItemText, { color: theme.colors.text }]}>{item.label}</Text>
+              <Ionicons name="open-outline" size={20} color={theme.colors.textSecondary} />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
 
   if (showLanguages) {
     return (
@@ -173,7 +253,7 @@ export default function SettingsScreen() {
 
         <TouchableOpacity
           style={[styles.menuItem, { backgroundColor: theme.colors.cardSecondary }]}
-          onPress={() => Linking.openURL('mailto:support@zenopay.bond')}
+          onPress={() => setShowSupport(true)}
         >
           <View style={[styles.menuIconContainer, { backgroundColor: themeMode === 'dark' ? '#7C2D12' : '#FED7AA' }]}>
             <Ionicons name="mail" size={22} color={themeMode === 'dark' ? '#FB923C' : '#EA580C'} />
@@ -300,6 +380,22 @@ const styles = StyleSheet.create({
   },
 
   languageName: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  supportList: {
+    flex: 1,
+    padding: 20,
+  },
+  supportItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+  },
+  supportItemText: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '600' as const,
   },
