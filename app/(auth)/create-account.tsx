@@ -192,12 +192,20 @@ export default function CreateAccount() {
                       style={{
                         width: '100%',
                         padding: 16,
-                        fontSize: 16,
+                        fontSize: 18,
                         borderRadius: 12,
-                        border: '1px solid #E5E7EB',
+                        border: '2px solid #D1D5DB',
                         backgroundColor: '#FFFFFF',
                         color: '#111827',
-                        fontFamily: 'system-ui',
+                        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto',
+                        outline: 'none',
+                        WebkitAppearance: 'none',
+                        MozAppearance: 'none',
+                        appearance: 'none',
+                        cursor: 'pointer',
+                        touchAction: 'manipulation',
+                        minHeight: 48,
+                        boxSizing: 'border-box',
                       }}
                     />
                   </View>
@@ -482,7 +490,8 @@ const styles = StyleSheet.create({
   webDatePickerContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: 'visible',
+    marginBottom: 8,
   },
   dobModalActions: {
     flexDirection: 'row',
