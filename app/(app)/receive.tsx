@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Platform,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -68,21 +67,21 @@ export default function DepositScreen() {
   };
 
   const pickImage = async () => {
-    if (Platform.OS === 'web') {
-      Alert.alert('Info', 'Image upload from web is limited. Please use mobile device.');
-      return;
-    }
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        allowsMultipleSelection: false,
+      });
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-      allowsMultipleSelection: false,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setScreenshot(result.assets[0].uri);
+      if (!result.canceled && result.assets[0]) {
+        setScreenshot(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      console.error('Image picker error:', error);
     }
   };
 
