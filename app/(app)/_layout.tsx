@@ -161,7 +161,23 @@ export default function AppLayout() {
         <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
         <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
         <Stack.Screen name="security" options={{ headerShown: false }} />
-        <Stack.Screen name="crypto" options={{ headerShown: false }} />
+        <Stack.Screen name="portfolio" options={{ headerShown: false }} />
+        <Stack.Screen 
+          name="crypto" 
+          options={({ navigation }) => ({
+            title: i18n.t('cryptoTrade'),
+            headerShown: true,
+            headerLeft: () => (
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('dashboard')}
+                style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+              </TouchableOpacity>
+            ),
+          })}
+        />
       </Stack>
     </ErrorBoundary>
   );

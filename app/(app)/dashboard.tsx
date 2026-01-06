@@ -178,18 +178,18 @@ export default function DashboardScreen() {
         </View>
 
         <TouchableOpacity 
-          style={[styles.portfolioCard, { backgroundColor: theme.colors.card }]}
-          onPress={() => router.push('/(app)/portfolio' as any)}
+          style={[styles.cryptoTradeCard, { backgroundColor: theme.colors.card }]}
+          onPress={() => router.push('/(app)/crypto' as any)}
           activeOpacity={0.7}
         >
-          <View style={styles.portfolioHeader}>
-            <View style={styles.portfolioIcon}>
-              <Ionicons name="wallet" size={28} color="#60A5FA" />
+          <View style={styles.cryptoTradeHeader}>
+            <View style={styles.cryptoTradeIcon}>
+              <Ionicons name="trending-up" size={28} color="#10B981" />
             </View>
-            <View style={styles.portfolioContent}>
-              <Text style={[styles.portfolioTitle, { color: theme.colors.text }]}>{i18n.t('portfolio')}</Text>
-              <Text style={[styles.portfolioSubtitle, { color: theme.colors.textSecondary }]}>
-                {i18n.t('viewPortfolio')}
+            <View style={styles.cryptoTradeContent}>
+              <Text style={[styles.cryptoTradeTitle, { color: theme.colors.text }]}>{i18n.t('cryptoTrade')}</Text>
+              <Text style={[styles.cryptoTradeSubtitle, { color: theme.colors.textSecondary }]}>
+                {i18n.t('buySellCrypto')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
@@ -518,36 +518,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center' as const,
   },
-  portfolioCard: {
+  cryptoTradeCard: {
     marginHorizontal: 20,
     marginTop: 10,
     marginBottom: 100,
     borderRadius: 20,
     overflow: 'hidden',
   },
-  portfolioHeader: {
+  cryptoTradeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
     gap: 16,
   },
-  portfolioIcon: {
+  cryptoTradeIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(96, 165, 250, 0.1)',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  portfolioContent: {
+  cryptoTradeContent: {
     flex: 1,
   },
-  portfolioTitle: {
+  cryptoTradeTitle: {
     fontSize: 20,
     fontWeight: '700' as const,
     marginBottom: 4,
   },
-  portfolioSubtitle: {
+  cryptoTradeSubtitle: {
     fontSize: 14,
   },
 });
