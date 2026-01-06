@@ -46,6 +46,7 @@ export default function DashboardScreen() {
   const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'hot' | 'gainers' | 'losers'>('all');
+  const [isBalanceHidden, setIsBalanceHidden] = useState(false);
 
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
@@ -163,14 +164,26 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>{i18n.t('accountBalance')}</Text>
+        <View style={[styles.card, styles.balanceCard]}>
+          <View style={styles.balanceHeader}>
+            <Text style={styles.labelDark}>{i18n.t('accountBalance')}</Text>
+            <TouchableOpacity 
+              onPress={() => setIsBalanceHidden(!isBalanceHidden)}
+              style={styles.hideButton}
+            >
+              <Ionicons 
+                name={isBalanceHidden ? "eye-off" : "eye"} 
+                size={24} 
+                color="#6B7280" 
+              />
+            </TouchableOpacity>
+          </View>
           {walletQuery.isLoading ? (
             <ActivityIndicator color="#60A5FA" />
           ) : walletQuery.isError ? (
             <View style={styles.errorContainer}>
               <Ionicons name="alert-circle" size={32} color="#EF4444" />
-              <Text style={[styles.errorText, { color: theme.colors.text }]}>
+              <Text style={styles.errorTextDark}>
                 {i18n.t('failedToLoadBalance')}
               </Text>
               <TouchableOpacity 
@@ -181,8 +194,8 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <Text style={[styles.balance, { color: theme.colors.text }]}>
-              ${walletQuery.data?.balance?.toFixed(2) || '0.00'}
+            <Text style={styles.balanceDark}>
+              {isBalanceHidden ? '•••••••' : `${walletQuery.data?.balance?.toFixed(2) || '0.00'}`}
             </Text>
           )}
 
@@ -512,6 +525,32 @@ const styles = StyleSheet.create({
     margin: 20,
     padding: 20,
     borderRadius: 22,
+  },
+  balanceCard: {
+    backgroundColor: '#FFFFFF',
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  labelDark: {
+    color: '#6B7280',
+    fontSize: 14,
+  },
+  balanceDark: {
+    fontSize: 32,
+    fontWeight: '700' as const,
+    marginTop: 6,
+    color: '#111827',
+  },
+  errorTextDark: {
+    fontSize: 14,
+    textAlign: 'center' as const,
+    color: '#111827',
+  },
+  hideButton: {
+    padding: 4,
   },
   label: {},
   balance: {
