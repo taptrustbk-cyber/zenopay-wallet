@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   balanceCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0B1A3A',
   },
   balanceHeader: {
     flexDirection: 'row',
@@ -535,19 +535,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   labelDark: {
-    color: '#6B7280',
+    color: '#9CA3AF',
     fontSize: 14,
   },
   balanceDark: {
     fontSize: 32,
     fontWeight: '700' as const,
     marginTop: 6,
-    color: '#111827',
+    color: '#FFFFFF',
   },
   errorTextDark: {
     fontSize: 14,
     textAlign: 'center' as const,
-    color: '#111827',
+    color: '#FFFFFF',
   },
   hideButton: {
     padding: 4,
