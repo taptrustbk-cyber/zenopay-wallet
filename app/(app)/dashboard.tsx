@@ -159,7 +159,7 @@ export default function DashboardScreen() {
         <View style={styles.header}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name="shield-checkmark" size={28} color="#60A5FA" />
-            <Text style={[styles.logo, { color: theme.colors.text }]}> ZENOPAY</Text>
+            <Text style={[styles.logo, { color: theme.colors.text }]}> ZenoPay Wallet</Text>
           </View>
         </View>
 
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 50,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   logo: {
