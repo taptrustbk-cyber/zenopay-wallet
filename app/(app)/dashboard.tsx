@@ -194,9 +194,12 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <Text style={styles.balanceDark}>
-              {isBalanceHidden ? '•••••••' : `${walletQuery.data?.balance?.toFixed(2) || '0.00'}`}
-            </Text>
+            <View style={styles.balanceRow}>
+              <Ionicons name="logo-usd" size={28} color="#10B981" />
+              <Text style={styles.balanceDark}>
+                {isBalanceHidden ? '•••••••' : `${walletQuery.data?.balance?.toFixed(2) || '0.00'}`}
+              </Text>
+            </View>
           )}
 
           <View style={styles.verifiedAccount}>
@@ -538,10 +541,15 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     fontSize: 14,
   },
+  balanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+  },
   balanceDark: {
     fontSize: 32,
     fontWeight: '700' as const,
-    marginTop: 6,
     color: '#FFFFFF',
   },
   errorTextDark: {
