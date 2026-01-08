@@ -195,6 +195,16 @@ export default function DashboardScreen() {
           />
         </View>
 
+        {profile?.role === 'admin' && (
+          <TouchableOpacity
+            style={[styles.adminButton, { backgroundColor: theme.colors.primary }]}
+            onPress={() => router.push('/(app)/product-manager' as any)}
+          >
+            <Ionicons name="pricetag" size={24} color="white" />
+            <Text style={styles.adminButtonText}>{i18n.t('manageProductPrices') || '💰 Manage Product Prices'}</Text>
+          </TouchableOpacity>
+        )}
+
         <View style={[styles.marketShopSection, { backgroundColor: theme.colors.card }]}>
           <View style={styles.marketShopHeader}>
             <View style={styles.marketShopTitleRow}>
@@ -520,5 +530,20 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: '600' as const,
+  },
+  adminButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginHorizontal: 20,
+    marginTop: 10,
+    padding: 18,
+    borderRadius: 16,
+  },
+  adminButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700' as const,
   },
 });

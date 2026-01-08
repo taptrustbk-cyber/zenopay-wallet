@@ -8,7 +8,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 700,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/4d21c8ae-d8c5-4c82-b99b-47fe2bdd5dda.png',
+    imagePrompt: 'Samsung Galaxy S24 Ultra front and back realistic product image, studio lighting, white background',
     is_active: true,
   },
   {
@@ -18,7 +18,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 620,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/fbdb8d32-a8a5-41da-888a-1555568bb35a.png',
+    imagePrompt: 'Samsung Galaxy S23 Ultra professional product photography, studio lighting, white background',
     is_active: true,
   },
   {
@@ -28,7 +28,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 520,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/bdcd0942-7af8-478c-8df4-f8f920ecf471.png',
+    imagePrompt: 'Samsung Galaxy S23 Plus realistic product photo, studio lighting, white background',
     is_active: true,
   },
   {
@@ -38,7 +38,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '75–85%',
     price: 480,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/0a8292e5-797a-4a80-8d95-bb9d5d192d86.png',
+    imagePrompt: 'Samsung Galaxy S22 Ultra product image, professional photography, white background',
     is_active: true,
   },
   {
@@ -48,7 +48,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '75–85%',
     price: 420,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/2a07adc8-2ebc-46ec-842e-8e3d797273fb.png',
+    imagePrompt: 'Samsung Galaxy S22 Plus realistic product photo, studio lighting, white background',
     is_active: true,
   },
   {
@@ -58,7 +58,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 320,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/0a2dc917-5df4-4a7c-ad5e-330a43d64332.png',
+    imagePrompt: 'Samsung Galaxy A55 product photography, studio lighting, white background',
     is_active: true,
   },
   {
@@ -68,7 +68,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '85–95%',
     price: 290,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/7d4e350d-a595-4d24-9fae-f16a27ca5759.png',
+    imagePrompt: 'Samsung Galaxy A54 realistic product image, professional lighting, white background',
     is_active: true,
   },
   {
@@ -78,7 +78,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 240,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/70347d04-a395-4abe-89b9-45ea9ed1630b.png',
+    imagePrompt: 'Samsung Galaxy A35 product photo, studio lighting, white background',
     is_active: true,
   },
   {
@@ -88,7 +88,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '64GB',
     battery: '90–100%',
     price: 190,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/e154fd34-5544-4af2-a2c5-8f1365fed201.png',
+    imagePrompt: 'Samsung Galaxy A25 realistic product photography, studio lighting, white background',
     is_active: true,
   },
   {
@@ -98,7 +98,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 680,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/0382831f-c478-41c8-82c5-720ed5600ba7.png',
+    imagePrompt: 'Samsung Galaxy Z Flip 5 folded and unfolded views, premium product photography, white background',
     is_active: true,
   },
 ];

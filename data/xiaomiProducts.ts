@@ -8,7 +8,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '90–100%',
     price: 310,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/4367d3c6-5fe1-4833-b182-772911dbc214.png',
+    imagePrompt: 'Xiaomi Redmi Note 13 Pro front and back realistic studio photo, white background',
     is_active: true,
   },
   {
@@ -18,7 +18,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '85–95%',
     price: 260,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/115e56f1-3f75-4c66-be77-31eeb65126c7.png',
+    imagePrompt: 'Xiaomi Redmi Note 13 realistic product photography, studio lighting, white background',
     is_active: true,
   },
   {
@@ -28,7 +28,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 180,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/6d31fff0-5f1f-40f9-acda-c8a011a302b8.png',
+    imagePrompt: 'Xiaomi Redmi 13C product image, professional photography, white background',
     is_active: true,
   },
   {
@@ -38,7 +38,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 620,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/fa89cb3a-ef92-42cf-860b-ef86d5e03fc0.png',
+    imagePrompt: 'Xiaomi 13 Pro premium product photography, studio lighting, white background',
     is_active: true,
   },
   {
@@ -48,7 +48,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 480,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/5620b22a-d7bb-47f0-9e02-dd5ea5268a17.png',
+    imagePrompt: 'Xiaomi 13T realistic product photo, professional lighting, white background',
     is_active: true,
   },
   {
@@ -58,7 +58,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '88–98%',
     price: 690,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/34bb4b8c-6d23-42f7-b0b0-e9a14a38312d.png',
+    imagePrompt: 'Xiaomi 14 front and back realistic studio photography, white background',
     is_active: true,
   },
   {
@@ -68,7 +68,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '512GB',
     battery: '90–100%',
     price: 820,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/08084db3-f1af-4941-83ba-c620c7782ebc.png',
+    imagePrompt: 'Xiaomi 14 Pro premium product photography, studio lighting, white background',
     is_active: true,
   },
   {
@@ -78,7 +78,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '90–100%',
     price: 350,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/cd773051-8ec6-4904-81da-6d90e6bba783.png',
+    imagePrompt: 'Poco X6 Pro realistic product image, professional photography, white background',
     is_active: true,
   },
   {
@@ -88,7 +88,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 420,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/b2f3c9d9-aaaa-4cb8-8d4c-72474c3e7679.png',
+    imagePrompt: 'Poco F5 product photography, studio lighting, white background',
     is_active: true,
   },
   {
@@ -98,7 +98,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '88–98%',
     price: 560,
-    imageUrl: 'https://r2-pub.rork.com/generated-images/9b28af1e-9984-45e3-ac53-a34afd2ae95e.png',
+    imagePrompt: 'Xiaomi Redmi K70 realistic studio photo, professional lighting, white background',
     is_active: true,
   },
 ];
