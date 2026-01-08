@@ -18,8 +18,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { DepositOrder, Profile, WithdrawOrder } from '@/lib/types';
 import { useRouter } from 'expo-router';
-import { CheckCircle, XCircle, Clock, LogOut, FileText, ExternalLink, Package, Edit2, Trash2 } from 'lucide-react-native';
-import AIImage from '@/components/AIImage';
+import { CheckCircle, XCircle, Clock, LogOut, FileText, ExternalLink } from 'lucide-react-native';
 import { trpc } from '@/lib/trpc';
 
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
@@ -29,7 +28,7 @@ export default function AdminScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [selectedTab, setSelectedTab] = useState<'dashboard' | 'account_approval' | 'waiting_users' | 'deposits' | 'withdrawals' | 'add_balance' | 'withdraw_balance' | 'kyc_documents' | 'manage_products'>('dashboard');
+  const [selectedTab, setSelectedTab] = useState<'dashboard' | 'account_approval' | 'waiting_users' | 'deposits' | 'withdrawals' | 'add_balance' | 'withdraw_balance' | 'kyc_documents' | 'products' | 'orders' | 'market_analytics'>('dashboard');
   const [showAddBalanceModal, setShowAddBalanceModal] = useState(false);
   const [showWithdrawBalanceModal, setShowWithdrawBalanceModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
@@ -40,17 +39,6 @@ export default function AdminScreen() {
   const [waitTimeUserId, setWaitTimeUserId] = useState<string>('');
   const [waitTimeValue, setWaitTimeValue] = useState('');
   const [amountToWithdraw, setAmountToWithdraw] = useState('');
-  const [showProductModal, setShowProductModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [productForm, setProductForm] = useState({
-    brand: '',
-    name: '',
-    storage: '',
-    battery: '',
-    price: '',
-    description: '',
-    image_prompt: '',
-  });
 
   const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
 
@@ -431,25 +419,64 @@ export default function AdminScreen() {
     enabled: selectedTab === 'dashboard' || selectedTab === 'withdrawals',
   });
 
-  const productsQuery = useQuery({
-    queryKey: ['admin-products'],
+  const ordersQuery = useQuery({
+    queryKey: ['admin-orders'],
     queryFn: async () => {
-      console.log('📊 Fetching products...');
+      console.log('📊 Fetching orders...');
       
       const { data, error } = await supabase
-        .from('products')
-        .select('*')
+        .from('orders')
+        .select(`
+          *,
+          profiles!user_id(
+            id,
+            email,
+            full_name
+          )
+        `)
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('❌ Products query error:', JSON.stringify(error, null, 2));
+        console.error('❌ Error fetching orders:', error);
         throw error;
       }
       
-      console.log('✅ Fetched products:', data?.length || 0);
+      console.log('✅ Fetched orders:', data?.length || 0);
       return data || [];
     },
-    enabled: selectedTab === 'manage_products',
+    enabled: selectedTab === 'orders',
+  });
+
+  const marketAnalyticsQuery = useQuery({
+    queryKey: ['admin-market-analytics'],
+    queryFn: async () => {
+      console.log('📊 Fetching market analytics...');
+      
+      const [salesRes, typeRes] = await Promise.all([
+        supabase.from('orders').select('price'),
+        supabase.from('orders').select('product_type, price'),
+      ]);
+      
+      const totalSales = salesRes.data?.reduce((sum, order) => sum + (order.price || 0), 0) || 0;
+      const totalOrders = salesRes.data?.length || 0;
+      
+      const salesByType = typeRes.data?.reduce((acc: any, order) => {
+        const type = order.product_type || 'unknown';
+        if (!acc[type]) {
+          acc[type] = { count: 0, total: 0 };
+        }
+        acc[type].count += 1;
+        acc[type].total += order.price || 0;
+        return acc;
+      }, {});
+      
+      return {
+        totalSales,
+        totalOrders,
+        salesByType: salesByType || {},
+      };
+    },
+    enabled: selectedTab === 'market_analytics',
   });
 
   const updateDepositMutation = useMutation({
@@ -733,69 +760,18 @@ export default function AdminScreen() {
     },
   });
 
-  const saveProductMutation = useMutation({
-    mutationFn: async (product: any) => {
-      if (editingProduct) {
-        const { error } = await supabase
-          .from('products')
-          .update(product)
-          .eq('id', editingProduct.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('products')
-          .insert(product);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      setShowProductModal(false);
-      setEditingProduct(null);
-      setProductForm({
-        brand: '',
-        name: '',
-        storage: '',
-        battery: '',
-        price: '',
-        description: '',
-        image_prompt: '',
-      });
-      Alert.alert('Success', editingProduct ? 'Product updated successfully' : 'Product added successfully');
-    },
-    onError: (error: any) => {
-      Alert.alert('Error', error.message);
-    },
-  });
-
-  const deleteProductMutation = useMutation({
-    mutationFn: async (id: string) => {
+  const updateOrderStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      console.log('📦 Updating order status:', { id, status });
       const { error } = await supabase
-        .from('products')
-        .delete()
+        .from('orders')
+        .update({ delivery_status: status })
         .eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      Alert.alert('Success', 'Product deleted successfully');
-    },
-    onError: (error: any) => {
-      Alert.alert('Error', error.message);
-    },
-  });
-
-  const toggleProductMutation = useMutation({
-    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const { error } = await supabase
-        .from('products')
-        .update({ is_active: isActive })
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      Alert.alert('Success', 'Product status updated');
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      Alert.alert('Success', 'Order status updated successfully');
     },
     onError: (error: any) => {
       Alert.alert('Error', error.message);
@@ -949,13 +925,33 @@ export default function AdminScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.gridButton, { backgroundColor: theme.colors.cardSecondary }, selectedTab === 'manage_products' && [styles.gridButtonActive, { backgroundColor: theme.colors.primary }]]}
-          onPress={() => setSelectedTab('manage_products')}
+          style={[styles.gridButton, { backgroundColor: theme.colors.cardSecondary }, selectedTab === 'products' && [styles.gridButtonActive, { backgroundColor: theme.colors.primary }]]}
+          onPress={() => setSelectedTab('products')}
         >
           <Text
-            style={[styles.gridButtonText, { color: theme.colors.text }, selectedTab === 'manage_products' && styles.gridButtonTextActive]}
+            style={[styles.gridButtonText, { color: theme.colors.text }, selectedTab === 'products' && styles.gridButtonTextActive]}
           >
-            Manage Products
+            Products
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.gridButton, { backgroundColor: theme.colors.cardSecondary }, selectedTab === 'orders' && [styles.gridButtonActive, { backgroundColor: theme.colors.primary }]]}
+          onPress={() => setSelectedTab('orders')}
+        >
+          <Text
+            style={[styles.gridButtonText, { color: theme.colors.text }, selectedTab === 'orders' && styles.gridButtonTextActive]}
+          >
+            Orders
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.gridButton, { backgroundColor: theme.colors.cardSecondary }, selectedTab === 'market_analytics' && [styles.gridButtonActive, { backgroundColor: theme.colors.primary }]]}
+          onPress={() => setSelectedTab('market_analytics')}
+        >
+          <Text
+            style={[styles.gridButtonText, { color: theme.colors.text }, selectedTab === 'market_analytics' && styles.gridButtonTextActive]}
+          >
+            Market Analytics
           </Text>
         </TouchableOpacity>
       </View>
@@ -1869,155 +1865,237 @@ export default function AdminScreen() {
           </>
         )}
 
-        {selectedTab === 'manage_products' && (
+        {selectedTab === 'products' && (
           <>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 0 }]}>Manage Products</Text>
-              <TouchableOpacity
-                style={[styles.addBalanceBtn, { flexDirection: 'row', gap: 8, alignItems: 'center' }]}
-                onPress={() => {
-                  setEditingProduct(null);
-                  setProductForm({
-                    brand: '',
-                    name: '',
-                    storage: '',
-                    battery: '',
-                    price: '',
-                    description: '',
-                    image_prompt: '',
-                  });
-                  setShowProductModal(true);
-                }}
-              >
-                <Package size={16} color="#FFF" />
-                <Text style={styles.addBalanceBtnText}>Add Product</Text>
-              </TouchableOpacity>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 16 }]}>Product Management</Text>
+            <View style={[styles.infoCard, { backgroundColor: theme.colors.card }]}>
+              <Text style={[styles.infoCardTitle, { color: theme.colors.text }]}>📱 Product Management</Text>
+              <Text style={[styles.infoCardText, { color: theme.colors.textSecondary }]}>
+                Products are managed through data files:
+              </Text>
+              <Text style={[styles.infoCardText, { color: theme.colors.textSecondary, marginTop: 8 }]}>
+                • data/iphoneProducts.ts
+              </Text>
+              <Text style={[styles.infoCardText, { color: theme.colors.textSecondary }]}>
+                • data/samsungProducts.ts
+              </Text>
+              <Text style={[styles.infoCardText, { color: theme.colors.textSecondary }]}>
+                • data/xiaomiProducts.ts
+              </Text>
+              <Text style={[styles.infoCardText, { color: theme.colors.textSecondary, marginTop: 12 }]}>
+                To add/edit products: Update the product files with new items including name, storage, battery, price, and AI image prompt.
+              </Text>
+              <Text style={[styles.infoCardText, { color: theme.colors.textSecondary, marginTop: 8 }]}>
+                Set is_active: false to disable a product.
+              </Text>
             </View>
+          </>
+        )}
 
-            {productsQuery.isLoading ? (
+        {selectedTab === 'orders' && (
+          <>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 16 }]}>Order Management</Text>
+            {ordersQuery.isLoading ? (
               <View style={{ alignItems: 'center', padding: 40 }}>
                 <ActivityIndicator color="#60A5FA" size="large" />
-                <Text style={[styles.emptyText, { marginTop: 16 }]}>Loading products...</Text>
+                <Text style={[styles.emptyText, { marginTop: 16 }]}>Loading orders...</Text>
               </View>
-            ) : productsQuery.error ? (
-              <View style={{ padding: 20 }}>
-                <Text style={[styles.errorText, { textAlign: 'center' }]}>Error loading products</Text>
-                <Text style={[styles.errorSubText, { textAlign: 'center', marginTop: 8 }]}>
-                  {(productsQuery.error as any)?.message || 'Unknown error'}
-                </Text>
-                <TouchableOpacity
-                  style={[styles.backButton, { marginTop: 16, alignSelf: 'center' }]}
-                  onPress={() => productsQuery.refetch()}
-                >
-                  <Text style={styles.backButtonText}>Retry</Text>
-                </TouchableOpacity>
-              </View>
-            ) : productsQuery.data && productsQuery.data.length > 0 ? (
-              productsQuery.data.map((product: any) => (
-                <View key={product.id} style={styles.card}>
+            ) : ordersQuery.data && ordersQuery.data.length > 0 ? (
+              ordersQuery.data.map((order: any) => (
+                <View key={order.id} style={styles.card}>
                   <View style={styles.cardHeader}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{product.name}</Text>
-                      <Text style={styles.cardSubtitle}>{product.brand}</Text>
+                      <Text style={styles.cardTitle}>
+                        {order.profiles?.full_name || 'Unknown User'}
+                      </Text>
+                      <Text style={styles.cardSubtitle}>{order.profiles?.email}</Text>
                     </View>
-                    <View style={[styles.statusBadge, product.is_active && styles.statusApproved]}>
-                      <Text style={[styles.statusText, product.is_active && styles.statusTextApproved]}>
-                        {product.is_active ? 'ACTIVE' : 'INACTIVE'}
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        order.delivery_status === 'shipped' && styles.statusApproved,
+                        order.delivery_status === 'delivered' && { backgroundColor: '#065F46' },
+                      ]}
+                    >
+                      <Text style={[styles.statusText]}>
+                        {order.delivery_status?.toUpperCase() || 'PENDING'}
                       </Text>
                     </View>
                   </View>
 
-                  {product.image_prompt && (
-                    <View style={{ marginBottom: 12 }}>
-                      <AIImage prompt={product.image_prompt} style={{ height: 120, borderRadius: 12 }} />
-                    </View>
-                  )}
-
                   <View style={styles.cardInfo}>
-                    <Text style={styles.infoLabel}>Storage:</Text>
-                    <Text style={styles.infoValue}>{product.storage || 'N/A'}</Text>
+                    <Text style={styles.infoLabel}>Product:</Text>
+                    <Text style={styles.infoValue}>{order.product_name}</Text>
                   </View>
 
                   <View style={styles.cardInfo}>
-                    <Text style={styles.infoLabel}>Battery:</Text>
-                    <Text style={styles.infoValue}>{product.battery || 'N/A'}</Text>
+                    <Text style={styles.infoLabel}>Brand:</Text>
+                    <Text style={styles.infoValue}>{order.product_brand || 'N/A'}</Text>
+                  </View>
+
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.infoLabel}>Color:</Text>
+                    <Text style={styles.infoValue}>{order.color || 'N/A'}</Text>
                   </View>
 
                   <View style={styles.cardInfo}>
                     <Text style={styles.infoLabel}>Price:</Text>
-                    <Text style={styles.infoValue}>${parseFloat(product.price || 0).toFixed(2)}</Text>
+                    <Text style={styles.infoValue}>${order.price?.toFixed(2)}</Text>
                   </View>
 
-                  {product.description && (
-                    <View style={{ marginTop: 8 }}>
-                      <Text style={styles.infoLabel}>Description:</Text>
-                      <Text style={[styles.infoValue, { marginTop: 4 }]}>{product.description}</Text>
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.infoLabel}>Phone:</Text>
+                    <Text style={styles.infoValue}>{order.phone_number}</Text>
+                  </View>
+
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.infoLabel}>Address:</Text>
+                    <Text style={styles.infoValue}>
+                      {order.street_address}, {order.city}
+                    </Text>
+                  </View>
+
+                  {order.delivery_note && (
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.infoLabel}>Note:</Text>
+                      <Text style={styles.infoValue}>{order.delivery_note}</Text>
                     </View>
                   )}
 
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                      style={[styles.approveButton, { backgroundColor: '#2563EB' }]}
-                      onPress={() => {
-                        setEditingProduct(product);
-                        setProductForm({
-                          brand: product.brand || '',
-                          name: product.name || '',
-                          storage: product.storage || '',
-                          battery: product.battery || '',
-                          price: product.price?.toString() || '',
-                          description: product.description || '',
-                          image_prompt: product.image_prompt || '',
-                        });
-                        setShowProductModal(true);
-                      }}
-                    >
-                      <Edit2 size={16} color="#FFF" />
-                      <Text style={styles.actionButtonText}>Edit</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.approveButton, { backgroundColor: product.is_active ? '#DC2626' : '#059669' }]}
-                      onPress={() => {
-                        toggleProductMutation.mutate({
-                          id: product.id,
-                          isActive: !product.is_active,
-                        });
-                      }}
-                      disabled={toggleProductMutation.isPending}
-                    >
-                      <Text style={styles.actionButtonText}>{product.is_active ? 'Disable' : 'Enable'}</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.rejectButton}
-                      onPress={() => {
-                        Alert.alert(
-                          'Delete Product',
-                          `Are you sure you want to delete ${product.name}?`,
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            {
-                              text: 'Delete',
-                              style: 'destructive',
-                              onPress: () => deleteProductMutation.mutate(product.id),
-                            },
-                          ]
-                        );
-                      }}
-                      disabled={deleteProductMutation.isPending}
-                    >
-                      <Trash2 size={16} color="#FFF" />
-                      <Text style={styles.actionButtonText}>Delete</Text>
-                    </TouchableOpacity>
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.infoLabel}>Date:</Text>
+                    <Text style={styles.infoValue}>
+                      {new Date(order.created_at).toLocaleString()}
+                    </Text>
                   </View>
+
+                  {order.delivery_status === 'pending' && (
+                    <View style={styles.actionButtons}>
+                      <TouchableOpacity
+                        style={styles.approveButton}
+                        onPress={() =>
+                          Alert.alert(
+                            'Mark as Shipped',
+                            'Mark this order as shipped?',
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Ship',
+                                onPress: () =>
+                                  updateOrderStatusMutation.mutate({
+                                    id: order.id,
+                                    status: 'shipped',
+                                  }),
+                              },
+                            ]
+                          )
+                        }
+                        disabled={updateOrderStatusMutation.isPending}
+                      >
+                        <CheckCircle size={16} color="#FFF" />
+                        <Text style={styles.actionButtonText}>Mark Shipped</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {order.delivery_status === 'shipped' && (
+                    <View style={styles.actionButtons}>
+                      <TouchableOpacity
+                        style={[styles.approveButton, { backgroundColor: '#065F46' }]}
+                        onPress={() =>
+                          Alert.alert(
+                            'Mark as Delivered',
+                            'Mark this order as delivered?',
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Deliver',
+                                onPress: () =>
+                                  updateOrderStatusMutation.mutate({
+                                    id: order.id,
+                                    status: 'delivered',
+                                  }),
+                              },
+                            ]
+                          )
+                        }
+                        disabled={updateOrderStatusMutation.isPending}
+                      >
+                        <CheckCircle size={16} color="#FFF" />
+                        <Text style={styles.actionButtonText}>Mark Delivered</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               ))
             ) : (
               <View style={{ padding: 20 }}>
-                <Text style={styles.emptyText}>No products found</Text>
-                <Text style={[styles.errorSubText, { textAlign: 'center', marginTop: 12 }]}>Add your first product to get started.</Text>
+                <Text style={styles.emptyText}>No orders found</Text>
+                <TouchableOpacity
+                  style={[styles.backButton, { marginTop: 16, alignSelf: 'center' }]}
+                  onPress={() => ordersQuery.refetch()}
+                >
+                  <Text style={styles.backButtonText}>Refresh</Text>
+                </TouchableOpacity>
               </View>
+            )}
+          </>
+        )}
+
+        {selectedTab === 'market_analytics' && (
+          <>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 16 }]}>Market Analytics</Text>
+            {marketAnalyticsQuery.isLoading ? (
+              <ActivityIndicator color="#60A5FA" size="large" />
+            ) : marketAnalyticsQuery.data ? (
+              <>
+                <View style={styles.statsGrid}>
+                  <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
+                    <View style={styles.statCardContent}>
+                      <Text style={styles.statIcon}>💰</Text>
+                      <View style={styles.statInfo}>
+                        <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Total Sales</Text>
+                        <Text style={[styles.statValue, { color: theme.colors.success }]}>
+                          ${marketAnalyticsQuery.data.totalSales.toFixed(2)}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
+                    <View style={styles.statCardContent}>
+                      <Text style={styles.statIcon}>📦</Text>
+                      <View style={styles.statInfo}>
+                        <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Total Orders</Text>
+                        <Text style={[styles.statValue, { color: theme.colors.text }]}>
+                          {marketAnalyticsQuery.data.totalOrders}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+
+                <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24, marginBottom: 16 }]}>Sales by Product Type</Text>
+                {Object.entries(marketAnalyticsQuery.data.salesByType).map(([type, stats]: [string, any]) => (
+                  <View key={type} style={[styles.card, { backgroundColor: theme.colors.card }]}>
+                    <View style={styles.cardHeader}>
+                      <Text style={styles.cardTitle}>{type.toUpperCase()}</Text>
+                    </View>
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.infoLabel}>Orders:</Text>
+                      <Text style={styles.infoValue}>{stats.count}</Text>
+                    </View>
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.infoLabel}>Revenue:</Text>
+                      <Text style={[styles.infoValue, { color: theme.colors.success }]}>
+                        ${stats.total.toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </>
+            ) : (
+              <Text style={styles.emptyText}>No analytics data</Text>
             )}
           </>
         )}
@@ -2277,133 +2355,6 @@ export default function AdminScreen() {
             </View>
           </View>
         </View>
-      </Modal>
-
-      <Modal
-        visible={showProductModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowProductModal(false)}
-      >
-        <ScrollView contentContainerStyle={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{editingProduct ? 'Edit Product' : 'Add Product'}</Text>
-            <Text style={styles.modalSubtitle}>Enter product details</Text>
-
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Brand (e.g., iPhone, Samsung, Xiaomi)"
-              placeholderTextColor="#6B7280"
-              value={productForm.brand}
-              onChangeText={(text) => setProductForm({ ...productForm, brand: text })}
-            />
-
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Product Name (e.g., iPhone 15 Pro Max)"
-              placeholderTextColor="#6B7280"
-              value={productForm.name}
-              onChangeText={(text) => setProductForm({ ...productForm, name: text })}
-            />
-
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Storage (e.g., 256GB)"
-              placeholderTextColor="#6B7280"
-              value={productForm.storage}
-              onChangeText={(text) => setProductForm({ ...productForm, storage: text })}
-            />
-
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Battery (e.g., 88-100%)"
-              placeholderTextColor="#6B7280"
-              value={productForm.battery}
-              onChangeText={(text) => setProductForm({ ...productForm, battery: text })}
-            />
-
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Price (USD)"
-              placeholderTextColor="#6B7280"
-              keyboardType="numeric"
-              value={productForm.price}
-              onChangeText={(text) => setProductForm({ ...productForm, price: text })}
-            />
-
-            <TextInput
-              style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]}
-              placeholder="Description"
-              placeholderTextColor="#6B7280"
-              multiline
-              numberOfLines={3}
-              value={productForm.description}
-              onChangeText={(text) => setProductForm({ ...productForm, description: text })}
-            />
-
-            <TextInput
-              style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]}
-              placeholder="Image Prompt (e.g., iPhone 15 Pro Max front and back, realistic product photo)"
-              placeholderTextColor="#6B7280"
-              multiline
-              numberOfLines={3}
-              value={productForm.image_prompt}
-              onChangeText={(text) => setProductForm({ ...productForm, image_prompt: text })}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => {
-                  setShowProductModal(false);
-                  setEditingProduct(null);
-                  setProductForm({
-                    brand: '',
-                    name: '',
-                    storage: '',
-                    battery: '',
-                    price: '',
-                    description: '',
-                    image_prompt: '',
-                  });
-                }}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalConfirmBtn}
-                onPress={() => {
-                  const price = parseFloat(productForm.price);
-                  if (isNaN(price) || price <= 0) {
-                    Alert.alert('Error', 'Please enter a valid price');
-                    return;
-                  }
-                  if (!productForm.brand || !productForm.name) {
-                    Alert.alert('Error', 'Please enter brand and product name');
-                    return;
-                  }
-                  saveProductMutation.mutate({
-                    brand: productForm.brand,
-                    name: productForm.name,
-                    storage: productForm.storage,
-                    battery: productForm.battery,
-                    price,
-                    description: productForm.description,
-                    image_prompt: productForm.image_prompt,
-                    is_active: true,
-                  });
-                }}
-                disabled={saveProductMutation.isPending}
-              >
-                {saveProductMutation.isPending ? (
-                  <ActivityIndicator color="#FFF" size="small" />
-                ) : (
-                  <Text style={styles.modalConfirmText}>{editingProduct ? 'Update Product' : 'Add Product'}</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
       </Modal>
     </SafeAreaView>
   );
@@ -2829,6 +2780,20 @@ const styles = StyleSheet.create({
   quickActionText: {
     fontSize: 16,
     fontWeight: '600' as const,
+  },
+  infoCard: {
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  infoCardTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    marginBottom: 12,
+  },
+  infoCardText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   kycDocLinks: {
     gap: 12,

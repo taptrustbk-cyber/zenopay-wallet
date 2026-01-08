@@ -1,24 +1,22 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useRouter } from 'expo-router';
 import i18n from '@/lib/i18n';
 import React from 'react';
+import { iphoneProducts, MobileProduct } from '@/data/iphoneProducts';
+import { samsungProducts } from '@/data/samsungProducts';
+import { xiaomiProducts } from '@/data/xiaomiProducts';
+import AIImage from '@/components/AIImage';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 
 interface Brand {
   id: string;
   name: string;
   icon: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  brand: string;
-  price: number;
-  colors: string[];
-  specs: string[];
 }
 
 const brands: Brand[] = [
@@ -27,83 +25,147 @@ const brands: Brand[] = [
   { id: '3', name: 'Xiaomi', icon: 'mobile-alt' },
 ];
 
-const products: Product[] = [
-  {
-    id: '1',
-    name: 'iPhone 17 Pro Max',
-    brand: 'iPhone',
-    price: 1250,
-    colors: ['White', 'Blue', 'Orange'],
-    specs: ['eSIM', '1 Year Warranty'],
-  },
-  {
-    id: '2',
-    name: 'Samsung Galaxy S24 Ultra',
-    brand: 'Samsung',
-    price: 1100,
-    colors: ['Black', 'Silver', 'Green'],
-    specs: ['Dual SIM', '1 Year Warranty'],
-  },
-  {
-    id: '3',
-    name: 'Xiaomi 14 Pro',
-    brand: 'Xiaomi',
-    price: 799,
-    colors: ['Black', 'White', 'Blue'],
-    specs: ['Dual SIM', '1 Year Warranty'],
-  },
-];
+const getAllProducts = (brand: string): MobileProduct[] => {
+  switch (brand) {
+    case 'iPhone':
+      return iphoneProducts;
+    case 'Samsung':
+      return samsungProducts;
+    case 'Xiaomi':
+      return xiaomiProducts;
+    default:
+      return [];
+  }
+};
+
+const defaultColors = ['Black', 'White', 'Blue', 'Silver'];
 
 export default function MobileShopScreen() {
   const { theme } = useTheme();
   const router = useRouter();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedBrand, setSelectedBrand] = React.useState<string | null>(null);
-  const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null);
+  const [selectedProduct, setSelectedProduct] = React.useState<MobileProduct | null>(null);
   const [selectedColor, setSelectedColor] = React.useState<string>('');
-  
+  const [fullName, setFullName] = React.useState('');
   const [phoneNumber, setPhoneNumber] = React.useState('');
   const [city, setCity] = React.useState('');
   const [street, setStreet] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [note, setNote] = React.useState('');
 
+  const walletQuery = useQuery({
+    queryKey: ['wallet', user?.id],
+    queryFn: async () => {
+      if (!user?.id) throw new Error('No user');
+      const { data, error } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', user.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
   const handleBrandSelect = (brandName: string) => {
     setSelectedBrand(brandName);
   };
 
-  const handleProductSelect = (product: Product) => {
+  const handleProductSelect = (product: MobileProduct) => {
     setSelectedProduct(product);
-    setSelectedColor(product.colors[0]);
+    setSelectedColor(defaultColors[0]);
   };
 
+  const purchaseMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.id || !selectedProduct) throw new Error('Missing data');
+
+      const balance = walletQuery.data?.balance || 0;
+      if (balance < selectedProduct.price) {
+        throw new Error('Insufficient balance');
+      }
+
+      const { data, error } = await supabase.rpc('purchase_market_item', {
+        p_user_id: user.id,
+        p_product_type: 'mobile',
+        p_amount: 1,
+        p_price: selectedProduct.price,
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Purchase failed');
+
+      const { error: orderError } = await supabase.from('orders').insert({
+        user_id: user.id,
+        product_type: 'mobile',
+        product_name: selectedProduct.name,
+        product_brand: selectedProduct.brand,
+        price: selectedProduct.price,
+        color: selectedColor,
+        full_name: fullName,
+        phone_number: phoneNumber,
+        city,
+        street_address: street,
+        email,
+        delivery_note: note,
+        delivery_status: 'pending',
+      });
+
+      if (orderError) console.error('Order log error:', orderError);
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['wallet'] });
+      Alert.alert(
+        i18n.t('orderPlaced'),
+        `${i18n.t('orderPlacedMessage')}\n\n${i18n.t('deliveryEstimate')}`,
+        [
+          {
+            text: i18n.t('done'),
+            onPress: () => {
+              setSelectedBrand(null);
+              setSelectedProduct(null);
+              setFullName('');
+              setPhoneNumber('');
+              setCity('');
+              setStreet('');
+              setEmail('');
+              setNote('');
+              setSelectedColor('');
+              router.back();
+            },
+          },
+        ]
+      );
+    },
+    onError: (error: any) => {
+      if (error.message === 'Insufficient balance') {
+        Alert.alert(
+          i18n.t('error'),
+          i18n.t('insufficientBalance') || 'Sorry, you don\'t have enough balance. Please deposit your balance.'
+        );
+      } else {
+        Alert.alert(i18n.t('error'), error.message || 'Failed to place order');
+      }
+    },
+  });
+
   const handleCheckout = () => {
-    if (!phoneNumber || !city || !street || !email) {
-      Alert.alert(i18n.t('error'), i18n.t('fillAllFields'));
+    if (!fullName || !phoneNumber || !city || !street || !email) {
+      Alert.alert(i18n.t('error'), i18n.t('fillAllFields') || 'Please fill all required fields');
       return;
     }
 
-    Alert.alert(
-      i18n.t('orderPlaced'),
-      `${i18n.t('orderPlacedMessage')}\n\n${i18n.t('deliveryEstimate')}`,
-      [
-        {
-          text: i18n.t('done'),
-          onPress: () => {
-            setSelectedBrand(null);
-            setSelectedProduct(null);
-            setPhoneNumber('');
-            setCity('');
-            setStreet('');
-            setEmail('');
-            setNote('');
-            router.back();
-          },
-        },
-      ]
-    );
+    purchaseMutation.mutate();
   };
 
   if (selectedProduct) {
+    const description = `The ${selectedProduct.name} delivers excellent performance, a high-quality display, and a reliable battery life suitable for daily use. Ideal for work, media, and communication with premium build quality. Storage: ${selectedProduct.storage}, Battery Health: ${selectedProduct.battery}.`;
+
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -118,6 +180,13 @@ export default function MobileShopScreen() {
               <View style={{ width: 24 }} />
             </View>
 
+            <View style={[styles.productImageCard, { backgroundColor: theme.colors.card }]}>
+              <AIImage 
+                prompt={selectedProduct.imagePrompt} 
+                style={styles.productImage}
+              />
+            </View>
+
             <View style={[styles.productSummary, { backgroundColor: theme.colors.card }]}>
               <Text style={[styles.productName, { color: theme.colors.text }]}>
                 {selectedProduct.name}
@@ -126,15 +195,28 @@ export default function MobileShopScreen() {
                 ${selectedProduct.price}
               </Text>
               <View style={styles.specsContainer}>
-                {selectedProduct.specs.map((spec, index) => (
-                  <View key={index} style={styles.specItem}>
-                    <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                    <Text style={[styles.specText, { color: theme.colors.textSecondary }]}>
-                      {spec}
-                    </Text>
-                  </View>
-                ))}
+                <View style={styles.specItem}>
+                  <Ionicons name="cube-outline" size={16} color="#10B981" />
+                  <Text style={[styles.specText, { color: theme.colors.textSecondary }]}>
+                    {selectedProduct.storage}
+                  </Text>
+                </View>
+                <View style={styles.specItem}>
+                  <Ionicons name="battery-charging-outline" size={16} color="#10B981" />
+                  <Text style={[styles.specText, { color: theme.colors.textSecondary }]}>
+                    Battery: {selectedProduct.battery}
+                  </Text>
+                </View>
+                <View style={styles.specItem}>
+                  <Ionicons name="shield-checkmark-outline" size={16} color="#10B981" />
+                  <Text style={[styles.specText, { color: theme.colors.textSecondary }]}>
+                    1 Year Warranty
+                  </Text>
+                </View>
               </View>
+              <Text style={[styles.productDescription, { color: theme.colors.textSecondary }]}>
+                {description}
+              </Text>
             </View>
 
             <View style={[styles.colorSection, { backgroundColor: theme.colors.card }]}>
@@ -142,7 +224,7 @@ export default function MobileShopScreen() {
                 {i18n.t('selectColor')}
               </Text>
               <View style={styles.colorOptions}>
-                {selectedProduct.colors.map((color) => (
+                {defaultColors.map((color) => (
                   <TouchableOpacity
                     key={color}
                     style={[
@@ -164,6 +246,19 @@ export default function MobileShopScreen() {
               <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
                 {i18n.t('deliveryInformation')}
               </Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.colors.textSecondary }]}>
+                  {i18n.t('fullName') || 'Full Name'}
+                </Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+                  value={fullName}
+                  onChangeText={setFullName}
+                  placeholder={i18n.t('enterFullName') || 'Enter your full name'}
+                  placeholderTextColor={theme.colors.textSecondary}
+                />
+              </View>
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: theme.colors.textSecondary }]}>
@@ -244,10 +339,15 @@ export default function MobileShopScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.checkoutButton, { backgroundColor: theme.colors.primary }]}
+              style={[styles.checkoutButton, { backgroundColor: theme.colors.primary, opacity: purchaseMutation.isPending ? 0.7 : 1 }]}
               onPress={handleCheckout}
+              disabled={purchaseMutation.isPending}
             >
-              <Text style={styles.checkoutButtonText}>{i18n.t('placeOrder')}</Text>
+              {purchaseMutation.isPending ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.checkoutButtonText}>{i18n.t('placeOrder')}</Text>
+              )}
             </TouchableOpacity>
           </ScrollView>
         </SafeAreaView>
@@ -256,7 +356,7 @@ export default function MobileShopScreen() {
   }
 
   if (selectedBrand) {
-    const brandProducts = products.filter((p) => p.brand === selectedBrand);
+    const brandProducts = getAllProducts(selectedBrand).filter(p => p.is_active !== false);
 
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -272,35 +372,36 @@ export default function MobileShopScreen() {
               <View style={{ width: 24 }} />
             </View>
 
-            <View style={styles.productsList}>
-              {brandProducts.map((product) => (
+            <FlatList
+              data={brandProducts}
+              numColumns={2}
+              contentContainerStyle={styles.productsGrid}
+              columnWrapperStyle={styles.productRow}
+              renderItem={({ item }) => (
                 <TouchableOpacity
-                  key={product.id}
-                  style={[styles.productCard, { backgroundColor: theme.colors.card }]}
-                  onPress={() => handleProductSelect(product)}
+                  style={[styles.productGridCard, { backgroundColor: theme.colors.card }]}
+                  onPress={() => handleProductSelect(item)}
                 >
-                  <View style={[styles.productIconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-                    <FontAwesome5 name="mobile-alt" size={48} color="#F59E0B" />
-                  </View>
-                  <View style={styles.productInfo}>
-                    <Text style={[styles.productCardName, { color: theme.colors.text }]}>
-                      {product.name}
-                    </Text>
-                    <View style={styles.productSpecs}>
-                      {product.specs.map((spec, index) => (
-                        <Text key={index} style={[styles.productSpec, { color: theme.colors.textSecondary }]}>
-                          • {spec}
-                        </Text>
-                      ))}
-                    </View>
-                    <Text style={[styles.productCardPrice, { color: theme.colors.primary }]}>
-                      ${product.price}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
+                  <AIImage 
+                    prompt={item.imagePrompt} 
+                    style={styles.gridProductImage}
+                  />
+                  <Text style={[styles.gridProductName, { color: theme.colors.text }]} numberOfLines={2}>
+                    {item.name}
+                  </Text>
+                  <Text style={[styles.gridProductStorage, { color: theme.colors.textSecondary }]}>
+                    {item.storage}
+                  </Text>
+                  <Text style={[styles.gridProductBattery, { color: theme.colors.textSecondary }]}>
+                    Battery: {item.battery}
+                  </Text>
+                  <Text style={[styles.gridProductPrice, { color: theme.colors.primary }]}>
+                    ${item.price}
+                  </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+              )}
+              keyExtractor={(item) => item.id}
+            />
           </ScrollView>
         </SafeAreaView>
       </View>
@@ -537,5 +638,55 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600' as const,
+  },
+  productImageCard: {
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  productImage: {
+    width: '100%',
+    height: 200,
+  },
+  productDescription: {
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 12,
+  },
+  productsGrid: {
+    paddingBottom: 20,
+  },
+  productRow: {
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  productGridCard: {
+    width: '48%',
+    padding: 12,
+    borderRadius: 16,
+  },
+  gridProductImage: {
+    width: '100%',
+    height: 140,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  gridProductName: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    marginBottom: 4,
+  },
+  gridProductStorage: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  gridProductBattery: {
+    fontSize: 11,
+    marginBottom: 8,
+  },
+  gridProductPrice: {
+    fontSize: 16,
+    fontWeight: '700' as const,
   },
 });
