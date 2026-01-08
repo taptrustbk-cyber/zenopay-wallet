@@ -37,8 +37,16 @@ export interface Transaction {
   type: TransactionType;
   status?: 'completed' | 'pending' | 'failed';
   created_at: string;
-  from_profile?: Profile;
-  to_profile?: Profile;
+  balance_after?: number;
+  description?: string;
+  from_profile?: {
+    email: string;
+    full_name: string | null;
+  };
+  to_profile?: {
+    email: string;
+    full_name: string | null;
+  };
 }
 
 export type DepositStatus = 'pending' | 'approved' | 'rejected';

@@ -23,10 +23,29 @@ export default function TransactionsScreen() {
       
       const { data, error } = await supabase
         .from('transactions')
-        .select('id, from_user_id, to_user_id, amount, type, status, created_at')
+        .select(`
+          id,
+          amount,
+          balance_after,
+          type,
+          description,
+          created_at,
+          status,
+          from_user_id,
+          to_user_id,
+          from_profile:from_user_id (
+            email,
+            full_name
+          ),
+          to_profile:to_user_id (
+            email,
+            full_name
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) {
+        console.log('Transaction fetch error:', error);
         throw new Error('Failed to fetch transactions');
       }
       
@@ -34,11 +53,28 @@ export default function TransactionsScreen() {
         return [];
       }
       
-      return data as Transaction[];
+      return (data as any[]).map((tx: any) => ({
+        ...tx,
+        from_profile: Array.isArray(tx.from_profile) ? tx.from_profile[0] : tx.from_profile,
+        to_profile: Array.isArray(tx.to_profile) ? tx.to_profile[0] : tx.to_profile,
+      })) as Transaction[];
     },
     enabled: !!user?.id,
     staleTime: 0,
   });
+
+  const getTransactionLabel = (tx: Transaction): string => {
+    if (tx.type === 'send') {
+      return tx.to_profile?.email || tx.to_profile?.full_name || 'Unknown';
+    }
+    if (tx.type === 'receive') {
+      return tx.from_profile?.email || tx.from_profile?.full_name || 'Unknown';
+    }
+    if (tx.type === 'deposit') {
+      return 'Admin';
+    }
+    return 'System';
+  };
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -103,15 +139,10 @@ export default function TransactionsScreen() {
 
         {transactionsQuery.data && transactionsQuery.data.length > 0 ? (
           transactionsQuery.data.map((transaction) => {
-            const isSent = transaction.from_user_id === user?.id;
-            const isDeposit = transaction.type === 'deposit' && transaction.from_user_id === transaction.to_user_id;
-            const type = isDeposit ? 'Deposit' : isSent ? 'Send' : 'Receive';
-            const email = isDeposit 
-              ? 'Admin'
-              : isSent 
-                ? transaction.to_user_id?.substring(0, 8) + '...'
-                : transaction.from_user_id?.substring(0, 8) + '...';
+            const type = transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1);
+            const displayLabel = getTransactionLabel(transaction);
             const status = transaction.status || 'completed';
+            const amountColor = transaction.amount > 0 ? '#10b981' : '#ef4444';
             
             return (
               <View key={transaction.id} style={[styles.tableRow, { backgroundColor: theme.colors.card }]}>
@@ -119,10 +150,10 @@ export default function TransactionsScreen() {
                   style={[
                     styles.rowCell,
                     styles.rowAmount,
-                    { color: isSent && !isDeposit ? '#ef4444' : '#10b981' },
+                    { color: amountColor },
                   ]}
                 >
-                  {isSent && !isDeposit ? '-' : '+'}${transaction.amount.toFixed(2)}
+                  {transaction.amount > 0 ? '+' : ''}${transaction.amount.toFixed(2)}
                 </Text>
                 <Text style={[styles.rowCell, styles.rowType, { color: theme.colors.text }]}>
                   {type}
@@ -132,7 +163,7 @@ export default function TransactionsScreen() {
                   numberOfLines={1}
                   ellipsizeMode="middle"
                 >
-                  {email}
+                  {displayLabel}
                 </Text>
                 <Text style={[styles.rowCell, styles.rowDate, { color: theme.colors.textSecondary }]}>
                   {new Date(transaction.created_at).toLocaleDateString('en-US', {
