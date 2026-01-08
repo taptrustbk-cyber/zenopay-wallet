@@ -182,7 +182,7 @@ export default function MobileShopScreen() {
 
             <View style={[styles.productImageCard, { backgroundColor: theme.colors.card }]}>
               <AIImage 
-                prompt={selectedProduct.imageUrl} 
+                prompt={selectedProduct.imagePrompt} 
                 style={styles.productImage}
               />
             </View>
@@ -383,7 +383,7 @@ export default function MobileShopScreen() {
                   onPress={() => handleProductSelect(item)}
                 >
                   <AIImage 
-                    prompt={item.imageUrl} 
+                    prompt={item.imagePrompt} 
                     style={styles.gridProductImage}
                   />
                   <Text style={[styles.gridProductName, { color: theme.colors.text }]} numberOfLines={2}>

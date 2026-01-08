@@ -20,9 +20,6 @@ import { DepositOrder, Profile, WithdrawOrder } from '@/lib/types';
 import { useRouter } from 'expo-router';
 import { CheckCircle, XCircle, Clock, LogOut, FileText, ExternalLink } from 'lucide-react-native';
 import { trpc } from '@/lib/trpc';
-import { iphoneProducts } from '@/data/iphoneProducts';
-import { samsungProducts } from '@/data/samsungProducts';
-import { xiaomiProducts } from '@/data/xiaomiProducts';
 
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 
@@ -31,7 +28,7 @@ export default function AdminScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [selectedTab, setSelectedTab] = useState<'dashboard' | 'account_approval' | 'waiting_users' | 'deposits' | 'withdrawals' | 'add_balance' | 'withdraw_balance' | 'kyc_documents' | 'products' | 'orders' | 'market_analytics' | 'manage_prices'>('dashboard');
+  const [selectedTab, setSelectedTab] = useState<'dashboard' | 'account_approval' | 'waiting_users' | 'deposits' | 'withdrawals' | 'add_balance' | 'withdraw_balance' | 'kyc_documents' | 'products' | 'orders' | 'market_analytics' | 'transactions'>('dashboard');
   const [showAddBalanceModal, setShowAddBalanceModal] = useState(false);
   const [showWithdrawBalanceModal, setShowWithdrawBalanceModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
@@ -42,6 +39,11 @@ export default function AdminScreen() {
   const [waitTimeUserId, setWaitTimeUserId] = useState<string>('');
   const [waitTimeValue, setWaitTimeValue] = useState('');
   const [amountToWithdraw, setAmountToWithdraw] = useState('');
+  const [txFilterEmail, setTxFilterEmail] = useState('');
+  const [txFilterType, setTxFilterType] = useState<string>('all');
+  const [txFilterAmountType, setTxFilterAmountType] = useState<string>('all');
+  const [txFilterDateFrom, setTxFilterDateFrom] = useState('');
+  const [txFilterDateTo, setTxFilterDateTo] = useState('');
 
   const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
 
@@ -480,6 +482,77 @@ export default function AdminScreen() {
       };
     },
     enabled: selectedTab === 'market_analytics',
+  });
+
+  const transactionsQuery = useQuery({
+    queryKey: ['admin-transactions', txFilterEmail, txFilterType, txFilterAmountType, txFilterDateFrom, txFilterDateTo],
+    queryFn: async () => {
+      console.log('📊 Fetching transactions...');
+      
+      let query = supabase
+        .from('transactions')
+        .select(`
+          id,
+          amount,
+          balance_after,
+          type,
+          description,
+          created_at,
+          receiver:receiver_id (
+            email,
+            full_name
+          ),
+          related:related_user_id (
+            email,
+            full_name
+          ),
+          order:orders!transactions_order_id_fkey (
+            id
+          )
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (txFilterDateFrom) {
+        query = query.gte('created_at', new Date(txFilterDateFrom).toISOString());
+      }
+      
+      if (txFilterDateTo) {
+        const dateTo = new Date(txFilterDateTo);
+        dateTo.setHours(23, 59, 59, 999);
+        query = query.lte('created_at', dateTo.toISOString());
+      }
+      
+      if (txFilterType !== 'all') {
+        query = query.eq('type', txFilterType);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('❌ Error fetching transactions:', error);
+        throw error;
+      }
+      
+      console.log('✅ Fetched transactions:', data?.length || 0);
+      
+      let filtered = data || [];
+      
+      if (txFilterEmail) {
+        filtered = filtered.filter((tx: any) => 
+          tx.receiver?.email?.toLowerCase().includes(txFilterEmail.toLowerCase()) ||
+          tx.related?.email?.toLowerCase().includes(txFilterEmail.toLowerCase())
+        );
+      }
+      
+      if (txFilterAmountType === 'positive') {
+        filtered = filtered.filter((tx: any) => tx.amount > 0);
+      } else if (txFilterAmountType === 'negative') {
+        filtered = filtered.filter((tx: any) => tx.amount < 0);
+      }
+      
+      return filtered;
+    },
+    enabled: selectedTab === 'transactions',
   });
 
   const updateDepositMutation = useMutation({
@@ -958,13 +1031,13 @@ export default function AdminScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.gridButton, { backgroundColor: theme.colors.cardSecondary }, selectedTab === 'manage_prices' && [styles.gridButtonActive, { backgroundColor: theme.colors.primary }]]}
-          onPress={() => setSelectedTab('manage_prices')}
+          style={[styles.gridButton, { backgroundColor: theme.colors.cardSecondary }, selectedTab === 'transactions' && [styles.gridButtonActive, { backgroundColor: theme.colors.primary }]]}
+          onPress={() => setSelectedTab('transactions')}
         >
           <Text
-            style={[styles.gridButtonText, { color: theme.colors.text }, selectedTab === 'manage_prices' && styles.gridButtonTextActive]}
+            style={[styles.gridButtonText, { color: theme.colors.text }, selectedTab === 'transactions' && styles.gridButtonTextActive]}
           >
-            💰 Manage Prices
+            Transactions
           </Text>
         </TouchableOpacity>
       </View>
@@ -2113,106 +2186,207 @@ export default function AdminScreen() {
           </>
         )}
 
-        {selectedTab === 'manage_prices' && (
+        {selectedTab === 'transactions' && (
           <>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 16 }]}>Manage Product Prices</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 16 }]}>Transactions</Text>
             
-            <View style={[styles.infoCard, { backgroundColor: theme.colors.card, marginBottom: 20 }]}>
-              <Text style={[styles.infoCardTitle, { color: theme.colors.text }]}>💰 Price Management</Text>
-              <Text style={[styles.infoCardText, { color: theme.colors.textSecondary }]}>
-                Products are managed through data files. Below you can view all current products and their prices.
-              </Text>
-              <Text style={[styles.infoCardText, { color: theme.colors.textSecondary, marginTop: 8 }]}>
-                To update prices: Edit the product files directly (data/iphoneProducts.ts, data/samsungProducts.ts, data/xiaomiProducts.ts)
-              </Text>
+            <View style={[styles.filterCard, { backgroundColor: theme.colors.card }]}>
+              <Text style={[styles.filterTitle, { color: theme.colors.text }]}>Filters</Text>
+              
+              <TextInput
+                style={[styles.filterInput, { backgroundColor: theme.colors.cardSecondary, color: theme.colors.text }]}
+                placeholder="Search by user email"
+                placeholderTextColor="#6B7280"
+                value={txFilterEmail}
+                onChangeText={setTxFilterEmail}
+              />
+              
+              <View style={styles.filterRow}>
+                <View style={styles.filterColumn}>
+                  <Text style={[styles.filterLabel, { color: theme.colors.textSecondary }]}>Type</Text>
+                  <View style={styles.filterButtons}>
+                    <TouchableOpacity
+                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterType === 'all' && { backgroundColor: theme.colors.primary }]}
+                      onPress={() => setTxFilterType('all')}
+                    >
+                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>All</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterType === 'send' && { backgroundColor: theme.colors.primary }]}
+                      onPress={() => setTxFilterType('send')}
+                    >
+                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>Send</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterType === 'receive' && { backgroundColor: theme.colors.primary }]}
+                      onPress={() => setTxFilterType('receive')}
+                    >
+                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>Receive</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterType === 'purchase' && { backgroundColor: theme.colors.primary }]}
+                      onPress={() => setTxFilterType('purchase')}
+                    >
+                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>Purchase</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterType === 'admin_add' && { backgroundColor: theme.colors.primary }]}
+                      onPress={() => setTxFilterType('admin_add')}
+                    >
+                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>Admin Add</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.filterRow}>
+                <View style={styles.filterColumn}>
+                  <Text style={[styles.filterLabel, { color: theme.colors.textSecondary }]}>Amount</Text>
+                  <View style={styles.filterButtons}>
+                    <TouchableOpacity
+                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterAmountType === 'all' && { backgroundColor: theme.colors.primary }]}
+                      onPress={() => setTxFilterAmountType('all')}
+                    >
+                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>All</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterAmountType === 'positive' && { backgroundColor: theme.colors.primary }]}
+                      onPress={() => setTxFilterAmountType('positive')}
+                    >
+                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>+ Positive</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterAmountType === 'negative' && { backgroundColor: theme.colors.primary }]}
+                      onPress={() => setTxFilterAmountType('negative')}
+                    >
+                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>− Negative</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.dateFilterRow}>
+                <View style={styles.dateFilterColumn}>
+                  <Text style={[styles.filterLabel, { color: theme.colors.textSecondary }]}>From Date</Text>
+                  <TextInput
+                    style={[styles.filterInput, { backgroundColor: theme.colors.cardSecondary, color: theme.colors.text }]}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#6B7280"
+                    value={txFilterDateFrom}
+                    onChangeText={setTxFilterDateFrom}
+                  />
+                </View>
+                <View style={styles.dateFilterColumn}>
+                  <Text style={[styles.filterLabel, { color: theme.colors.textSecondary }]}>To Date</Text>
+                  <TextInput
+                    style={[styles.filterInput, { backgroundColor: theme.colors.cardSecondary, color: theme.colors.text }]}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#6B7280"
+                    value={txFilterDateTo}
+                    onChangeText={setTxFilterDateTo}
+                  />
+                </View>
+              </View>
+              
+              <TouchableOpacity
+                style={[styles.clearFilterButton, { backgroundColor: theme.colors.error }]}
+                onPress={() => {
+                  setTxFilterEmail('');
+                  setTxFilterType('all');
+                  setTxFilterAmountType('all');
+                  setTxFilterDateFrom('');
+                  setTxFilterDateTo('');
+                }}
+              >
+                <Text style={styles.clearFilterText}>Clear Filters</Text>
+              </TouchableOpacity>
             </View>
-
-            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 12, fontSize: 18 }]}>iPhone Products</Text>
-            {iphoneProducts.map((product) => (
-              <View key={product.id} style={[styles.card, { backgroundColor: theme.colors.card }]}>
-                <View style={styles.cardHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{product.name}</Text>
-                    <Text style={styles.cardSubtitle}>{product.brand}</Text>
-                  </View>
-                  <View style={[styles.statusBadge, product.is_active === false && { backgroundColor: '#7F1D1D' }]}>
-                    <Text style={[styles.statusText, product.is_active === false && { color: '#F87171' }]}>
-                      {product.is_active === false ? 'INACTIVE' : 'ACTIVE'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.infoLabel}>Storage:</Text>
-                  <Text style={styles.infoValue}>{product.storage}</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.infoLabel}>Battery:</Text>
-                  <Text style={styles.infoValue}>{product.battery}</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.infoLabel}>Price:</Text>
-                  <Text style={[styles.infoValue, { color: '#34D399', fontSize: 18 }]}>${product.price}</Text>
-                </View>
+            
+            {transactionsQuery.isLoading ? (
+              <View style={{ alignItems: 'center', padding: 40 }}>
+                <ActivityIndicator color="#60A5FA" size="large" />
+                <Text style={[styles.emptyText, { marginTop: 16 }]}>Loading transactions...</Text>
               </View>
-            ))}
-
-            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24, marginBottom: 12, fontSize: 18 }]}>Samsung Products</Text>
-            {samsungProducts.map((product) => (
-              <View key={product.id} style={[styles.card, { backgroundColor: theme.colors.card }]}>
-                <View style={styles.cardHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{product.name}</Text>
-                    <Text style={styles.cardSubtitle}>{product.brand}</Text>
-                  </View>
-                  <View style={[styles.statusBadge, product.is_active === false && { backgroundColor: '#7F1D1D' }]}>
-                    <Text style={[styles.statusText, product.is_active === false && { color: '#F87171' }]}>
-                      {product.is_active === false ? 'INACTIVE' : 'ACTIVE'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.infoLabel}>Storage:</Text>
-                  <Text style={styles.infoValue}>{product.storage}</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.infoLabel}>Battery:</Text>
-                  <Text style={styles.infoValue}>{product.battery}</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.infoLabel}>Price:</Text>
-                  <Text style={[styles.infoValue, { color: '#34D399', fontSize: 18 }]}>${product.price}</Text>
-                </View>
+            ) : transactionsQuery.data && transactionsQuery.data.length > 0 ? (
+              <>
+                <Text style={[styles.resultCount, { color: theme.colors.textSecondary }]}>
+                  {transactionsQuery.data.length} transaction{transactionsQuery.data.length !== 1 ? 's' : ''} found
+                </Text>
+                {transactionsQuery.data.map((tx: any) => {
+                  const getTransactionTitle = () => {
+                    switch (tx.type) {
+                      case 'send':
+                        return `Sent to ${tx.related?.email || 'user'}`;
+                      case 'receive':
+                        return `Received from ${tx.related?.email || 'user'}`;
+                      case 'admin_add':
+                        return 'Admin balance add';
+                      case 'purchase':
+                        return tx.description || 'Purchase';
+                      default:
+                        return 'Transaction';
+                    }
+                  };
+                  
+                  return (
+                    <View key={tx.id} style={styles.card}>
+                      <View style={styles.cardHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.cardTitle}>
+                            {tx.receiver?.full_name || tx.receiver?.email || 'Unknown User'}
+                          </Text>
+                          <Text style={styles.cardSubtitle}>{tx.receiver?.email}</Text>
+                          <Text style={[styles.txDescription, { color: theme.colors.textSecondary }]}>
+                            {getTransactionTitle()}
+                          </Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={[styles.txAmount, { color: tx.amount >= 0 ? '#34D399' : '#F87171' }]}>
+                            {tx.amount >= 0 ? '+' : ''}${Math.abs(tx.amount).toFixed(2)}
+                          </Text>
+                          <Text style={[styles.txType, { color: theme.colors.textSecondary }]}>
+                            {tx.type}
+                          </Text>
+                        </View>
+                      </View>
+                      
+                      <View style={styles.cardInfo}>
+                        <Text style={styles.infoLabel}>Balance After:</Text>
+                        <Text style={[styles.infoValue, { color: theme.colors.success }]}>
+                          ${tx.balance_after?.toFixed(2) || '0.00'}
+                        </Text>
+                      </View>
+                      
+                      {tx.order && tx.order.length > 0 && (
+                        <View style={styles.cardInfo}>
+                          <Text style={styles.infoLabel}>Order ID:</Text>
+                          <Text style={[styles.infoValue, { color: theme.colors.primary }]}>
+                            #{tx.order[0].id.slice(0, 8)}
+                          </Text>
+                        </View>
+                      )}
+                      
+                      <View style={styles.cardInfo}>
+                        <Text style={styles.infoLabel}>Date:</Text>
+                        <Text style={styles.infoValue}>
+                          {new Date(tx.created_at).toLocaleString()}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </>
+            ) : (
+              <View style={{ padding: 20 }}>
+                <Text style={styles.emptyText}>No transactions found</Text>
+                <TouchableOpacity
+                  style={[styles.backButton, { marginTop: 16, alignSelf: 'center' }]}
+                  onPress={() => transactionsQuery.refetch()}
+                >
+                  <Text style={styles.backButtonText}>Refresh</Text>
+                </TouchableOpacity>
               </View>
-            ))}
-
-            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24, marginBottom: 12, fontSize: 18 }]}>Xiaomi Products</Text>
-            {xiaomiProducts.map((product) => (
-              <View key={product.id} style={[styles.card, { backgroundColor: theme.colors.card }]}>
-                <View style={styles.cardHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{product.name}</Text>
-                    <Text style={styles.cardSubtitle}>{product.brand}</Text>
-                  </View>
-                  <View style={[styles.statusBadge, product.is_active === false && { backgroundColor: '#7F1D1D' }]}>
-                    <Text style={[styles.statusText, product.is_active === false && { color: '#F87171' }]}>
-                      {product.is_active === false ? 'INACTIVE' : 'ACTIVE'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.infoLabel}>Storage:</Text>
-                  <Text style={styles.infoValue}>{product.storage}</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.infoLabel}>Battery:</Text>
-                  <Text style={styles.infoValue}>{product.battery}</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.infoLabel}>Price:</Text>
-                  <Text style={[styles.infoValue, { color: '#34D399', fontSize: 18 }]}>${product.price}</Text>
-                </View>
-              </View>
-            ))}
+            )}
           </>
         )}
 
@@ -2929,5 +3103,82 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#60A5FA',
     fontWeight: '600' as const,
+  },
+  filterCard: {
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 20,
+  },
+  filterTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    marginBottom: 16,
+  },
+  filterInput: {
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  filterRow: {
+    marginBottom: 16,
+  },
+  filterColumn: {
+    flex: 1,
+  },
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    marginBottom: 8,
+  },
+  filterButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  filterButtonText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  dateFilterRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  dateFilterColumn: {
+    flex: 1,
+  },
+  clearFilterButton: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  clearFilterText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  resultCount: {
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  txDescription: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+  txAmount: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+  },
+  txType: {
+    fontSize: 12,
+    marginTop: 4,
+    textTransform: 'uppercase' as const,
   },
 });

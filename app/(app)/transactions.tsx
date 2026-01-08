@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
+import { Transaction } from '@/lib/types';
 import { useState, useCallback } from 'react';
 
 export default function TransactionsScreen() {
@@ -22,17 +23,7 @@ export default function TransactionsScreen() {
       
       const { data, error } = await supabase
         .from('transactions')
-        .select(`
-          id,
-          from_user_id,
-          to_user_id,
-          amount,
-          type,
-          status,
-          created_at,
-          from_profile:from_user_id(email, full_name),
-          to_profile:to_user_id(email, full_name)
-        `)
+        .select('id, from_user_id, to_user_id, amount, type, status, created_at')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -43,7 +34,7 @@ export default function TransactionsScreen() {
         return [];
       }
       
-      return data as any[];
+      return data as Transaction[];
     },
     enabled: !!user?.id,
     staleTime: 0,
@@ -111,49 +102,15 @@ export default function TransactionsScreen() {
         </View>
 
         {transactionsQuery.data && transactionsQuery.data.length > 0 ? (
-          transactionsQuery.data.map((transaction: any) => {
+          transactionsQuery.data.map((transaction) => {
             const isSent = transaction.from_user_id === user?.id;
             const isDeposit = transaction.type === 'deposit' && transaction.from_user_id === transaction.to_user_id;
-            
-            let type = 'Transaction';
-            let displayName = 'Unknown';
-            
-            switch (transaction.type) {
-              case 'send':
-                type = 'Sent';
-                displayName = transaction.to_profile?.email || transaction.to_profile?.full_name || 'User';
-                break;
-              case 'receive':
-                type = 'Received';
-                displayName = transaction.from_profile?.email || transaction.from_profile?.full_name || 'User';
-                break;
-              case 'deposit':
-                type = 'Deposit';
-                displayName = 'Admin';
-                break;
-              case 'admin_add':
-                type = 'Admin Add';
-                displayName = 'Admin';
-                break;
-              case 'purchase_card':
-                type = 'Card Purchase';
-                displayName = 'Market';
-                break;
-              case 'purchase_giftcard':
-                type = 'Gift Card';
-                displayName = 'Market';
-                break;
-              case 'purchase_mobile':
-                type = 'Mobile Purchase';
-                displayName = 'Market';
-                break;
-              default:
-                type = transaction.type || 'Transaction';
-                displayName = isSent 
-                  ? (transaction.to_profile?.email || transaction.to_profile?.full_name || 'User')
-                  : (transaction.from_profile?.email || transaction.from_profile?.full_name || 'User');
-            }
-            
+            const type = isDeposit ? 'Deposit' : isSent ? 'Send' : 'Receive';
+            const email = isDeposit 
+              ? 'Admin'
+              : isSent 
+                ? transaction.to_user_id?.substring(0, 8) + '...'
+                : transaction.from_user_id?.substring(0, 8) + '...';
             const status = transaction.status || 'completed';
             
             return (
@@ -175,7 +132,7 @@ export default function TransactionsScreen() {
                   numberOfLines={1}
                   ellipsizeMode="middle"
                 >
-                  {displayName}
+                  {email}
                 </Text>
                 <Text style={[styles.rowCell, styles.rowDate, { color: theme.colors.textSecondary }]}>
                   {new Date(transaction.created_at).toLocaleDateString('en-US', {
