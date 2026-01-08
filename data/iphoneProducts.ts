@@ -5,7 +5,8 @@ export interface MobileProduct {
   storage: string;
   battery: string;
   price: number;
-  imagePrompt: string;
+  imageUrl?: string;
+  imagePrompt?: string;
   is_active?: boolean;
 }
 
