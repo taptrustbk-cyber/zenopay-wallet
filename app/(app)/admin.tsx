@@ -29,6 +29,9 @@ export default function AdminScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState<'dashboard' | 'account_approval' | 'waiting_users' | 'deposits' | 'withdrawals' | 'add_balance' | 'withdraw_balance' | 'kyc_documents' | 'products' | 'orders' | 'market_analytics' | 'transactions'>('dashboard');
+  const [txEmailFilter, setTxEmailFilter] = useState('');
+  const [txTypeFilter, setTxTypeFilter] = useState('all');
+  const [txAmountFilter, setTxAmountFilter] = useState('all');
   const [showAddBalanceModal, setShowAddBalanceModal] = useState(false);
   const [showWithdrawBalanceModal, setShowWithdrawBalanceModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
@@ -39,11 +42,6 @@ export default function AdminScreen() {
   const [waitTimeUserId, setWaitTimeUserId] = useState<string>('');
   const [waitTimeValue, setWaitTimeValue] = useState('');
   const [amountToWithdraw, setAmountToWithdraw] = useState('');
-  const [txFilterEmail, setTxFilterEmail] = useState('');
-  const [txFilterType, setTxFilterType] = useState<string>('all');
-  const [txFilterAmountType, setTxFilterAmountType] = useState<string>('all');
-  const [txFilterDateFrom, setTxFilterDateFrom] = useState('');
-  const [txFilterDateTo, setTxFilterDateTo] = useState('');
 
   const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
 
@@ -485,11 +483,11 @@ export default function AdminScreen() {
   });
 
   const transactionsQuery = useQuery({
-    queryKey: ['admin-transactions', txFilterEmail, txFilterType, txFilterAmountType, txFilterDateFrom, txFilterDateTo],
+    queryKey: ['admin-transactions'],
     queryFn: async () => {
       console.log('📊 Fetching transactions...');
       
-      let query = supabase
+      const { data, error } = await supabase
         .from('transactions')
         .select(`
           id,
@@ -505,28 +503,9 @@ export default function AdminScreen() {
           related:related_user_id (
             email,
             full_name
-          ),
-          order:orders!transactions_order_id_fkey (
-            id
           )
         `)
         .order('created_at', { ascending: false });
-      
-      if (txFilterDateFrom) {
-        query = query.gte('created_at', new Date(txFilterDateFrom).toISOString());
-      }
-      
-      if (txFilterDateTo) {
-        const dateTo = new Date(txFilterDateTo);
-        dateTo.setHours(23, 59, 59, 999);
-        query = query.lte('created_at', dateTo.toISOString());
-      }
-      
-      if (txFilterType !== 'all') {
-        query = query.eq('type', txFilterType);
-      }
-      
-      const { data, error } = await query;
       
       if (error) {
         console.error('❌ Error fetching transactions:', error);
@@ -534,23 +513,7 @@ export default function AdminScreen() {
       }
       
       console.log('✅ Fetched transactions:', data?.length || 0);
-      
-      let filtered = data || [];
-      
-      if (txFilterEmail) {
-        filtered = filtered.filter((tx: any) => 
-          tx.receiver?.email?.toLowerCase().includes(txFilterEmail.toLowerCase()) ||
-          tx.related?.email?.toLowerCase().includes(txFilterEmail.toLowerCase())
-        );
-      }
-      
-      if (txFilterAmountType === 'positive') {
-        filtered = filtered.filter((tx: any) => tx.amount > 0);
-      } else if (txFilterAmountType === 'negative') {
-        filtered = filtered.filter((tx: any) => tx.amount < 0);
-      }
-      
-      return filtered;
+      return data || [];
     },
     enabled: selectedTab === 'transactions',
   });
@@ -2188,194 +2151,204 @@ export default function AdminScreen() {
 
         {selectedTab === 'transactions' && (
           <>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 16 }]}>Transactions</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 16 }]}>Transaction History</Text>
             
-            <View style={[styles.filterCard, { backgroundColor: theme.colors.card }]}>
+            <View style={[styles.filtersCard, { backgroundColor: theme.colors.card }]}>
               <Text style={[styles.filterTitle, { color: theme.colors.text }]}>Filters</Text>
               
-              <TextInput
-                style={[styles.filterInput, { backgroundColor: theme.colors.cardSecondary, color: theme.colors.text }]}
-                placeholder="Search by user email"
-                placeholderTextColor="#6B7280"
-                value={txFilterEmail}
-                onChangeText={setTxFilterEmail}
-              />
-              
               <View style={styles.filterRow}>
-                <View style={styles.filterColumn}>
+                <View style={styles.filterItem}>
+                  <Text style={[styles.filterLabel, { color: theme.colors.textSecondary }]}>User Email</Text>
+                  <TextInput
+                    style={[styles.filterInput, { backgroundColor: theme.colors.cardSecondary, color: theme.colors.text }]}
+                    placeholder="Search by email..."
+                    placeholderTextColor="#6B7280"
+                    value={txEmailFilter}
+                    onChangeText={setTxEmailFilter}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.filterRow}>
+                <View style={styles.filterItem}>
                   <Text style={[styles.filterLabel, { color: theme.colors.textSecondary }]}>Type</Text>
-                  <View style={styles.filterButtons}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChips}>
                     <TouchableOpacity
-                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterType === 'all' && { backgroundColor: theme.colors.primary }]}
-                      onPress={() => setTxFilterType('all')}
+                      style={[styles.filterChip, txTypeFilter === 'all' && styles.filterChipActive]}
+                      onPress={() => setTxTypeFilter('all')}
                     >
-                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>All</Text>
+                      <Text style={[styles.filterChipText, txTypeFilter === 'all' && styles.filterChipTextActive]}>All</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterType === 'send' && { backgroundColor: theme.colors.primary }]}
-                      onPress={() => setTxFilterType('send')}
+                      style={[styles.filterChip, txTypeFilter === 'send' && styles.filterChipActive]}
+                      onPress={() => setTxTypeFilter('send')}
                     >
-                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>Send</Text>
+                      <Text style={[styles.filterChipText, txTypeFilter === 'send' && styles.filterChipTextActive]}>Send</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterType === 'receive' && { backgroundColor: theme.colors.primary }]}
-                      onPress={() => setTxFilterType('receive')}
+                      style={[styles.filterChip, txTypeFilter === 'receive' && styles.filterChipActive]}
+                      onPress={() => setTxTypeFilter('receive')}
                     >
-                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>Receive</Text>
+                      <Text style={[styles.filterChipText, txTypeFilter === 'receive' && styles.filterChipTextActive]}>Receive</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterType === 'purchase' && { backgroundColor: theme.colors.primary }]}
-                      onPress={() => setTxFilterType('purchase')}
+                      style={[styles.filterChip, txTypeFilter === 'purchase_mobile' && styles.filterChipActive]}
+                      onPress={() => setTxTypeFilter('purchase_mobile')}
                     >
-                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>Purchase</Text>
+                      <Text style={[styles.filterChipText, txTypeFilter === 'purchase_mobile' && styles.filterChipTextActive]}>Mobile</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterType === 'admin_add' && { backgroundColor: theme.colors.primary }]}
-                      onPress={() => setTxFilterType('admin_add')}
+                      style={[styles.filterChip, txTypeFilter === 'purchase_card' && styles.filterChipActive]}
+                      onPress={() => setTxTypeFilter('purchase_card')}
                     >
-                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>Admin Add</Text>
+                      <Text style={[styles.filterChipText, txTypeFilter === 'purchase_card' && styles.filterChipTextActive]}>Card</Text>
                     </TouchableOpacity>
-                  </View>
+                    <TouchableOpacity
+                      style={[styles.filterChip, txTypeFilter === 'purchase_giftcard' && styles.filterChipActive]}
+                      onPress={() => setTxTypeFilter('purchase_giftcard')}
+                    >
+                      <Text style={[styles.filterChipText, txTypeFilter === 'purchase_giftcard' && styles.filterChipTextActive]}>Gift Card</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterChip, txTypeFilter === 'admin_add' && styles.filterChipActive]}
+                      onPress={() => setTxTypeFilter('admin_add')}
+                    >
+                      <Text style={[styles.filterChipText, txTypeFilter === 'admin_add' && styles.filterChipTextActive]}>Admin Add</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
                 </View>
               </View>
-              
+
               <View style={styles.filterRow}>
-                <View style={styles.filterColumn}>
+                <View style={styles.filterItem}>
                   <Text style={[styles.filterLabel, { color: theme.colors.textSecondary }]}>Amount</Text>
-                  <View style={styles.filterButtons}>
+                  <View style={styles.filterChips}>
                     <TouchableOpacity
-                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterAmountType === 'all' && { backgroundColor: theme.colors.primary }]}
-                      onPress={() => setTxFilterAmountType('all')}
+                      style={[styles.filterChip, txAmountFilter === 'all' && styles.filterChipActive]}
+                      onPress={() => setTxAmountFilter('all')}
                     >
-                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>All</Text>
+                      <Text style={[styles.filterChipText, txAmountFilter === 'all' && styles.filterChipTextActive]}>All</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterAmountType === 'positive' && { backgroundColor: theme.colors.primary }]}
-                      onPress={() => setTxFilterAmountType('positive')}
+                      style={[styles.filterChip, txAmountFilter === 'positive' && styles.filterChipActive]}
+                      onPress={() => setTxAmountFilter('positive')}
                     >
-                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>+ Positive</Text>
+                      <Text style={[styles.filterChipText, txAmountFilter === 'positive' && styles.filterChipTextActive]}>+ Positive</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.filterButton, { backgroundColor: theme.colors.cardSecondary }, txFilterAmountType === 'negative' && { backgroundColor: theme.colors.primary }]}
-                      onPress={() => setTxFilterAmountType('negative')}
+                      style={[styles.filterChip, txAmountFilter === 'negative' && styles.filterChipActive]}
+                      onPress={() => setTxAmountFilter('negative')}
                     >
-                      <Text style={[styles.filterButtonText, { color: theme.colors.text }]}>− Negative</Text>
+                      <Text style={[styles.filterChipText, txAmountFilter === 'negative' && styles.filterChipTextActive]}>− Negative</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               </View>
-              
-              <View style={styles.dateFilterRow}>
-                <View style={styles.dateFilterColumn}>
-                  <Text style={[styles.filterLabel, { color: theme.colors.textSecondary }]}>From Date</Text>
-                  <TextInput
-                    style={[styles.filterInput, { backgroundColor: theme.colors.cardSecondary, color: theme.colors.text }]}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#6B7280"
-                    value={txFilterDateFrom}
-                    onChangeText={setTxFilterDateFrom}
-                  />
-                </View>
-                <View style={styles.dateFilterColumn}>
-                  <Text style={[styles.filterLabel, { color: theme.colors.textSecondary }]}>To Date</Text>
-                  <TextInput
-                    style={[styles.filterInput, { backgroundColor: theme.colors.cardSecondary, color: theme.colors.text }]}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#6B7280"
-                    value={txFilterDateTo}
-                    onChangeText={setTxFilterDateTo}
-                  />
-                </View>
-              </View>
-              
-              <TouchableOpacity
-                style={[styles.clearFilterButton, { backgroundColor: theme.colors.error }]}
-                onPress={() => {
-                  setTxFilterEmail('');
-                  setTxFilterType('all');
-                  setTxFilterAmountType('all');
-                  setTxFilterDateFrom('');
-                  setTxFilterDateTo('');
-                }}
-              >
-                <Text style={styles.clearFilterText}>Clear Filters</Text>
-              </TouchableOpacity>
             </View>
-            
+
             {transactionsQuery.isLoading ? (
               <View style={{ alignItems: 'center', padding: 40 }}>
                 <ActivityIndicator color="#60A5FA" size="large" />
                 <Text style={[styles.emptyText, { marginTop: 16 }]}>Loading transactions...</Text>
               </View>
             ) : transactionsQuery.data && transactionsQuery.data.length > 0 ? (
-              <>
-                <Text style={[styles.resultCount, { color: theme.colors.textSecondary }]}>
-                  {transactionsQuery.data.length} transaction{transactionsQuery.data.length !== 1 ? 's' : ''} found
-                </Text>
-                {transactionsQuery.data.map((tx: any) => {
-                  const getTransactionTitle = () => {
-                    switch (tx.type) {
-                      case 'send':
-                        return `Sent to ${tx.related?.email || 'user'}`;
-                      case 'receive':
-                        return `Received from ${tx.related?.email || 'user'}`;
-                      case 'admin_add':
-                        return 'Admin balance add';
-                      case 'purchase':
-                        return tx.description || 'Purchase';
-                      default:
-                        return 'Transaction';
-                    }
-                  };
-                  
-                  return (
-                    <View key={tx.id} style={styles.card}>
-                      <View style={styles.cardHeader}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.cardTitle}>
-                            {tx.receiver?.full_name || tx.receiver?.email || 'Unknown User'}
-                          </Text>
-                          <Text style={styles.cardSubtitle}>{tx.receiver?.email}</Text>
-                          <Text style={[styles.txDescription, { color: theme.colors.textSecondary }]}>
-                            {getTransactionTitle()}
-                          </Text>
+              (() => {
+                const filtered = transactionsQuery.data.filter((tx: any) => {
+                  const userEmail = tx.receiver?.email || '';
+                  const matchesEmail = txEmailFilter === '' || userEmail.toLowerCase().includes(txEmailFilter.toLowerCase());
+                  const matchesType = txTypeFilter === 'all' || tx.type === txTypeFilter;
+                  const matchesAmount = txAmountFilter === 'all' || 
+                    (txAmountFilter === 'positive' && tx.amount >= 0) || 
+                    (txAmountFilter === 'negative' && tx.amount < 0);
+                  return matchesEmail && matchesType && matchesAmount;
+                });
+
+                return filtered.length > 0 ? (
+                  filtered.map((tx: any) => {
+                    const getTransactionTitle = () => {
+                      switch (tx.type) {
+                        case 'send':
+                          return `Sent to ${tx.related?.email || 'user'}`;
+                        case 'receive':
+                          return `Received from ${tx.related?.email || 'user'}`;
+                        case 'admin_add':
+                          return 'Admin balance add';
+                        case 'purchase_card':
+                          return 'Card purchase';
+                        case 'purchase_giftcard':
+                          return 'Gift card purchase';
+                        case 'purchase_mobile':
+                          return 'Mobile purchase';
+                        default:
+                          return 'Transaction';
+                      }
+                    };
+
+                    return (
+                      <View key={tx.id} style={styles.card}>
+                        <View style={styles.cardHeader}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.cardTitle}>
+                              {tx.receiver?.full_name || tx.receiver?.email || 'Unknown User'}
+                            </Text>
+                            <Text style={styles.cardSubtitle}>{tx.receiver?.email}</Text>
+                          </View>
+                          <View
+                            style={[
+                              styles.statusBadge,
+                              tx.amount >= 0 ? { backgroundColor: '#064E3B' } : { backgroundColor: '#7F1D1D' },
+                            ]}
+                          >
+                            <Text style={[styles.statusText, tx.amount >= 0 ? { color: '#34D399' } : { color: '#F87171' }]}>
+                              {tx.amount >= 0 ? '+' : ''}${tx.amount.toFixed(2)}
+                            </Text>
+                          </View>
                         </View>
-                        <View style={{ alignItems: 'flex-end' }}>
-                          <Text style={[styles.txAmount, { color: tx.amount >= 0 ? '#34D399' : '#F87171' }]}>
-                            {tx.amount >= 0 ? '+' : ''}${Math.abs(tx.amount).toFixed(2)}
-                          </Text>
-                          <Text style={[styles.txType, { color: theme.colors.textSecondary }]}>
-                            {tx.type}
-                          </Text>
-                        </View>
-                      </View>
-                      
-                      <View style={styles.cardInfo}>
-                        <Text style={styles.infoLabel}>Balance After:</Text>
-                        <Text style={[styles.infoValue, { color: theme.colors.success }]}>
-                          ${tx.balance_after?.toFixed(2) || '0.00'}
-                        </Text>
-                      </View>
-                      
-                      {tx.order && tx.order.length > 0 && (
+
                         <View style={styles.cardInfo}>
-                          <Text style={styles.infoLabel}>Order ID:</Text>
-                          <Text style={[styles.infoValue, { color: theme.colors.primary }]}>
-                            #{tx.order[0].id.slice(0, 8)}
+                          <Text style={styles.infoLabel}>Type:</Text>
+                          <Text style={styles.infoValue}>{getTransactionTitle()}</Text>
+                        </View>
+
+                        <View style={styles.cardInfo}>
+                          <Text style={styles.infoLabel}>Balance After:</Text>
+                          <Text style={[styles.infoValue, { color: '#60A5FA' }]}>
+                            ${(tx.balance_after || 0).toFixed(2)}
                           </Text>
                         </View>
-                      )}
-                      
-                      <View style={styles.cardInfo}>
-                        <Text style={styles.infoLabel}>Date:</Text>
-                        <Text style={styles.infoValue}>
-                          {new Date(tx.created_at).toLocaleString()}
-                        </Text>
+
+                        {tx.description && (
+                          <View style={styles.cardInfo}>
+                            <Text style={styles.infoLabel}>Description:</Text>
+                            <Text style={styles.infoValue}>{tx.description}</Text>
+                          </View>
+                        )}
+
+                        <View style={styles.cardInfo}>
+                          <Text style={styles.infoLabel}>Time:</Text>
+                          <Text style={styles.infoValue}>
+                            {new Date(tx.created_at).toLocaleString()}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                  );
-                })}
-              </>
+                    );
+                  })
+                ) : (
+                  <View style={{ padding: 20 }}>
+                    <Text style={styles.emptyText}>No transactions match your filters</Text>
+                    <TouchableOpacity
+                      style={[styles.backButton, { marginTop: 16, alignSelf: 'center' }]}
+                      onPress={() => {
+                        setTxEmailFilter('');
+                        setTxTypeFilter('all');
+                        setTxAmountFilter('all');
+                      }}
+                    >
+                      <Text style={styles.backButtonText}>Clear Filters</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })()
             ) : (
               <View style={{ padding: 20 }}>
                 <Text style={styles.emptyText}>No transactions found</Text>
@@ -3104,7 +3077,7 @@ const styles = StyleSheet.create({
     color: '#60A5FA',
     fontWeight: '600' as const,
   },
-  filterCard: {
+  filtersCard: {
     padding: 20,
     borderRadius: 16,
     marginBottom: 20,
@@ -3114,16 +3087,10 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     marginBottom: 16,
   },
-  filterInput: {
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 14,
-    marginBottom: 16,
-  },
   filterRow: {
     marginBottom: 16,
   },
-  filterColumn: {
+  filterItem: {
     flex: 1,
   },
   filterLabel: {
@@ -3131,54 +3098,33 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     marginBottom: 8,
   },
-  filterButtons: {
+  filterInput: {
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 14,
+  },
+  filterChips: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
   },
-  filterButton: {
+  filterChip: {
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
+    backgroundColor: '#111A2E',
+    borderWidth: 1,
+    borderColor: '#1E293B',
   },
-  filterButtonText: {
-    fontSize: 12,
+  filterChipActive: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  filterChipText: {
+    fontSize: 14,
+    color: '#9CA3AF',
     fontWeight: '600' as const,
   },
-  dateFilterRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  dateFilterColumn: {
-    flex: 1,
-  },
-  clearFilterButton: {
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  clearFilterText: {
+  filterChipTextActive: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600' as const,
-  },
-  resultCount: {
-    fontSize: 14,
-    marginBottom: 12,
-  },
-  txDescription: {
-    fontSize: 13,
-    marginTop: 4,
-  },
-  txAmount: {
-    fontSize: 20,
-    fontWeight: '700' as const,
-  },
-  txType: {
-    fontSize: 12,
-    marginTop: 4,
-    textTransform: 'uppercase' as const,
   },
 });
