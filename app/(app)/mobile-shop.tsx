@@ -1,18 +1,24 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, TextInput, Alert, FlatList, Image } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useRouter } from 'expo-router';
 import i18n from '@/lib/i18n';
 import React from 'react';
-import { iphoneProducts, MobileProduct } from '@/data/iphoneProducts';
-import { samsungProducts } from '@/data/samsungProducts';
-import { xiaomiProducts } from '@/data/xiaomiProducts';
 
 interface Brand {
   id: string;
   name: string;
   icon: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  brand: string;
+  price: number;
+  colors: string[];
+  specs: string[];
 }
 
 const brands: Brand[] = [
@@ -21,24 +27,38 @@ const brands: Brand[] = [
   { id: '3', name: 'Xiaomi', icon: 'mobile-alt' },
 ];
 
-const getProductsByBrand = (brandName: string): MobileProduct[] => {
-  switch (brandName) {
-    case 'iPhone':
-      return iphoneProducts;
-    case 'Samsung':
-      return samsungProducts;
-    case 'Xiaomi':
-      return xiaomiProducts;
-    default:
-      return [];
-  }
-};
+const products: Product[] = [
+  {
+    id: '1',
+    name: 'iPhone 17 Pro Max',
+    brand: 'iPhone',
+    price: 1250,
+    colors: ['White', 'Blue', 'Orange'],
+    specs: ['eSIM', '1 Year Warranty'],
+  },
+  {
+    id: '2',
+    name: 'Samsung Galaxy S24 Ultra',
+    brand: 'Samsung',
+    price: 1100,
+    colors: ['Black', 'Silver', 'Green'],
+    specs: ['Dual SIM', '1 Year Warranty'],
+  },
+  {
+    id: '3',
+    name: 'Xiaomi 14 Pro',
+    brand: 'Xiaomi',
+    price: 799,
+    colors: ['Black', 'White', 'Blue'],
+    specs: ['Dual SIM', '1 Year Warranty'],
+  },
+];
 
 export default function MobileShopScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const [selectedBrand, setSelectedBrand] = React.useState<string | null>(null);
-  const [selectedProduct, setSelectedProduct] = React.useState<MobileProduct | null>(null);
+  const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null);
   const [selectedColor, setSelectedColor] = React.useState<string>('');
   
   const [phoneNumber, setPhoneNumber] = React.useState('');
@@ -51,20 +71,9 @@ export default function MobileShopScreen() {
     setSelectedBrand(brandName);
   };
 
-  const handleProductSelect = (product: MobileProduct) => {
-    router.push({
-      pathname: '/(app)/mobile-details',
-      params: {
-        id: product.id,
-        name: product.name,
-        price: product.price.toString(),
-        storage: product.storage,
-        battery: product.battery,
-        colors: JSON.stringify(product.colors),
-        specs: JSON.stringify(product.specs),
-        imageUrl: product.imageUrl,
-      },
-    });
+  const handleProductSelect = (product: Product) => {
+    setSelectedProduct(product);
+    setSelectedColor(product.colors[0]);
   };
 
   const handleCheckout = () => {
@@ -247,7 +256,7 @@ export default function MobileShopScreen() {
   }
 
   if (selectedBrand) {
-    const brandProducts = getProductsByBrand(selectedBrand);
+    const brandProducts = products.filter((p) => p.brand === selectedBrand);
 
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -263,41 +272,35 @@ export default function MobileShopScreen() {
               <View style={{ width: 24 }} />
             </View>
 
-            <FlatList
-              data={brandProducts}
-              numColumns={2}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.productsGrid}
-              columnWrapperStyle={styles.columnWrapper}
-              renderItem={({ item }) => (
+            <View style={styles.productsList}>
+              {brandProducts.map((product) => (
                 <TouchableOpacity
-                  style={[styles.productGridCard, { backgroundColor: theme.colors.card }]}
-                  onPress={() => handleProductSelect(item)}
+                  key={product.id}
+                  style={[styles.productCard, { backgroundColor: theme.colors.card }]}
+                  onPress={() => handleProductSelect(product)}
                 >
-                  <View style={[styles.productImageContainer, { backgroundColor: 'rgba(245, 158, 11, 0.05)' }]}>
-                    <Image
-                      source={{ uri: item.imageUrl }}
-                      style={styles.productImage}
-                      resizeMode="contain"
-                    />
+                  <View style={[styles.productIconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+                    <FontAwesome5 name="mobile-alt" size={48} color="#F59E0B" />
                   </View>
-                  <View style={styles.productGridInfo}>
-                    <Text style={[styles.productGridName, { color: theme.colors.text }]} numberOfLines={2}>
-                      {item.name}
+                  <View style={styles.productInfo}>
+                    <Text style={[styles.productCardName, { color: theme.colors.text }]}>
+                      {product.name}
                     </Text>
-                    <Text style={[styles.productStorage, { color: theme.colors.textSecondary }]}>
-                      {item.storage}
-                    </Text>
-                    <Text style={[styles.productBattery, { color: theme.colors.textSecondary }]}>
-                      Battery: {item.battery}
-                    </Text>
-                    <Text style={[styles.productGridPrice, { color: theme.colors.primary }]}>
-                      ${item.price}
+                    <View style={styles.productSpecs}>
+                      {product.specs.map((spec, index) => (
+                        <Text key={index} style={[styles.productSpec, { color: theme.colors.textSecondary }]}>
+                          • {spec}
+                        </Text>
+                      ))}
+                    </View>
+                    <Text style={[styles.productCardPrice, { color: theme.colors.primary }]}>
+                      ${product.price}
                     </Text>
                   </View>
+                  <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
                 </TouchableOpacity>
-              )}
-            />
+              ))}
+            </View>
           </ScrollView>
         </SafeAreaView>
       </View>
@@ -397,51 +400,6 @@ const styles = StyleSheet.create({
   },
   productsList: {
     gap: 16,
-  },
-  productsGrid: {
-    paddingBottom: 16,
-  },
-  columnWrapper: {
-    gap: 12,
-    marginBottom: 12,
-  },
-  productGridCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 12,
-    maxWidth: '48%',
-  },
-  productImageContainer: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  productImage: {
-    width: '80%',
-    height: '80%',
-  },
-  productGridInfo: {
-    gap: 4,
-  },
-  productGridName: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    marginBottom: 4,
-  },
-  productStorage: {
-    fontSize: 12,
-  },
-  productBattery: {
-    fontSize: 11,
-  },
-  productGridPrice: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    marginTop: 4,
   },
   productCard: {
     flexDirection: 'row',
