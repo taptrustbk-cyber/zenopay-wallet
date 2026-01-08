@@ -1,24 +1,13 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl, Image, TextInput } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 import { Wallet } from '@/lib/types';
-import React, { useCallback, useState } from 'react';
-
-interface CryptoData {
-  id: string;
-  name: string;
-  symbol: string;
-  current_price: number;
-  price_change_percentage_24h: number;
-  market_cap: number;
-  total_volume: number;
-  image: string;
-}
+import React, { useCallback } from 'react';
 
 const ActionButton = ({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) => (
   <TouchableOpacity style={styles.actionBtn} onPress={onPress}>
@@ -43,10 +32,7 @@ export default function DashboardScreen() {
   const { user, profile, hardRefresh } = useAuth();
   const { theme } = useTheme();
   const [isRefreshing, setIsRefreshing] = React.useState(false);
-  const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'hot' | 'gainers' | 'losers'>('all');
-  const [isBalanceHidden, setIsBalanceHidden] = useState(false);
+  const [isBalanceHidden, setIsBalanceHidden] = React.useState(false);
 
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
@@ -96,32 +82,7 @@ export default function DashboardScreen() {
     gcTime: 0,
   });
 
-  const cryptoQuery = useQuery({
-    queryKey: ['cryptoPrices'],
-    queryFn: async () => {
-      const response = await fetch(
-        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h'
-      );
-      if (!response.ok) throw new Error('Failed to fetch crypto data');
-      return await response.json() as CryptoData[];
-    },
-    refetchInterval: 30000,
-  });
 
-  const filteredCryptos = cryptoQuery.data?.filter(crypto => {
-    const matchesSearch = crypto.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      crypto.symbol.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (selectedCategory === 'hot') {
-      return matchesSearch && crypto.total_volume > 1000000000;
-    } else if (selectedCategory === 'gainers') {
-      return matchesSearch && crypto.price_change_percentage_24h > 0;
-    } else if (selectedCategory === 'losers') {
-      return matchesSearch && crypto.price_change_percentage_24h < 0;
-    }
-    
-    return matchesSearch;
-  });
 
 
 
@@ -234,242 +195,67 @@ export default function DashboardScreen() {
           />
         </View>
 
-        <View style={[styles.cryptoSection, { backgroundColor: theme.colors.card }]}>
-          <View style={styles.cryptoHeader}>
-            <View style={styles.cryptoTitleRow}>
-              <Ionicons name="trending-up" size={28} color="#10B981" />
-              <Text style={[styles.cryptoSectionTitle, { color: theme.colors.text }]}>
-                {i18n.t('cryptoTrade')}
+        <View style={[styles.marketShopSection, { backgroundColor: theme.colors.card }]}>
+          <View style={styles.marketShopHeader}>
+            <View style={styles.marketShopTitleRow}>
+              <Ionicons name="storefront" size={28} color="#60A5FA" />
+              <Text style={[styles.marketShopTitle, { color: theme.colors.text }]}>
+                {i18n.t('marketShop')}
               </Text>
             </View>
-            <Text style={[styles.cryptoSectionSubtitle, { color: theme.colors.textSecondary }]}>
-              {i18n.t('buySellCrypto')}
+            <Text style={[styles.marketShopSubtitle, { color: theme.colors.textSecondary }]}>
+              {i18n.t('marketShopSubtitle')}
             </Text>
           </View>
 
-          <View style={[styles.tabContainer, { backgroundColor: theme.colors.surface }]}>
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === 'buy' && { backgroundColor: '#10B981' }
-              ]}
-              onPress={() => setActiveTab('buy')}
+          <View style={styles.shopGrid}>
+            <TouchableOpacity 
+              style={[styles.shopItem, { backgroundColor: theme.colors.surface }]}
+              onPress={() => router.push('/(app)/sim-cards' as any)}
             >
-              <Ionicons 
-                name="trending-up" 
-                size={18} 
-                color={activeTab === 'buy' ? 'white' : theme.colors.textSecondary} 
-              />
-              <Text style={[
-                styles.tabText,
-                { color: activeTab === 'buy' ? 'white' : theme.colors.textSecondary }
-              ]}>
-                {i18n.t('buyCrypto')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === 'sell' && { backgroundColor: '#EF4444' }
-              ]}
-              onPress={() => setActiveTab('sell')}
-            >
-              <Ionicons 
-                name="trending-down" 
-                size={18} 
-                color={activeTab === 'sell' ? 'white' : theme.colors.textSecondary} 
-              />
-              <Text style={[
-                styles.tabText,
-                { color: activeTab === 'sell' ? 'white' : theme.colors.textSecondary }
-              ]}>
-                {i18n.t('sellCrypto')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={[styles.searchContainer, { backgroundColor: theme.colors.surface }]}>
-            <Ionicons name="search" size={18} color={theme.colors.textSecondary} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.colors.text }]}
-              placeholder={i18n.t('searchCrypto')}
-              placeholderTextColor={theme.colors.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            style={styles.categoryScroll}
-            contentContainerStyle={styles.categoryContent}
-          >
-            <TouchableOpacity
-              style={[
-                styles.categoryChip,
-                { backgroundColor: selectedCategory === 'all' ? '#3B82F6' : theme.colors.surface }
-              ]}
-              onPress={() => setSelectedCategory('all')}
-            >
-              <Text style={[
-                styles.categoryText,
-                { color: selectedCategory === 'all' ? 'white' : theme.colors.text }
-              ]}>
-                {i18n.t('all')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.categoryChip,
-                { backgroundColor: selectedCategory === 'hot' ? '#F59E0B' : theme.colors.surface }
-              ]}
-              onPress={() => setSelectedCategory('hot')}
-            >
-              <Ionicons 
-                name="flame" 
-                size={14} 
-                color={selectedCategory === 'hot' ? 'white' : theme.colors.text} 
-              />
-              <Text style={[
-                styles.categoryText,
-                { color: selectedCategory === 'hot' ? 'white' : theme.colors.text }
-              ]}>
-                {i18n.t('hot')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.categoryChip,
-                { backgroundColor: selectedCategory === 'gainers' ? '#10B981' : theme.colors.surface }
-              ]}
-              onPress={() => setSelectedCategory('gainers')}
-            >
-              <Ionicons 
-                name="trending-up" 
-                size={14} 
-                color={selectedCategory === 'gainers' ? 'white' : theme.colors.text} 
-              />
-              <Text style={[
-                styles.categoryText,
-                { color: selectedCategory === 'gainers' ? 'white' : theme.colors.text }
-              ]}>
-                {i18n.t('gainers')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.categoryChip,
-                { backgroundColor: selectedCategory === 'losers' ? '#EF4444' : theme.colors.surface }
-              ]}
-              onPress={() => setSelectedCategory('losers')}
-            >
-              <Ionicons 
-                name="trending-down" 
-                size={14} 
-                color={selectedCategory === 'losers' ? 'white' : theme.colors.text} 
-              />
-              <Text style={[
-                styles.categoryText,
-                { color: selectedCategory === 'losers' ? 'white' : theme.colors.text }
-              ]}>
-                {i18n.t('losers')}
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-
-          <View style={styles.cryptoList}>
-            {cryptoQuery.isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#60A5FA" />
-                <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
-                  {i18n.t('loadingPrices')}
-                </Text>
+              <View style={[styles.shopIconContainer, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                <MaterialIcons name="sim-card" size={32} color="#3B82F6" />
               </View>
-            ) : cryptoQuery.isError ? (
-              <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={40} color="#EF4444" />
-                <Text style={[styles.errorText, { color: theme.colors.text }]}>
-                  {i18n.t('failedToLoadPrices')}
-                </Text>
-                <TouchableOpacity 
-                  style={styles.retryButton}
-                  onPress={() => cryptoQuery.refetch()}
-                >
-                  <Text style={styles.retryButtonText}>{i18n.t('retry')}</Text>
-                </TouchableOpacity>
-              </View>
-            ) : filteredCryptos && filteredCryptos.length > 0 ? (
-              filteredCryptos.slice(0, 20).map((crypto) => (
-                <TouchableOpacity
-                  key={crypto.id}
-                  style={[styles.cryptoCard, { backgroundColor: theme.colors.surface }]}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.cryptoLeft}>
-                    <Image
-                      source={{ uri: crypto.image }}
-                      style={styles.cryptoIcon}
-                    />
-                    <View style={styles.cryptoInfo}>
-                      <Text style={[styles.cryptoName, { color: theme.colors.text }]}>
-                        {crypto.name}
-                      </Text>
-                      <Text style={[styles.cryptoSymbol, { color: theme.colors.textSecondary }]}>
-                        {crypto.symbol.toUpperCase()}
-                      </Text>
-                    </View>
-                  </View>
+              <Text style={[styles.shopLabel, { color: theme.colors.text }]}>
+                {i18n.t('internetSim')}
+              </Text>
+            </TouchableOpacity>
 
-                  <View style={styles.cryptoRight}>
-                    <Text style={[styles.cryptoPrice, { color: theme.colors.text }]}>
-                      ${crypto.current_price.toLocaleString('en-US', { 
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: crypto.current_price < 1 ? 6 : 2
-                      })}
-                    </Text>
-                    <View style={[
-                      styles.changeContainer,
-                      { backgroundColor: crypto.price_change_percentage_24h >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)' }
-                    ]}>
-                      <Ionicons 
-                        name={crypto.price_change_percentage_24h >= 0 ? "arrow-up" : "arrow-down"} 
-                        size={10} 
-                        color={crypto.price_change_percentage_24h >= 0 ? '#10B981' : '#EF4444'} 
-                      />
-                      <Text style={[
-                        styles.changeText,
-                        { color: crypto.price_change_percentage_24h >= 0 ? '#10B981' : '#EF4444' }
-                      ]}>
-                        {Math.abs(crypto.price_change_percentage_24h).toFixed(2)}%
-                      </Text>
-                    </View>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.actionButton,
-                      { backgroundColor: activeTab === 'buy' ? '#10B981' : '#EF4444' }
-                    ]}
-                  >
-                    <Text style={styles.actionButtonText}>
-                      {activeTab === 'buy' ? i18n.t('buy') : i18n.t('sell')}
-                    </Text>
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              ))
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="search-outline" size={48} color={theme.colors.textSecondary} />
-                <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                  {i18n.t('noCryptoFound')}
-                </Text>
+            <TouchableOpacity 
+              style={[styles.shopItem, { backgroundColor: theme.colors.surface }]}
+              onPress={() => router.push('/(app)/gift-cards' as any)}
+            >
+              <View style={[styles.shopIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                <Ionicons name="gift" size={32} color="#10B981" />
               </View>
-            )}
+              <Text style={[styles.shopLabel, { color: theme.colors.text }]}>
+                {i18n.t('giftCards')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.shopItem, { backgroundColor: theme.colors.surface }]}
+              onPress={() => router.push('/(app)/mobile-shop' as any)}
+            >
+              <View style={[styles.shopIconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+                <FontAwesome5 name="mobile-alt" size={32} color="#F59E0B" />
+              </View>
+              <Text style={[styles.shopLabel, { color: theme.colors.text }]}>
+                {i18n.t('mobileShop')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.shopItem, { backgroundColor: theme.colors.surface }]}
+              onPress={() => router.push('/(app)/travel-booking' as any)}
+            >
+              <View style={[styles.shopIconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+                <Ionicons name="airplane" size={32} color="#8B5CF6" />
+              </View>
+              <Text style={[styles.shopLabel, { color: theme.colors.text }]}>
+                {i18n.t('travelBooking')}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -665,170 +451,53 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginHorizontal: 20,
   },
-  cryptoSection: {
+  marketShopSection: {
     marginHorizontal: 20,
     marginTop: 10,
     marginBottom: 100,
     borderRadius: 20,
-    padding: 16,
+    padding: 20,
   },
-  cryptoHeader: {
-    marginBottom: 20,
+  marketShopHeader: {
+    marginBottom: 24,
   },
-  cryptoTitleRow: {
+  marketShopTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  cryptoSectionTitle: {
+  marketShopTitle: {
     fontSize: 24,
     fontWeight: '700' as const,
   },
-  cryptoSectionSubtitle: {
+  marketShopSubtitle: {
     fontSize: 14,
     marginLeft: 40,
+    lineHeight: 20,
   },
-  tabContainer: {
+  shopGrid: {
     flexDirection: 'row',
-    borderRadius: 12,
-    padding: 4,
-    gap: 6,
-    marginBottom: 16,
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
+  shopItem: {
+    width: '48%',
+    padding: 20,
+    borderRadius: 16,
+    alignItems: 'center',
+    gap: 12,
+  },
+  shopIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 6,
   },
-  tabText: {
+  shopLabel: {
     fontSize: 14,
     fontWeight: '600' as const,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 10,
-    marginBottom: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-  },
-  categoryScroll: {
-    marginBottom: 16,
-  },
-  categoryContent: {
-    gap: 8,
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
-  },
-  categoryText: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-  },
-  cryptoList: {
-    gap: 10,
-  },
-  cryptoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    gap: 10,
-  },
-  cryptoLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 10,
-  },
-  cryptoIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-  },
-  cryptoInfo: {
-    gap: 2,
-  },
-  cryptoName: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-  },
-  cryptoSymbol: {
-    fontSize: 12,
-  },
-  cryptoRight: {
-    alignItems: 'flex-end',
-    gap: 4,
-    marginRight: 8,
-  },
-  cryptoPrice: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-  },
-  changeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-    gap: 3,
-  },
-  changeText: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-  },
-  actionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  actionButtonText: {
-    color: 'white',
-    fontSize: 13,
-    fontWeight: '600' as const,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-  },
-  retryButton: {
-    backgroundColor: '#60A5FA',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginTop: 8,
-  },
-  retryButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600' as const,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    gap: 12,
-  },
-  emptyText: {
-    fontSize: 14,
     textAlign: 'center' as const,
   },
   errorContainer: {
@@ -839,6 +508,13 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 14,
     textAlign: 'center' as const,
+  },
+  retryButton: {
+    backgroundColor: '#60A5FA',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 8,
   },
   retryText: {
     color: 'white',

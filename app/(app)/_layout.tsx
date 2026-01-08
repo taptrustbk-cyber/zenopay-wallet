@@ -178,6 +178,70 @@ export default function AppLayout() {
             ),
           })}
         />
+        <Stack.Screen 
+          name="sim-cards" 
+          options={({ navigation }) => ({
+            title: i18n.t('simCards'),
+            headerShown: true,
+            headerLeft: () => (
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('dashboard')}
+                style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+              </TouchableOpacity>
+            ),
+          })}
+        />
+        <Stack.Screen 
+          name="gift-cards" 
+          options={({ navigation }) => ({
+            title: i18n.t('giftCards'),
+            headerShown: true,
+            headerLeft: () => (
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('dashboard')}
+                style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+              </TouchableOpacity>
+            ),
+          })}
+        />
+        <Stack.Screen 
+          name="mobile-shop" 
+          options={({ navigation }) => ({
+            title: i18n.t('mobileShop'),
+            headerShown: true,
+            headerLeft: () => (
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('dashboard')}
+                style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+              </TouchableOpacity>
+            ),
+          })}
+        />
+        <Stack.Screen 
+          name="travel-booking" 
+          options={({ navigation }) => ({
+            title: i18n.t('travelBooking'),
+            headerShown: true,
+            headerLeft: () => (
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('dashboard')}
+                style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+              </TouchableOpacity>
+            ),
+          })}
+        />
       </Stack>
     </ErrorBoundary>
   );
