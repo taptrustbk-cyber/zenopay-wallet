@@ -5,7 +5,7 @@ export interface MobileProduct {
   storage: string;
   battery: string;
   price: number;
-  imagePrompt: string;
+  imageUrl: string;
   is_active?: boolean;
 }
 
@@ -17,7 +17,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 280,
-    imagePrompt: 'iPhone 13 front and back view, studio lighting, realistic product photography, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/iPhone%2013%20front%20and%20back%20view%2C%20studio%20lighting%2C%20realistic%20product%20photography%2C%20white%20background',
     is_active: true,
   },
   {
@@ -27,7 +27,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 380,
-    imagePrompt: 'iPhone 13 Pro front and back, realistic product photo, professional lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/iPhone%2013%20Pro%20front%20and%20back%2C%20realistic%20product%20photo%2C%20professional%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -37,7 +37,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 430,
-    imagePrompt: 'iPhone 13 Pro Max front and back, premium lighting, studio photography, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/iPhone%2013%20Pro%20Max%20front%20and%20back%2C%20premium%20lighting%2C%20studio%20photography%2C%20white%20background',
     is_active: true,
   },
   {
@@ -47,7 +47,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 450,
-    imagePrompt: 'iPhone 14 Pro realistic product image, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/iPhone%2014%20Pro%20realistic%20product%20image%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -57,7 +57,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 580,
-    imagePrompt: 'iPhone 14 Pro Max realistic product image, professional photography, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/iPhone%2014%20Pro%20Max%20realistic%20product%20image%2C%20professional%20photography%2C%20white%20background',
     is_active: true,
   },
   {
@@ -67,7 +67,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 350,
-    imagePrompt: 'iPhone 15 realistic product image, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/iPhone%2015%20realistic%20product%20image%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -77,7 +77,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 550,
-    imagePrompt: 'iPhone 15 Pro realistic product image, professional photography, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/iPhone%2015%20Pro%20realistic%20product%20image%2C%20professional%20photography%2C%20white%20background',
     is_active: true,
   },
   {
@@ -87,7 +87,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 700,
-    imagePrompt: 'iPhone 15 Pro Max realistic product image, premium studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/iPhone%2015%20Pro%20Max%20realistic%20product%20image%2C%20premium%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -97,7 +97,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '88–100%',
     price: 810,
-    imagePrompt: 'iPhone 16 Pro front and back, realistic photography, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/iPhone%2016%20Pro%20front%20and%20back%2C%20realistic%20photography%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -107,7 +107,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '88–100%',
     price: 900,
-    imagePrompt: 'iPhone 16 Pro Max premium realistic image, professional studio photography, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/iPhone%2016%20Pro%20Max%20premium%20realistic%20image%2C%20professional%20studio%20photography%2C%20white%20background',
     is_active: true,
   },
 ];

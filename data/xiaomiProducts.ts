@@ -8,7 +8,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '90–100%',
     price: 310,
-    imagePrompt: 'Xiaomi Redmi Note 13 Pro front and back realistic studio photo, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Xiaomi%20Redmi%20Note%2013%20Pro%20front%20and%20back%20realistic%20studio%20photo%2C%20white%20background',
     is_active: true,
   },
   {
@@ -18,7 +18,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '85–95%',
     price: 260,
-    imagePrompt: 'Xiaomi Redmi Note 13 realistic product photography, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Xiaomi%20Redmi%20Note%2013%20realistic%20product%20photography%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -28,7 +28,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 180,
-    imagePrompt: 'Xiaomi Redmi 13C product image, professional photography, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Xiaomi%20Redmi%2013C%20product%20image%2C%20professional%20photography%2C%20white%20background',
     is_active: true,
   },
   {
@@ -38,7 +38,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 620,
-    imagePrompt: 'Xiaomi 13 Pro premium product photography, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Xiaomi%2013%20Pro%20premium%20product%20photography%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -48,7 +48,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 480,
-    imagePrompt: 'Xiaomi 13T realistic product photo, professional lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Xiaomi%2013T%20realistic%20product%20photo%2C%20professional%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -58,7 +58,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '88–98%',
     price: 690,
-    imagePrompt: 'Xiaomi 14 front and back realistic studio photography, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Xiaomi%2014%20front%20and%20back%20realistic%20studio%20photography%2C%20white%20background',
     is_active: true,
   },
   {
@@ -68,7 +68,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '512GB',
     battery: '90–100%',
     price: 820,
-    imagePrompt: 'Xiaomi 14 Pro premium product photography, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Xiaomi%2014%20Pro%20premium%20product%20photography%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -78,7 +78,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '90–100%',
     price: 350,
-    imagePrompt: 'Poco X6 Pro realistic product image, professional photography, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Poco%20X6%20Pro%20realistic%20product%20image%2C%20professional%20photography%2C%20white%20background',
     is_active: true,
   },
   {
@@ -88,7 +88,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 420,
-    imagePrompt: 'Poco F5 product photography, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Poco%20F5%20product%20photography%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -98,7 +98,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '88–98%',
     price: 560,
-    imagePrompt: 'Xiaomi Redmi K70 realistic studio photo, professional lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Xiaomi%20Redmi%20K70%20realistic%20studio%20photo%2C%20professional%20lighting%2C%20white%20background',
     is_active: true,
   },
 ];

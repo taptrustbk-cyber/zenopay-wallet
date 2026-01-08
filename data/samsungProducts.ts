@@ -8,7 +8,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 700,
-    imagePrompt: 'Samsung Galaxy S24 Ultra front and back realistic product image, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Samsung%20Galaxy%20S24%20Ultra%20front%20and%20back%20realistic%20product%20image%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -18,7 +18,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 620,
-    imagePrompt: 'Samsung Galaxy S23 Ultra professional product photography, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Samsung%20Galaxy%20S23%20Ultra%20professional%20product%20photography%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -28,7 +28,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 520,
-    imagePrompt: 'Samsung Galaxy S23 Plus realistic product photo, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Samsung%20Galaxy%20S23%20Plus%20realistic%20product%20photo%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -38,7 +38,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '75–85%',
     price: 480,
-    imagePrompt: 'Samsung Galaxy S22 Ultra product image, professional photography, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Samsung%20Galaxy%20S22%20Ultra%20product%20image%2C%20professional%20photography%2C%20white%20background',
     is_active: true,
   },
   {
@@ -48,7 +48,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '75–85%',
     price: 420,
-    imagePrompt: 'Samsung Galaxy S22 Plus realistic product photo, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Samsung%20Galaxy%20S22%20Plus%20realistic%20product%20photo%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -58,7 +58,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 320,
-    imagePrompt: 'Samsung Galaxy A55 product photography, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Samsung%20Galaxy%20A55%20product%20photography%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -68,7 +68,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '85–95%',
     price: 290,
-    imagePrompt: 'Samsung Galaxy A54 realistic product image, professional lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Samsung%20Galaxy%20A54%20realistic%20product%20image%2C%20professional%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -78,7 +78,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 240,
-    imagePrompt: 'Samsung Galaxy A35 product photo, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Samsung%20Galaxy%20A35%20product%20photo%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -88,7 +88,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '64GB',
     battery: '90–100%',
     price: 190,
-    imagePrompt: 'Samsung Galaxy A25 realistic product photography, studio lighting, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Samsung%20Galaxy%20A25%20realistic%20product%20photography%2C%20studio%20lighting%2C%20white%20background',
     is_active: true,
   },
   {
@@ -98,7 +98,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 680,
-    imagePrompt: 'Samsung Galaxy Z Flip 5 folded and unfolded views, premium product photography, white background',
+    imageUrl: 'https://image.pollinations.ai/prompt/Samsung%20Galaxy%20Z%20Flip%205%20folded%20and%20unfolded%20views%2C%20premium%20product%20photography%2C%20white%20background',
     is_active: true,
   },
 ];

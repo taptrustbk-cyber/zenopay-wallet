@@ -20,6 +20,9 @@ import { DepositOrder, Profile, WithdrawOrder } from '@/lib/types';
 import { useRouter } from 'expo-router';
 import { CheckCircle, XCircle, Clock, LogOut, FileText, ExternalLink } from 'lucide-react-native';
 import { trpc } from '@/lib/trpc';
+import { iphoneProducts } from '@/data/iphoneProducts';
+import { samsungProducts } from '@/data/samsungProducts';
+import { xiaomiProducts } from '@/data/xiaomiProducts';
 
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 
@@ -28,7 +31,7 @@ export default function AdminScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [selectedTab, setSelectedTab] = useState<'dashboard' | 'account_approval' | 'waiting_users' | 'deposits' | 'withdrawals' | 'add_balance' | 'withdraw_balance' | 'kyc_documents' | 'products' | 'orders' | 'market_analytics'>('dashboard');
+  const [selectedTab, setSelectedTab] = useState<'dashboard' | 'account_approval' | 'waiting_users' | 'deposits' | 'withdrawals' | 'add_balance' | 'withdraw_balance' | 'kyc_documents' | 'products' | 'orders' | 'market_analytics' | 'manage_prices'>('dashboard');
   const [showAddBalanceModal, setShowAddBalanceModal] = useState(false);
   const [showWithdrawBalanceModal, setShowWithdrawBalanceModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
@@ -952,6 +955,16 @@ export default function AdminScreen() {
             style={[styles.gridButtonText, { color: theme.colors.text }, selectedTab === 'market_analytics' && styles.gridButtonTextActive]}
           >
             Market Analytics
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.gridButton, { backgroundColor: theme.colors.cardSecondary }, selectedTab === 'manage_prices' && [styles.gridButtonActive, { backgroundColor: theme.colors.primary }]]}
+          onPress={() => setSelectedTab('manage_prices')}
+        >
+          <Text
+            style={[styles.gridButtonText, { color: theme.colors.text }, selectedTab === 'manage_prices' && styles.gridButtonTextActive]}
+          >
+            💰 Manage Prices
           </Text>
         </TouchableOpacity>
       </View>
@@ -2097,6 +2110,109 @@ export default function AdminScreen() {
             ) : (
               <Text style={styles.emptyText}>No analytics data</Text>
             )}
+          </>
+        )}
+
+        {selectedTab === 'manage_prices' && (
+          <>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 16 }]}>Manage Product Prices</Text>
+            
+            <View style={[styles.infoCard, { backgroundColor: theme.colors.card, marginBottom: 20 }]}>
+              <Text style={[styles.infoCardTitle, { color: theme.colors.text }]}>💰 Price Management</Text>
+              <Text style={[styles.infoCardText, { color: theme.colors.textSecondary }]}>
+                Products are managed through data files. Below you can view all current products and their prices.
+              </Text>
+              <Text style={[styles.infoCardText, { color: theme.colors.textSecondary, marginTop: 8 }]}>
+                To update prices: Edit the product files directly (data/iphoneProducts.ts, data/samsungProducts.ts, data/xiaomiProducts.ts)
+              </Text>
+            </View>
+
+            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginBottom: 12, fontSize: 18 }]}>iPhone Products</Text>
+            {iphoneProducts.map((product) => (
+              <View key={product.id} style={[styles.card, { backgroundColor: theme.colors.card }]}>
+                <View style={styles.cardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>{product.name}</Text>
+                    <Text style={styles.cardSubtitle}>{product.brand}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, product.is_active === false && { backgroundColor: '#7F1D1D' }]}>
+                    <Text style={[styles.statusText, product.is_active === false && { color: '#F87171' }]}>
+                      {product.is_active === false ? 'INACTIVE' : 'ACTIVE'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.infoLabel}>Storage:</Text>
+                  <Text style={styles.infoValue}>{product.storage}</Text>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.infoLabel}>Battery:</Text>
+                  <Text style={styles.infoValue}>{product.battery}</Text>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.infoLabel}>Price:</Text>
+                  <Text style={[styles.infoValue, { color: '#34D399', fontSize: 18 }]}>${product.price}</Text>
+                </View>
+              </View>
+            ))}
+
+            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24, marginBottom: 12, fontSize: 18 }]}>Samsung Products</Text>
+            {samsungProducts.map((product) => (
+              <View key={product.id} style={[styles.card, { backgroundColor: theme.colors.card }]}>
+                <View style={styles.cardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>{product.name}</Text>
+                    <Text style={styles.cardSubtitle}>{product.brand}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, product.is_active === false && { backgroundColor: '#7F1D1D' }]}>
+                    <Text style={[styles.statusText, product.is_active === false && { color: '#F87171' }]}>
+                      {product.is_active === false ? 'INACTIVE' : 'ACTIVE'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.infoLabel}>Storage:</Text>
+                  <Text style={styles.infoValue}>{product.storage}</Text>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.infoLabel}>Battery:</Text>
+                  <Text style={styles.infoValue}>{product.battery}</Text>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.infoLabel}>Price:</Text>
+                  <Text style={[styles.infoValue, { color: '#34D399', fontSize: 18 }]}>${product.price}</Text>
+                </View>
+              </View>
+            ))}
+
+            <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24, marginBottom: 12, fontSize: 18 }]}>Xiaomi Products</Text>
+            {xiaomiProducts.map((product) => (
+              <View key={product.id} style={[styles.card, { backgroundColor: theme.colors.card }]}>
+                <View style={styles.cardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>{product.name}</Text>
+                    <Text style={styles.cardSubtitle}>{product.brand}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, product.is_active === false && { backgroundColor: '#7F1D1D' }]}>
+                    <Text style={[styles.statusText, product.is_active === false && { color: '#F87171' }]}>
+                      {product.is_active === false ? 'INACTIVE' : 'ACTIVE'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.infoLabel}>Storage:</Text>
+                  <Text style={styles.infoValue}>{product.storage}</Text>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.infoLabel}>Battery:</Text>
+                  <Text style={styles.infoValue}>{product.battery}</Text>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.infoLabel}>Price:</Text>
+                  <Text style={[styles.infoValue, { color: '#34D399', fontSize: 18 }]}>${product.price}</Text>
+                </View>
+              </View>
+            ))}
           </>
         )}
 
