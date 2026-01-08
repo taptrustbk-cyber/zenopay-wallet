@@ -1,7 +1,6 @@
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Wifi } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,17 +26,17 @@ const providerConfig: Record<string, { color: string; bgColor: string; logo: str
   zain: {
     color: '#00A651',
     bgColor: 'rgba(0, 166, 81, 0.15)',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Zain_logo.svg/200px-Zain_logo.svg.png',
+    logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uq8qjx7d0g47h9rv2jvzz',
   },
   asiacell: {
-    color: '#6B2D7B',
-    bgColor: 'rgba(107, 45, 123, 0.15)',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Asiacell_logo.svg/200px-Asiacell_logo.svg.png',
+    color: '#C8102E',
+    bgColor: 'rgba(200, 16, 46, 0.15)',
+    logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/q8puaw0dyshx6jruwg83i',
   },
   ftth: {
     color: '#0066CC',
     bgColor: 'rgba(0, 102, 204, 0.15)',
-    logo: '',
+    logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/1ogdfkyuisk5c6unchj2s',
   },
 };
 
@@ -217,12 +216,7 @@ export default function BuyCardScreen() {
               <View style={[styles.cardIconContainer, { 
                 backgroundColor: providerConfig[provider]?.bgColor || 'rgba(59, 130, 246, 0.1)' 
               }]}>
-                {provider === 'ftth' ? (
-                  <View style={styles.ftthContainer}>
-                    <Wifi size={40} color={providerConfig.ftth.color} />
-                    <Text style={[styles.ftthText, { color: providerConfig.ftth.color }]}>FTTH</Text>
-                  </View>
-                ) : providerConfig[provider]?.logo ? (
+                {providerConfig[provider]?.logo ? (
                   <Image 
                     source={{ uri: providerConfig[provider].logo }} 
                     style={styles.providerLogo}
