@@ -1,6 +1,7 @@
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import { Wifi } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useRouter } from 'expo-router';
 import i18n from '@/lib/i18n';
@@ -14,6 +15,29 @@ interface SimCard {
   image: string;
 }
 
+const providerConfig: Record<string, { color: string; bgColor: string; logo: string }> = {
+  korek: {
+    color: '#FF6B00',
+    bgColor: 'rgba(255, 107, 0, 0.15)',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Korek_Telecom_logo.svg/200px-Korek_Telecom_logo.svg.png',
+  },
+  zain: {
+    color: '#00A651',
+    bgColor: 'rgba(0, 166, 81, 0.15)',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Zain_logo.svg/200px-Zain_logo.svg.png',
+  },
+  asiacell: {
+    color: '#6B2D7B',
+    bgColor: 'rgba(107, 45, 123, 0.15)',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Asiacell_logo.svg/200px-Asiacell_logo.svg.png',
+  },
+  ftth: {
+    color: '#0066CC',
+    bgColor: 'rgba(0, 102, 204, 0.15)',
+    logo: '',
+  },
+};
+
 const simCards: SimCard[] = [
   { 
     id: '1', 
@@ -21,7 +45,7 @@ const simCards: SimCard[] = [
     price: 3.6, 
     provider: 'korek', 
     amount: 5000,
-    image: 'https://images.unsplash.com/photo-1606229365485-93a3b8ee0385?w=300&h=200&fit=crop'
+    image: ''
   },
   { 
     id: '2', 
@@ -29,7 +53,7 @@ const simCards: SimCard[] = [
     price: 7.6, 
     provider: 'korek', 
     amount: 10000,
-    image: 'https://images.unsplash.com/photo-1606229365485-93a3b8ee0385?w=300&h=200&fit=crop'
+    image: ''
   },
   { 
     id: '3', 
@@ -37,7 +61,7 @@ const simCards: SimCard[] = [
     price: 11.1, 
     provider: 'korek', 
     amount: 15000,
-    image: 'https://images.unsplash.com/photo-606229365485-93a3b8ee0385?w=300&h=200&fit=crop'
+    image: ''
   },
   { 
     id: '4', 
@@ -45,7 +69,7 @@ const simCards: SimCard[] = [
     price: 21, 
     provider: 'ftth', 
     amount: 29000,
-    image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=300&h=200&fit=crop'
+    image: ''
   },
   { 
     id: '5', 
@@ -53,7 +77,7 @@ const simCards: SimCard[] = [
     price: 3.6, 
     provider: 'zain', 
     amount: 5000,
-    image: 'https://images.unsplash.com/photo-1606229365485-93a3b8ee0385?w=300&h=200&fit=crop'
+    image: ''
   },
   { 
     id: '6', 
@@ -61,7 +85,7 @@ const simCards: SimCard[] = [
     price: 7.6, 
     provider: 'zain', 
     amount: 10000,
-    image: 'https://images.unsplash.com/photo-1606229365485-93a3b8ee0385?w=300&h=200&fit=crop'
+    image: ''
   },
   { 
     id: '7', 
@@ -69,7 +93,7 @@ const simCards: SimCard[] = [
     price: 3.6, 
     provider: 'asiacell', 
     amount: 5000,
-    image: 'https://images.unsplash.com/photo-1606229365485-93a3b8ee0385?w=300&h=200&fit=crop'
+    image: ''
   },
   { 
     id: '8', 
@@ -77,9 +101,37 @@ const simCards: SimCard[] = [
     price: 7.6, 
     provider: 'asiacell', 
     amount: 10000,
-    image: 'https://images.unsplash.com/photo-1606229365485-93a3b8ee0385?w=300&h=200&fit=crop'
+    image: ''
   },
 ];
+
+const ProviderLogo = ({ provider }: { provider: string }) => {
+  const config = providerConfig[provider] || providerConfig.korek;
+  
+  if (provider === 'ftth') {
+    return (
+      <View style={[styles.providerLogoContainer, { backgroundColor: config.bgColor }]}>
+        <Wifi size={32} color={config.color} />
+        <Text style={[styles.providerLogoText, { color: config.color }]}>FTTH</Text>
+      </View>
+    );
+  }
+  
+  const providerLabels: Record<string, string> = {
+    korek: 'KOREK',
+    zain: 'ZAIN',
+    asiacell: 'ASIACELL',
+  };
+  
+  return (
+    <View style={[styles.providerLogoContainer, { backgroundColor: config.bgColor }]}>
+      <Text style={[styles.providerLogoText, { color: config.color, fontSize: provider === 'asiacell' ? 10 : 12 }]}>
+        {providerLabels[provider] || provider.toUpperCase()}
+      </Text>
+      <Text style={[styles.providerSubtext, { color: config.color }]}>TELECOM</Text>
+    </View>
+  );
+};
 
 export default function SimCardsScreen() {
   const { theme } = useTheme();
@@ -118,29 +170,30 @@ export default function SimCardsScreen() {
           </View>
 
           <View style={styles.grid}>
-            {simCards.map((card) => (
-              <TouchableOpacity
-                key={card.id}
-                style={[styles.cardItem, { backgroundColor: theme.colors.card }]}
-                onPress={() => handleCardPress(card)}
-              >
-                <View style={[styles.cardImageContainer, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-                  <MaterialIcons name="sim-card" size={48} color="#3B82F6" />
-                </View>
-                <Text style={[styles.cardName, { color: theme.colors.text }]}>
-                  {card.name}
-                </Text>
-                <Text style={[styles.cardPrice, { color: theme.colors.primary }]}>
-                  ${card.price.toFixed(2)}
-                </Text>
-                <TouchableOpacity 
-                  style={[styles.buyButton, { backgroundColor: theme.colors.primary }]}
+            {simCards.map((card) => {
+              const config = providerConfig[card.provider] || providerConfig.korek;
+              return (
+                <TouchableOpacity
+                  key={card.id}
+                  style={[styles.cardItem, { backgroundColor: theme.colors.card }]}
                   onPress={() => handleCardPress(card)}
                 >
-                  <Text style={styles.buyButtonText}>{i18n.t('buyNow')}</Text>
+                  <ProviderLogo provider={card.provider} />
+                  <Text style={[styles.cardName, { color: theme.colors.text }]}>
+                    {card.name}
+                  </Text>
+                  <Text style={[styles.cardPrice, { color: config.color }]}>
+                    ${card.price.toFixed(2)}
+                  </Text>
+                  <TouchableOpacity 
+                    style={[styles.buyButton, { backgroundColor: config.color }]}
+                    onPress={() => handleCardPress(card)}
+                  >
+                    <Text style={styles.buyButtonText}>{i18n.t('buyNow')}</Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
-              </TouchableOpacity>
-            ))}
+              );
+            })}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -196,6 +249,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
+  },
+  providerLogoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  providerLogoText: {
+    fontSize: 12,
+    fontWeight: '800' as const,
+    letterSpacing: 1,
+  },
+  providerSubtext: {
+    fontSize: 8,
+    fontWeight: '600' as const,
+    marginTop: 2,
+    letterSpacing: 0.5,
   },
   cardName: {
     fontSize: 14,
