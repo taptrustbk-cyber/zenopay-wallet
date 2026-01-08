@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Wifi } from 'lucide-react-native';
@@ -19,7 +19,7 @@ const providerConfig: Record<string, { color: string; bgColor: string; logo: str
   korek: {
     color: '#FF6B00',
     bgColor: 'rgba(255, 107, 0, 0.15)',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Korek_Telecom_logo.svg/200px-Korek_Telecom_logo.svg.png',
+    logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uu16k1t8p3uz3dpr3k6ic',
   },
   zain: {
     color: '#00A651',
@@ -113,6 +113,18 @@ const ProviderLogo = ({ provider }: { provider: string }) => {
       <View style={[styles.providerLogoContainer, { backgroundColor: config.bgColor }]}>
         <Wifi size={32} color={config.color} />
         <Text style={[styles.providerLogoText, { color: config.color }]}>FTTH</Text>
+      </View>
+    );
+  }
+  
+  if (config.logo) {
+    return (
+      <View style={[styles.providerLogoContainer, { backgroundColor: config.bgColor }]}>
+        <Image 
+          source={{ uri: config.logo }} 
+          style={styles.providerLogoImage}
+          resizeMode="contain"
+        />
       </View>
     );
   }
@@ -257,6 +269,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
+    overflow: 'hidden' as const,
+  },
+  providerLogoImage: {
+    width: 60,
+    height: 60,
   },
   providerLogoText: {
     fontSize: 12,

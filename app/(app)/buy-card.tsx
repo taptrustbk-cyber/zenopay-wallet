@@ -1,6 +1,7 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import { Wifi } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +17,29 @@ interface CardPin {
   pin_code: string;
   is_used: boolean;
 }
+
+const providerConfig: Record<string, { color: string; bgColor: string; logo: string }> = {
+  korek: {
+    color: '#FF6B00',
+    bgColor: 'rgba(255, 107, 0, 0.15)',
+    logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uu16k1t8p3uz3dpr3k6ic',
+  },
+  zain: {
+    color: '#00A651',
+    bgColor: 'rgba(0, 166, 81, 0.15)',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Zain_logo.svg/200px-Zain_logo.svg.png',
+  },
+  asiacell: {
+    color: '#6B2D7B',
+    bgColor: 'rgba(107, 45, 123, 0.15)',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Asiacell_logo.svg/200px-Asiacell_logo.svg.png',
+  },
+  ftth: {
+    color: '#0066CC',
+    bgColor: 'rgba(0, 102, 204, 0.15)',
+    logo: '',
+  },
+};
 
 export default function BuyCardScreen() {
   const { theme } = useTheme();
@@ -189,15 +213,30 @@ export default function BuyCardScreen() {
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={[styles.cardPreview, { backgroundColor: theme.colors.card }]}>
-            <View style={[styles.cardIconContainer, { 
-              backgroundColor: cardType === 'sim' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)' 
-            }]}>
-              {cardType === 'sim' ? (
-                <MaterialIcons name="sim-card" size={60} color="#3B82F6" />
-              ) : (
+            {cardType === 'sim' ? (
+              <View style={[styles.cardIconContainer, { 
+                backgroundColor: providerConfig[provider]?.bgColor || 'rgba(59, 130, 246, 0.1)' 
+              }]}>
+                {provider === 'ftth' ? (
+                  <View style={styles.ftthContainer}>
+                    <Wifi size={40} color={providerConfig.ftth.color} />
+                    <Text style={[styles.ftthText, { color: providerConfig.ftth.color }]}>FTTH</Text>
+                  </View>
+                ) : providerConfig[provider]?.logo ? (
+                  <Image 
+                    source={{ uri: providerConfig[provider].logo }} 
+                    style={styles.providerLogo}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <Ionicons name="cellular" size={60} color={providerConfig[provider]?.color || '#3B82F6'} />
+                )}
+              </View>
+            ) : (
+              <View style={[styles.cardIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
                 <Ionicons name="gift" size={60} color="#10B981" />
-              )}
-            </View>
+              </View>
+            )}
             <Text style={[styles.cardName, { color: theme.colors.text }]}>
               {cardName}
             </Text>
@@ -284,10 +323,24 @@ const styles = StyleSheet.create({
   cardIconContainer: {
     width: 120,
     height: 120,
-    borderRadius: 60,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
+    overflow: 'hidden' as const,
+  },
+  providerLogo: {
+    width: 90,
+    height: 90,
+  },
+  ftthContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ftthText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    marginTop: 4,
   },
   cardName: {
     fontSize: 24,
