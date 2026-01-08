@@ -8,7 +8,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '90–100%',
     price: 310,
-    imagePrompt: 'Xiaomi Redmi Note 13 Pro smartphone aurora purple color front view with 6.67 inch AMOLED curved display and 200MP camera module on back, mid-range phone professional product photography white background',
+    imagePrompt: 'Xiaomi Redmi Note 13 Pro smartphone, curved display, 200MP camera, gradient back design, professional product photography, white background, ultra realistic 8k',
     is_active: true,
   },
   {
@@ -18,7 +18,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '85–95%',
     price: 260,
-    imagePrompt: 'Xiaomi Redmi Note 13 smartphone mint green color showing large display and triple camera system, budget Android phone realistic studio product photo white background',
+    imagePrompt: 'Xiaomi Redmi Note 13 smartphone, slim design, triple camera module, AMOLED display, studio product shot, white background, photorealistic quality',
     is_active: true,
   },
   {
@@ -28,7 +28,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 180,
-    imagePrompt: 'Xiaomi Redmi 13C smartphone clover green color front and back view with 6.74 inch display and 50MP dual camera, entry-level Android phone professional product image white background',
+    imagePrompt: 'Xiaomi Redmi 13C smartphone, budget phone design, large display, dual camera, matte finish back, product photography, white background, realistic render',
     is_active: true,
   },
   {
@@ -38,7 +38,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 620,
-    imagePrompt: 'Xiaomi 13 Pro smartphone ceramic black color showing curved edge display and Leica branded triple camera with large sensor, flagship phone realistic product photography white background',
+    imagePrompt: 'Xiaomi 13 Pro flagship smartphone, Leica camera branding, ceramic back, curved edge display, premium studio product shot, white background, ultra realistic',
     is_active: true,
   },
   {
@@ -48,7 +48,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 480,
-    imagePrompt: 'Xiaomi 13T smartphone meadow green color front view with flat display and circular Leica camera module on back, premium mid-range phone professional studio photo white background',
+    imagePrompt: 'Xiaomi 13T smartphone, flat display design, Leica triple camera, metal frame, professional product photography, white background, photorealistic quality',
     is_active: true,
   },
   {
@@ -58,7 +58,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '88–98%',
     price: 690,
-    imagePrompt: 'Xiaomi 14 smartphone jade green color compact design with 6.36 inch display and Leica Summilux quad camera system, flagship Android phone realistic product photography white background',
+    imagePrompt: 'Xiaomi 14 flagship smartphone, compact premium design, Leica optics camera, titanium frame, studio product shot, white background, ultra realistic 8k',
     is_active: true,
   },
   {
@@ -68,7 +68,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '512GB',
     battery: '90–100%',
     price: 820,
-    imagePrompt: 'Xiaomi 14 Pro smartphone titanium black color with curved display and large circular Leica Vario-Summilux camera module, premium flagship phone professional product photo white background',
+    imagePrompt: 'Xiaomi 14 Pro flagship smartphone, variable aperture Leica camera, ceramic back, curved display, premium product photography, white background, photorealistic',
     is_active: true,
   },
   {
@@ -78,7 +78,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '90–100%',
     price: 350,
-    imagePrompt: 'Poco X6 Pro smartphone yellow color sporty gaming design with 6.67 inch AMOLED display and 64MP triple camera, performance mid-range phone realistic studio product image white background',
+    imagePrompt: 'Poco X6 Pro gaming smartphone, aggressive design, 64MP camera, fast charging, vibrant color, studio product shot, white background, realistic render',
     is_active: true,
   },
   {
@@ -88,7 +88,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 420,
-    imagePrompt: 'Poco F5 smartphone carbon black color front and back view with flat display and large camera module, gaming Android phone professional product photography white background',
+    imagePrompt: 'Poco F5 performance smartphone, flat display, triple camera array, sleek black design, professional product photography, white background, ultra realistic',
     is_active: true,
   },
   {
@@ -98,7 +98,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '88–98%',
     price: 560,
-    imagePrompt: 'Xiaomi Redmi K70 smartphone bamboo green color showing 6.67 inch flat display with thin bezels and triple camera with OIS, flagship killer phone realistic product photo white background',
+    imagePrompt: 'Xiaomi Redmi K70 flagship killer smartphone, large camera module, 2K display, premium glass back, studio product shot, white background, photorealistic 8k',
     is_active: true,
   },
 ];

@@ -8,7 +8,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 700,
-    imagePrompt: 'Samsung Galaxy S24 Ultra smartphone titanium gray color front view showing large display with curved edges and S Pen stylus, premium flagship phone professional product photography on clean white background',
+    imagePrompt: 'Samsung Galaxy S24 Ultra smartphone, titanium frame, 6.8 inch display, quad camera system, S Pen, professional product photography on white background, ultra realistic, 8k quality',
     is_active: true,
   },
   {
@@ -18,7 +18,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 620,
-    imagePrompt: 'Samsung Galaxy S23 Ultra smartphone phantom black color showing front screen and quad camera system on back, flagship Android phone realistic product photo on white background',
+    imagePrompt: 'Samsung Galaxy S23 Ultra smartphone, premium design, 200MP camera, curved display, professional product shot on white background, ultra realistic, high detail',
     is_active: true,
   },
   {
@@ -28,7 +28,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 520,
-    imagePrompt: 'Samsung Galaxy S23 Plus smartphone cream color front and back view showing triple camera module, premium Android phone professional studio photography white background',
+    imagePrompt: 'Samsung Galaxy S23 Plus smartphone, sleek design, triple camera, 6.6 inch dynamic AMOLED display, studio product photography, white background, photorealistic',
     is_active: true,
   },
   {
@@ -38,7 +38,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '75–85%',
     price: 480,
-    imagePrompt: 'Samsung Galaxy S22 Ultra smartphone burgundy color with integrated S Pen showing curved display and camera bump, flagship phone realistic product image on white background',
+    imagePrompt: 'Samsung Galaxy S22 Ultra smartphone, S Pen slot, 108MP camera, premium flagship phone, professional studio shot, white background, ultra realistic render',
     is_active: true,
   },
   {
@@ -48,7 +48,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '75–85%',
     price: 420,
-    imagePrompt: 'Samsung Galaxy S22 Plus smartphone green color showing front display and rear triple camera, Android flagship phone professional product photography white background',
+    imagePrompt: 'Samsung Galaxy S22 Plus smartphone, elegant design, triple camera array, AMOLED display, product photography, white background, photorealistic quality',
     is_active: true,
   },
   {
@@ -58,7 +58,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 320,
-    imagePrompt: 'Samsung Galaxy A55 smartphone awesome iceblue color front and back view showing 6.6 inch display and triple camera, mid-range Android phone realistic product photo white background',
+    imagePrompt: 'Samsung Galaxy A55 smartphone, modern mid-range design, triple camera, glossy finish, professional product photo, white background, realistic render',
     is_active: true,
   },
   {
@@ -68,7 +68,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '85–95%',
     price: 290,
-    imagePrompt: 'Samsung Galaxy A54 smartphone awesome violet color showing large display and 50MP triple camera system, mid-range phone professional studio photography white background',
+    imagePrompt: 'Samsung Galaxy A54 smartphone, colorful design, 50MP camera, Super AMOLED display, studio product shot, white background, high quality realistic',
     is_active: true,
   },
   {
@@ -78,7 +78,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 240,
-    imagePrompt: 'Samsung Galaxy A35 smartphone awesome lilac purple color front view with infinity display and rear camera module, budget Android phone realistic product image white background',
+    imagePrompt: 'Samsung Galaxy A35 smartphone, budget friendly design, triple camera setup, vibrant display, product photography, white background, photorealistic',
     is_active: true,
   },
   {
@@ -88,7 +88,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '64GB',
     battery: '90–100%',
     price: 190,
-    imagePrompt: 'Samsung Galaxy A25 smartphone blue black color showing 6.5 inch Super AMOLED display and dual camera, affordable Android phone professional product photo white background',
+    imagePrompt: 'Samsung Galaxy A25 smartphone, affordable design, dual camera, modern slim body, studio product photo, white background, realistic render',
     is_active: true,
   },
   {
@@ -98,7 +98,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 680,
-    imagePrompt: 'Samsung Galaxy Z Flip 5 foldable smartphone lavender color showing both folded compact form with cover screen and unfolded full display, innovative flip phone professional product photography white background',
+    imagePrompt: 'Samsung Galaxy Z Flip 5 foldable smartphone, compact folded design, flex mode hinge, cover screen visible, premium product photography, white background, ultra realistic',
     is_active: true,
   },
 ];
