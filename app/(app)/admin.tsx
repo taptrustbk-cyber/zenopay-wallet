@@ -686,10 +686,10 @@ export default function AdminScreen() {
       const { error: txError } = await supabase
         .from('transactions')
         .insert({
-          from_user_id: userId,
           to_user_id: userId,
           type: 'deposit',
           amount: Number(amount),
+          description: note || 'Admin balance add',
           status: 'completed',
         });
       
@@ -758,10 +758,10 @@ export default function AdminScreen() {
       const { error: txError } = await supabase
         .from('transactions')
         .insert({
-          from_user_id: userId,
           to_user_id: userId,
-          type: 'deposit',
-          amount: Number(amount),
+          type: 'withdrawal',
+          amount: -Number(amount),
+          description: 'Admin balance withdrawal',
           status: 'completed',
         });
       

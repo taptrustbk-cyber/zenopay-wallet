@@ -113,9 +113,9 @@ export default function BuyCardScreen() {
       const { error: txError } = await supabase
         .from('transactions')
         .insert({
-          user_id: user.id,
+          to_user_id: user.id,
           type: 'purchase',
-          amount: price,
+          amount: -price,
           description: `Purchased ${cardName}`,
           status: 'completed',
         });
