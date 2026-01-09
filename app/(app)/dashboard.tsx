@@ -208,53 +208,67 @@ export default function DashboardScreen() {
             </Text>
           </View>
 
-          <View style={styles.shopGrid}>
+          <View style={styles.shopRow}>
             <TouchableOpacity 
-              style={[styles.shopItem, { backgroundColor: theme.colors.surface }]}
+              style={[styles.shopCard, { backgroundColor: '#1E3A5F' }]}
               onPress={() => router.push('/(app)/sim-cards' as any)}
             >
-              <View style={[styles.shopIconContainer, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-                <MaterialIcons name="sim-card" size={32} color="#3B82F6" />
+              <View style={[styles.shopCardIcon, { backgroundColor: 'rgba(59, 130, 246, 0.2)' }]}>
+                <MaterialIcons name="sim-card" size={28} color="#60A5FA" />
               </View>
-              <Text style={[styles.shopLabel, { color: theme.colors.text }]}>
+              <Text style={styles.shopCardLabel}>
                 {i18n.t('internetSim')}
               </Text>
+              <View style={styles.shopCardArrow}>
+                <Ionicons name="chevron-forward" size={18} color="#60A5FA" />
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.shopItem, { backgroundColor: theme.colors.surface }]}
+              style={[styles.shopCard, { backgroundColor: '#1A3D2E' }]}
               onPress={() => router.push('/(app)/gift-cards' as any)}
             >
-              <View style={[styles.shopIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                <Ionicons name="gift" size={32} color="#10B981" />
+              <View style={[styles.shopCardIcon, { backgroundColor: 'rgba(16, 185, 129, 0.2)' }]}>
+                <Ionicons name="gift" size={28} color="#10B981" />
               </View>
-              <Text style={[styles.shopLabel, { color: theme.colors.text }]}>
+              <Text style={styles.shopCardLabel}>
                 {i18n.t('giftCards')}
               </Text>
+              <View style={styles.shopCardArrow}>
+                <Ionicons name="chevron-forward" size={18} color="#10B981" />
+              </View>
             </TouchableOpacity>
+          </View>
 
+          <View style={styles.shopRow}>
             <TouchableOpacity 
-              style={[styles.shopItem, { backgroundColor: theme.colors.surface }]}
+              style={[styles.shopCard, { backgroundColor: '#3D2E1A' }]}
               onPress={() => router.push('/(app)/mobile-shop' as any)}
             >
-              <View style={[styles.shopIconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-                <FontAwesome5 name="mobile-alt" size={32} color="#F59E0B" />
+              <View style={[styles.shopCardIcon, { backgroundColor: 'rgba(245, 158, 11, 0.2)' }]}>
+                <FontAwesome5 name="mobile-alt" size={28} color="#F59E0B" />
               </View>
-              <Text style={[styles.shopLabel, { color: theme.colors.text }]}>
+              <Text style={styles.shopCardLabel}>
                 {i18n.t('mobileShop')}
               </Text>
+              <View style={styles.shopCardArrow}>
+                <Ionicons name="chevron-forward" size={18} color="#F59E0B" />
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.shopItem, { backgroundColor: theme.colors.surface }]}
+              style={[styles.shopCard, { backgroundColor: '#2E1A3D' }]}
               onPress={() => router.push('/(app)/travel-booking' as any)}
             >
-              <View style={[styles.shopIconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
-                <Ionicons name="airplane" size={32} color="#8B5CF6" />
+              <View style={[styles.shopCardIcon, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
+                <Ionicons name="airplane" size={28} color="#8B5CF6" />
               </View>
-              <Text style={[styles.shopLabel, { color: theme.colors.text }]}>
+              <Text style={styles.shopCardLabel}>
                 {i18n.t('travelBooking')}
               </Text>
+              <View style={styles.shopCardArrow}>
+                <Ionicons name="chevron-forward" size={18} color="#8B5CF6" />
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -475,6 +489,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 40,
     lineHeight: 20,
+  },
+  shopRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  shopCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    gap: 12,
+  },
+  shopCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shopCardLabel: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+  },
+  shopCardArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   shopGrid: {
     flexDirection: 'row',
