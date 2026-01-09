@@ -208,66 +208,68 @@ export default function DashboardScreen() {
             </Text>
           </View>
 
-          <View style={styles.shopRow}>
+          <View style={styles.marketGrid}>
             <TouchableOpacity 
-              style={[styles.shopCard, { backgroundColor: '#1E3A5F' }]}
+              style={[styles.marketCard, { backgroundColor: '#1E3A8A' }]}
               onPress={() => router.push('/(app)/sim-cards' as any)}
+              activeOpacity={0.85}
             >
-              <View style={[styles.shopCardIcon, { backgroundColor: 'rgba(59, 130, 246, 0.2)' }]}>
-                <Ionicons name="card" size={28} color="#60A5FA" />
+              <View style={styles.marketCardIconWrapper}>
+                <Ionicons name="wallet" size={32} color="#FFFFFF" />
               </View>
-              <Text style={styles.shopCardLabel}>
-                Top-Up Cards
+              <Text style={styles.marketCardTitle}>
+                {i18n.t('market.topup')}
               </Text>
-              <View style={styles.shopCardArrow}>
-                <Ionicons name="chevron-forward" size={18} color="#60A5FA" />
+              <View style={styles.marketCardArrow}>
+                <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.shopCard, { backgroundColor: '#1A3D2E' }]}
+              style={[styles.marketCard, { backgroundColor: '#166534' }]}
               onPress={() => router.push('/(app)/gift-cards' as any)}
+              activeOpacity={0.85}
             >
-              <View style={[styles.shopCardIcon, { backgroundColor: 'rgba(16, 185, 129, 0.2)' }]}>
-                <Ionicons name="gift" size={28} color="#10B981" />
+              <View style={styles.marketCardIconWrapper}>
+                <Ionicons name="gift" size={32} color="#FFFFFF" />
               </View>
-              <Text style={styles.shopCardLabel}>
-                Gift Cards
+              <Text style={styles.marketCardTitle}>
+                {i18n.t('market.gift')}
               </Text>
-              <View style={styles.shopCardArrow}>
-                <Ionicons name="chevron-forward" size={18} color="#10B981" />
+              <View style={styles.marketCardArrow}>
+                <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
               </View>
             </TouchableOpacity>
-          </View>
 
-          <View style={styles.shopRow}>
             <TouchableOpacity 
-              style={[styles.shopCard, { backgroundColor: '#3D2E1A' }]}
+              style={[styles.marketCard, { backgroundColor: '#7C2D12' }]}
               onPress={() => router.push('/(app)/mobile-shop' as any)}
+              activeOpacity={0.85}
             >
-              <View style={[styles.shopCardIcon, { backgroundColor: 'rgba(245, 158, 11, 0.2)' }]}>
-                <Ionicons name="phone-portrait" size={28} color="#F59E0B" />
+              <View style={styles.marketCardIconWrapper}>
+                <Ionicons name="phone-portrait" size={32} color="#FFFFFF" />
               </View>
-              <Text style={styles.shopCardLabel}>
-                Mobile Shop
+              <Text style={styles.marketCardTitle}>
+                {i18n.t('market.mobile')}
               </Text>
-              <View style={styles.shopCardArrow}>
-                <Ionicons name="chevron-forward" size={18} color="#F59E0B" />
+              <View style={styles.marketCardArrow}>
+                <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.shopCard, { backgroundColor: '#2E1A3D' }]}
+              style={[styles.marketCard, { backgroundColor: '#4C1D95' }]}
               onPress={() => router.push('/(app)/travel-booking' as any)}
+              activeOpacity={0.85}
             >
-              <View style={[styles.shopCardIcon, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
-                <Ionicons name="airplane" size={28} color="#8B5CF6" />
+              <View style={styles.marketCardIconWrapper}>
+                <Ionicons name="airplane" size={32} color="#FFFFFF" />
               </View>
-              <Text style={styles.shopCardLabel}>
-                Travel Booking
+              <Text style={styles.marketCardTitle}>
+                {i18n.t('market.travel')}
               </Text>
-              <View style={styles.shopCardArrow}>
-                <Ionicons name="chevron-forward" size={18} color="#8B5CF6" />
+              <View style={styles.marketCardArrow}>
+                <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
               </View>
             </TouchableOpacity>
           </View>
@@ -489,6 +491,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 40,
     lineHeight: 20,
+  },
+  marketGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  marketCard: {
+    width: '48%',
+    height: 130,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 14,
+    justifyContent: 'space-between',
+  },
+  marketCardIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  marketCardTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600' as const,
+    marginTop: 8,
+  },
+  marketCardArrow: {
+    position: 'absolute' as const,
+    top: 16,
+    right: 16,
   },
   shopRow: {
     flexDirection: 'row',
