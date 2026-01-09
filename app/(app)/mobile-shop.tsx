@@ -358,51 +358,52 @@ export default function MobileShopScreen() {
   if (selectedBrand) {
     const brandProducts = getAllProducts(selectedBrand).filter(p => p.is_active !== false);
 
+    const renderHeader = () => (
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => setSelectedBrand(null)} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+          {selectedBrand}
+        </Text>
+        <View style={{ width: 24 }} />
+      </View>
+    );
+
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-          <ScrollView contentContainerStyle={styles.content}>
-            <View style={styles.header}>
-              <TouchableOpacity onPress={() => setSelectedBrand(null)} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+          <FlatList
+            data={brandProducts}
+            numColumns={2}
+            contentContainerStyle={[styles.content, styles.productsGrid]}
+            columnWrapperStyle={styles.productRow}
+            ListHeaderComponent={renderHeader}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[styles.productGridCard, { backgroundColor: theme.colors.card }]}
+                onPress={() => handleProductSelect(item)}
+              >
+                <AIImage 
+                  prompt={item.imagePrompt} 
+                  style={styles.gridProductImage}
+                />
+                <Text style={[styles.gridProductName, { color: theme.colors.text }]} numberOfLines={2}>
+                  {item.name}
+                </Text>
+                <Text style={[styles.gridProductStorage, { color: theme.colors.textSecondary }]}>
+                  {item.storage}
+                </Text>
+                <Text style={[styles.gridProductBattery, { color: theme.colors.textSecondary }]}>
+                  Battery: {item.battery}
+                </Text>
+                <Text style={[styles.gridProductPrice, { color: theme.colors.primary }]}>
+                  ${item.price}
+                </Text>
               </TouchableOpacity>
-              <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-                {selectedBrand}
-              </Text>
-              <View style={{ width: 24 }} />
-            </View>
-
-            <FlatList
-              data={brandProducts}
-              numColumns={2}
-              contentContainerStyle={styles.productsGrid}
-              columnWrapperStyle={styles.productRow}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.productGridCard, { backgroundColor: theme.colors.card }]}
-                  onPress={() => handleProductSelect(item)}
-                >
-                  <AIImage 
-                    prompt={item.imagePrompt} 
-                    style={styles.gridProductImage}
-                  />
-                  <Text style={[styles.gridProductName, { color: theme.colors.text }]} numberOfLines={2}>
-                    {item.name}
-                  </Text>
-                  <Text style={[styles.gridProductStorage, { color: theme.colors.textSecondary }]}>
-                    {item.storage}
-                  </Text>
-                  <Text style={[styles.gridProductBattery, { color: theme.colors.textSecondary }]}>
-                    Battery: {item.battery}
-                  </Text>
-                  <Text style={[styles.gridProductPrice, { color: theme.colors.primary }]}>
-                    ${item.price}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              keyExtractor={(item) => item.id}
-            />
-          </ScrollView>
+            )}
+            keyExtractor={(item) => item.id}
+          />
         </SafeAreaView>
       </View>
     );
