@@ -42,6 +42,7 @@ export default function TransactionsScreen() {
             full_name
           )
         `)
+        .or(`from_user_id.eq.${user.id},to_user_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -64,16 +65,66 @@ export default function TransactionsScreen() {
   });
 
   const getTransactionLabel = (tx: Transaction): string => {
-    if (tx.type === 'send') {
-      return tx.to_profile?.email || tx.to_profile?.full_name || 'Unknown';
+    const isSender = tx.from_user_id === user?.id;
+    const txType = tx.type;
+    
+    if (txType === 'send') {
+      return isSender 
+        ? (tx.to_profile?.email || tx.to_profile?.full_name || 'User')
+        : (tx.from_profile?.email || tx.from_profile?.full_name || 'User');
     }
-    if (tx.type === 'receive') {
-      return tx.from_profile?.email || tx.from_profile?.full_name || 'Unknown';
+    if (txType === 'receive') {
+      return isSender
+        ? (tx.to_profile?.email || tx.to_profile?.full_name || 'User')
+        : (tx.from_profile?.email || tx.from_profile?.full_name || 'User');
     }
-    if (tx.type === 'deposit') {
-      return 'Admin';
+    if (txType === 'deposit') {
+      return 'Admin Top-up';
     }
-    return 'System';
+    if (txType === 'purchase_mobile' || txType === 'purchase_card' || txType === 'purchase_giftcard') {
+      return tx.description || 'Shop Purchase';
+    }
+    return tx.description || 'Transaction';
+  };
+
+  const getTransactionTypeLabel = (tx: Transaction): string => {
+    const isSender = tx.from_user_id === user?.id;
+    const txType = tx.type;
+    
+    if (txType === 'send') {
+      return isSender ? 'Sent' : 'Received';
+    }
+    if (txType === 'receive') {
+      return isSender ? 'Sent' : 'Received';
+    }
+    if (txType === 'deposit') {
+      return 'Deposit';
+    }
+    if (txType === 'purchase_mobile') {
+      return 'Mobile';
+    }
+    if (txType === 'purchase_card') {
+      return 'Card';
+    }
+    if (txType === 'purchase_giftcard') {
+      return 'Gift Card';
+    }
+    return String(txType).charAt(0).toUpperCase() + String(txType).slice(1);
+  };
+
+  const formatDateTime = (dateStr: string): { date: string; time: string } => {
+    const date = new Date(dateStr);
+    return {
+      date: date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      }),
+      time: date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }),
+    };
   };
 
   const onRefresh = useCallback(async () => {
@@ -132,46 +183,62 @@ export default function TransactionsScreen() {
         <View style={[styles.tableHeader, { backgroundColor: theme.colors.surface }]}>
           <Text style={[styles.headerCell, styles.headerAmount, { color: theme.colors.text }]}>Amount</Text>
           <Text style={[styles.headerCell, styles.headerType, { color: theme.colors.text }]}>Type</Text>
-          <Text style={[styles.headerCell, styles.headerEmail, { color: theme.colors.text }]}>To/From</Text>
-          <Text style={[styles.headerCell, styles.headerDate, { color: theme.colors.text }]}>Date</Text>
+          <Text style={[styles.headerCell, styles.headerEmail, { color: theme.colors.text }]}>Details</Text>
+          <Text style={[styles.headerCell, styles.headerDate, { color: theme.colors.text }]}>Date/Time</Text>
           <Text style={[styles.headerCell, styles.headerStatus, { color: theme.colors.text }]}>Status</Text>
         </View>
 
         {transactionsQuery.data && transactionsQuery.data.length > 0 ? (
           transactionsQuery.data.map((transaction) => {
-            const type = transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1);
+            const isSender = transaction.from_user_id === user?.id;
+            const typeLabel = getTransactionTypeLabel(transaction);
             const displayLabel = getTransactionLabel(transaction);
             const status = transaction.status || 'completed';
             const amountColor = transaction.amount > 0 ? '#10b981' : '#ef4444';
+            const { date, time } = formatDateTime(transaction.created_at);
             
             return (
               <View key={transaction.id} style={[styles.tableRow, { backgroundColor: theme.colors.card }]}>
-                <Text
-                  style={[
-                    styles.rowCell,
-                    styles.rowAmount,
-                    { color: amountColor },
-                  ]}
-                >
-                  {transaction.amount > 0 ? '+' : ''}${transaction.amount.toFixed(2)}
-                </Text>
-                <Text style={[styles.rowCell, styles.rowType, { color: theme.colors.text }]}>
-                  {type}
-                </Text>
+                <View style={styles.rowAmountContainer}>
+                  <Text
+                    style={[
+                      styles.rowAmount,
+                      { color: amountColor },
+                    ]}
+                  >
+                    {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
+                  </Text>
+                  <Text style={[styles.balanceAfter, { color: theme.colors.textSecondary }]}>
+                    Bal: ${transaction.balance_after?.toFixed(2) || '0.00'}
+                  </Text>
+                </View>
+                <View style={styles.rowTypeContainer}>
+                  <Text style={[styles.rowType, { color: theme.colors.text }]}>
+                    {typeLabel}
+                  </Text>
+                  {(transaction.type === 'send' || transaction.type === 'receive') && (
+                    <Ionicons 
+                      name={isSender ? 'arrow-up' : 'arrow-down'} 
+                      size={12} 
+                      color={isSender ? '#ef4444' : '#10b981'} 
+                    />
+                  )}
+                </View>
                 <Text 
                   style={[styles.rowCell, styles.rowEmail, { color: theme.colors.textSecondary }]}
-                  numberOfLines={1}
-                  ellipsizeMode="middle"
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
                 >
                   {displayLabel}
                 </Text>
-                <Text style={[styles.rowCell, styles.rowDate, { color: theme.colors.textSecondary }]}>
-                  {new Date(transaction.created_at).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </Text>
+                <View style={styles.rowDateContainer}>
+                  <Text style={[styles.rowDate, { color: theme.colors.text }]}>
+                    {date}
+                  </Text>
+                  <Text style={[styles.rowTime, { color: theme.colors.textSecondary }]}>
+                    {time}
+                  </Text>
+                </View>
                 <View style={[styles.rowCell, styles.rowStatus]}>
                   <View
                     style={[
@@ -266,21 +333,42 @@ const styles = StyleSheet.create({
   rowCell: {
     fontSize: 13,
   },
-  rowAmount: {
+  rowAmountContainer: {
     width: 80,
+  },
+  rowAmount: {
     fontWeight: '700' as const,
+    fontSize: 13,
+  },
+  balanceAfter: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  rowTypeContainer: {
+    width: 65,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
   },
   rowType: {
-    width: 65,
     fontWeight: '600' as const,
+    fontSize: 12,
   },
   rowEmail: {
     flex: 1,
-    minWidth: 100,
+    minWidth: 80,
+    fontSize: 11,
+  },
+  rowDateContainer: {
+    width: 70,
   },
   rowDate: {
-    width: 85,
     fontSize: 12,
+    fontWeight: '500' as const,
+  },
+  rowTime: {
+    fontSize: 10,
+    marginTop: 2,
   },
   rowStatus: {
     width: 90,

@@ -1,6 +1,6 @@
 export type KYCStatus = 'not_started' | 'pending' | 'approved' | 'rejected';
 
-export type TransactionType = 'send' | 'receive' | 'deposit';
+export type TransactionType = 'send' | 'receive' | 'deposit' | 'purchase_mobile' | 'purchase_card' | 'purchase_giftcard';
 
 export interface Profile {
   id: string;
