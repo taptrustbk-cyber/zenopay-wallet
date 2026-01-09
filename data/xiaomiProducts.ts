@@ -8,7 +8,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '90–100%',
     price: 310,
-    imageUrl: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/xiaomi-redmi-note-13-pro-5g.jpg',
     is_active: true,
   },
   {
@@ -18,7 +18,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '85–95%',
     price: 260,
-    imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/xiaomi-redmi-note-13-5g.jpg',
     is_active: true,
   },
   {
@@ -28,7 +28,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 180,
-    imageUrl: 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/xiaomi-redmi-13c.jpg',
     is_active: true,
   },
   {
@@ -38,7 +38,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 620,
-    imageUrl: 'https://images.unsplash.com/photo-1605236453806-6ff36851218e?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/xiaomi-13-pro.jpg',
     is_active: true,
   },
   {
@@ -48,7 +48,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 480,
-    imageUrl: 'https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/xiaomi-13t.jpg',
     is_active: true,
   },
   {
@@ -58,7 +58,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '88–98%',
     price: 690,
-    imageUrl: 'https://images.unsplash.com/photo-1580910051074-3eb694886f2b?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/xiaomi-14.jpg',
     is_active: true,
   },
   {
@@ -68,7 +68,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '512GB',
     battery: '90–100%',
     price: 820,
-    imageUrl: 'https://images.unsplash.com/photo-1533228100845-08145b01de14?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/xiaomi-14-pro.jpg',
     is_active: true,
   },
   {
@@ -78,7 +78,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '90–100%',
     price: 350,
-    imageUrl: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/xiaomi-poco-x6-pro.jpg',
     is_active: true,
   },
   {
@@ -88,7 +88,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 420,
-    imageUrl: 'https://images.unsplash.com/photo-1556656793-08538906a9f8?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/xiaomi-poco-f5.jpg',
     is_active: true,
   },
   {
@@ -98,7 +98,7 @@ export const xiaomiProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '88–98%',
     price: 560,
-    imageUrl: 'https://images.unsplash.com/photo-1512054502232-10a0a035d672?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/xiaomi-redmi-k70.jpg',
     is_active: true,
   },
 ];

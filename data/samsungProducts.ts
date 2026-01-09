@@ -8,7 +8,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 700,
-    imageUrl: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/samsung-galaxy-s24-ultra-5g.jpg',
     is_active: true,
   },
   {
@@ -18,7 +18,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 620,
-    imageUrl: 'https://images.unsplash.com/photo-1678911820864-e2c567c655d7?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/samsung-galaxy-s23-ultra-5g.jpg',
     is_active: true,
   },
   {
@@ -28,7 +28,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 520,
-    imageUrl: 'https://images.unsplash.com/photo-1678911820867-a81d93f8c7d7?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/samsung-galaxy-s23-plus-5g.jpg',
     is_active: true,
   },
   {
@@ -38,7 +38,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '75–85%',
     price: 480,
-    imageUrl: 'https://images.unsplash.com/photo-1644501635467-84a8ad74bfca?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/samsung-galaxy-s22-ultra-5g.jpg',
     is_active: true,
   },
   {
@@ -48,7 +48,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '75–85%',
     price: 420,
-    imageUrl: 'https://images.unsplash.com/photo-1645226880663-81561dcab54e?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/samsung-galaxy-s22-plus-5g.jpg',
     is_active: true,
   },
   {
@@ -58,7 +58,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 320,
-    imageUrl: 'https://images.unsplash.com/photo-1585060544812-6b45742d762f?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/samsung-galaxy-a55.jpg',
     is_active: true,
   },
   {
@@ -68,7 +68,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '85–95%',
     price: 290,
-    imageUrl: 'https://images.unsplash.com/photo-1609081219090-a6d81d3085bf?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/samsung-galaxy-a54.jpg',
     is_active: true,
   },
   {
@@ -78,7 +78,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 240,
-    imageUrl: 'https://images.unsplash.com/photo-1596742578443-7682ef5251cd?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/samsung-galaxy-a35.jpg',
     is_active: true,
   },
   {
@@ -88,7 +88,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '64GB',
     battery: '90–100%',
     price: 190,
-    imageUrl: 'https://images.unsplash.com/photo-1565849904461-04a58ad377e0?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/samsung-galaxy-a25.jpg',
     is_active: true,
   },
   {
@@ -98,7 +98,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 680,
-    imageUrl: 'https://images.unsplash.com/photo-1628744876497-eb30460be9f6?w=400&q=80',
+    imageUrl: 'https://fdn2.gsmarena.com/vv/bigpic/samsung-galaxy-z-flip5.jpg',
     is_active: true,
   },
 ];
