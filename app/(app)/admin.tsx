@@ -440,8 +440,8 @@ export default function AdminScreen() {
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('❌ Error fetching orders:', error);
-        throw error;
+        console.error('❌ Error fetching orders:', JSON.stringify(error, null, 2));
+        throw new Error(error.message || 'Failed to fetch orders');
       }
       
       console.log('✅ Fetched orders:', data?.length || 0);
@@ -496,24 +496,44 @@ export default function AdminScreen() {
           type,
           description,
           created_at,
-          receiver:receiver_id (
-            email,
-            full_name
-          ),
-          related:related_user_id (
-            email,
-            full_name
-          )
+          from_user_id,
+          to_user_id
         `)
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('❌ Error fetching transactions:', error);
-        throw error;
+        console.error('❌ Error fetching transactions:', JSON.stringify(error, null, 2));
+        throw new Error(error.message || 'Failed to fetch transactions');
       }
+
+      const userIds = new Set<string>();
+      data?.forEach((tx: any) => {
+        if (tx.from_user_id) userIds.add(tx.from_user_id);
+        if (tx.to_user_id) userIds.add(tx.to_user_id);
+      });
+
+      let profilesMap: Record<string, any> = {};
+      if (userIds.size > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .in('id', Array.from(userIds));
+        
+        if (profiles) {
+          profiles.forEach((p: any) => {
+            profilesMap[p.id] = p;
+          });
+        }
+      }
+
+      const enrichedData = data?.map((tx: any) => ({
+        ...tx,
+        receiver: profilesMap[tx.to_user_id] || null,
+        related: profilesMap[tx.from_user_id] || null,
+      })) || [];
       
-      console.log('✅ Fetched transactions:', data?.length || 0);
-      return data || [];
+      console.log('✅ Fetched transactions:', enrichedData.length);
+      return enrichedData;
     },
     enabled: selectedTab === 'transactions',
   });
