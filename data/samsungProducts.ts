@@ -8,7 +8,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 700,
-    imagePrompt: 'Samsung Galaxy S24 Ultra front and back realistic product image, studio lighting, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=400&q=80',
     is_active: true,
   },
   {
@@ -18,7 +18,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 620,
-    imagePrompt: 'Samsung Galaxy S23 Ultra professional product photography, studio lighting, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1678911820864-e2c567c655d7?w=400&q=80',
     is_active: true,
   },
   {
@@ -28,7 +28,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '80–90%',
     price: 520,
-    imagePrompt: 'Samsung Galaxy S23 Plus realistic product photo, studio lighting, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1678911820867-a81d93f8c7d7?w=400&q=80',
     is_active: true,
   },
   {
@@ -38,7 +38,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '75–85%',
     price: 480,
-    imagePrompt: 'Samsung Galaxy S22 Ultra product image, professional photography, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1644501635467-84a8ad74bfca?w=400&q=80',
     is_active: true,
   },
   {
@@ -48,7 +48,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '75–85%',
     price: 420,
-    imagePrompt: 'Samsung Galaxy S22 Plus realistic product photo, studio lighting, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1645226880663-81561dcab54e?w=400&q=80',
     is_active: true,
   },
   {
@@ -58,7 +58,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 320,
-    imagePrompt: 'Samsung Galaxy A55 product photography, studio lighting, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1585060544812-6b45742d762f?w=400&q=80',
     is_active: true,
   },
   {
@@ -68,7 +68,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '85–95%',
     price: 290,
-    imagePrompt: 'Samsung Galaxy A54 realistic product image, professional lighting, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1609081219090-a6d81d3085bf?w=400&q=80',
     is_active: true,
   },
   {
@@ -78,7 +78,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '90–100%',
     price: 240,
-    imagePrompt: 'Samsung Galaxy A35 product photo, studio lighting, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1596742578443-7682ef5251cd?w=400&q=80',
     is_active: true,
   },
   {
@@ -88,7 +88,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '64GB',
     battery: '90–100%',
     price: 190,
-    imagePrompt: 'Samsung Galaxy A25 realistic product photography, studio lighting, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1565849904461-04a58ad377e0?w=400&q=80',
     is_active: true,
   },
   {
@@ -98,7 +98,7 @@ export const samsungProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '85–95%',
     price: 680,
-    imagePrompt: 'Samsung Galaxy Z Flip 5 folded and unfolded views, premium product photography, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1628744876497-eb30460be9f6?w=400&q=80',
     is_active: true,
   },
 ];

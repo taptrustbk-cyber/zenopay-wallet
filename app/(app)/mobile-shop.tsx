@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, FlatList } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, FlatList, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -8,7 +8,7 @@ import React from 'react';
 import { iphoneProducts, MobileProduct } from '@/data/iphoneProducts';
 import { samsungProducts } from '@/data/samsungProducts';
 import { xiaomiProducts } from '@/data/xiaomiProducts';
-import AIImage from '@/components/AIImage';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -181,9 +181,10 @@ export default function MobileShopScreen() {
             </View>
 
             <View style={[styles.productImageCard, { backgroundColor: theme.colors.card }]}>
-              <AIImage 
-                prompt={selectedProduct.imagePrompt} 
+              <Image 
+                source={{ uri: selectedProduct.imageUrl }} 
                 style={styles.productImage}
+                resizeMode="contain"
               />
             </View>
 
@@ -384,9 +385,10 @@ export default function MobileShopScreen() {
                 style={[styles.productGridCard, { backgroundColor: theme.colors.card }]}
                 onPress={() => handleProductSelect(item)}
               >
-                <AIImage 
-                  prompt={item.imagePrompt} 
+                <Image 
+                  source={{ uri: item.imageUrl }} 
                   style={styles.gridProductImage}
+                  resizeMode="contain"
                 />
                 <Text style={[styles.gridProductName, { color: theme.colors.text }]} numberOfLines={2}>
                   {item.name}

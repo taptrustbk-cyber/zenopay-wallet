@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
@@ -214,10 +214,10 @@ export default function DashboardScreen() {
               onPress={() => router.push('/(app)/sim-cards' as any)}
             >
               <View style={[styles.shopCardIcon, { backgroundColor: 'rgba(59, 130, 246, 0.2)' }]}>
-                <MaterialIcons name="sim-card" size={28} color="#60A5FA" />
+                <Ionicons name="card" size={28} color="#60A5FA" />
               </View>
               <Text style={styles.shopCardLabel}>
-                {i18n.t('internetSim')}
+                Top-Up Cards
               </Text>
               <View style={styles.shopCardArrow}>
                 <Ionicons name="chevron-forward" size={18} color="#60A5FA" />
@@ -232,7 +232,7 @@ export default function DashboardScreen() {
                 <Ionicons name="gift" size={28} color="#10B981" />
               </View>
               <Text style={styles.shopCardLabel}>
-                {i18n.t('giftCards')}
+                Gift Cards
               </Text>
               <View style={styles.shopCardArrow}>
                 <Ionicons name="chevron-forward" size={18} color="#10B981" />
@@ -246,10 +246,10 @@ export default function DashboardScreen() {
               onPress={() => router.push('/(app)/mobile-shop' as any)}
             >
               <View style={[styles.shopCardIcon, { backgroundColor: 'rgba(245, 158, 11, 0.2)' }]}>
-                <FontAwesome5 name="mobile-alt" size={28} color="#F59E0B" />
+                <Ionicons name="phone-portrait" size={28} color="#F59E0B" />
               </View>
               <Text style={styles.shopCardLabel}>
-                {i18n.t('mobileShop')}
+                Mobile Shop
               </Text>
               <View style={styles.shopCardArrow}>
                 <Ionicons name="chevron-forward" size={18} color="#F59E0B" />
@@ -264,7 +264,7 @@ export default function DashboardScreen() {
                 <Ionicons name="airplane" size={28} color="#8B5CF6" />
               </View>
               <Text style={styles.shopCardLabel}>
-                {i18n.t('travelBooking')}
+                Travel Booking
               </Text>
               <View style={styles.shopCardArrow}>
                 <Ionicons name="chevron-forward" size={18} color="#8B5CF6" />

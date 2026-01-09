@@ -5,7 +5,7 @@ export interface MobileProduct {
   storage: string;
   battery: string;
   price: number;
-  imagePrompt: string;
+  imageUrl: string;
   is_active?: boolean;
 }
 
@@ -17,7 +17,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 280,
-    imagePrompt: 'iPhone 13 front and back view, studio lighting, realistic product photography, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1632633173522-47456de71b76?w=400&q=80',
     is_active: true,
   },
   {
@@ -27,7 +27,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 380,
-    imagePrompt: 'iPhone 13 Pro front and back, realistic product photo, professional lighting, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1639149888905-fb39731f2e6c?w=400&q=80',
     is_active: true,
   },
   {
@@ -37,7 +37,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 430,
-    imagePrompt: 'iPhone 13 Pro Max front and back, premium lighting, studio photography, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1638038772924-ef79cce2426d?w=400&q=80',
     is_active: true,
   },
   {
@@ -47,7 +47,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 450,
-    imagePrompt: 'iPhone 14 Pro realistic product image, studio lighting, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1678685888221-cda773a3dcdb?w=400&q=80',
     is_active: true,
   },
   {
@@ -57,7 +57,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 580,
-    imagePrompt: 'iPhone 14 Pro Max realistic product image, professional photography, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=400&q=80',
     is_active: true,
   },
   {
@@ -67,7 +67,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 350,
-    imagePrompt: 'iPhone 15 realistic product image, studio lighting, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1696446701796-da61225697cc?w=400&q=80',
     is_active: true,
   },
   {
@@ -77,7 +77,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 550,
-    imagePrompt: 'iPhone 15 Pro realistic product image, professional photography, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1695048133098-c12a0c5bc9a4?w=400&q=80',
     is_active: true,
   },
   {
@@ -87,7 +87,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '128GB',
     battery: '80–90%',
     price: 700,
-    imagePrompt: 'iPhone 15 Pro Max realistic product image, premium studio lighting, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1710023038502-db32d5c0c0e8?w=400&q=80',
     is_active: true,
   },
   {
@@ -97,7 +97,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '88–100%',
     price: 810,
-    imagePrompt: 'iPhone 16 Pro front and back, realistic photography, studio lighting, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1727447067909-4aba15562d8c?w=400&q=80',
     is_active: true,
   },
   {
@@ -107,7 +107,7 @@ export const iphoneProducts: MobileProduct[] = [
     storage: '256GB',
     battery: '88–100%',
     price: 900,
-    imagePrompt: 'iPhone 16 Pro Max premium realistic image, professional studio photography, white background',
+    imageUrl: 'https://images.unsplash.com/photo-1729763119973-a5cb55191d1b?w=400&q=80',
     is_active: true,
   },
 ];
