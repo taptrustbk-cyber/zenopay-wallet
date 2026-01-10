@@ -13,6 +13,11 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "web": {
+  "bundler": "metro",
+  "output": "single",
+  "favicon": "./assets/images/favicon.png"
+},
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.rork.zenopay-wallet",
