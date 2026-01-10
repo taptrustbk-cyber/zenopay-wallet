@@ -14,10 +14,8 @@
       "backgroundColor": "#ffffff"
     },
     "web": {
-  "bundler": "metro",
-  "output": "single",
-  "favicon": "./assets/images/favicon.png"
-},
+      "favicon": "./assets/images/favicon.png"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.rork.zenopay-wallet",
@@ -43,9 +41,6 @@
         "WRITE_EXTERNAL_STORAGE",
         "INTERNET"
       ]
-    },
-    "web": {
-      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       [
