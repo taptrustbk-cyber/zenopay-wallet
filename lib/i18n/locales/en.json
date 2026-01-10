@@ -1,0 +1,30 @@
+{
+  "home": "Home",
+  "send": "Send",
+  "sendMoney": "Send Money",
+  "deposit": "Deposit",
+  "withdraw": "Withdraw",
+  "transactions": "Transactions",
+  "settings": "Settings",
+  "retry": "Retry",
+
+  "accountBalance": "Account Balance",
+  "accountStatusActive": "Account Active",
+  "failedToLoadBalance": "Failed to load balance",
+
+  "marketShop": "Market Shop",
+  "marketShopSubtitle": "Top up, gift cards, mobile recharge and travel booking",
+
+  "market": {
+    "topup": "Top-Up Cards",
+    "gift": "Gift Cards",
+    "mobile": "Mobile Recharge",
+    "travel": "Travel Booking"
+  },
+
+  "giftCards": "Gift Cards",
+  "onlineGiftCards": "Online Gift Cards",
+  "selectGiftCard": "Select a Gift Card",
+
+  "consulateInfo": "Consulate Info"
+}

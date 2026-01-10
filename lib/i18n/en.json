@@ -1,0 +1,26 @@
+{
+  "home": "Home",
+  "send": "Send",
+  "settings": "Settings",
+  "consulateInfo": "Consulate Info",
+
+  "accountBalance": "Account Balance",
+  "accountStatusActive": "Account Active",
+  "failedToLoadBalance": "Failed to load balance",
+  "retry": "Retry",
+
+  "sendMoney": "Send Money",
+  "deposit": "Deposit",
+  "withdraw": "Withdraw",
+  "transactions": "Transactions",
+
+  "marketShop": "Market Shop",
+  "marketShopSubtitle": "Buy cards, gift cards, mobile credit and travel safely",
+
+  "market": {
+    "topup": "Top Up",
+    "gift": "Gift Cards",
+    "mobile": "Mobile Credit",
+    "travel": "Travel & Flights"
+  }
+}
