@@ -5,26 +5,36 @@
   "deposit": "Deposit",
   "withdraw": "Withdraw",
   "transactions": "Transactions",
-  "settings": "Settings",
   "retry": "Retry",
+  "back": "Back",
+  "settings": "Settings",
 
   "accountBalance": "Account Balance",
   "accountStatusActive": "Account Active",
   "failedToLoadBalance": "Failed to load balance",
 
   "marketShop": "Market Shop",
-  "marketShopSubtitle": "Top up, gift cards, mobile recharge and travel booking",
+  "marketShopSubtitle": "Digital services & online purchases",
 
   "market": {
-    "topup": "Top-Up Cards",
+    "topup": "Top Up",
     "gift": "Gift Cards",
-    "mobile": "Mobile Recharge",
+    "mobile": "Mobile Shop",
     "travel": "Travel Booking"
   },
 
+  "simCards": "SIM Cards",
   "giftCards": "Gift Cards",
-  "onlineGiftCards": "Online Gift Cards",
-  "selectGiftCard": "Select a Gift Card",
+  "mobileShop": "Mobile Shop",
+  "travelBooking": "Travel Booking",
 
-  "consulateInfo": "Consulate Info"
+  "kycVerificationRequired": "KYC Verification Required",
+  "kycPendingMessage": "Your documents are under review",
+  "whatsNext": "What happens next?",
+  "kycNextSteps": "Our team will review your documents shortly",
+  "documentsSecure": "Your documents are encrypted and secure",
+  "signOut": "Sign Out",
+
+
+  "consulateInfo": "Consulate Information"
 }
