@@ -4,9 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const i18n = new I18n({
   en: {
     'market.topup': 'Top-Up Cards',
+    topupcards: 'TopUp Cards
     'market.gift': 'Gift Cards',
+    giftCards: 'Gift Cards',
     'market.mobile': 'Mobile Shop',
+    mobileShop: 'Mobile Shop',
     'market.travel': 'Travel Booking',
+    travelBooking: 'Travel Booking',
     'transactions.loadError': 'Failed to load transactions',
     'transactions.empty': 'No transactions yet',
     errorLoadingTransactions: 'Unable to load your transactions. Please try again.',
