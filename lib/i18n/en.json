@@ -15,12 +15,11 @@
   "transactions": "Transactions",
 
   "marketShop": "Market Shop",
-  "marketShopSubtitle": "Buy cards, gift cards, mobile credit and travel safely",
+  "marketShopSubtitle": "Top up, gift cards, mobile recharge and travel booking",
 
-  "market": {
-    "topup": "Top Up",
-    "gift": "Gift Cards",
-    "mobile": "Mobile Credit",
-    "travel": "Travel & Flights"
-  }
+"market": {
+  "topup": "Top-Up Cards",
+  "gift": "Gift Cards",
+  "mobile": "Mobile Recharge",
+  "travel": "Travel Booking"
 }
