@@ -2,6 +2,7 @@
   "home": "Home",
   "send": "Send",
   "sendMoney": "Send Money",
+  "receiveMoney": "Receive Money",
   "deposit": "Deposit",
   "withdraw": "Withdraw",
   "transactions": "Transactions",
@@ -10,31 +11,52 @@
   "settings": "Settings",
 
   "accountBalance": "Account Balance",
-  "accountStatusActive": "Account Active",
+  "accountStatusActive": "Account Status: Active",
   "failedToLoadBalance": "Failed to load balance",
 
+  "balance": "Balance",
+  "recentTransactions": "Recent Transactions",
+  "noTransactions": "No transactions yet",
+
   "marketShop": "Market Shop",
-  "marketShopSubtitle": "Digital services & online purchases",
+  "marketShopSubtitle": "Buy cards, gift cards, phones & travel safely",
 
   "market": {
-    "topup": "Top Up",
+    "topup": "Top-Up Cards",
     "gift": "Gift Cards",
     "mobile": "Mobile Shop",
     "travel": "Travel Booking"
   },
 
   "simCards": "SIM Cards",
+  "internetSim": "Internet & SIM",
   "giftCards": "Gift Cards",
   "mobileShop": "Mobile Shop",
   "travelBooking": "Travel Booking",
+
+  "buyNow": "Buy Now",
+  "comingSoon": "Coming Soon",
+  "comingSoonFeature": "This feature is coming soon",
 
   "kycVerificationRequired": "KYC Verification Required",
   "kycPendingMessage": "Your documents are under review",
   "whatsNext": "What happens next?",
   "kycNextSteps": "Our team will review your documents shortly",
   "documentsSecure": "Your documents are encrypted and secure",
+
+  "verifiedAccount": "Verified Account",
+  "accountActive": "Account Active",
+
+  "consulateInfo": "Consulate Information",
+  "consulate": "Consulate",
+
+  "support": "Support",
   "signOut": "Sign Out",
 
+  "error": "Error",
+  "success": "Success",
+  "cancel": "Cancel",
+  "confirm": "Confirm"
+}
 
-  "consulateInfo": "Consulate Information"
 }
