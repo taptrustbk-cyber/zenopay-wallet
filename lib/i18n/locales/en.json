@@ -2,7 +2,6 @@
   "home": "Home",
   "send": "Send",
   "sendMoney": "Send Money",
-  "receiveMoney": "Receive Money",
   "deposit": "Deposit",
   "withdraw": "Withdraw",
   "transactions": "Transactions",
@@ -11,32 +10,28 @@
   "settings": "Settings",
 
   "accountBalance": "Account Balance",
-  "accountStatusActive": "Account Status: Active",
+  "accountStatusActive": "Account Active",
   "failedToLoadBalance": "Failed to load balance",
 
-  "balance": "Balance",
-  "recentTransactions": "Recent Transactions",
-  "noTransactions": "No transactions yet",
-
   "marketShop": "Market Shop",
-  "marketShopSubtitle": "Buy cards, gift cards, phones & travel safely",
+  "marketShopSubtitle": "Digital services & online purchases",
 
-  "market": {
-    "topup": "Top-Up Cards",
-    "gift": "Gift Cards",
-    "mobile": "Mobile Shop",
-    "travel": "Travel Booking"
-  },
+  "market.topup": "Top-Up Cards",
+  "market.gift": "Gift Cards",
+  "market.mobile": "Mobile Shop",
+  "market.travel": "Travel Booking",
 
   "simCards": "SIM Cards",
-  "internetSim": "Internet & SIM",
   "giftCards": "Gift Cards",
   "mobileShop": "Mobile Shop",
   "travelBooking": "Travel Booking",
 
-  "buyNow": "Buy Now",
-  "comingSoon": "Coming Soon",
-  "comingSoonFeature": "This feature is coming soon",
+  "travelBookingInfo": "Book hotels, flights, car rentals, and train tickets through our trusted partners.",
+  "travelBookingSafe": "You will be redirected to secure external booking platforms.",
+
+  "error": "Error",
+  "cannotOpenLink": "Cannot open this link",
+  "failedToOpenLink": "Failed to open the link",
 
   "kycVerificationRequired": "KYC Verification Required",
   "kycPendingMessage": "Your documents are under review",
@@ -44,19 +39,6 @@
   "kycNextSteps": "Our team will review your documents shortly",
   "documentsSecure": "Your documents are encrypted and secure",
 
-  "verifiedAccount": "Verified Account",
-  "accountActive": "Account Active",
-
-  "consulateInfo": "Consulate Information",
-  "consulate": "Consulate",
-
-  "support": "Support",
   "signOut": "Sign Out",
-
-  "error": "Error",
-  "success": "Success",
-  "cancel": "Cancel",
-  "confirm": "Confirm"
-}
-
+  "consulateInfo": "Consulate Information"
 }
