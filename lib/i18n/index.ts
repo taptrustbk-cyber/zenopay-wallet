@@ -1,20 +1,51 @@
-import i18n from 'i18n-js';
+import { I18n } from 'i18n-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Localization from 'expo-localization';
 
 import en from './locales/en.json';
 import ar from './locales/ar.json';
 import ckb from './locales/ckb.json';
+import kmr from './locales/kmr.json';
 
-i18n.translations = {
+const i18n = new I18n({
   en,
   ar,
   ckb,
+  kmr,
+});
+
+i18n.locale = 'en';
+i18n.enableFallback = true;
+
+export const loadStoredLanguage = async () => {
+  try {
+    const stored = await AsyncStorage.getItem('language');
+    if (stored) {
+      i18n.locale = stored;
+      console.log('🌍 Loaded language:', stored);
+    } else {
+      const deviceLocale = Localization.locale.split('-')[0];
+      if (['en', 'ar', 'ckb', 'kmr'].includes(deviceLocale)) {
+        i18n.locale = deviceLocale;
+      }
+    }
+  } catch (error) {
+    console.error('Error loading language:', error);
+  }
 };
 
-i18n.locale = Localization.locale.split('-')[0]; // en-US → en
-i18n.fallbacks = true;
+export const setLanguage = async (locale: string) => {
+  try {
+    i18n.locale = locale;
+    await AsyncStorage.setItem('language', locale);
+    console.log('🌍 Language changed to:', locale);
+  } catch (error) {
+    console.error('Error saving language:', error);
+  }
+};
 
-console.log('🌍 i18n locale:', i18n.locale);
-console.log('🧩 market.topup =', i18n.t('market.topup'));
+export const getCurrentLanguage = () => i18n.locale;
+
+console.log('🌍 i18n initialized');
 
 export default i18n;
