@@ -218,7 +218,7 @@ export default function DashboardScreen() {
                 <Ionicons name="wallet" size={32} color="#FFFFFF" />
               </View>
               <Text style={styles.marketCardTitle}>
-                Top-Up Cards
+                {i18n.t('market.topup')}
                </Text>
               <View style={styles.marketCardArrow}>
                 <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
@@ -234,7 +234,7 @@ export default function DashboardScreen() {
                 <Ionicons name="gift" size={32} color="#FFFFFF" />
               </View>
               <Text style={styles.marketCardTitle}>
-               Gift Cards
+               {i18n.t('market.gift')}
               </Text>
 
               <View style={styles.marketCardArrow}>
@@ -251,7 +251,7 @@ export default function DashboardScreen() {
                 <Ionicons name="phone-portrait" size={32} color="#FFFFFF" />
               </View>
               <Text style={styles.marketCardTitle}>
-                Mobile Shop
+                {i18n.t('market.mobile')}
               </Text>
 
               <View style={styles.marketCardArrow}>
@@ -268,7 +268,7 @@ export default function DashboardScreen() {
                 <Ionicons name="airplane" size={32} color="#FFFFFF" />
               </View>
               <Text style={styles.marketCardTitle}>
-               Travel Booking
+               {i18n.t('market.travel')}
               </Text>
 
               <View style={styles.marketCardArrow}>
