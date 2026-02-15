@@ -123,5 +123,17 @@
 
   "signOut": "Sign Out",
   "consulateInfo": "Consulate Info",
-  "privacyPolicy": "Privacy Policy"
+  "privacyPolicy": "Privacy Policy",
+
+  "language": "Language",
+  "support": "Support",
+  "profile": "Profile",
+  "darkMode": "Dark Mode",
+  "lightMode": "Light Mode",
+  "security": "Security",
+  "termsConditions": "Terms & Conditions",
+  "adminPanel": "Admin Panel",
+
+  "internetSim": "Internet & SIM Cards",
+  "selectSimCard": "Select a card below"
 }

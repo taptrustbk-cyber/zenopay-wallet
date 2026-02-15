@@ -1,6 +1,5 @@
 import { I18n } from 'i18n-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Localization from 'expo-localization';
 
 import en from './locales/en.json';
 import ar from './locales/ar.json';
@@ -23,11 +22,6 @@ export const loadStoredLanguage = async () => {
     if (stored) {
       i18n.locale = stored;
       console.log('🌍 Loaded language:', stored);
-    } else {
-      const deviceLocale = Localization.locale.split('-')[0];
-      if (['en', 'ar', 'ckb', 'kmr'].includes(deviceLocale)) {
-        i18n.locale = deviceLocale;
-      }
     }
   } catch (error) {
     console.error('Error loading language:', error);

@@ -123,5 +123,17 @@
 
   "signOut": "تسجيل الخروج",
   "consulateInfo": "معلومات القنصلية",
-  "privacyPolicy": "سياسة الخصوصية"
+  "privacyPolicy": "سياسة الخصوصية",
+
+  "language": "اللغة",
+  "support": "الدعم",
+  "profile": "الملف الشخصي",
+  "darkMode": "الوضع الداكن",
+  "lightMode": "الوضع الفاتح",
+  "security": "الأمان",
+  "termsConditions": "الشروط والأحكام",
+  "adminPanel": "لوحة الإدارة",
+
+  "internetSim": "الإنترنت وبطاقات SIM",
+  "selectSimCard": "اختر بطاقة أدناه"
 }

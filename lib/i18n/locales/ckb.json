@@ -123,5 +123,17 @@
 
   "signOut": "دەرچوون",
   "consulateInfo": "زانیاری کۆنسوڵخانە",
-  "privacyPolicy": "سیاسەتی تایبەتێتی"
+  "privacyPolicy": "سیاسەتی تایبەتێتی",
+
+  "language": "زمان",
+  "support": "پشتگیری",
+  "profile": "پڕۆفایل",
+  "darkMode": "دۆخی تاریک",
+  "lightMode": "دۆخی ڕووناک",
+  "security": "ئاسایش",
+  "termsConditions": "مەرج و ڕێساکان",
+  "adminPanel": "پانێڵی بەڕێوەبەر",
+
+  "internetSim": "ئینتەرنێت و کارتی SIM",
+  "selectSimCard": "کارتێک لە خوارەوە هەڵبژێرە"
 }
