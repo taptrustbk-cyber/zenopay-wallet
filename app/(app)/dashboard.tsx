@@ -176,7 +176,6 @@ export default function DashboardScreen() {
               activeOpacity={0.85}
               onPress={() => router.push('/(app)/ai-chat' as any)}
             >
-              {/* chat/support icon */}
               <Ionicons name="chatbubbles" size={22} color={UI.iconGray} />
             </TouchableOpacity>
 
@@ -243,10 +242,26 @@ export default function DashboardScreen() {
 
         {/* 4 round action buttons row */}
         <View style={styles.quickRow}>
-          <ActionCircle icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
-          <ActionCircle icon="cash" label={i18n.t('withdraw')} onPress={() => router.push('/(app)/withdraw' as any)} />
-          <ActionCircle icon="download" label={i18n.t('deposit')} onPress={() => router.push('/(app)/receive' as any)} />
-          <ActionCircle icon="receipt" label={i18n.t('transactions')} onPress={() => router.push('/(app)/transactions' as any)} />
+          <ActionCircle
+            icon="send"
+            label={i18n.t('send')}
+            onPress={() => router.push('/(app)/send' as any)}
+          />
+          <ActionCircle
+            icon="cash"
+            label={i18n.t('withdraw')}
+            onPress={() => router.push('/(app)/withdraw' as any)}
+          />
+          <ActionCircle
+            icon="download"
+            label={i18n.t('deposit')}
+            onPress={() => router.push('/(app)/receive' as any)}
+          />
+          <ActionCircle
+            icon="receipt"
+            label={i18n.t('transactions')}
+            onPress={() => router.push('/(app)/transactions' as any)}
+          />
         </View>
 
         {/* ✅ Ramadan offer banner (translated) */}
@@ -268,11 +283,7 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        <View style={styles.dotsRow}>
-          <View style={styles.dotActive} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-        </View>
+        {/* ❌ Removed dotsRow (3 icons/dots under blue box) */}
 
         {/* Market Shop section */}
         <View style={styles.marketLightCard}>
@@ -335,7 +346,11 @@ export default function DashboardScreen() {
       <View style={[styles.bottomNav, { borderColor: UI.border, backgroundColor: UI.card }]}>
         <NavItem icon="home" label={i18n.t('home')} active onPress={() => {}} />
         <NavItem icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
-        <NavItem icon="chatbox" label={i18n.t('consulateInfo')} onPress={() => router.push('/(app)/consulate' as any)} />
+        <NavItem
+          icon="chatbox"
+          label={i18n.t('consulateInfo')}
+          onPress={() => router.push('/(app)/consulate' as any)}
+        />
         <NavItem icon="settings" label={i18n.t('settings')} onPress={() => router.push('/(app)/settings' as any)} />
       </View>
     </View>
@@ -353,7 +368,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerName: { fontSize: 18, fontWeight: '700', color: UI.text },
+  headerName: { fontSize: 19, fontWeight: '800', color: UI.text },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 
   headerIconBtn: {
@@ -377,10 +392,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  balanceTitle: { color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '600' },
+  // +1 size + bolder
+  balanceTitle: { color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: '800' },
   balanceRightRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 
-  // ✅ $ icon circle
   dollarCircle: {
     width: 36,
     height: 36,
@@ -400,8 +415,8 @@ const styles = StyleSheet.create({
   },
 
   balanceValueRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 12 },
-  balanceValue: { fontSize: 44, fontWeight: '800', color: '#fff' },
-  balanceCurrency: { fontSize: 16, color: 'rgba(255,255,255,0.9)', paddingBottom: 8 },
+  balanceValue: { fontSize: 44, fontWeight: '900', color: '#fff' },
+  balanceCurrency: { fontSize: 17, fontWeight: '800', color: 'rgba(255,255,255,0.9)', paddingBottom: 8 },
 
   quickRow: {
     flexDirection: 'row',
@@ -418,9 +433,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quickLabel: { marginTop: 8, fontSize: 12, color: UI.text, textAlign: 'center' },
+  // +1 size + bolder
+  quickLabel: { marginTop: 8, fontSize: 13, fontWeight: '800', color: UI.text, textAlign: 'center' },
 
-  // ✅ Banner
   banner: {
     marginHorizontal: 16,
     marginTop: 16,
@@ -438,12 +453,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bannerTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
-  bannerSub: { color: 'rgba(255,255,255,0.95)', marginTop: 6, fontSize: 13, lineHeight: 18 },
-
-  dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 10 },
-  dotActive: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#374151' },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#D1D5DB' },
+  bannerTitle: { color: '#fff', fontSize: 19, fontWeight: '900' },
+  // +1 size + bolder
+  bannerSub: { color: 'rgba(255,255,255,0.95)', marginTop: 6, fontSize: 14, fontWeight: '700', lineHeight: 19 },
 
   marketLightCard: {
     marginHorizontal: 16,
@@ -455,8 +467,9 @@ const styles = StyleSheet.create({
     borderColor: UI.border,
   },
   marketHeader: { marginBottom: 12 },
-  marketTitle: { fontSize: 18, fontWeight: '800', color: UI.text },
-  marketSub: { marginTop: 6, color: UI.text2, fontSize: 13, lineHeight: 18 },
+  marketTitle: { fontSize: 19, fontWeight: '900', color: UI.text },
+  // +1 size + bolder
+  marketSub: { marginTop: 6, color: UI.text2, fontSize: 14, fontWeight: '700', lineHeight: 19 },
 
   marketMiniGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
   marketMiniItem: {
@@ -478,10 +491,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  marketMiniLabel: { color: UI.text, fontSize: 13, fontWeight: '700', flex: 1 },
+  // +1 size + bolder
+  marketMiniLabel: { color: UI.text, fontSize: 14, fontWeight: '800', flex: 1 },
 
   errorContainer: { alignItems: 'center', paddingVertical: 20, gap: 10 },
-  errorTextLight: { color: '#fff', textAlign: 'center', fontWeight: '700' },
+  errorTextLight: { color: '#fff', textAlign: 'center', fontWeight: '800', fontSize: 14 },
   retryButton: {
     backgroundColor: 'rgba(255,255,255,0.18)',
     paddingHorizontal: 18,
@@ -490,9 +504,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
   },
-  retryText: { color: '#fff', fontWeight: '800' },
+  retryText: { color: '#fff', fontWeight: '900', fontSize: 14 },
 
   bottomNav: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 12, borderTopWidth: 1 },
   navItem: { alignItems: 'center' },
-  navText: { color: '#9CA3AF', fontSize: 12, marginTop: 4 },
+  // +1 size + bolder
+  navText: { color: '#9CA3AF', fontSize: 13, fontWeight: '800', marginTop: 4 },
 });
