@@ -24,7 +24,7 @@ import * as Clipboard from 'expo-clipboard';
 
 const CRYPTO_ADDRESSES = {
   BTC: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-  USDT_TRC20: 'TWY5s5bc2LjvLQVrs7TCPv6WwJdc9coBby',
+  USDT_TRC20: 'TX5rcy8dZJ259igNNebcyyaVn7hWLkjxzY',
   XRP: 'rN7n7otQDd6FczFgLdlqtyMVrn3HMgk5j',
   DOGE: 'DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L',
   ETH: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
