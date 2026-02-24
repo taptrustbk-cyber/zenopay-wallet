@@ -27,12 +27,14 @@
   "yourBalance": "باڵانسەکەت",
   "walletBalance": "باڵانسی جزدان",
 
-  "marketShop": "فرۆشگای بازاڕ",
+  "marketShop": "فرۆشگای بازار",
   "marketShopSubtitle": "کارت، کارتی دیاری، مۆبایل و گەشت بە سەلامەتی بکڕە",
-  "market.topup": "کارتەکانی پڕکردنەوە",
-  "market.gift": "کارتەکانی دیاری",
-  "market.mobile": "فرۆشگای مۆبایل",
-  "market.travel": "حجزی گەشت",
+  "market": {
+    "topup": "کارتەکانی پڕکردنەوە",
+    "gift": "کارتەکانی دیاری",
+    "mobile": "فرۆشگای مۆبایل",
+    "travel": "حجزی گەشت"
+  },
 
   "simCards": "کارتی SIM",
   "giftCards": "کارتەکانی دیاری",
