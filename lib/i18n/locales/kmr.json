@@ -29,10 +29,11 @@
 
   "marketShop": "بازاڕێ فروتنێ",
   "marketShopSubtitle": "کارت، کارتێن دیاریێ، مۆبایل و گەشت ب سەلامەتی بکڕە",
-  "market.topup": "کارتێن پڕکرنێ",
-  "market.gift": "کارتێن دیاریێ",
-  "market.mobile": "دوکانا مۆبایلێ",
-  "market.travel": "حەجزا گەشتێ",
+  "market": {
+    "topup": "کارتێن پڕکرنێ",
+    "gift": "کارتێن دیاریێ",
+    "mobile": "دوکانا مۆبایلێ",
+    "travel": "حەجزا گەشتێ"
 
   "simCards": "کارتێن SIM",
   "giftCards": "کارتێن دیاریێ",
