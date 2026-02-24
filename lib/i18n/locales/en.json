@@ -301,6 +301,11 @@
   "seconds": "seconds",
   "timeRemaining": "Time remaining",
 
+  {
+  "ramadanOfferTitle": "Ramadan Mubarak Offer",
+  "ramadanOfferMessage": "Deposit $100 or more and get $2 bonus added to your balance (Ramadan only)."
+}
+
   "ppLastUpdated": "Last updated: January 2025",
   "ppIntro": "ZenoPay Wallet (\"we,\" \"our,\" or \"us\") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application and services.",
   "ppNewSection1Title": "1. Information We Collect",
