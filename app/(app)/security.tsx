@@ -1,19 +1,28 @@
-import { StyleSheet, View, Text, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  Alert,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SecurityScreen() {
   const router = useRouter();
-  const { theme, themeMode } = useTheme();
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -21,66 +30,58 @@ export default function SecurityScreen() {
   const { signOut } = useAuth();
 
   const handleDeleteAccount = async () => {
-    Alert.alert(
-      i18n.t('deleteAccountWarning'),
-      i18n.t('deleteAccountConfirm'),
-      [
-        {
-          text: i18n.t('cancel'),
-          style: 'cancel',
-        },
-        {
-          text: i18n.t('deleteAccountButton'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
+    Alert.alert(i18n.t('deleteAccountWarning'), i18n.t('deleteAccountConfirm'), [
+      { text: i18n.t('cancel'), style: 'cancel' },
+      {
+        text: i18n.t('deleteAccountButton'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setLoading(true);
 
-              const { data: { session } } = await supabase.auth.getSession();
-              const token = session?.access_token;
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+            const token = session?.access_token;
 
-              if (!token) {
-                Alert.alert(i18n.t('error'), 'Not authenticated');
-                return;
-              }
-
-              const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-              const res = await fetch(
-                `${supabaseUrl}/functions/v1/delete-account`,
-                {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                  },
-                }
-              );
-
-              if (!res.ok) {
-                const errorText = await res.text();
-                console.error('Delete account error:', errorText);
-                Alert.alert(i18n.t('error'), i18n.t('accountDeleteError'));
-                return;
-              }
-
-              Alert.alert(i18n.t('success'), i18n.t('accountDeleted'), [
-                {
-                  text: 'OK',
-                  onPress: async () => {
-                    await signOut();
-                  },
-                },
-              ]);
-            } catch (error: any) {
-              console.error('Error deleting account:', error);
-              Alert.alert(i18n.t('error'), error.message || i18n.t('accountDeleteError'));
-            } finally {
-              setLoading(false);
+            if (!token) {
+              Alert.alert(i18n.t('error'), 'Not authenticated');
+              return;
             }
-          },
+
+            const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+            const res = await fetch(`${supabaseUrl}/functions/v1/delete-account`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            });
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              console.error('Delete account error:', errorText);
+              Alert.alert(i18n.t('error'), i18n.t('accountDeleteError'));
+              return;
+            }
+
+            Alert.alert(i18n.t('success'), i18n.t('accountDeleted'), [
+              {
+                text: 'OK',
+                onPress: async () => {
+                  await signOut();
+                },
+              },
+            ]);
+          } catch (error: any) {
+            console.error('Error deleting account:', error);
+            Alert.alert(i18n.t('error'), error.message || i18n.t('accountDeleteError'));
+          } finally {
+            setLoading(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleResetPassword = async () => {
@@ -107,7 +108,10 @@ export default function SecurityScreen() {
     try {
       setLoading(true);
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user?.email) {
         Alert.alert(i18n.t('error'), i18n.t('userNotFound'));
         return;
@@ -137,8 +141,8 @@ export default function SecurityScreen() {
             setNewPassword('');
             setConfirmPassword('');
             router.back();
-          }
-        }
+          },
+        },
       ]);
     } catch (error: any) {
       console.error('Error changing password:', error);
@@ -149,118 +153,124 @@ export default function SecurityScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
+    <View style={styles.container}>
+      {/* Header (same like terms-conditions) */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.8}>
+          <Ionicons name="arrow-back" size={24} color="#111111" />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>{i18n.t('security')}</Text>
+
+        <Text style={styles.headerTitle}>{i18n.t('security')}</Text>
+
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView style={styles.content}>
-        <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-          <View style={[styles.iconContainer, { backgroundColor: themeMode === 'dark' ? '#1E3A8A' : '#DBEAFE' }]}>
-            <Ionicons name="lock-closed" size={32} color={theme.colors.primary} />
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+        {/* Top card (same like terms-conditions) */}
+        <View style={styles.topCard}>
+          <View style={styles.iconCircle}>
+            <Ionicons name="lock-closed" size={30} color="#16a34a" />
           </View>
-          <Text style={[styles.title, { color: theme.colors.text }]}>{i18n.t('resetPassword')}</Text>
-          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-            {i18n.t('resetPasswordDesc2')}
-          </Text>
+
+          <Text style={styles.mainTitle}>{i18n.t('resetPassword')}</Text>
+          <Text style={styles.subTitle}>{i18n.t('resetPasswordDesc2')}</Text>
         </View>
 
+        {/* Form */}
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>{i18n.t('currentPassword')}</Text>
-            <View style={[styles.passwordContainer, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <Text style={styles.label}>{i18n.t('currentPassword')}</Text>
+            <View style={styles.inputWrapper}>
               <TextInput
-                style={[styles.passwordInput, { color: theme.colors.text }]}
+                style={styles.input}
                 placeholder={i18n.t('enterCurrentPassword')}
-                placeholderTextColor={theme.colors.textSecondary}
+                placeholderTextColor="#6B7280"
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
                 secureTextEntry={!showCurrentPassword}
                 autoCapitalize="none"
               />
-              <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
-                <Ionicons 
-                  name={showCurrentPassword ? 'eye-off' : 'eye'} 
-                  size={22} 
-                  color={theme.colors.textSecondary} 
-                />
+              <TouchableOpacity
+                onPress={() => setShowCurrentPassword((v) => !v)}
+                activeOpacity={0.8}
+                style={styles.eyeBtn}
+              >
+                <Ionicons name={showCurrentPassword ? 'eye-off' : 'eye'} size={22} color="#6B7280" />
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>{i18n.t('newPassword')}</Text>
-            <View style={[styles.passwordContainer, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <Text style={styles.label}>{i18n.t('newPassword')}</Text>
+            <View style={styles.inputWrapper}>
               <TextInput
-                style={[styles.passwordInput, { color: theme.colors.text }]}
+                style={styles.input}
                 placeholder={i18n.t('enterNewPassword')}
-                placeholderTextColor={theme.colors.textSecondary}
+                placeholderTextColor="#6B7280"
                 value={newPassword}
                 onChangeText={setNewPassword}
                 secureTextEntry={!showNewPassword}
                 autoCapitalize="none"
               />
-              <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
-                <Ionicons 
-                  name={showNewPassword ? 'eye-off' : 'eye'} 
-                  size={22} 
-                  color={theme.colors.textSecondary} 
-                />
+              <TouchableOpacity
+                onPress={() => setShowNewPassword((v) => !v)}
+                activeOpacity={0.8}
+                style={styles.eyeBtn}
+              >
+                <Ionicons name={showNewPassword ? 'eye-off' : 'eye'} size={22} color="#6B7280" />
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>{i18n.t('confirmNewPassword')}</Text>
-            <View style={[styles.passwordContainer, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <Text style={styles.label}>{i18n.t('confirmNewPassword')}</Text>
+            <View style={styles.inputWrapper}>
               <TextInput
-                style={[styles.passwordInput, { color: theme.colors.text }]}
+                style={styles.input}
                 placeholder={i18n.t('confirmNewPassword')}
-                placeholderTextColor={theme.colors.textSecondary}
+                placeholderTextColor="#6B7280"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
               />
-              <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                <Ionicons 
-                  name={showConfirmPassword ? 'eye-off' : 'eye'} 
-                  size={22} 
-                  color={theme.colors.textSecondary} 
-                />
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword((v) => !v)}
+                activeOpacity={0.8}
+                style={styles.eyeBtn}
+              >
+                <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={22} color="#6B7280" />
               </TouchableOpacity>
             </View>
           </View>
 
+          {/* Green button (same like terms-conditions) */}
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.colors.primary }]}
+            style={[styles.primaryButton, loading && { opacity: 0.7 }]}
             onPress={handleResetPassword}
             disabled={loading}
+            activeOpacity={0.9}
           >
-            <Text style={styles.buttonText}>
+            <Text style={styles.primaryButtonText}>
               {loading ? i18n.t('loading') : i18n.t('resetPassword')}
             </Text>
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.dangerZone, { backgroundColor: theme.colors.card, borderColor: '#EF4444' }]}>
+        {/* Danger zone (keep red button) */}
+        <View style={styles.dangerZone}>
           <View style={styles.dangerHeader}>
-            <Ionicons name="warning" size={24} color="#EF4444" />
-            <Text style={[styles.dangerTitle, { color: '#EF4444' }]}>{i18n.t('dangerZone')}</Text>
+            <Ionicons name="warning" size={22} color="#EF4444" />
+            <Text style={styles.dangerTitle}>{i18n.t('dangerZone')}</Text>
           </View>
-          
-          <Text style={[styles.dangerDesc, { color: theme.colors.textSecondary }]}>
-            {i18n.t('deleteAccountDesc')}
-          </Text>
+
+          <Text style={styles.dangerDesc}>{i18n.t('deleteAccountDesc')}</Text>
 
           <TouchableOpacity
-            style={styles.deleteButton}
+            style={[styles.deleteButton, loading && { opacity: 0.7 }]}
             onPress={handleDeleteAccount}
             disabled={loading}
+            activeOpacity={0.9}
           >
             <Ionicons name="trash" size={20} color="#FFFFFF" />
             <Text style={styles.deleteButtonText}>
@@ -268,129 +278,178 @@ export default function SecurityScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        <View style={{ height: 28 }} />
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Same base like terms-conditions
   container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 20,
+    paddingTop: Platform.OS === 'ios' ? 54 : 46,
+    paddingBottom: 14,
     borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
   },
   backButton: {
-    padding: 4,
+    padding: 6,
+    borderRadius: 10,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '700' as const,
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: '#111111',
   },
+
   content: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
-  card: {
-    margin: 20,
-    padding: 24,
-    borderRadius: 20,
+  contentContainer: {
+    paddingBottom: 10,
+  },
+
+  topCard: {
+    marginHorizontal: 20,
+    marginTop: 18,
+    padding: 18,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     alignItems: 'center',
   },
-  iconContainer: {
+  iconCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    justifyContent: 'center',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'center',
+    marginBottom: 14,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700' as const,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
+  mainTitle: {
+    fontSize: 22,
+    fontWeight: '900' as const,
     textAlign: 'center',
+    lineHeight: 30,
+    color: '#111111',
+  },
+  subTitle: {
+    marginTop: 8,
+    textAlign: 'center',
+    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '600' as const,
     lineHeight: 20,
   },
+
   form: {
     paddingHorizontal: 20,
+    marginTop: 18,
   },
+
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   label: {
     fontSize: 14,
-    fontWeight: '600' as const,
+    fontWeight: '800' as const,
     marginBottom: 8,
+    color: '#111111',
   },
-  passwordContainer: {
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 16,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    height: 52,
   },
-  passwordInput: {
+  input: {
     flex: 1,
-    height: 50,
     fontSize: 16,
-  },
-  button: {
-    height: 54,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 40,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: '#111111',
     fontWeight: '600' as const,
   },
+  eyeBtn: {
+    padding: 6,
+    borderRadius: 10,
+  },
+
+  // Green button
+  primaryButton: {
+    marginTop: 8,
+    height: 50,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#16a34a',
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800' as const,
+  },
+
+  // Danger zone keeps red button
   dangerZone: {
     marginHorizontal: 20,
-    marginTop: 32,
+    marginTop: 22,
     marginBottom: 40,
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
+    backgroundColor: '#FFFFFF',
     borderWidth: 2,
+    borderColor: '#EF4444',
   },
   dangerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   dangerTitle: {
     fontSize: 18,
-    fontWeight: '700' as const,
+    fontWeight: '900' as const,
     marginLeft: 8,
+    color: '#EF4444',
   },
   dangerDesc: {
     fontSize: 14,
     lineHeight: 20,
-    marginBottom: 16,
+    marginBottom: 14,
+    color: '#6B7280',
+    fontWeight: '600' as const,
   },
+
   deleteButton: {
     backgroundColor: '#EF4444',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     height: 50,
-    borderRadius: 12,
+    borderRadius: 14,
     gap: 8,
   },
   deleteButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600' as const,
+    fontWeight: '800' as const,
   },
 });
