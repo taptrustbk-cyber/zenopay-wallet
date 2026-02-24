@@ -20,6 +20,9 @@
   "submitting": "جاري الإرسال...",
   "update": "تحديث",
 
+  "ramadanOfferTitle": "عرض رمضان",
+  "ramadanOfferMessage": "بمناسبة شهر رمضان، نقدم عروضًا وخصومات خاصة. تصفّح المتجر الآن للاستفادة!",
+
   "accountBalance": "رصيد الحساب",
   "accountStatusActive": "الحساب نشط",
   "failedToLoadBalance": "فشل تحميل الرصيد",
