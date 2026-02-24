@@ -106,19 +106,15 @@ export default function SimCardsScreen() {
           <Ionicons name="arrow-back" size={22} color="#16a34a" />
         </TouchableOpacity>
 
-        {/* ✅ Title must be: Top-Up Cards */}
         <Text style={styles.headerTitle}>{i18n.t('market.topup') || 'Top-Up Cards'}</Text>
-
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
-        {/* ✅ Change big title inside card to: Top-Up Cards */}
+        {/* ✅ GREEN top card background + only ONE text: "Mobile Cards" */}
         <View style={styles.topCard}>
-          <Text style={styles.pageTitle}>{i18n.t('market.topup') || 'Top-Up Cards'}</Text>
-
-          {/* ✅ Change subtitle text to: Top-Up Cards */}
-          <Text style={styles.pageSubtitle}>{i18n.t('market.topup') || 'Top-Up Cards'}</Text>
+          <Text style={styles.pageTitle}>{i18n.t('mobileShop') || 'Mobile Cards'}</Text>
+          {/* ✅ Removed pageSubtitle completely */}
         </View>
 
         <View style={styles.grid}>
@@ -133,9 +129,7 @@ export default function SimCardsScreen() {
                 onPress={() => handleCardPress(card)}
               >
                 <ProviderLogo provider={card.provider} />
-
                 <Text style={styles.cardName}>{card.name}</Text>
-
                 <Text style={[styles.cardPrice, { color: config.color }]}>${card.price.toFixed(2)}</Text>
 
                 <TouchableOpacity style={styles.buyButton} activeOpacity={0.9} onPress={() => handleCardPress(card)}>
@@ -187,28 +181,24 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
 
+  // ✅ changed to GREEN background + bigger title
   topCard: {
     marginHorizontal: 20,
     marginTop: 18,
-    padding: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#16a34a',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#16a34a',
   },
+  // ✅ resized text (bigger) + white text
   pageTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '900' as const,
     textAlign: 'center',
-    lineHeight: 30,
-    color: '#111111',
-  },
-  pageSubtitle: {
-    marginTop: 10,
-    textAlign: 'center',
-    color: '#6B7280',
-    fontSize: 14,
-    fontWeight: '600' as const,
+    lineHeight: 32,
+    color: '#FFFFFF',
   },
 
   grid: {
