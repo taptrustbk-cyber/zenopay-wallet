@@ -63,7 +63,6 @@ const NavItem = ({
   </TouchableOpacity>
 );
 
-
 export default function DashboardScreen() {
   const router = useRouter();
   const { user, profile, hardRefresh } = useAuth();
@@ -153,18 +152,32 @@ export default function DashboardScreen() {
       >
         {/* Header like image 2 */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <View style={styles.avatarCircle}>
-              <Ionicons name="person" size={18} color={UI.iconGray} />
-            </View>
-            <Text style={styles.headerName}>{profile?.full_name || profile?.name || 'User'}</Text>
-          </View>
+          {/* LEFT: Profile button */}
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            activeOpacity={0.85}
+            onPress={() => router.push('/(app)/profile' as any)}
+          >
+            <Ionicons name="person" size={22} color={UI.iconGray} />
+          </TouchableOpacity>
 
+          <Text style={styles.headerName}>{profile?.full_name || profile?.name || 'User'}</Text>
+
+          {/* RIGHT: AI Chat + Notifications */}
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.85} onPress={() => router.push('/(app)/support' as any)}>
-              <Ionicons name="headset" size={22} color={UI.iconGray} />
+            <TouchableOpacity
+              style={styles.headerIconBtn}
+              activeOpacity={0.85}
+              onPress={() => router.push('/(app)/ai-chat' as any)} // change route if needed
+            >
+              <Ionicons name="sparkles" size={22} color={UI.iconGray} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.85} onPress={() => router.push('/(app)/notifications' as any)}>
+
+            <TouchableOpacity
+              style={styles.headerIconBtn}
+              activeOpacity={0.85}
+              onPress={() => router.push('/(app)/notifications' as any)}
+            >
               <Ionicons name="notifications" size={22} color={UI.iconGray} />
             </TouchableOpacity>
           </View>
@@ -201,15 +214,13 @@ export default function DashboardScreen() {
             </View>
           ) : (
             <View style={styles.balanceValueRow}>
-              <Text style={styles.balanceValue}>
-                {isBalanceHidden ? '•••••••' : balanceText}
-              </Text>
+              <Text style={styles.balanceValue}>{isBalanceHidden ? '•••••••' : balanceText}</Text>
               <Text style={styles.balanceCurrency}> {currencyText}</Text>
             </View>
           )}
         </View>
 
-        {/* 4 round action buttons row like image 2 */}
+        {/* 4 round action buttons row */}
         <View style={styles.quickRow}>
           <ActionCircle icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
           <ActionCircle icon="cash" label={i18n.t('withdraw')} onPress={() => router.push('/(app)/withdraw' as any)} />
@@ -217,7 +228,7 @@ export default function DashboardScreen() {
           <ActionCircle icon="receipt" label={i18n.t('transactions')} onPress={() => router.push('/(app)/transactions' as any)} />
         </View>
 
-        {/* Ramadan / Cashback banner like image 2 */}
+        {/* Ramadan / Cashback banner */}
         <View style={styles.banner}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={styles.moonCircle}>
@@ -235,10 +246,9 @@ export default function DashboardScreen() {
           <View style={styles.dotActive} />
           <View style={styles.dot} />
           <View style={styles.dot} />
-        </View
-          
+        </View>
 
-        {/* Keep your Market Shop section but make it LIGHT and simple (no dark colors) */}
+        {/* Market Shop section */}
         <View style={styles.marketLightCard}>
           <View style={styles.marketHeader}>
             <Text style={styles.marketTitle}>{i18n.t('marketShop')}</Text>
@@ -279,7 +289,7 @@ export default function DashboardScreen() {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Bottom nav light + green active like image 2 */}
+      {/* Bottom nav */}
       <View style={[styles.bottomNav, { borderColor: UI.border, backgroundColor: UI.card }]}>
         <NavItem icon="home" label={i18n.t('home')} active onPress={() => {}} />
         <NavItem icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
@@ -293,7 +303,6 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // Header
   header: {
     paddingHorizontal: 16,
     paddingTop: 54,
@@ -302,17 +311,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatarCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#EEF2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   headerName: { fontSize: 18, fontWeight: '700', color: UI.text },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+
   headerIconBtn: {
     width: 38,
     height: 38,
@@ -322,7 +323,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Balance Card
   balanceCard: {
     marginHorizontal: 16,
     marginTop: 10,
@@ -330,11 +330,7 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: UI.green,
   },
-  balanceTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+  balanceTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   balanceTitle: { color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '600' },
   balanceRightRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   currencyChip: {
@@ -359,13 +355,7 @@ const styles = StyleSheet.create({
   balanceValue: { fontSize: 44, fontWeight: '800', color: '#fff' },
   balanceCurrency: { fontSize: 16, color: 'rgba(255,255,255,0.9)', paddingBottom: 8 },
 
-  // Quick actions row
-  quickRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginHorizontal: 16,
-    marginTop: 16,
-  },
+  quickRow: { flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 16, marginTop: 16 },
   quickItem: { alignItems: 'center', width: '23%' },
   quickIconCircle: {
     width: 56,
@@ -377,14 +367,7 @@ const styles = StyleSheet.create({
   },
   quickLabel: { marginTop: 8, fontSize: 12, color: UI.text, textAlign: 'center' },
 
-  // Banner
-  banner: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    backgroundColor: UI.blueBanner,
-    borderRadius: 16,
-    padding: 16,
-  },
+  banner: { marginHorizontal: 16, marginTop: 16, backgroundColor: UI.blueBanner, borderRadius: 16, padding: 16 },
   moonCircle: {
     width: 44,
     height: 44,
@@ -400,25 +383,6 @@ const styles = StyleSheet.create({
   dotActive: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#374151' },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#D1D5DB' },
 
-  // Grid
-  grid: {
-    marginTop: 10,
-    marginHorizontal: 8,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  gridItem: { width: '25%', paddingVertical: 14, alignItems: 'center' },
-  gridIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#EEF2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gridLabel: { marginTop: 8, fontSize: 12, color: UI.text, textAlign: 'center' },
-
-  // Market section light (kept, but redesigned)
   marketLightCard: {
     marginHorizontal: 16,
     marginTop: 12,
@@ -431,12 +395,7 @@ const styles = StyleSheet.create({
   marketHeader: { marginBottom: 12 },
   marketTitle: { fontSize: 18, fontWeight: '800', color: UI.text },
   marketSub: { marginTop: 6, color: UI.text2, fontSize: 13, lineHeight: 18 },
-  marketMiniGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
+  marketMiniGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
   marketMiniItem: {
     width: '48%',
     borderRadius: 14,
@@ -458,7 +417,6 @@ const styles = StyleSheet.create({
   },
   marketMiniLabel: { color: UI.text, fontSize: 13, fontWeight: '700', flex: 1 },
 
-  // Errors
   errorContainer: { alignItems: 'center', paddingVertical: 20, gap: 10 },
   errorTextLight: { color: '#fff', textAlign: 'center', fontWeight: '700' },
   retryButton: {
@@ -471,13 +429,7 @@ const styles = StyleSheet.create({
   },
   retryText: { color: '#fff', fontWeight: '800' },
 
-  // Bottom nav
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-  },
+  bottomNav: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 12, borderTopWidth: 1 },
   navItem: { alignItems: 'center' },
   navText: { color: '#9CA3AF', fontSize: 12, marginTop: 4 },
 });
