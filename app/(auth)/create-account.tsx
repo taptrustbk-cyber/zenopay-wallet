@@ -41,6 +41,11 @@ function isAtLeast18(dob: Date): boolean {
   return dob <= eighteenYearsAgo;
 }
 
+function toISODateOnly(d: Date) {
+  // YYYY-MM-DD (safe for DB date column)
+  return d.toISOString().split('T')[0];
+}
+
 export default function CreateAccount() {
   const router = useRouter();
   const [fullName, setFullName] = useState<string>('');
@@ -74,7 +79,7 @@ export default function CreateAccount() {
   }
 
   async function createAccount() {
-    if (!fullName || !email || !password || !city || !phone) {
+    if (!fullName || !email || !password || !city || !phone || !country) {
       Alert.alert(i18n.t('error'), i18n.t('completeAllFields'));
       return;
     }
@@ -92,17 +97,22 @@ export default function CreateAccount() {
 
     setIsCreating(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const phoneE164 = `+964${phone}`;
+      const dobISO = toISODateOnly(dob);
+
+      // 1) Create auth user
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: 'zenopay://confirm',
           data: {
+            // keep metadata (optional)
             full_name: fullName,
             city,
             country,
-            phone: `+964${phone}`,
-            date_of_birth: dob.toISOString().split('T')[0],
+            phone: phoneE164,
+            date_of_birth: dobISO,
           },
         },
       });
@@ -112,9 +122,35 @@ export default function CreateAccount() {
         return;
       }
 
+      const userId = data?.user?.id;
+      if (!userId) {
+        Alert.alert(i18n.t('error'), 'Failed to create user. Please try again.');
+        return;
+      }
+
+      // 2) Save profile ONLY when button clicked (now)
+      //    profiles columns: id(uuid), email, full_name, date_of_birth, city, country, phone
+      const { error: profileError } = await supabase.from('profiles').upsert(
+        {
+          id: userId, // uuid user
+          email,
+          full_name: fullName,
+          date_of_birth: dobISO,
+          city,
+          country,
+          phone: phoneE164,
+        },
+        { onConflict: 'id' }
+      );
+
+      if (profileError) {
+        Alert.alert(i18n.t('error'), profileError.message);
+        return;
+      }
+
       router.replace('/(auth)/email-verification' as any);
-    } catch (error: any) {
-      Alert.alert(i18n.t('error'), error.message);
+    } catch (e: any) {
+      Alert.alert(i18n.t('error'), e?.message ?? 'Unknown error');
     } finally {
       setIsCreating(false);
     }
@@ -124,7 +160,7 @@ export default function CreateAccount() {
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ✅ White header with back icon */}
+      {/* ✅ Top center title only (keep header title), remove duplicate title inside card */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backIconBtn} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={22} color={COLORS.green} />
@@ -136,7 +172,7 @@ export default function CreateAccount() {
 
       <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
-          <Text style={styles.title}>{i18n.t('createAccount')}</Text>
+          {/* ❌ removed: <Text style={styles.title}>{i18n.t('createAccount')}</Text> */}
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{i18n.t('fullName')}</Text>
@@ -232,8 +268,7 @@ export default function CreateAccount() {
                         border: `1px solid ${COLORS.border}`,
                         backgroundColor: COLORS.white,
                         color: COLORS.text,
-                        fontFamily:
-                          'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial',
+                        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial',
                         outline: 'none',
                         appearance: 'none',
                         cursor: 'pointer',
@@ -362,7 +397,11 @@ export default function CreateAccount() {
             disabled={isCreating || !!dobError || !dob}
             activeOpacity={0.9}
           >
-            {isCreating ? <ActivityIndicator color="#fff" /> : <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>}
+            {isCreating ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.9}>
@@ -404,6 +443,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
 
+  // (title style kept in case you need it later)
   title: {
     fontSize: 22,
     fontWeight: '900' as const,
@@ -473,8 +513,20 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline' as const,
   },
 
-  errorText: { color: '#DC2626', fontSize: 13, marginTop: -8, marginBottom: 10, fontWeight: '700' as const },
-  complianceText: { color: COLORS.textSecondary, fontSize: 13, marginTop: -6, marginBottom: 12, fontWeight: '600' as const },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 13,
+    marginTop: -8,
+    marginBottom: 10,
+    fontWeight: '700' as const,
+  },
+  complianceText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    marginTop: -6,
+    marginBottom: 12,
+    fontWeight: '600' as const,
+  },
 
   dobModalBackdrop: {
     flex: 1,
@@ -508,6 +560,12 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   dobActionSecondaryText: { fontSize: 15, fontWeight: '900' as const, color: COLORS.text },
-  dobActionPrimary: { flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: COLORS.green },
+  dobActionPrimary: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: COLORS.green,
+  },
   dobActionPrimaryText: { fontSize: 15, fontWeight: '900' as const, color: '#FFFFFF' },
 });
