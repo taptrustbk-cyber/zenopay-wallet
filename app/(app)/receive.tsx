@@ -31,7 +31,9 @@ const CRYPTO_ADDRESSES = {
 };
 
 const CRYPTO_QR_CODES = {
-  USDT_TRC20: 'uri:'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/qr/usdt-qrcode.png',
+   USDT_TRC20: {
+     uri: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/qr/usdt-qrcode.png',
+  },
 };
 
 export default function DepositScreen() {
