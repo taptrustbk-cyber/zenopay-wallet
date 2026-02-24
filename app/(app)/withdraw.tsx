@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { useState } from 'react';
 import {
   StyleSheet,
@@ -17,17 +17,30 @@ import {
 import { ChevronDown } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext'; // keep (not breaking)
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 import { Wallet } from '@/lib/types';
+
+const UI = {
+  bg: '#F5F6FA',
+  card: '#FFFFFF',
+  text: '#111827',
+  text2: '#6B7280',
+  border: '#E5E7EB',
+  green: '#47B08A',
+  greenSoft: '#EAF7F1',
+  danger: '#EF4444',
+};
 
 export default function WithdrawScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { theme } = useTheme();
+  const { theme } = useTheme(); // keep
+
   const [selectedCrypto, setSelectedCrypto] = useState<string>('BTC');
   const [showCryptoModal, setShowCryptoModal] = useState(false);
   const [amount, setAmount] = useState('');
@@ -43,84 +56,79 @@ export default function WithdrawScreen() {
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
     queryFn: async () => {
-      if (!user?.id) {
-        throw new Error('User ID not found');
-      }
-      
+      if (!user?.id) throw new Error('User ID not found');
+
       const { data, error } = await supabase
         .from('wallets')
         .select('id, user_id, balance, currency, is_locked')
+        .eq('user_id', user.id)
         .maybeSingle();
-      
-      if (error) {
-        throw new Error('Failed to fetch wallet');
-      }
-      
+
+      if (error) throw new Error(error.message || 'Failed to fetch wallet');
+
       if (!data) {
+        // fallback (won't create, just show 0)
         return { user_id: user.id, balance: 0, currency: 'USD', is_locked: false } as Wallet;
       }
-      
+
       return data as Wallet;
     },
     enabled: !!user?.id,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const withdrawHistoryQuery = useQuery({
     queryKey: ['withdraw_orders', user?.id],
     queryFn: async () => {
-      if (!user?.id) {
-        throw new Error('User ID not found');
-      }
-      
+      if (!user?.id) throw new Error('User ID not found');
+
       const { data, error } = await supabase
         .from('withdraw_orders')
         .select('id, amount, crypto, destination, status, reject_reason, created_at')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      
-      if (error) {
-        throw new Error('Failed to fetch withdrawal history');
-      }
-      
+
+      if (error) throw new Error(error.message || 'Failed to fetch withdrawal history');
+
       return data || [];
     },
     enabled: !!user?.id,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const withdrawMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedCrypto || !amount || !walletAddress) {
-        throw new Error('Please fill all fields');
-      }
+      if (!selectedCrypto) throw new Error(i18n.t('selectCrypto'));
+      if (!amount.trim()) throw new Error(i18n.t('enterAmount'));
+      if (!walletAddress.trim()) throw new Error(i18n.t('enterWalletAddress'));
 
       const amountNum = parseFloat(amount);
-      if (isNaN(amountNum) || amountNum <= 0) {
-        throw new Error(i18n.t('invalidAmount'));
-      }
+      if (isNaN(amountNum) || amountNum <= 0) throw new Error(i18n.t('invalidAmount'));
 
-      if (!walletQuery.data) {
-        throw new Error('Wallet not found');
-      }
+      if (!walletQuery.data) throw new Error('Wallet not found');
 
       if (walletQuery.data.is_locked) {
-        throw new Error('Wallet is locked. Please contact support.');
+        throw new Error(i18n.t('security') + ': ' + i18n.t('contactSupport'));
       }
 
       if (amountNum > walletQuery.data.balance) {
-        throw new Error(`Insufficient balance. You have ${walletQuery.data.balance.toFixed(2)} but trying to withdraw ${amountNum.toFixed(2)}`);
+        throw new Error(
+          `${i18n.t('insufficientBalance')}\n${walletQuery.data.balance.toFixed(2)} ${walletQuery.data.currency}`
+        );
       }
 
       const { error: withdrawError } = await supabase.from('withdraw_orders').insert({
         user_id: user!.id,
         amount: amountNum,
-        currency: 'USD',
-        destination: walletAddress,
+        currency: walletQuery.data.currency || 'USD',
+        destination: walletAddress.trim(),
         crypto: selectedCrypto,
         status: 'pending',
       });
 
-      if (withdrawError) {
-        throw new Error('Failed to create withdraw request');
-      }
+      if (withdrawError) throw new Error(withdrawError.message || 'Failed to create withdraw request');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
@@ -130,333 +138,392 @@ export default function WithdrawScreen() {
       router.back();
     },
     onError: (error: any) => {
-      Alert.alert(i18n.t('error'), error.message || 'Failed to submit withdrawal request');
+      Alert.alert(i18n.t('error'), error?.message || 'Failed to submit withdrawal request');
     },
   });
 
   const StatusBadge = ({ status }: { status: string }) => {
     const colors: Record<string, string> = {
-      pending: '#facc15',
-      approved: '#22c55e',
-      rejected: '#ef4444',
+      pending: '#FACC15',
+      approved: '#22C55E',
+      rejected: '#EF4444',
     };
 
     return (
-      <View
-        style={[
-          styles.statusBadge,
-          { backgroundColor: colors[status] || '#9ca3af' },
-        ]}
-      >
-        <Text style={styles.statusBadgeText}>{status.toUpperCase()}</Text>
+      <View style={[styles.statusBadge, { backgroundColor: colors[status] || '#9CA3AF' }]}>
+        <Text style={styles.statusBadgeText}>{String(status || '').toUpperCase()}</Text>
       </View>
     );
   };
 
+  const balanceText = walletQuery.data?.balance?.toFixed(2) || '0.00';
+  const currencyText = walletQuery.data?.currency || 'USD';
+  const selectedCryptoLabel = cryptoOptions.find((c) => c.value === selectedCrypto)?.label || selectedCrypto;
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
+      {/* ✅ Hide default expo-router header (dark blue bar) */}
+      <Stack.Screen options={{ headerShown: false }} />
+
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={withdrawHistoryQuery.isRefetching}
+              refreshing={withdrawHistoryQuery.isRefetching || walletQuery.isRefetching}
               onRefresh={() => {
                 withdrawHistoryQuery.refetch();
                 walletQuery.refetch();
               }}
+              tintColor={UI.green}
+              colors={[UI.green]}
             />
           }
         >
-          <View style={[styles.balanceCard, { backgroundColor: theme.colors.card }]}>
-            <Text style={[styles.balanceLabel, { color: theme.colors.textSecondary }]}>{i18n.t('balance')}</Text>
-            <Text style={[styles.balanceAmount, { color: theme.colors.text }]}>
-              ${walletQuery.data?.balance?.toFixed(2) || '0.00'}
-            </Text>
-          </View>
-
-          <View style={[styles.formContainer, { backgroundColor: theme.colors.card }]}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>{i18n.t('selectCrypto')}</Text>
-            <TouchableOpacity
-              style={[styles.cryptoSelector, { backgroundColor: theme.colors.cardSecondary }]}
-              onPress={() => setShowCryptoModal(true)}
-            >
-              <Text style={[styles.cryptoSelectorText, { color: theme.colors.text }]}>
-                {cryptoOptions.find(c => c.value === selectedCrypto)?.label}
-              </Text>
-              <ChevronDown size={20} color={theme.colors.textSecondary} />
+          {/* ✅ Clean header row like Send page */}
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
+              <Ionicons name="chevron-back" size={22} color={UI.text} />
+              <Text style={styles.headerBack}>{i18n.t('back')}</Text>
             </TouchableOpacity>
 
-            <Text style={[styles.label, { color: theme.colors.text }]}>{i18n.t('withdrawalAmount')}</Text>
+            <Text style={styles.headerTitle}>{i18n.t('withdraw')}</Text>
+
+            <View style={{ width: 70 }} />
+          </View>
+
+          {/* ✅ Green balance card like dashboard */}
+          <View style={styles.balanceCard}>
+            <View style={styles.balanceTopRow}>
+              <Text style={styles.balanceTitle}>{i18n.t('accountBalance')}</Text>
+              <View style={styles.currencyChip}>
+                <Ionicons name="logo-usd" size={16} color="#fff" />
+                <Text style={styles.currencyChipText}>{currencyText}</Text>
+              </View>
+            </View>
+
+            {walletQuery.isLoading ? (
+              <View style={{ paddingTop: 14 }}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            ) : walletQuery.isError ? (
+              <View style={styles.balanceErrorRow}>
+                <Ionicons name="alert-circle" size={22} color="#fff" />
+                <Text style={styles.balanceErrorText}>{i18n.t('failedToLoadBalance')}</Text>
+              </View>
+            ) : (
+              <View style={styles.balanceValueRow}>
+                <Text style={styles.balanceValue}>${balanceText}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* ✅ Withdraw Form */}
+          <View style={styles.formCard}>
+            <Text style={styles.label}>{i18n.t('selectCrypto')}</Text>
+            <TouchableOpacity
+              style={styles.selector}
+              onPress={() => setShowCryptoModal(true)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.selectorText}>{selectedCryptoLabel}</Text>
+              <ChevronDown size={20} color={UI.text2} />
+            </TouchableOpacity>
+
+            <Text style={styles.label}>{i18n.t('withdrawalAmount')}</Text>
             <TextInput
-              style={[styles.input, { backgroundColor: theme.colors.cardSecondary, color: theme.colors.text }]}
+              style={styles.input}
               placeholder={i18n.t('amount')}
-              placeholderTextColor={theme.colors.textSecondary}
+              placeholderTextColor={UI.text2}
               value={amount}
               onChangeText={setAmount}
               keyboardType="decimal-pad"
             />
 
-            <Text style={[styles.label, { color: theme.colors.text }]}>{i18n.t('walletAddress')}</Text>
+            <Text style={styles.label}>{i18n.t('walletAddress')}</Text>
             <TextInput
-              style={[styles.input, { backgroundColor: theme.colors.cardSecondary, color: theme.colors.text }]}
+              style={[styles.input, { minHeight: 54 }]}
               placeholder={i18n.t('enterWalletAddress')}
-              placeholderTextColor={theme.colors.textSecondary}
+              placeholderTextColor={UI.text2}
               value={walletAddress}
               onChangeText={setWalletAddress}
               autoCapitalize="none"
+              autoCorrect={false}
               multiline
             />
 
             <TouchableOpacity
-              style={styles.withdrawButton}
+              style={[
+                styles.primaryButton,
+                (withdrawMutation.isPending || walletQuery.isLoading) && { opacity: 0.7 },
+              ]}
               onPress={() => withdrawMutation.mutate()}
-              disabled={withdrawMutation.isPending}
+              disabled={withdrawMutation.isPending || walletQuery.isLoading}
+              activeOpacity={0.9}
             >
               {withdrawMutation.isPending ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.withdrawButtonText}>{i18n.t('submit')}</Text>
+                <Text style={styles.primaryButtonText}>{i18n.t('submit')}</Text>
               )}
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.historyContainer, { backgroundColor: theme.colors.card }]}>
-            <Text style={[styles.historyTitle, { color: theme.colors.text }]}>{i18n.t('withdrawHistory')}</Text>
+          {/* ✅ Withdraw History */}
+          <View style={styles.historyCardWrap}>
+            <Text style={styles.historyTitle}>{i18n.t('withdrawHistory')}</Text>
 
             {withdrawHistoryQuery.isLoading ? (
-              <ActivityIndicator color={theme.colors.primary} size="large" style={styles.loader} />
+              <ActivityIndicator color={UI.green} size="large" style={{ marginVertical: 18 }} />
             ) : withdrawHistoryQuery.error ? (
-              <Text style={[styles.errorText, { color: '#ef4444' }]}>
-                Error: {(withdrawHistoryQuery.error as Error).message}
+              <Text style={[styles.centerText, { color: UI.danger }]}>
+                {(withdrawHistoryQuery.error as Error).message}
               </Text>
             ) : !withdrawHistoryQuery.data || withdrawHistoryQuery.data.length === 0 ? (
-              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+              <Text style={[styles.centerText, { color: UI.text2 }]}>
                 {i18n.t('noWithdrawalsYet')}
               </Text>
             ) : (
-              withdrawHistoryQuery.data.map((w) => (
-                <View key={w.id} style={[styles.historyCard, { backgroundColor: theme.colors.cardSecondary }]}>
+              withdrawHistoryQuery.data.map((w: any) => (
+                <View key={w.id} style={styles.historyItem}>
                   <View style={styles.historyRow}>
-                    <Text style={[styles.historyLabel, { color: theme.colors.textSecondary }]}>
-                      {i18n.t('amount')}
-                    </Text>
-                    <Text style={[styles.historyValue, { color: theme.colors.text }]}>
-                      ${w.amount.toFixed(2)}
-                    </Text>
+                    <Text style={styles.historyLabel}>{i18n.t('amount')}</Text>
+                    <Text style={styles.historyValue}>${Number(w.amount).toFixed(2)}</Text>
                   </View>
 
                   <View style={styles.historyRow}>
-                    <Text style={[styles.historyLabel, { color: theme.colors.textSecondary }]}>
-                      {i18n.t('network')}
-                    </Text>
-                    <Text style={[styles.historyValue, { color: theme.colors.text }]}>
-                      {w.crypto}
-                    </Text>
+                    <Text style={styles.historyLabel}>{i18n.t('network')}</Text>
+                    <Text style={styles.historyValue}>{w.crypto}</Text>
                   </View>
 
                   <View style={styles.historyRow}>
-                    <Text style={[styles.historyLabel, { color: theme.colors.textSecondary }]}>
-                      {i18n.t('address')}
-                    </Text>
-                    <Text style={[styles.historyAddressValue, { color: theme.colors.text }]} numberOfLines={1}>
+                    <Text style={styles.historyLabel}>{i18n.t('address')}</Text>
+                    <Text style={styles.historyAddress} numberOfLines={1}>
                       {w.destination}
                     </Text>
                   </View>
 
                   <View style={styles.historyRow}>
-                    <Text style={[styles.historyLabel, { color: theme.colors.textSecondary }]}>
-                      {i18n.t('status')}
-                    </Text>
+                    <Text style={styles.historyLabel}>{i18n.t('status')}</Text>
                     <StatusBadge status={w.status} />
                   </View>
 
                   <View style={styles.historyRow}>
-                    <Text style={[styles.historyLabel, { color: theme.colors.textSecondary }]}>
-                      {i18n.t('date')}
-                    </Text>
-                    <Text style={[styles.historyValue, { color: theme.colors.text }]}>
+                    <Text style={styles.historyLabel}>{i18n.t('date')}</Text>
+                    <Text style={styles.historyValue}>
                       {new Date(w.created_at).toLocaleDateString()}
                     </Text>
                   </View>
 
-                  {w.status === 'rejected' && w.reject_reason && (
-                    <View style={styles.rejectReasonContainer}>
-                      <Text style={styles.rejectReasonLabel}>{i18n.t('reason')}:</Text>
-                      <Text style={styles.rejectReasonText}>{w.reject_reason}</Text>
+                  {w.status === 'rejected' && w.reject_reason ? (
+                    <View style={styles.rejectBox}>
+                      <Text style={styles.rejectLabel}>{i18n.t('reason')}:</Text>
+                      <Text style={styles.rejectText}>{w.reject_reason}</Text>
                     </View>
-                  )}
+                  ) : null}
                 </View>
               ))
             )}
           </View>
 
-          <Modal
-            visible={showCryptoModal}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setShowCryptoModal(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
-                <Text style={[styles.modalTitle, { color: theme.colors.text }]}>{i18n.t('selectCrypto')}</Text>
-                {cryptoOptions.map((crypto) => (
-                  <TouchableOpacity
-                    key={crypto.value}
-                    style={[styles.cryptoOption, { borderBottomColor: theme.colors.cardSecondary }]}
-                    onPress={() => {
-                      setSelectedCrypto(crypto.value);
-                      setShowCryptoModal(false);
-                    }}
-                  >
-                    <Text style={[styles.cryptoOptionText, { color: theme.colors.text }]}>
-                      {crypto.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity
-                  style={styles.modalCloseButton}
-                  onPress={() => setShowCryptoModal(false)}
-                >
-                  <Text style={styles.modalCloseButtonText}>{i18n.t('cancel')}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
+          <View style={{ height: 28 }} />
         </ScrollView>
+
+        {/* ✅ Crypto Modal */}
+        <Modal
+          visible={showCryptoModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowCryptoModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{i18n.t('selectCrypto')}</Text>
+
+              {cryptoOptions.map((crypto) => (
+                <TouchableOpacity
+                  key={crypto.value}
+                  style={styles.cryptoOption}
+                  onPress={() => {
+                    setSelectedCrypto(crypto.value);
+                    setShowCryptoModal(false);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.cryptoOptionText}>{crypto.label}</Text>
+                </TouchableOpacity>
+              ))}
+
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowCryptoModal(false)}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.modalCloseButtonText}>{i18n.t('cancel')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  keyboardView: { flex: 1 },
+
   scrollContent: {
-    padding: 20,
+    padding: 16,
+    paddingTop: 6,
   },
-  balanceCard: {
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  balanceLabel: {
+  headerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    width: 90,
+  },
+  headerBack: {
     fontSize: 14,
-    marginBottom: 8,
+    fontWeight: '800',
+    color: UI.text,
   },
-  balanceAmount: {
-    fontSize: 36,
-    fontWeight: 'bold' as const,
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: UI.text,
   },
-  formContainer: {
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+
+  // Green balance card
+  balanceCard: {
+    borderRadius: 18,
+    padding: 16,
+    backgroundColor: UI.green,
+  },
+  balanceTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  balanceTitle: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  currencyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  currencyChipText: {
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 13,
+  },
+  balanceValueRow: { marginTop: 14 },
+  balanceValue: {
+    color: '#fff',
+    fontSize: 38,
+    fontWeight: '900',
+  },
+  balanceErrorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+  balanceErrorText: { color: '#fff', fontWeight: '800' },
+
+  // Form card
+  formCard: {
+    marginTop: 14,
+    borderRadius: 18,
+    backgroundColor: UI.card,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: UI.border,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600' as const,
+    fontSize: 14,
+    fontWeight: '900',
+    color: UI.text,
     marginBottom: 8,
   },
   input: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    fontSize: 16,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: UI.border,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    fontSize: 15,
+    fontWeight: '700',
+    color: UI.text,
+    marginBottom: 14,
   },
-  withdrawButton: {
-    backgroundColor: '#667eea',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  withdrawButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold' as const,
-  },
-  cryptoSelector: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
+  selector: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: UI.border,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  cryptoSelectorText: {
-    fontSize: 16,
+  selectorText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: UI.text,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold' as const,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  cryptoOption: {
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  cryptoOptionText: {
-    fontSize: 16,
-  },
-  modalCloseButton: {
-    backgroundColor: '#667eea',
-    borderRadius: 12,
-    padding: 16,
+
+  primaryButton: {
+    backgroundColor: UI.green,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 6,
   },
-  modalCloseButtonText: {
+  primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold' as const,
+    fontWeight: '900',
   },
-  historyContainer: {
-    borderRadius: 20,
-    padding: 24,
-    marginTop: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+
+  // History
+  historyCardWrap: {
+    marginTop: 14,
+    borderRadius: 18,
+    backgroundColor: UI.card,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: UI.border,
   },
   historyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold' as const,
-    marginBottom: 16,
+    fontSize: 16,
+    fontWeight: '900',
+    color: UI.text,
+    marginBottom: 12,
   },
-  historyCard: {
-    borderRadius: 12,
-    padding: 16,
+  historyItem: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: UI.border,
+    borderRadius: 14,
+    padding: 14,
     marginBottom: 12,
   },
   historyRow: {
@@ -466,57 +533,100 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   historyLabel: {
-    fontSize: 14,
-    fontWeight: '500' as const,
+    fontSize: 13,
+    fontWeight: '800',
+    color: UI.text2,
   },
   historyValue: {
-    fontSize: 14,
-    fontWeight: '600' as const,
+    fontSize: 13,
+    fontWeight: '900',
+    color: UI.text,
   },
-  historyAddressValue: {
+  historyAddress: {
     fontSize: 12,
-    fontWeight: '600' as const,
-    flex: 1,
+    fontWeight: '800',
+    color: UI.text,
+    maxWidth: '62%',
     textAlign: 'right',
-    marginLeft: 8,
   },
+  centerText: {
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginVertical: 16,
+  },
+
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 999,
   },
   statusBadgeText: {
-    color: '#000',
+    color: '#111827',
     fontSize: 11,
-    fontWeight: 'bold' as const,
+    fontWeight: '900',
   },
-  rejectReasonContainer: {
+
+  rejectBox: {
     marginTop: 8,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(239, 68, 68, 0.2)',
+    borderTopColor: 'rgba(239, 68, 68, 0.18)',
   },
-  rejectReasonLabel: {
+  rejectLabel: {
     fontSize: 12,
-    color: '#ef4444',
-    fontWeight: '600' as const,
+    fontWeight: '900',
+    color: UI.danger,
     marginBottom: 4,
   },
-  rejectReasonText: {
+  rejectText: {
     fontSize: 13,
-    color: '#ef4444',
+    fontWeight: '700',
+    color: UI.danger,
   },
-  loader: {
-    marginVertical: 20,
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
   },
-  errorText: {
-    fontSize: 14,
+  modalContent: {
+    backgroundColor: UI.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 18,
+    paddingBottom: 26,
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: UI.text,
     textAlign: 'center',
-    marginVertical: 20,
+    marginBottom: 10,
   },
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginVertical: 20,
+  cryptoOption: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: UI.border,
+  },
+  cryptoOptionText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: UI.text,
+  },
+  modalCloseButton: {
+    backgroundColor: UI.green,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  modalCloseButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '900',
   },
 });
