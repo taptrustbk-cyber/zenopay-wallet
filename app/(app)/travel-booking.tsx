@@ -1,9 +1,19 @@
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext'; // keep (not breaking)
 import { useRouter } from 'expo-router';
 import i18n from '@/lib/i18n';
+
+const UI = {
+  bg: '#F5F6FA',
+  card: '#FFFFFF',
+  text: '#111827',
+  text2: '#6B7280',
+  border: '#E5E7EB',
+  green: '#47B08A',
+  greenSoft: '#EAF7F1',
+};
 
 interface BookingOption {
   id: string;
@@ -58,13 +68,13 @@ const bookingOptions: BookingOption[] = [
 ];
 
 export default function TravelBookingScreen() {
-  const { theme } = useTheme();
+  const { theme } = useTheme(); // keep (not used for colors now)
   const router = useRouter();
 
   const handleBookingPress = async (option: BookingOption) => {
     try {
       const supported = await Linking.canOpenURL(option.url);
-      
+
       if (supported) {
         await Linking.openURL(option.url);
       } else {
@@ -76,55 +86,63 @@ export default function TravelBookingScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: UI.bg }]}>
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Header (same style as other updated pages) */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.85}>
+              <Ionicons name="arrow-back" size={22} color={UI.text} />
+              <Text style={styles.backText}>{i18n.t('back')}</Text>
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-              {i18n.t('travelBooking')}
-            </Text>
-            <View style={{ width: 24 }} />
+
+            <Text style={styles.headerTitle}>{i18n.t('travelBooking')}</Text>
+
+            <View style={{ width: 70 }} />
           </View>
 
-          <View style={[styles.infoCard, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
-            <Ionicons name="information-circle" size={32} color="#8B5CF6" />
-            <Text style={[styles.infoText, { color: theme.colors.text }]}>
-              {i18n.t('travelBookingInfo')}
-            </Text>
+          {/* Info card */}
+          <View style={styles.infoCard}>
+            <View style={styles.infoIconCircle}>
+              <Ionicons name="information-circle" size={22} color={UI.green} />
+            </View>
+            <Text style={styles.infoText}>{i18n.t('travelBookingInfo')}</Text>
           </View>
 
+          {/* Options */}
           <View style={styles.optionsList}>
             {bookingOptions.map((option) => (
               <TouchableOpacity
                 key={option.id}
-                style={[styles.optionCard, { backgroundColor: theme.colors.card }]}
+                style={styles.optionCard}
                 onPress={() => handleBookingPress(option)}
+                activeOpacity={0.9}
               >
-                <View style={[styles.iconContainer, { backgroundColor: `${option.color}20` }]}>
-                  <Ionicons name={option.icon} size={32} color={option.color} />
+                <View style={[styles.iconContainer, { backgroundColor: `${option.color}18` }]}>
+                  <Ionicons name={option.icon} size={28} color={option.color} />
                 </View>
+
                 <View style={styles.optionInfo}>
-                  <Text style={[styles.optionTitle, { color: theme.colors.text }]}>
-                    {option.title}
-                  </Text>
-                  <Text style={[styles.optionDescription, { color: theme.colors.textSecondary }]}>
-                    {option.description}
-                  </Text>
+                  <Text style={styles.optionTitle}>{option.title}</Text>
+                  <Text style={styles.optionDescription}>{option.description}</Text>
                 </View>
-                <Ionicons name="open-outline" size={24} color={theme.colors.textSecondary} />
+
+                <View style={styles.openPill}>
+                  <Ionicons name="open-outline" size={18} color={UI.green} />
+                </View>
               </TouchableOpacity>
             ))}
           </View>
 
-          <View style={[styles.noteCard, { backgroundColor: theme.colors.card }]}>
-            <Ionicons name="shield-checkmark" size={24} color="#10B981" />
-            <Text style={[styles.noteText, { color: theme.colors.textSecondary }]}>
-              {i18n.t('travelBookingSafe')}
-            </Text>
+          {/* Note card */}
+          <View style={styles.noteCard}>
+            <View style={styles.noteIconCircle}>
+              <Ionicons name="shield-checkmark" size={20} color={UI.green} />
+            </View>
+            <Text style={styles.noteText}>{i18n.t('travelBookingSafe')}</Text>
           </View>
+
+          <View style={{ height: 24 }} />
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -132,81 +150,131 @@ export default function TravelBookingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  safeArea: { flex: 1 },
+
   content: {
-    padding: 20,
+    padding: 16,
+    paddingTop: 10,
   },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 14,
+    paddingTop: 4,
   },
   backButton: {
-    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    width: 90,
+  },
+  backText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: UI.text,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700' as const,
+    fontSize: 18,
+    fontWeight: '900',
+    color: UI.text,
   },
+
   infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     padding: 16,
-    borderRadius: 16,
-    marginBottom: 24,
+    borderRadius: 18,
+    backgroundColor: UI.card,
+    borderWidth: 1,
+    borderColor: UI.border,
+    marginBottom: 14,
+  },
+  infoIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: UI.greenSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   infoText: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
+    color: UI.text,
+    fontWeight: '700',
   },
+
   optionsList: {
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 14,
   },
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    gap: 16,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: UI.card,
+    borderWidth: 1,
+    borderColor: UI.border,
+    gap: 12,
   },
   iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  optionInfo: {
-    flex: 1,
-  },
+  optionInfo: { flex: 1 },
   optionTitle: {
-    fontSize: 18,
-    fontWeight: '600' as const,
+    fontSize: 15,
+    fontWeight: '900',
+    color: UI.text,
     marginBottom: 4,
   },
   optionDescription: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
+    color: UI.text2,
+    fontWeight: '700',
   },
+  openPill: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: UI.greenSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   noteCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 18,
+    backgroundColor: UI.card,
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
+  noteIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: UI.greenSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   noteText: {
     flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
+    color: UI.text2,
+    fontWeight: '700',
   },
 });
