@@ -63,22 +63,6 @@ const NavItem = ({
   </TouchableOpacity>
 );
 
-const GridItem = ({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: any;
-  label: string;
-  onPress: () => void;
-}) => (
-  <TouchableOpacity style={styles.gridItem} onPress={onPress} activeOpacity={0.85}>
-    <View style={styles.gridIconCircle}>
-      <Ionicons name={icon} size={22} color={UI.iconGray} />
-    </View>
-    <Text style={styles.gridLabel}>{label}</Text>
-  </TouchableOpacity>
-);
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -228,7 +212,7 @@ export default function DashboardScreen() {
         {/* 4 round action buttons row like image 2 */}
         <View style={styles.quickRow}>
           <ActionCircle icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
-          <ActionCircle icon="hand-left" label={i18n.t('requestMoney')} onPress={() => router.push('/(app)/request' as any)} />
+          <ActionCircle icon="cash" label={i18n.t('withdraw')} onPress={() => router.push('/(app)/withdraw' as any)} />
           <ActionCircle icon="download" label={i18n.t('deposit')} onPress={() => router.push('/(app)/receive' as any)} />
           <ActionCircle icon="receipt" label={i18n.t('transactions')} onPress={() => router.push('/(app)/transactions' as any)} />
         </View>
@@ -251,20 +235,8 @@ export default function DashboardScreen() {
           <View style={styles.dotActive} />
           <View style={styles.dot} />
           <View style={styles.dot} />
-        </View>
-
-        {/* Grid menu like image 2 (uses your existing routes where possible) */}
-        <View style={styles.grid}>
-          <GridItem icon="arrow-up" label={i18n.t('withdraw')} onPress={() => router.push('/(app)/withdraw' as any)} />
-          <GridItem icon="swap-horizontal" label="Convert" onPress={() => {}} />
-          <GridItem icon="wallet" label={'Dream\nAccount'} onPress={() => {}} />
-          <GridItem icon="shield-checkmark" label={'Account\nLimit'} onPress={() => router.push('/(app)/account-limit' as any)} />
-
-          <GridItem icon="location" label="Around Me" onPress={() => {}} />
-          <GridItem icon="calendar" label="Installment" onPress={() => {}} />
-          <GridItem icon="card" label={i18n.t('market.topup')} onPress={() => router.push('/(app)/sim-cards' as any)} />
-          <GridItem icon="people" label={'Group\nSaving'} onPress={() => {}} />
-        </View>
+        </View
+          
 
         {/* Keep your Market Shop section but make it LIGHT and simple (no dark colors) */}
         <View style={styles.marketLightCard}>
