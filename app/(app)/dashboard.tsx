@@ -1,3 +1,4 @@
+import React, { useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import {
   StyleSheet,
@@ -7,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +17,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 import { Wallet } from '@/lib/types';
-import React, { useCallback } from 'react';
 
 const UI = {
   bg: '#F5F6FA',
@@ -118,7 +119,7 @@ export default function DashboardScreen() {
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await hardRefresh();
+      await hardRefresh(); // IMPORTANT: this should refresh profile (avatar_url + full_name)
       await walletQuery.refetch();
     } finally {
       setIsRefreshing(false);
@@ -142,6 +143,12 @@ export default function DashboardScreen() {
   const balanceText = walletQuery.data?.balance?.toFixed(2) || '0.00';
   const currencyText = walletQuery.data?.currency || 'USD';
 
+  const avatarUrl = (profile as any)?.avatar_url as string | undefined;
+  const fullName = (profile as any)?.full_name as string | undefined;
+
+  // cache-bust so avatar updates immediately after upload
+  const avatarPreview = avatarUrl ? `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}t=${Date.now()}` : null;
+
   return (
     <View style={[styles.container, { backgroundColor: UI.bg }]}>
       <ScrollView
@@ -157,17 +164,24 @@ export default function DashboardScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          {/* LEFT: Profile button */}
+          {/* LEFT: Profile photo + full name */}
           <TouchableOpacity
-            style={styles.headerIconBtn}
+            style={styles.profileChip}
             activeOpacity={0.85}
             onPress={() => router.push('/(app)/profile' as any)}
           >
-            <Ionicons name="person" size={22} color={UI.iconGray} />
-          </TouchableOpacity>
+            {avatarPreview ? (
+              <Image source={{ uri: avatarPreview }} style={styles.profileAvatar} />
+            ) : (
+              <View style={styles.profileAvatarFallback}>
+                <Ionicons name="person" size={20} color={UI.green} />
+              </View>
+            )}
 
-          {/* CENTER: remove [User] text */}
-          <Text style={styles.headerName}>{''}</Text>
+            <Text style={styles.profileName} numberOfLines={1}>
+              {fullName || ''}
+            </Text>
+          </TouchableOpacity>
 
           {/* RIGHT: AI Chat + Notifications */}
           <View style={styles.headerRight}>
@@ -195,7 +209,6 @@ export default function DashboardScreen() {
             <Text style={styles.balanceTitle}>{i18n.t('accountBalance')}</Text>
 
             <View style={styles.balanceRightRow}>
-              {/* ✅ replace USD chip with $ icon only */}
               <View style={styles.dollarCircle}>
                 <Ionicons name="logo-usd" size={18} color="#FFFFFF" />
               </View>
@@ -232,9 +245,7 @@ export default function DashboardScreen() {
             </View>
           ) : (
             <View style={styles.balanceValueRow}>
-              <Text style={styles.balanceValue}>
-                {isBalanceHidden ? '•••••••' : balanceText}
-              </Text>
+              <Text style={styles.balanceValue}>{isBalanceHidden ? '•••••••' : balanceText}</Text>
               <Text style={styles.balanceCurrency}> {currencyText}</Text>
             </View>
           )}
@@ -242,11 +253,7 @@ export default function DashboardScreen() {
 
         {/* 4 round action buttons row */}
         <View style={styles.quickRow}>
-          <ActionCircle
-            icon="send"
-            label={i18n.t('send')}
-            onPress={() => router.push('/(app)/send' as any)}
-          />
+          <ActionCircle icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
           <ActionCircle
             icon="cash"
             label={i18n.t('withdraw')}
@@ -264,7 +271,7 @@ export default function DashboardScreen() {
           />
         </View>
 
-        {/* ✅ Ramadan offer banner (translated) */}
+        {/* Ramadan offer banner */}
         <View style={styles.banner}>
           <View style={styles.bannerRow}>
             <View style={styles.bannerIcons}>
@@ -282,8 +289,6 @@ export default function DashboardScreen() {
             </View>
           </View>
         </View>
-
-        {/* ❌ Removed dotsRow (3 icons/dots under blue box) */}
 
         {/* Market Shop section */}
         <View style={styles.marketLightCard}>
@@ -368,7 +373,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerName: { fontSize: 19, fontWeight: '800', color: UI.text },
+
+  profileChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    maxWidth: '65%',
+  },
+  profileAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#fff',
+  },
+  profileAvatarFallback: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: UI.greenSoft,
+    borderWidth: 1,
+    borderColor: UI.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileName: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: UI.text,
+  },
+
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 
   headerIconBtn: {
@@ -392,7 +425,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  // +1 size + bolder
   balanceTitle: { color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: '800' },
   balanceRightRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 
@@ -416,7 +448,12 @@ const styles = StyleSheet.create({
 
   balanceValueRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 12 },
   balanceValue: { fontSize: 44, fontWeight: '900', color: '#fff' },
-  balanceCurrency: { fontSize: 17, fontWeight: '800', color: 'rgba(255,255,255,0.9)', paddingBottom: 8 },
+  balanceCurrency: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.9)',
+    paddingBottom: 8,
+  },
 
   quickRow: {
     flexDirection: 'row',
@@ -433,7 +470,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // +1 size + bolder
   quickLabel: { marginTop: 8, fontSize: 13, fontWeight: '800', color: UI.text, textAlign: 'center' },
 
   banner: {
@@ -454,8 +490,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bannerTitle: { color: '#fff', fontSize: 19, fontWeight: '900' },
-  // +1 size + bolder
-  bannerSub: { color: 'rgba(255,255,255,0.95)', marginTop: 6, fontSize: 14, fontWeight: '700', lineHeight: 19 },
+  bannerSub: {
+    color: 'rgba(255,255,255,0.95)',
+    marginTop: 6,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 19,
+  },
 
   marketLightCard: {
     marginHorizontal: 16,
@@ -468,7 +509,6 @@ const styles = StyleSheet.create({
   },
   marketHeader: { marginBottom: 12 },
   marketTitle: { fontSize: 19, fontWeight: '900', color: UI.text },
-  // +1 size + bolder
   marketSub: { marginTop: 6, color: UI.text2, fontSize: 14, fontWeight: '700', lineHeight: 19 },
 
   marketMiniGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
@@ -491,7 +531,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // +1 size + bolder
   marketMiniLabel: { color: UI.text, fontSize: 14, fontWeight: '800', flex: 1 },
 
   errorContainer: { alignItems: 'center', paddingVertical: 20, gap: 10 },
@@ -506,8 +545,12 @@ const styles = StyleSheet.create({
   },
   retryText: { color: '#fff', fontWeight: '900', fontSize: 14 },
 
-  bottomNav: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 12, borderTopWidth: 1 },
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+  },
   navItem: { alignItems: 'center' },
-  // +1 size + bolder
   navText: { color: '#9CA3AF', fontSize: 13, fontWeight: '800', marginTop: 4 },
 });
