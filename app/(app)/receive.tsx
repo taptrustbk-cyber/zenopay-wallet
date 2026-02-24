@@ -30,8 +30,9 @@ const CRYPTO_ADDRESSES = {
   ETH: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
 };
 
-const CRYPTO_QR_CODES: Record<CryptoType, string> = {
-  USDT_TRC20: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/qr/usdt-qrcode.png',
+const CRYPTO_QR_CODES = {
+  USDT_TRC20: {
+    uri: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/qr/usdt-qrcode.png',
   },
 };
 
