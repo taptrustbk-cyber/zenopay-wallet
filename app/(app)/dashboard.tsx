@@ -1,5 +1,13 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,28 +17,73 @@ import i18n from '@/lib/i18n';
 import { Wallet } from '@/lib/types';
 import React, { useCallback } from 'react';
 
-const ActionButton = ({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) => (
-  <TouchableOpacity style={styles.actionBtn} onPress={onPress}>
-    <Ionicons name={icon} size={18} color="white" />
-    <Text style={styles.actionText}>{label}</Text>
+const UI = {
+  bg: '#F5F6FA',
+  card: '#FFFFFF',
+  text: '#111827',
+  text2: '#6B7280',
+  border: '#E5E7EB',
+  green: '#47B08A',
+  greenSoft: '#EAF7F1',
+  blueBanner: '#1E66D0',
+  iconGray: '#6B7280',
+};
+
+const ActionCircle = ({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: any;
+  label: string;
+  onPress: () => void;
+}) => (
+  <TouchableOpacity style={styles.quickItem} onPress={onPress} activeOpacity={0.85}>
+    <View style={styles.quickIconCircle}>
+      <Ionicons name={icon} size={22} color={UI.green} />
+    </View>
+    <Text style={styles.quickLabel}>{label}</Text>
   </TouchableOpacity>
 );
 
-const NavItem = ({ icon, label, active, onPress }: { icon: any; label: string; active?: boolean; onPress: () => void }) => (
-  <TouchableOpacity style={styles.navItem} onPress={onPress}>
-    <Ionicons name={icon} size={22} color={active ? '#60A5FA' : '#9CA3AF'} />
-    <Text style={[styles.navText, active && { color: '#60A5FA' }]}>
-      {label}
-    </Text>
+const NavItem = ({
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  icon: any;
+  label: string;
+  active?: boolean;
+  onPress: () => void;
+}) => (
+  <TouchableOpacity style={styles.navItem} onPress={onPress} activeOpacity={0.85}>
+    <Ionicons name={icon} size={22} color={active ? UI.green : '#9CA3AF'} />
+    <Text style={[styles.navText, active && { color: UI.green }]}>{label}</Text>
   </TouchableOpacity>
 );
 
-
+const GridItem = ({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: any;
+  label: string;
+  onPress: () => void;
+}) => (
+  <TouchableOpacity style={styles.gridItem} onPress={onPress} activeOpacity={0.85}>
+    <View style={styles.gridIconCircle}>
+      <Ionicons name={icon} size={22} color={UI.iconGray} />
+    </View>
+    <Text style={styles.gridLabel}>{label}</Text>
+  </TouchableOpacity>
+);
 
 export default function DashboardScreen() {
   const router = useRouter();
   const { user, profile, hardRefresh } = useAuth();
-  const { theme } = useTheme();
+  const { theme } = useTheme(); // keep your theme (not breaking)
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isBalanceHidden, setIsBalanceHidden] = React.useState(false);
 
@@ -40,21 +93,18 @@ export default function DashboardScreen() {
       if (!user?.id) {
         throw new Error('User ID not found');
       }
-      
+
       const { data, error } = await supabase
         .from('wallets')
         .select('id, user_id, balance, currency, is_locked')
         .eq('user_id', user.id)
         .maybeSingle();
-      
+
       if (error) {
-        console.error(
-          'Wallet fetch error:',
-          JSON.stringify(error, null, 2)
-        );
+        console.error('Wallet fetch error:', JSON.stringify(error, null, 2));
         throw error;
       }
-      
+
       if (!data) {
         const { data: newWallet, error: insertError } = await supabase
           .from('wallets')
@@ -74,17 +124,13 @@ export default function DashboardScreen() {
 
         return newWallet as Wallet;
       }
-      
+
       return data as Wallet;
     },
     enabled: !!user?.id && !!profile,
     staleTime: 0,
     gcTime: 0,
   });
-
-
-
-
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -99,189 +145,170 @@ export default function DashboardScreen() {
 
   if (!profile) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#60A5FA" />
+      <View style={[styles.container, { backgroundColor: UI.bg, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={UI.green} />
       </View>
     );
   }
 
+  const balanceText = walletQuery.data?.balance?.toFixed(2) || '0.00';
+  const currencyText = walletQuery.data?.currency || 'USD';
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <ScrollView 
+    <View style={[styles.container, { backgroundColor: UI.bg }]}>
+      <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor={theme.colors.primary}
-            colors={[theme.colors.primary]}
+            tintColor={UI.green}
+            colors={[UI.green]}
           />
         }
       >
+        {/* Header like image 2 */}
         <View style={styles.header}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="shield-checkmark" size={28} color="#60A5FA" />
-            <Text style={[styles.logo, { color: theme.colors.text }]}> ZenoPay Wallet</Text>
+          <View style={styles.headerLeft}>
+            <View style={styles.avatarCircle}>
+              <Ionicons name="person" size={18} color={UI.iconGray} />
+            </View>
+            <Text style={styles.headerName}>{profile?.full_name || profile?.name || 'User'}</Text>
+          </View>
+
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.85} onPress={() => router.push('/(app)/support' as any)}>
+              <Ionicons name="headset" size={22} color={UI.iconGray} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.85} onPress={() => router.push('/(app)/notifications' as any)}>
+              <Ionicons name="notifications" size={22} color={UI.iconGray} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={[styles.card, styles.balanceCard]}>
-          <View style={styles.balanceHeader}>
-            <Text style={styles.labelDark}>{i18n.t('accountBalance')}</Text>
-            <TouchableOpacity 
-              onPress={() => setIsBalanceHidden(!isBalanceHidden)}
-              style={styles.hideButton}
-            >
-              <Ionicons 
-                name={isBalanceHidden ? "eye-off" : "eye"} 
-                size={24} 
-                color="#6B7280" 
-              />
-            </TouchableOpacity>
+        {/* Balance green card */}
+        <View style={styles.balanceCard}>
+          <View style={styles.balanceTopRow}>
+            <Text style={styles.balanceTitle}>{i18n.t('accountBalance')}</Text>
+
+            <View style={styles.balanceRightRow}>
+              <View style={styles.currencyChip}>
+                <Text style={styles.currencyChipText}>{currencyText}</Text>
+                <Ionicons name="chevron-down" size={16} color="rgba(255,255,255,0.9)" />
+              </View>
+
+              <TouchableOpacity onPress={() => setIsBalanceHidden(!isBalanceHidden)} style={styles.eyeBtn} activeOpacity={0.85}>
+                <Ionicons name={isBalanceHidden ? 'eye-off' : 'eye'} size={22} color="rgba(255,255,255,0.95)" />
+              </TouchableOpacity>
+            </View>
           </View>
+
           {walletQuery.isLoading ? (
-            <ActivityIndicator color="#60A5FA" />
+            <View style={{ paddingTop: 10 }}>
+              <ActivityIndicator color="#ffffff" />
+            </View>
           ) : walletQuery.isError ? (
             <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={32} color="#EF4444" />
-              <Text style={styles.errorTextDark}>
-                {i18n.t('failedToLoadBalance')}
-              </Text>
-              <TouchableOpacity 
-                style={styles.retryButton}
-                onPress={() => walletQuery.refetch()}
-              >
+              <Ionicons name="alert-circle" size={32} color="#FFFFFF" />
+              <Text style={styles.errorTextLight}>{i18n.t('failedToLoadBalance')}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => walletQuery.refetch()} activeOpacity={0.85}>
                 <Text style={styles.retryText}>{i18n.t('retry')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={styles.balanceRow}>
-              <Ionicons name="logo-usd" size={28} color="#10B981" />
-              <Text style={styles.balanceDark}>
-                {isBalanceHidden ? '•••••••' : `${walletQuery.data?.balance?.toFixed(2) || '0.00'}`}
+            <View style={styles.balanceValueRow}>
+              <Text style={styles.balanceValue}>
+                {isBalanceHidden ? '•••••••' : balanceText}
               </Text>
+              <Text style={styles.balanceCurrency}> {currencyText}</Text>
             </View>
           )}
-
-          <View style={styles.verifiedAccount}>
-            <Ionicons name="shield-checkmark" size={22} color="#10B981" />
-            <Text style={styles.verifiedAccountText}>{i18n.t('accountStatusActive')}</Text>
-          </View>
         </View>
 
-        <View style={styles.actionRow}>
-          <ActionButton
-            icon="send"
-            label={i18n.t('sendMoney')}
-            onPress={() => router.push('/(app)/send' as any)}
-          />
-          <ActionButton
-            icon="download"
-            label={i18n.t('deposit')}
-            onPress={() => router.push('/(app)/receive' as any)}
-          />
+        {/* 4 round action buttons row like image 2 */}
+        <View style={styles.quickRow}>
+          <ActionCircle icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
+          <ActionCircle icon="hand-left" label={i18n.t('requestMoney')} onPress={() => router.push('/(app)/request' as any)} />
+          <ActionCircle icon="download" label={i18n.t('deposit')} onPress={() => router.push('/(app)/receive' as any)} />
+          <ActionCircle icon="receipt" label={i18n.t('transactions')} onPress={() => router.push('/(app)/transactions' as any)} />
         </View>
 
-        <View style={styles.actionRow}>
-          <ActionButton
-            icon="list"
-            label={i18n.t('transactions')}
-            onPress={() => router.push('/(app)/transactions' as any)}
-          />
-          <ActionButton
-            icon="cash"
-            label={i18n.t('withdraw')}
-            onPress={() => router.push('/(app)/withdraw' as any)}
-          />
-        </View>
-
-        <View style={[styles.marketShopSection, { backgroundColor: theme.colors.card }]}>
-          <View style={styles.marketShopHeader}>
-            <View style={styles.marketShopTitleRow}>
-              <Ionicons name="storefront" size={28} color="#60A5FA" />
-              <Text style={[styles.marketShopTitle, { color: theme.colors.text }]}>
-                {i18n.t('marketShop')}
-              </Text>
+        {/* Ramadan / Cashback banner like image 2 */}
+        <View style={styles.banner}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={styles.moonCircle}>
+              <Ionicons name="moon" size={22} color="#FFFFFF" />
             </View>
-            <Text style={[styles.marketShopSubtitle, { color: theme.colors.textSecondary }]}>
-              {i18n.t('marketShopSubtitle')}
-            </Text>
+
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bannerTitle}>كاش باك</Text>
+              <Text style={styles.bannerSub}>%60 كاش باك تاوه‌كو</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.dotsRow}>
+          <View style={styles.dotActive} />
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+        </View>
+
+        {/* Grid menu like image 2 (uses your existing routes where possible) */}
+        <View style={styles.grid}>
+          <GridItem icon="arrow-up" label={i18n.t('withdraw')} onPress={() => router.push('/(app)/withdraw' as any)} />
+          <GridItem icon="swap-horizontal" label="Convert" onPress={() => {}} />
+          <GridItem icon="wallet" label={'Dream\nAccount'} onPress={() => {}} />
+          <GridItem icon="shield-checkmark" label={'Account\nLimit'} onPress={() => router.push('/(app)/account-limit' as any)} />
+
+          <GridItem icon="location" label="Around Me" onPress={() => {}} />
+          <GridItem icon="calendar" label="Installment" onPress={() => {}} />
+          <GridItem icon="card" label={i18n.t('market.topup')} onPress={() => router.push('/(app)/sim-cards' as any)} />
+          <GridItem icon="people" label={'Group\nSaving'} onPress={() => {}} />
+        </View>
+
+        {/* Keep your Market Shop section but make it LIGHT and simple (no dark colors) */}
+        <View style={styles.marketLightCard}>
+          <View style={styles.marketHeader}>
+            <Text style={styles.marketTitle}>{i18n.t('marketShop')}</Text>
+            <Text style={styles.marketSub}>{i18n.t('marketShopSubtitle')}</Text>
           </View>
 
-          <View style={styles.marketGrid}>
-            <TouchableOpacity 
-              style={[styles.marketCard, { backgroundColor: '#1E3A8A' }]}
-              onPress={() => router.push('/(app)/sim-cards' as any)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.marketCardIconWrapper}>
-                <Ionicons name="wallet" size={32} color="#FFFFFF" />
+          <View style={styles.marketMiniGrid}>
+            <TouchableOpacity style={styles.marketMiniItem} onPress={() => router.push('/(app)/sim-cards' as any)} activeOpacity={0.85}>
+              <View style={styles.marketMiniIcon}>
+                <Ionicons name="card" size={22} color={UI.green} />
               </View>
-              <Text style={styles.marketCardTitle}>
-                {i18n.t('market.topup')}
-               </Text>
-              <View style={styles.marketCardArrow}>
-                <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
-              </View>
+              <Text style={styles.marketMiniLabel}>{i18n.t('market.topup')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.marketCard, { backgroundColor: '#166534' }]}
-              onPress={() => router.push('/(app)/gift-cards' as any)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.marketCardIconWrapper}>
-                <Ionicons name="gift" size={32} color="#FFFFFF" />
+            <TouchableOpacity style={styles.marketMiniItem} onPress={() => router.push('/(app)/gift-cards' as any)} activeOpacity={0.85}>
+              <View style={styles.marketMiniIcon}>
+                <Ionicons name="gift" size={22} color={UI.green} />
               </View>
-              <Text style={styles.marketCardTitle}>
-               {i18n.t('market.gift')}
-              </Text>
-
-              <View style={styles.marketCardArrow}>
-                <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
-              </View>
+              <Text style={styles.marketMiniLabel}>{i18n.t('market.gift')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.marketCard, { backgroundColor: '#7C2D12' }]}
-              onPress={() => router.push('/(app)/mobile-shop' as any)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.marketCardIconWrapper}>
-                <Ionicons name="phone-portrait" size={32} color="#FFFFFF" />
+            <TouchableOpacity style={styles.marketMiniItem} onPress={() => router.push('/(app)/mobile-shop' as any)} activeOpacity={0.85}>
+              <View style={styles.marketMiniIcon}>
+                <Ionicons name="phone-portrait" size={22} color={UI.green} />
               </View>
-              <Text style={styles.marketCardTitle}>
-                {i18n.t('market.mobile')}
-              </Text>
-
-              <View style={styles.marketCardArrow}>
-                <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
-              </View>
+              <Text style={styles.marketMiniLabel}>{i18n.t('market.mobile')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.marketCard, { backgroundColor: '#4C1D95' }]}
-              onPress={() => router.push('/(app)/travel-booking' as any)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.marketCardIconWrapper}>
-                <Ionicons name="airplane" size={32} color="#FFFFFF" />
+            <TouchableOpacity style={styles.marketMiniItem} onPress={() => router.push('/(app)/travel-booking' as any)} activeOpacity={0.85}>
+              <View style={styles.marketMiniIcon}>
+                <Ionicons name="airplane" size={22} color={UI.green} />
               </View>
-              <Text style={styles.marketCardTitle}>
-               {i18n.t('market.travel')}
-              </Text>
-
-              <View style={styles.marketCardArrow}>
-                <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
-              </View>
+              <Text style={styles.marketMiniLabel}>{i18n.t('market.travel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-
+        <View style={{ height: 120 }} />
       </ScrollView>
 
-      <View style={[styles.bottomNav, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+      {/* Bottom nav light + green active like image 2 */}
+      <View style={[styles.bottomNav, { borderColor: UI.border, backgroundColor: UI.card }]}>
         <NavItem icon="home" label={i18n.t('home')} active onPress={() => {}} />
         <NavItem icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
         <NavItem icon="chatbox" label={i18n.t('consulateInfo')} onPress={() => router.push('/(app)/consulate' as any)} />
@@ -292,318 +319,193 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+
+  // Header
   header: {
-    padding: 20,
-    paddingTop: 50,
+    paddingHorizontal: 16,
+    paddingTop: 54,
+    paddingBottom: 10,
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  logo: {
-    fontSize: 20,
-    fontWeight: '700' as const,
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  avatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EEF2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerName: { fontSize: 18, fontWeight: '700', color: UI.text },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#EEF2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  actionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  actionRowSingle: {
-    paddingHorizontal: 20,
-  },
-  actionBtn: {
-    flex: 1,
-    backgroundColor: '#1E3A8A',
-    padding: 14,
-    borderRadius: 18,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  actionText: {
-    color: 'white',
-    fontWeight: '600' as const,
-  },
-  card: {
-    margin: 20,
-    padding: 20,
-    borderRadius: 22,
-  },
+  // Balance Card
   balanceCard: {
-    backgroundColor: '#0B1A3A',
+    marginHorizontal: 16,
+    marginTop: 10,
+    borderRadius: 18,
+    padding: 16,
+    backgroundColor: UI.green,
   },
-  balanceHeader: {
+  balanceTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  labelDark: {
-    color: '#9CA3AF',
-    fontSize: 14,
-  },
-  balanceRow: {
+  balanceTitle: { color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '600' },
+  balanceRightRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  currencyChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 6,
-  },
-  balanceDark: {
-    fontSize: 32,
-    fontWeight: '700' as const,
-    color: '#FFFFFF',
-  },
-  errorTextDark: {
-    fontSize: 14,
-    textAlign: 'center' as const,
-    color: '#FFFFFF',
-  },
-  hideButton: {
-    padding: 4,
-  },
-  label: {},
-  balance: {
-    fontSize: 32,
-    fontWeight: '700' as const,
-    marginTop: 6,
-  },
-  subBalance: {
-    color: '#9CA3AF',
-    marginTop: 4,
-  },
-  verified: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
     gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
-  verifiedText: {
-    fontWeight: '600' as const,
-  },
-  verifiedAccount: {
-    flexDirection: 'row',
+  currencyChipText: { color: '#fff', fontWeight: '700' },
+  eyeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
-    marginTop: 16,
-    gap: 8,
+    justifyContent: 'center',
   },
-  verifiedAccountText: {
-    color: '#10B981',
-    fontSize: 16,
-    fontWeight: '600' as const,
-  },
-  sectionHeader: {
+  balanceValueRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 12 },
+  balanceValue: { fontSize: 44, fontWeight: '800', color: '#fff' },
+  balanceCurrency: { fontSize: 16, color: 'rgba(255,255,255,0.9)', paddingBottom: 8 },
+
+  // Quick actions row
+  quickRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginTop: 10,
+    marginHorizontal: 16,
+    marginTop: 16,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600' as const,
-    marginHorizontal: 20,
-    marginTop: 20,
-  },
-  viewAll: {
-    color: '#60A5FA',
-  },
-  transaction: {
-    flexDirection: 'row',
+  quickItem: { alignItems: 'center', width: '23%' },
+  quickIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: UI.greenSoft,
     alignItems: 'center',
-    backgroundColor: '#0B1220',
-    marginHorizontal: 20,
-    marginTop: 10,
-    padding: 14,
+    justifyContent: 'center',
+  },
+  quickLabel: { marginTop: 8, fontSize: 12, color: UI.text, textAlign: 'center' },
+
+  // Banner
+  banner: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: UI.blueBanner,
     borderRadius: 16,
+    padding: 16,
   },
-  txTitle: {
-    color: 'white',
-    fontWeight: '600' as const,
+  moonCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  txSub: {
-    color: '#9CA3AF',
-    fontSize: 12,
-  },
-  txAmount: {
-    color: '#F87171',
-    fontWeight: '600' as const,
-  },
-  countryGrid: {
+  bannerTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  bannerSub: { color: 'rgba(255,255,255,0.92)', marginTop: 6, fontSize: 14 },
+
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 10 },
+  dotActive: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#374151' },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#D1D5DB' },
+
+  // Grid
+  grid: {
+    marginTop: 10,
+    marginHorizontal: 8,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: 20,
+  },
+  gridItem: { width: '25%', paddingVertical: 14, alignItems: 'center' },
+  gridIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#EEF2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridLabel: { marginTop: 8, fontSize: 12, color: UI.text, textAlign: 'center' },
+
+  // Market section light (kept, but redesigned)
+  marketLightCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 18,
+    backgroundColor: UI.card,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
+  marketHeader: { marginBottom: 12 },
+  marketTitle: { fontSize: 18, fontWeight: '800', color: UI.text },
+  marketSub: { marginTop: 6, color: UI.text2, fontSize: 13, lineHeight: 18 },
+  marketMiniGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 12,
   },
-  countryCard: {
-    width: '47%',
-    height: 80,
-    backgroundColor: '#0B1220',
-    borderRadius: 16,
-    justifyContent: 'center',
+  marketMiniItem: {
+    width: '48%',
+    borderRadius: 14,
+    padding: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: UI.border,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
-  countryText: {
-    color: 'white',
-    fontWeight: '600' as const,
+  marketMiniIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: UI.greenSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  marketMiniLabel: { color: UI.text, fontSize: 13, fontWeight: '700', flex: 1 },
+
+  // Errors
+  errorContainer: { alignItems: 'center', paddingVertical: 20, gap: 10 },
+  errorTextLight: { color: '#fff', textAlign: 'center', fontWeight: '700' },
+  retryButton: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  retryText: { color: '#fff', fontWeight: '800' },
+
+  // Bottom nav
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingVertical: 12,
     borderTopWidth: 1,
   },
-  navItem: {
-    alignItems: 'center',
-  },
-  navText: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  noTransactions: {
-    textAlign: 'center' as const,
-    color: '#9CA3AF',
-    fontSize: 16,
-    marginTop: 20,
-    marginHorizontal: 20,
-  },
-  marketShopSection: {
-    marginHorizontal: 20,
-    marginTop: 10,
-    marginBottom: 100,
-    borderRadius: 20,
-    padding: 20,
-  },
-  marketShopHeader: {
-    marginBottom: 24,
-  },
-  marketShopTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 8,
-  },
-  marketShopTitle: {
-    fontSize: 24,
-    fontWeight: '700' as const,
-  },
-  marketShopSubtitle: {
-    fontSize: 14,
-    marginLeft: 40,
-    lineHeight: 20,
-  },
-  marketGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  marketCard: {
-    width: '48%',
-    height: 130,
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 14,
-    justifyContent: 'space-between',
-  },
-  marketCardIconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  marketCardTitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600' as const,
-    marginTop: 8,
-  },
-  marketCardArrow: {
-    position: 'absolute' as const,
-    top: 16,
-    right: 16,
-  },
-  shopRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-  },
-  shopCard: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    gap: 12,
-  },
-  shopCardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shopCardLabel: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
-  },
-  shopCardArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shopGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  shopItem: {
-    width: '48%',
-    padding: 20,
-    borderRadius: 16,
-    alignItems: 'center',
-    gap: 12,
-  },
-  shopIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shopLabel: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    textAlign: 'center' as const,
-  },
-  errorContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    gap: 12,
-  },
-  errorText: {
-    fontSize: 14,
-    textAlign: 'center' as const,
-  },
-  retryButton: {
-    backgroundColor: '#60A5FA',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginTop: 8,
-  },
-  retryText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600' as const,
-  },
+  navItem: { alignItems: 'center' },
+  navText: { color: '#9CA3AF', fontSize: 12, marginTop: 4 },
 });
