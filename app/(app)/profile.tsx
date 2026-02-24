@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -33,25 +33,73 @@ export default function ProfileScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [savingAvatar, setSavingAvatar] = useState(false);
 
-  const avatarPreview = useMemo(() => {
-    if (!avatarUrl) return null;
-    // cache-bust so user sees updated image immediately
-    const sep = avatarUrl.includes('?') ? '&' : '?';
-    return `${avatarUrl}${sep}t=${Date.now()}`;
-  }, [avatarUrl]);
+  // -----------------------------
+  // FIX #2: sync UI state with profile after refresh/reopen
+  // -----------------------------
+  useEffect(() => {
+    setFullName(profile?.full_name || '');
+    setAvatarUrl((profile as any)?.avatar_url ?? null);
+  }, [profile?.full_name, (profile as any)?.avatar_url]);
 
+  // cache-bust always so image updates even if CDN caches it
+  const avatarPreview = useMemo(() => {
+    const url = avatarUrl || ((profile as any)?.avatar_url ?? null);
+    if (!url) return null;
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}t=${Date.now()}`;
+  }, [avatarUrl, (profile as any)?.avatar_url]);
+
+  // -----------------------------
+  // FIX #3: Auto-save full name (debounced)
+  // -----------------------------
+  const nameSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedName = useRef<string>(profile?.full_name || '');
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // don't spam updates if same
+    if (fullName.trim() === (lastSavedName.current || '').trim()) return;
+
+    if (nameSaveTimer.current) clearTimeout(nameSaveTimer.current);
+
+    nameSaveTimer.current = setTimeout(async () => {
+      try {
+        const value = fullName.trim();
+
+        const { error } = await supabase
+          .from('profiles')
+          .update({ full_name: value })
+          .eq('id', user.id);
+
+        if (error) throw error;
+
+        lastSavedName.current = value;
+        refreshProfile(); // so dashboard shows it too
+      } catch (e: any) {
+        console.error('Auto save full_name error:', e);
+      }
+    }, 700);
+
+    return () => {
+      if (nameSaveTimer.current) clearTimeout(nameSaveTimer.current);
+    };
+  }, [fullName, user?.id, refreshProfile]);
+
+  // Manual save button (optional - still useful)
   const updateMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('Not authenticated');
 
       const { error } = await supabase
         .from('profiles')
-        .update({ full_name: fullName })
+        .update({ full_name: fullName.trim() })
         .eq('id', user.id);
 
       if (error) throw error;
     },
     onSuccess: () => {
+      lastSavedName.current = fullName.trim();
       refreshProfile();
       Alert.alert(i18n.t('success'), i18n.t('profileUpdated'));
     },
@@ -60,6 +108,9 @@ export default function ProfileScreen() {
     },
   });
 
+  // -----------------------------
+  // Avatar upload helpers
+  // -----------------------------
   const uploadAvatarToSupabase = async (uri: string) => {
     if (!user?.id) {
       Alert.alert(i18n.t('error'), 'Not authenticated');
@@ -73,31 +124,30 @@ export default function ProfileScreen() {
       const resp = await fetch(uri);
       const blob = await resp.blob();
       const arrayBuffer = await blob.arrayBuffer();
-      const fileExt = (uri.split('.').pop() || 'jpg').toLowerCase();
-      const contentType =
-        fileExt === 'png' ? 'image/png' : fileExt === 'webp' ? 'image/webp' : 'image/jpeg';
 
-      // ثابت: نفس المسار حتى "يستبدل" الصورة القديمة
-      const filePath = `${user.id}/avatar.${fileExt}`;
+      // Use blob.type when possible
+      const mime = blob.type || 'image/jpeg';
+      const ext =
+        mime.includes('png') ? 'png' :
+        mime.includes('webp') ? 'webp' : 'jpg';
 
-      // Upload (replace old) -> upsert:true
+      // ثابت: نفس المسار حتى يستبدل القديمة
+      const filePath = `${user.id}/avatar.${ext}`;
+
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, arrayBuffer, {
           upsert: true,
-          contentType,
-          cacheControl: '3600',
+          contentType: mime,
+          cacheControl: '0', // important to reduce caching
         });
 
       if (uploadError) throw uploadError;
 
-      // Public URL
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const publicUrl = data?.publicUrl;
-
       if (!publicUrl) throw new Error('Failed to get public URL');
 
-      // Save to profile table (so dashboard can use it too)
       const { error: dbError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl })
@@ -105,8 +155,10 @@ export default function ProfileScreen() {
 
       if (dbError) throw dbError;
 
+      // FIX #2: update local + refresh profile so it persists after refresh
       setAvatarUrl(publicUrl);
-      refreshProfile();
+      await refreshProfile();
+
       Alert.alert(i18n.t('success'), i18n.t('profileUpdated'));
     } catch (e: any) {
       console.error('Avatar upload error:', e);
@@ -165,7 +217,10 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header (same design like terms-conditions) */}
+      {/* FIX #1: remove dark blue header (Expo Router default header) */}
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Our single header (white) */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={24} color="#111111" />
@@ -182,7 +237,6 @@ export default function ProfileScreen() {
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
         >
-          {/* Top card */}
           <View style={styles.topCard}>
             {/* Avatar circle */}
             <View style={styles.avatarWrap}>
@@ -209,9 +263,7 @@ export default function ProfileScreen() {
                 </View>
               </TouchableOpacity>
 
-              <Text style={styles.avatarHint}>
-                {i18n.t('tapToChangePhoto') ?? 'Tap to change photo'}
-              </Text>
+              <Text style={styles.avatarHint}>{i18n.t('tapToChangePhoto')}</Text>
             </View>
 
             {/* Email */}
@@ -224,7 +276,7 @@ export default function ProfileScreen() {
             <Text style={styles.label}>{i18n.t('fullName')}</Text>
             <TextInput
               style={styles.input}
-              placeholder={i18n.t('fullName')}
+              placeholder={i18n.t('enterFullName')}
               placeholderTextColor="#6B7280"
               value={fullName}
               onChangeText={setFullName}
@@ -240,45 +292,12 @@ export default function ProfileScreen() {
               </Text>
             </View>
 
-            {(profile as any)?.date_of_birth ? (
-              <>
-                <Text style={styles.label}>{i18n.t('dateOfBirthLabel')}</Text>
-                <View style={styles.infoBox}>
-                  <Text style={styles.infoText}>{(profile as any).date_of_birth}</Text>
-                </View>
-              </>
-            ) : null}
-
-            {(profile as any)?.phone_number ? (
-              <>
-                <Text style={styles.label}>{i18n.t('phoneLabel')}</Text>
-                <View style={styles.infoBox}>
-                  <Text style={styles.infoText}>{(profile as any).phone_number}</Text>
-                </View>
-              </>
-            ) : null}
-
-            {(profile as any)?.city ? (
-              <>
-                <Text style={styles.label}>{i18n.t('cityLabel')}</Text>
-                <View style={styles.infoBox}>
-                  <Text style={styles.infoText}>{(profile as any).city}</Text>
-                </View>
-              </>
-            ) : null}
-
-            {(profile as any)?.country ? (
-              <>
-                <Text style={styles.label}>{i18n.t('countryLabel')}</Text>
-                <View style={styles.infoBox}>
-                  <Text style={styles.infoText}>{(profile as any).country}</Text>
-                </View>
-              </>
-            ) : null}
-
-            {/* Green button */}
+            {/* Green button (optional manual save) */}
             <TouchableOpacity
-              style={[styles.primaryButton, (updateMutation.isPending || savingAvatar) && { opacity: 0.7 }]}
+              style={[
+                styles.primaryButton,
+                (updateMutation.isPending || savingAvatar) && { opacity: 0.7 },
+              ]}
               onPress={() => updateMutation.mutate()}
               disabled={updateMutation.isPending || savingAvatar}
               activeOpacity={0.9}
@@ -286,7 +305,7 @@ export default function ProfileScreen() {
               {updateMutation.isPending ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.primaryButtonText}>{i18n.t('updateProfile')}</Text>
+                <Text style={styles.primaryButtonText}>{i18n.t('save')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -295,26 +314,20 @@ export default function ProfileScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      {/* Picker Modal (2 buttons) */}
+      {/* Picker Modal */}
       <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setPickerOpen(false)} />
         <View style={styles.modalSheet}>
-          <Text style={styles.modalTitle}>
-            {i18n.t('changePhoto') ?? 'Change profile photo'}
-          </Text>
+          <Text style={styles.modalTitle}>{i18n.t('changePhoto')}</Text>
 
           <TouchableOpacity style={styles.sheetButton} activeOpacity={0.9} onPress={pickFromGallery}>
             <Ionicons name="images" size={18} color="#111111" />
-            <Text style={styles.sheetButtonText}>
-              {i18n.t('selectExistingPhoto') ?? 'Select existing photo'}
-            </Text>
+            <Text style={styles.sheetButtonText}>{i18n.t('selectExistingPhoto')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.sheetButton} activeOpacity={0.9} onPress={takeNewPhoto}>
             <Ionicons name="camera" size={18} color="#111111" />
-            <Text style={styles.sheetButtonText}>
-              {i18n.t('takeNewPhoto') ?? 'Take a new photo'}
-            </Text>
+            <Text style={styles.sheetButtonText}>{i18n.t('takeNewPhoto')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.9} onPress={() => setPickerOpen(false)}>
@@ -327,14 +340,8 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Same design base (white bg, black text, green primary)
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  safeArea: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  safeArea: { flex: 1 },
 
   header: {
     flexDirection: 'row',
@@ -347,23 +354,11 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
   },
-  backButton: {
-    padding: 6,
-    borderRadius: 10,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800' as const,
-    color: '#111111',
-  },
+  backButton: { padding: 6, borderRadius: 10 },
+  headerTitle: { fontSize: 20, fontWeight: '800' as const, color: '#111111' },
 
-  content: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  contentContainer: {
-    paddingBottom: 10,
-  },
+  content: { flex: 1, backgroundColor: '#FFFFFF' },
+  contentContainer: { paddingBottom: 10 },
 
   topCard: {
     marginHorizontal: 20,
@@ -375,10 +370,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
 
-  avatarWrap: {
-    alignItems: 'center',
-    marginBottom: 14,
-  },
+  avatarWrap: { alignItems: 'center', marginBottom: 14 },
   avatarBtn: {
     width: 96,
     height: 96,
@@ -390,16 +382,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarImg: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarFallback: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  avatarImg: { width: '100%', height: '100%' },
+  avatarFallback: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
   avatarPencil: {
     position: 'absolute',
     right: 6,
@@ -411,19 +395,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarHint: {
-    marginTop: 10,
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '600' as const,
-  },
+  avatarHint: { marginTop: 10, fontSize: 13, color: '#6B7280', fontWeight: '600' as const },
 
-  label: {
-    fontSize: 14,
-    fontWeight: '800' as const,
-    marginBottom: 8,
-    color: '#111111',
-  },
+  label: { fontSize: 14, fontWeight: '800' as const, marginBottom: 8, color: '#111111' },
 
   input: {
     borderRadius: 14,
@@ -448,11 +422,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  infoText: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#111111',
-  },
+  infoText: { fontSize: 16, fontWeight: '600' as const, color: '#111111' },
 
   primaryButton: {
     marginTop: 6,
@@ -462,17 +432,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#16a34a',
   },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800' as const,
-  },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' as const },
 
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
   modalSheet: {
     position: 'absolute',
     left: 16,
@@ -503,11 +465,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 10,
   },
-  sheetButtonText: {
-    fontSize: 15,
-    fontWeight: '800' as const,
-    color: '#111111',
-  },
+  sheetButtonText: { fontSize: 15, fontWeight: '800' as const, color: '#111111' },
   cancelBtn: {
     height: 50,
     borderRadius: 14,
@@ -516,9 +474,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#F3F4F6',
   },
-  cancelText: {
-    fontSize: 15,
-    fontWeight: '900' as const,
-    color: '#111111',
-  },
+  cancelText: { fontSize: 15, fontWeight: '900' as const, color: '#111111' },
 });
