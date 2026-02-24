@@ -19,7 +19,10 @@
   "submit": "ناردن",
   "submitting": "ناردن...",
   "update": "نوێکرن",
-
+  "save": "هەلگرتن",
+  "changePhoto": "گوهرینا وێنەی",
+  "takeNewPhoto": "گرتنا وێنەکێ نوی",
+  "selectExistingPhoto": "وینەکی ل ئەلبومێ ب هەلبژێرە",
   "ramadanOfferTitle": "ئۆفەری ڕەمەزان",
   "ramadanOfferMessage": "بۆ ماوەی ڕەمەزان، ئێمە داشکاندن و ئۆفەرێن تایبەت پێشکەش دەکەین. لە بازاڕەکەدا سەیر بکە!",
 
