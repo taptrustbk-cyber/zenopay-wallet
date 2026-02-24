@@ -1,18 +1,43 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, StyleSheet, Modal, Platform, Pressable } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+  StyleSheet,
+  Modal,
+  Platform,
+  Pressable,
+} from 'react-native';
 import { useMemo, useState } from 'react';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { supabase } from '@/lib/supabase';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter, Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import i18n from '@/lib/i18n';
+
+// ✅ remove default header
+export const options = {
+  headerShown: false,
+};
+
+// 🎨 white + green + black
+const COLORS = {
+  bg: '#FFFFFF',
+  text: '#111827',
+  textSecondary: '#6B7280',
+  border: '#E5E7EB',
+  inputBg: '#F3FBF6',
+  green: '#16A34A',
+  greenSoft: '#EAF7EF',
+  white: '#FFFFFF',
+};
 
 function isAtLeast18(dob: Date): boolean {
   const today = new Date();
-  const eighteenYearsAgo = new Date(
-    today.getFullYear() - 18,
-    today.getMonth(),
-    today.getDate()
-  );
+  const eighteenYearsAgo = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
   return dob <= eighteenYearsAgo;
 }
 
@@ -38,8 +63,6 @@ export default function CreateAccount() {
   const [tempDob, setTempDob] = useState<Date>(new Date(1995, 0, 1));
   const [isCreating, setIsCreating] = useState<boolean>(false);
 
-
-
   function handleDobChange(date: Date) {
     if (!isAtLeast18(date)) {
       setDob(null);
@@ -49,8 +72,6 @@ export default function CreateAccount() {
     setDob(date);
     setDobError(null);
   }
-
-
 
   async function createAccount() {
     if (!fullName || !email || !password || !city || !phone) {
@@ -68,8 +89,6 @@ export default function CreateAccount() {
       Alert.alert(i18n.t('error'), i18n.t('mustBe18'));
       return;
     }
-
-
 
     setIsCreating(true);
     try {
@@ -102,53 +121,78 @@ export default function CreateAccount() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <LinearGradient colors={['#F9FAFB', '#F3F4F6', '#E5E7EB']} style={styles.gradient}>
-        <View style={styles.content}>
+    <View style={styles.screen}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* ✅ White header with back icon */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backIconBtn} activeOpacity={0.8}>
+          <Ionicons name="arrow-back" size={22} color={COLORS.green} />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>{i18n.t('createAccount')}</Text>
+        <View style={{ width: 24 }} />
+      </View>
+
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.card}>
           <Text style={styles.title}>{i18n.t('createAccount')}</Text>
 
-          <TextInput 
-            placeholder={i18n.t('fullName')} 
-            value={fullName}
-            onChangeText={setFullName}
-            style={styles.input}
-            placeholderTextColor="#999"
-          />
-          
-          <TextInput 
-            placeholder={i18n.t('email')} 
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            style={styles.input}
-            placeholderTextColor="#999"
-          />
-          
-          <TextInput 
-            placeholder={i18n.t('password')} 
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            style={styles.input}
-            placeholderTextColor="#999"
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{i18n.t('fullName')}</Text>
+            <TextInput
+              placeholder={i18n.t('fullName')}
+              value={fullName}
+              onChangeText={setFullName}
+              style={styles.input}
+              placeholderTextColor={COLORS.textSecondary}
+            />
+          </View>
 
-          <TouchableOpacity
-            testID="dob-open"
-            onPress={() => {
-              setTempDob(dob ?? new Date(1995, 0, 1));
-              setOpenDob(true);
-            }}
-            activeOpacity={0.85}
-            style={styles.dobButton}
-          >
-            <Text style={styles.dobText}>
-              {dob
-                ? dob.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-                : i18n.t('dateOfBirth')}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{i18n.t('email')}</Text>
+            <TextInput
+              placeholder={i18n.t('email')}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              style={styles.input}
+              placeholderTextColor={COLORS.textSecondary}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{i18n.t('password')}</Text>
+            <TextInput
+              placeholder={i18n.t('password')}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              style={styles.input}
+              placeholderTextColor={COLORS.textSecondary}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{i18n.t('dateOfBirth')}</Text>
+            <TouchableOpacity
+              testID="dob-open"
+              onPress={() => {
+                setTempDob(dob ?? new Date(1995, 0, 1));
+                setOpenDob(true);
+              }}
+              activeOpacity={0.85}
+              style={styles.dobButton}
+            >
+              <Text style={styles.dobText}>
+                {dob
+                  ? dob.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                  : i18n.t('dateOfBirth')}
+              </Text>
+              <Ionicons name="calendar-outline" size={18} color={COLORS.green} />
+            </TouchableOpacity>
+          </View>
 
           {Platform.OS === 'android' ? (
             openDob ? (
@@ -160,19 +204,12 @@ export default function CreateAccount() {
                 minimumDate={minDate}
                 onChange={(event: DateTimePickerEvent, date?: Date) => {
                   setOpenDob(false);
-                  if (event.type === 'set' && date) {
-                    handleDobChange(date);
-                  }
+                  if (event.type === 'set' && date) handleDobChange(date);
                 }}
               />
             ) : null
           ) : Platform.OS === 'web' ? (
-            <Modal
-              visible={openDob}
-              transparent
-              animationType="fade"
-              onRequestClose={() => setOpenDob(false)}
-            >
+            <Modal visible={openDob} transparent animationType="fade" onRequestClose={() => setOpenDob(false)}>
               <Pressable testID="dob-backdrop" style={styles.dobModalBackdrop} onPress={() => setOpenDob(false)}>
                 <Pressable style={styles.dobModalCard} onPress={() => null}>
                   <Text style={styles.dobModalTitle}>{i18n.t('dateOfBirth')}</Text>
@@ -185,25 +222,21 @@ export default function CreateAccount() {
                       max={maxDate.toISOString().split('T')[0]}
                       onChange={(e) => {
                         const newDate = new Date(e.target.value + 'T00:00:00');
-                        if (!isNaN(newDate.getTime())) {
-                          setTempDob(newDate);
-                        }
+                        if (!isNaN(newDate.getTime())) setTempDob(newDate);
                       }}
                       style={{
                         width: '100%',
                         padding: 16,
                         fontSize: 18,
                         borderRadius: 12,
-                        border: '2px solid #D1D5DB',
-                        backgroundColor: '#FFFFFF',
-                        color: '#111827',
-                        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto',
+                        border: `1px solid ${COLORS.border}`,
+                        backgroundColor: COLORS.white,
+                        color: COLORS.text,
+                        fontFamily:
+                          'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial',
                         outline: 'none',
-                        WebkitAppearance: 'none',
-                        MozAppearance: 'none',
                         appearance: 'none',
                         cursor: 'pointer',
-                        touchAction: 'manipulation',
                         minHeight: 48,
                         boxSizing: 'border-box',
                       }}
@@ -236,12 +269,7 @@ export default function CreateAccount() {
               </Pressable>
             </Modal>
           ) : (
-            <Modal
-              visible={openDob}
-              transparent
-              animationType="fade"
-              onRequestClose={() => setOpenDob(false)}
-            >
+            <Modal visible={openDob} transparent animationType="fade" onRequestClose={() => setOpenDob(false)}>
               <Pressable testID="dob-backdrop" style={styles.dobModalBackdrop} onPress={() => setOpenDob(false)}>
                 <Pressable style={styles.dobModalCard} onPress={() => null}>
                   <Text style={styles.dobModalTitle}>{i18n.t('dateOfBirth')}</Text>
@@ -253,9 +281,8 @@ export default function CreateAccount() {
                       display="spinner"
                       maximumDate={maxDate}
                       minimumDate={minDate}
-                      textColor="#111827"
+                      textColor={COLORS.text}
                       onChange={(event: DateTimePickerEvent, date?: Date) => {
-                        console.log('DOB picker onChange:', { type: event.type, date: date?.toISOString() });
                         if (date) setTempDob(date);
                       }}
                     />
@@ -288,171 +315,167 @@ export default function CreateAccount() {
             </Modal>
           )}
 
-          {dobError && (
-            <Text style={styles.errorText}>{dobError}</Text>
-          )}
+          {dobError ? <Text style={styles.errorText}>{dobError}</Text> : null}
 
-          <Text style={styles.complianceText}>
-            {i18n.t('mustBe18OrOlder')}
-          </Text>
+          <Text style={styles.complianceText}>{i18n.t('mustBe18OrOlder')}</Text>
 
-          <TextInput 
-            placeholder={i18n.t('city')} 
-            value={city}
-            onChangeText={setCity}
-            style={styles.input}
-            placeholderTextColor="#999"
-          />
-          
-          <TextInput 
-            placeholder={i18n.t('country')} 
-            value={country}
-            onChangeText={setCountry}
-            style={styles.input}
-            placeholderTextColor="#999"
-          />
-
-          <View style={styles.phoneContainer}>
-            <Text style={styles.phonePrefix}>+964</Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{i18n.t('city')}</Text>
             <TextInput
-              placeholder={i18n.t('phonePlaceholder')}
-              keyboardType="phone-pad"
-              value={phone}
-              onChangeText={setPhone}
-              style={styles.phoneInput}
-              placeholderTextColor="#999"
+              placeholder={i18n.t('city')}
+              value={city}
+              onChangeText={setCity}
+              style={styles.input}
+              placeholderTextColor={COLORS.textSecondary}
             />
           </View>
 
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{i18n.t('country')}</Text>
+            <TextInput
+              placeholder={i18n.t('country')}
+              value={country}
+              onChangeText={setCountry}
+              style={styles.input}
+              placeholderTextColor={COLORS.textSecondary}
+            />
+          </View>
 
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{i18n.t('phoneLabel') || 'Phone'}</Text>
+            <View style={styles.phoneContainer}>
+              <Text style={styles.phonePrefix}>+964</Text>
+              <TextInput
+                placeholder={i18n.t('phonePlaceholder')}
+                keyboardType="phone-pad"
+                value={phone}
+                onChangeText={setPhone}
+                style={styles.phoneInput}
+                placeholderTextColor={COLORS.textSecondary}
+              />
+            </View>
+          </View>
 
           <TouchableOpacity
             onPress={createAccount}
-            style={[styles.createBtn, (isCreating || dobError || !dob) && styles.createBtnDisabled]}
+            style={[styles.createBtn, (isCreating || !!dobError || !dob) && styles.createBtnDisabled]}
             disabled={isCreating || !!dobError || !dob}
+            activeOpacity={0.9}
           >
-            {isCreating ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>
-            )}
+            {isCreating ? <ActivityIndicator color="#fff" /> : <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>}
           </TouchableOpacity>
-          
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.9}>
             <Text style={styles.backText}>{i18n.t('alreadyHaveAccountShort')}</Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
-    </ScrollView>
+
+        <View style={{ height: 26 }} />
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  screen: { flex: 1, backgroundColor: COLORS.bg },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 54 : 40,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.bg,
   },
-  gradient: {
-    flex: 1,
+  backIconBtn: { padding: 6, borderRadius: 10 },
+  headerTitle: { fontSize: 20, fontWeight: '900' as const, color: COLORS.text },
+
+  container: { flex: 1 },
+  content: { padding: 20, paddingTop: 18 },
+
+  card: {
+    backgroundColor: COLORS.white,
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  content: {
-    padding: 20,
-    paddingTop: 50,
-  },
+
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 24,
-    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: '900' as const,
+    color: COLORS.text,
+    marginBottom: 16,
+    textAlign: 'center' as const,
+  },
+
+  inputGroup: { marginBottom: 14 },
+  label: {
+    fontSize: 13,
+    fontWeight: '800' as const,
+    color: COLORS.text,
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.inputBg,
     borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: COLORS.border,
     fontSize: 16,
-    color: '#000',
+    color: COLORS.text,
   },
+
+  dobButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.inputBg,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  dobText: { fontSize: 16, color: COLORS.text, fontWeight: '700' as const },
+
   phoneContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.inputBg,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    marginBottom: 16,
+    borderColor: COLORS.border,
     paddingHorizontal: 14,
   },
-  phonePrefix: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginRight: 8,
-  },
-  phoneInput: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#000',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 12,
-  },
-  uploadBtn: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    borderStyle: 'dashed',
-    alignItems: 'center',
-  },
-  uploadText: {
-    fontSize: 15,
-    color: '#111827',
-    fontWeight: '600',
-  },
+  phonePrefix: { fontSize: 16, fontWeight: '800' as const, color: COLORS.text, marginRight: 8 },
+  phoneInput: { flex: 1, paddingVertical: 12, fontSize: 16, color: COLORS.text },
+
   createBtn: {
-    backgroundColor: '#2563eb',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 20,
+    backgroundColor: COLORS.green,
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 8,
     alignItems: 'center',
   },
-  createBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  backBtn: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
+  createBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' as const },
+  createBtnDisabled: { opacity: 0.5 },
+
+  backBtn: { marginTop: 14, alignItems: 'center', paddingVertical: 6 },
   backText: {
-    color: '#6B7280',
+    color: COLORS.text,
     fontSize: 14,
+    fontWeight: '800' as const,
+    textDecorationLine: 'underline' as const,
   },
-  dobButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    justifyContent: 'center',
-  },
-  dobText: {
-    fontSize: 16,
-    color: '#111827',
-    fontWeight: '500',
-  },
+
+  errorText: { color: '#DC2626', fontSize: 13, marginTop: -8, marginBottom: 10, fontWeight: '700' as const },
+  complianceText: { color: COLORS.textSecondary, fontSize: 13, marginTop: -6, marginBottom: 12, fontWeight: '600' as const },
+
   dobModalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
@@ -464,40 +487,17 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     padding: 16,
     borderWidth: 1,
     borderColor: 'rgba(17,24,39,0.08)',
   },
-  dobModalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  dobPickerContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  iosPickerContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  webDatePickerContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    overflow: 'visible',
-    marginBottom: 8,
-  },
-  dobModalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 14,
-  },
+  dobModalTitle: { fontSize: 16, fontWeight: '900' as const, color: COLORS.text, marginBottom: 12 },
+
+  iosPickerContainer: { backgroundColor: COLORS.white, borderRadius: 12, overflow: 'hidden' },
+  webDatePickerContainer: { backgroundColor: COLORS.white, borderRadius: 12, overflow: 'visible', marginBottom: 8 },
+
+  dobModalActions: { flexDirection: 'row', gap: 12, marginTop: 14 },
   dobActionSecondary: {
     flex: 1,
     borderRadius: 12,
@@ -505,40 +505,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F3F4F6',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.border,
   },
-  dobActionSecondaryText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  dobActionPrimary: {
-    flex: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    backgroundColor: '#2563eb',
-  },
-  dobActionPrimaryText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  errorText: {
-    color: '#DC2626',
-    fontSize: 13,
-    marginTop: -12,
-    marginBottom: 12,
-    fontWeight: '500',
-  },
-  complianceText: {
-    color: '#6B7280',
-    fontSize: 13,
-    marginTop: -8,
-    marginBottom: 16,
-    fontWeight: '400',
-  },
-  createBtnDisabled: {
-    opacity: 0.5,
-  },
+  dobActionSecondaryText: { fontSize: 15, fontWeight: '900' as const, color: COLORS.text },
+  dobActionPrimary: { flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: COLORS.green },
+  dobActionPrimaryText: { fontSize: 15, fontWeight: '900' as const, color: '#FFFFFF' },
 });
