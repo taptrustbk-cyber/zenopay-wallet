@@ -32,7 +32,7 @@ const CRYPTO_ADDRESSES = {
 
 const CRYPTO_QR_CODES = {
   BTC: 'https://r2-pub.rork.com/generated-images/901e157a-1f2a-4dc8-911d-27f561da8b75.png',
-  USDT_TRC20: require('../assets/usdt-qrcode.png'),
+  USDT_TRC20: 'uri:'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/qr/usdt-qrcode.png',
   XRP: 'https://r2-pub.rork.com/generated-images/5ed43514-fde5-4a68-a84e-69807286b836.png',
   DOGE: 'https://r2-pub.rork.com/generated-images/1d4b41e2-175d-4285-9558-cfbcd6397459.png',
   ETH: 'https://r2-pub.rork.com/generated-images/b45cda94-31a9-440a-9c55-96730ad218aa.png',
