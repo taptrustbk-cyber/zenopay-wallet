@@ -1,10 +1,21 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, FlatList, Image } from 'react-native';
+import React from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  FlatList,
+  Image,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
-import { useTheme } from '@/contexts/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import i18n from '@/lib/i18n';
-import React from 'react';
+
 import { iphoneProducts, MobileProduct } from '@/data/iphoneProducts';
 import { samsungProducts } from '@/data/samsungProducts';
 import { xiaomiProducts } from '@/data/xiaomiProducts';
@@ -13,16 +24,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 
+// ✅ Remove the default (top) header to avoid double header
+export const options = {
+  headerShown: false,
+};
+
 interface Brand {
   id: string;
   name: string;
-  icon: string;
 }
 
 const brands: Brand[] = [
-  { id: '1', name: 'Samsung', icon: 'mobile-alt' },
-  { id: '2', name: 'iPhone', icon: 'mobile-alt' },
-  { id: '3', name: 'Xiaomi', icon: 'mobile-alt' },
+  { id: '1', name: 'Samsung' },
+  { id: '2', name: 'iPhone' },
+  { id: '3', name: 'Xiaomi' },
 ];
 
 const getAllProducts = (brand: string): MobileProduct[] => {
@@ -40,11 +55,23 @@ const getAllProducts = (brand: string): MobileProduct[] => {
 
 const defaultColors = ['Black', 'White', 'Blue', 'Silver'];
 
+// 🎨 New light theme (white background, green buttons, black text)
+const COLORS = {
+  bg: '#FFFFFF',
+  text: '#111827',
+  textSecondary: '#6B7280',
+  border: '#E5E7EB',
+  green: '#16A34A',
+  greenSoft: '#EAF7EF',
+  greenSoft2: '#F3FBF6',
+  white: '#FFFFFF',
+};
+
 export default function MobileShopScreen() {
-  const { theme } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
   const [selectedBrand, setSelectedBrand] = React.useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = React.useState<MobileProduct | null>(null);
   const [selectedColor, setSelectedColor] = React.useState<string>('');
@@ -70,9 +97,7 @@ export default function MobileShopScreen() {
     enabled: !!user?.id,
   });
 
-  const handleBrandSelect = (brandName: string) => {
-    setSelectedBrand(brandName);
-  };
+  const handleBrandSelect = (brandName: string) => setSelectedBrand(brandName);
 
   const handleProductSelect = (product: MobileProduct) => {
     setSelectedProduct(product);
@@ -144,10 +169,7 @@ export default function MobileShopScreen() {
     },
     onError: (error: any) => {
       if (error.message === 'Insufficient balance') {
-        Alert.alert(
-          i18n.t('error'),
-          i18n.t('insufficientBalance') || 'Sorry, you don\'t have enough balance. Please deposit your balance.'
-        );
+        Alert.alert(i18n.t('error'), i18n.t('insufficientBalance') || "Sorry, you don't have enough balance.");
       } else {
         Alert.alert(i18n.t('error'), error.message || 'Failed to place order');
       }
@@ -159,193 +181,169 @@ export default function MobileShopScreen() {
       Alert.alert(i18n.t('error'), i18n.t('fillAllFields') || 'Please fill all required fields');
       return;
     }
-
     purchaseMutation.mutate();
   };
 
+  // ---------- CHECKOUT SCREEN ----------
   if (selectedProduct) {
     const description = `The ${selectedProduct.name} delivers excellent performance, a high-quality display, and a reliable battery life suitable for daily use. Ideal for work, media, and communication with premium build quality. Storage: ${selectedProduct.storage}, Battery Health: ${selectedProduct.battery}.`;
 
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={[styles.container, { backgroundColor: COLORS.bg }]}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
           <ScrollView contentContainerStyle={styles.content}>
-            <View style={styles.header}>
+            {/* Only ONE header (inside screen) */}
+            <View style={[styles.header, { borderBottomColor: COLORS.border }]}>
               <TouchableOpacity onPress={() => setSelectedProduct(null)} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+                <Ionicons name="arrow-back" size={22} color={COLORS.green} />
               </TouchableOpacity>
-              <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-                {i18n.t('checkout')}
-              </Text>
+              <Text style={[styles.headerTitle, { color: COLORS.text }]}>{i18n.t('checkout')}</Text>
               <View style={{ width: 24 }} />
             </View>
 
-            <View style={[styles.productImageCard, { backgroundColor: theme.colors.card }]}>
-              <Image 
-                source={{ uri: selectedProduct.imageUrl }} 
-                style={styles.productImage}
-                resizeMode="contain"
-              />
+            <View style={[styles.productImageCard, { backgroundColor: COLORS.white, borderColor: COLORS.border }]}>
+              <Image source={{ uri: selectedProduct.imageUrl }} style={styles.productImage} resizeMode="contain" />
             </View>
 
-            <View style={[styles.productSummary, { backgroundColor: theme.colors.card }]}>
-              <Text style={[styles.productName, { color: theme.colors.text }]}>
-                {selectedProduct.name}
-              </Text>
-              <Text style={[styles.productPrice, { color: theme.colors.primary }]}>
-                ${selectedProduct.price}
-              </Text>
+            <View style={[styles.productSummary, { backgroundColor: COLORS.white, borderColor: COLORS.border }]}>
+              <Text style={[styles.productName, { color: COLORS.text }]}>{selectedProduct.name}</Text>
+              <Text style={[styles.productPrice, { color: COLORS.green }]}>${selectedProduct.price}</Text>
+
               <View style={styles.specsContainer}>
                 <View style={styles.specItem}>
-                  <Ionicons name="cube-outline" size={16} color="#10B981" />
-                  <Text style={[styles.specText, { color: theme.colors.textSecondary }]}>
-                    {selectedProduct.storage}
-                  </Text>
+                  <Ionicons name="cube-outline" size={16} color={COLORS.green} />
+                  <Text style={[styles.specText, { color: COLORS.textSecondary }]}>{selectedProduct.storage}</Text>
                 </View>
                 <View style={styles.specItem}>
-                  <Ionicons name="battery-charging-outline" size={16} color="#10B981" />
-                  <Text style={[styles.specText, { color: theme.colors.textSecondary }]}>
+                  <Ionicons name="battery-charging-outline" size={16} color={COLORS.green} />
+                  <Text style={[styles.specText, { color: COLORS.textSecondary }]}>
                     Battery: {selectedProduct.battery}
                   </Text>
                 </View>
                 <View style={styles.specItem}>
-                  <Ionicons name="shield-checkmark-outline" size={16} color="#10B981" />
-                  <Text style={[styles.specText, { color: theme.colors.textSecondary }]}>
-                    1 Year Warranty
-                  </Text>
+                  <Ionicons name="shield-checkmark-outline" size={16} color={COLORS.green} />
+                  <Text style={[styles.specText, { color: COLORS.textSecondary }]}>1 Year Warranty</Text>
                 </View>
               </View>
-              <Text style={[styles.productDescription, { color: theme.colors.textSecondary }]}>
-                {description}
-              </Text>
+
+              <Text style={[styles.productDescription, { color: COLORS.textSecondary }]}>{description}</Text>
             </View>
 
-            <View style={[styles.colorSection, { backgroundColor: theme.colors.card }]}>
-              <Text style={[styles.sectionLabel, { color: theme.colors.text }]}>
-                {i18n.t('selectColor')}
-              </Text>
+            <View style={[styles.colorSection, { backgroundColor: COLORS.white, borderColor: COLORS.border }]}>
+              <Text style={[styles.sectionLabel, { color: COLORS.text }]}>{i18n.t('selectColor')}</Text>
               <View style={styles.colorOptions}>
                 {defaultColors.map((color) => (
                   <TouchableOpacity
                     key={color}
                     style={[
                       styles.colorOption,
-                      { borderColor: selectedColor === color ? theme.colors.primary : theme.colors.border },
-                      selectedColor === color && styles.selectedColorOption,
+                      { borderColor: selectedColor === color ? COLORS.green : COLORS.border },
+                      selectedColor === color && { backgroundColor: COLORS.greenSoft },
                     ]}
                     onPress={() => setSelectedColor(color)}
                   >
-                    <Text style={[styles.colorText, { color: theme.colors.text }]}>
-                      {color}
-                    </Text>
+                    <Text style={[styles.colorText, { color: COLORS.text }]}>{color}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
 
-            <View style={[styles.formSection, { backgroundColor: theme.colors.card }]}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-                {i18n.t('deliveryInformation')}
-              </Text>
+            <View style={[styles.formSection, { backgroundColor: COLORS.white, borderColor: COLORS.border }]}>
+              <Text style={[styles.sectionTitle, { color: COLORS.text }]}>{i18n.t('deliveryInformation')}</Text>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.colors.textSecondary }]}>
-                  {i18n.t('fullName') || 'Full Name'}
-                </Text>
+                <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{i18n.t('fullName') || 'Full Name'}</Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+                  style={[styles.input, { backgroundColor: COLORS.greenSoft2, color: COLORS.text, borderColor: COLORS.border }]}
                   value={fullName}
                   onChangeText={setFullName}
                   placeholder={i18n.t('enterFullName') || 'Enter your full name'}
-                  placeholderTextColor={theme.colors.textSecondary}
+                  placeholderTextColor={COLORS.textSecondary}
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.colors.textSecondary }]}>
-                  {i18n.t('phoneNumber')}
-                </Text>
+                <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{i18n.t('phoneNumber')}</Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+                  style={[styles.input, { backgroundColor: COLORS.greenSoft2, color: COLORS.text, borderColor: COLORS.border }]}
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
                   placeholder={i18n.t('enterPhoneNumber')}
-                  placeholderTextColor={theme.colors.textSecondary}
+                  placeholderTextColor={COLORS.textSecondary}
                   keyboardType="phone-pad"
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.colors.textSecondary }]}>
-                  {i18n.t('city')}
-                </Text>
+                <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{i18n.t('city')}</Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+                  style={[styles.input, { backgroundColor: COLORS.greenSoft2, color: COLORS.text, borderColor: COLORS.border }]}
                   value={city}
                   onChangeText={setCity}
                   placeholder={i18n.t('enterCity')}
-                  placeholderTextColor={theme.colors.textSecondary}
+                  placeholderTextColor={COLORS.textSecondary}
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.colors.textSecondary }]}>
-                  {i18n.t('streetAddress')}
-                </Text>
+                <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{i18n.t('streetAddress')}</Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+                  style={[styles.input, { backgroundColor: COLORS.greenSoft2, color: COLORS.text, borderColor: COLORS.border }]}
                   value={street}
                   onChangeText={setStreet}
                   placeholder={i18n.t('enterStreetAddress')}
-                  placeholderTextColor={theme.colors.textSecondary}
+                  placeholderTextColor={COLORS.textSecondary}
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.colors.textSecondary }]}>
-                  {i18n.t('email')}
-                </Text>
+                <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{i18n.t('email')}</Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+                  style={[styles.input, { backgroundColor: COLORS.greenSoft2, color: COLORS.text, borderColor: COLORS.border }]}
                   value={email}
                   onChangeText={setEmail}
                   placeholder={i18n.t('enterEmail')}
-                  placeholderTextColor={theme.colors.textSecondary}
+                  placeholderTextColor={COLORS.textSecondary}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.colors.textSecondary }]}>
+                <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>
                   {i18n.t('deliveryNote')} ({i18n.t('optional')})
                 </Text>
                 <TextInput
-                  style={[styles.input, styles.textArea, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+                  style={[
+                    styles.input,
+                    styles.textArea,
+                    { backgroundColor: COLORS.greenSoft2, color: COLORS.text, borderColor: COLORS.border },
+                  ]}
                   value={note}
                   onChangeText={setNote}
                   placeholder={i18n.t('enterDeliveryNote')}
-                  placeholderTextColor={theme.colors.textSecondary}
+                  placeholderTextColor={COLORS.textSecondary}
                   multiline
                   numberOfLines={3}
                 />
               </View>
             </View>
 
-            <View style={[styles.deliveryInfo, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-              <Ionicons name="information-circle" size={24} color="#3B82F6" />
-              <Text style={[styles.deliveryInfoText, { color: theme.colors.text }]}>
-                {i18n.t('deliveryEstimate')}
-              </Text>
+            <View style={[styles.deliveryInfo, { backgroundColor: COLORS.greenSoft, borderColor: '#B7E3C6' }]}>
+              <Ionicons name="information-circle" size={22} color={COLORS.green} />
+              <Text style={[styles.deliveryInfoText, { color: COLORS.text }]}>{i18n.t('deliveryEstimate')}</Text>
             </View>
 
             <TouchableOpacity
-              style={[styles.checkoutButton, { backgroundColor: theme.colors.primary, opacity: purchaseMutation.isPending ? 0.7 : 1 }]}
+              style={[
+                styles.checkoutButton,
+                { backgroundColor: COLORS.green, opacity: purchaseMutation.isPending ? 0.7 : 1 },
+              ]}
               onPress={handleCheckout}
               disabled={purchaseMutation.isPending}
             >
               {purchaseMutation.isPending ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text style={styles.checkoutButtonText}>{i18n.t('placeOrder')}</Text>
               )}
@@ -356,24 +354,23 @@ export default function MobileShopScreen() {
     );
   }
 
+  // ---------- BRAND PRODUCTS GRID ----------
   if (selectedBrand) {
-    const brandProducts = getAllProducts(selectedBrand).filter(p => p.is_active !== false);
+    const brandProducts = getAllProducts(selectedBrand).filter((p) => p.is_active !== false);
 
     const renderHeader = () => (
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: COLORS.border }]}>
         <TouchableOpacity onPress={() => setSelectedBrand(null)} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+          <Ionicons name="arrow-back" size={22} color={COLORS.green} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-          {selectedBrand}
-        </Text>
+        <Text style={[styles.headerTitle, { color: COLORS.text }]}>{selectedBrand}</Text>
         <View style={{ width: 24 }} />
       </View>
     );
 
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={[styles.container, { backgroundColor: COLORS.bg }]}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
           <FlatList
             data={brandProducts}
             numColumns={2}
@@ -382,26 +379,18 @@ export default function MobileShopScreen() {
             ListHeaderComponent={renderHeader}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={[styles.productGridCard, { backgroundColor: theme.colors.card }]}
+                style={[styles.productGridCard, { backgroundColor: COLORS.white, borderColor: COLORS.border }]}
                 onPress={() => handleProductSelect(item)}
               >
-                <Image 
-                  source={{ uri: item.imageUrl }} 
-                  style={styles.gridProductImage}
-                  resizeMode="contain"
-                />
-                <Text style={[styles.gridProductName, { color: theme.colors.text }]} numberOfLines={2}>
+                <Image source={{ uri: item.imageUrl }} style={styles.gridProductImage} resizeMode="contain" />
+                <Text style={[styles.gridProductName, { color: COLORS.text }]} numberOfLines={2}>
                   {item.name}
                 </Text>
-                <Text style={[styles.gridProductStorage, { color: theme.colors.textSecondary }]}>
-                  {item.storage}
-                </Text>
-                <Text style={[styles.gridProductBattery, { color: theme.colors.textSecondary }]}>
+                <Text style={[styles.gridProductStorage, { color: COLORS.textSecondary }]}>{item.storage}</Text>
+                <Text style={[styles.gridProductBattery, { color: COLORS.textSecondary }]}>
                   Battery: {item.battery}
                 </Text>
-                <Text style={[styles.gridProductPrice, { color: theme.colors.primary }]}>
-                  ${item.price}
-                </Text>
+                <Text style={[styles.gridProductPrice, { color: COLORS.green }]}>${item.price}</Text>
               </TouchableOpacity>
             )}
             keyExtractor={(item) => item.id}
@@ -411,38 +400,38 @@ export default function MobileShopScreen() {
     );
   }
 
+  // ---------- MAIN BRAND LIST ----------
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <View style={[styles.container, { backgroundColor: COLORS.bg }]}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={styles.content}>
-          <View style={styles.header}>
+          {/* Only ONE header (no extra native header because headerShown:false) */}
+          <View style={[styles.header, { borderBottomColor: COLORS.border }]}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+              <Ionicons name="arrow-back" size={22} color={COLORS.green} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-              {i18n.t('mobileShop')}
-            </Text>
+            <Text style={[styles.headerTitle, { color: COLORS.text }]}>{i18n.t('mobileShop')}</Text>
             <View style={{ width: 24 }} />
           </View>
 
-          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-            {i18n.t('selectBrand')}
-          </Text>
+          <Text style={[styles.subtitle, { color: COLORS.textSecondary }]}>{i18n.t('selectBrand')}</Text>
 
           <View style={styles.brandsGrid}>
             {brands.map((brand) => (
               <TouchableOpacity
                 key={brand.id}
-                style={[styles.brandCard, { backgroundColor: theme.colors.card }]}
+                style={[styles.brandCard, { backgroundColor: COLORS.greenSoft, borderColor: '#B7E3C6' }]}
                 onPress={() => handleBrandSelect(brand.name)}
+                activeOpacity={0.85}
               >
-                <View style={[styles.brandIconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-                  <FontAwesome5 name={brand.icon} size={48} color="#F59E0B" />
+                {/* Modern "Apple style" icon container */}
+                <View style={[styles.brandIconContainer, { backgroundColor: COLORS.white, borderColor: '#D1D5DB' }]}>
+                  <Ionicons name="grid-outline" size={26} color={COLORS.green} />
                 </View>
-                <Text style={[styles.brandName, { color: theme.colors.text }]}>
-                  {brand.name}
-                </Text>
-                <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+
+                <Text style={[styles.brandName, { color: COLORS.text }]}>{brand.name}</Text>
+
+                <Ionicons name="chevron-forward" size={20} color={COLORS.text} />
               </TouchableOpacity>
             ))}
           </View>
@@ -453,243 +442,156 @@ export default function MobileShopScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    padding: 20,
-  },
+  container: { flex: 1 },
+  safeArea: { flex: 1 },
+
+  content: { padding: 20 },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingBottom: 14,
     marginBottom: 16,
+    borderBottomWidth: 1,
   },
   backButton: {
-    padding: 4,
+    padding: 6,
+    borderRadius: 12,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700' as const,
   },
+
   subtitle: {
     fontSize: 14,
     textAlign: 'center' as const,
-    marginBottom: 24,
+    marginBottom: 18,
   },
-  brandsGrid: {
-    gap: 16,
-  },
+
+  brandsGrid: { gap: 14 },
+
   brandCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    padding: 18,
     borderRadius: 16,
-    gap: 16,
+    gap: 14,
+    borderWidth: 1,
   },
   brandIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 48,
+    height: 48,
+    borderRadius: 14, // rounded-square (modern)
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
   },
   brandName: {
     flex: 1,
     fontSize: 18,
-    fontWeight: '600' as const,
-  },
-  productsList: {
-    gap: 16,
-  },
-  productCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    gap: 16,
-  },
-  productIconContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  productInfo: {
-    flex: 1,
-  },
-  productCardName: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    marginBottom: 6,
-  },
-  productSpecs: {
-    marginBottom: 8,
-  },
-  productSpec: {
-    fontSize: 12,
-  },
-  productCardPrice: {
-    fontSize: 18,
     fontWeight: '700' as const,
   },
+
+  // Checkout / Product styles
   productSummary: {
-    padding: 24,
+    padding: 20,
     borderRadius: 16,
-    marginBottom: 20,
+    marginBottom: 16,
     alignItems: 'center',
+    borderWidth: 1,
   },
   productName: {
-    fontSize: 24,
-    fontWeight: '700' as const,
-    marginBottom: 8,
+    fontSize: 20,
+    fontWeight: '800' as const,
+    marginBottom: 6,
     textAlign: 'center' as const,
   },
   productPrice: {
-    fontSize: 32,
-    fontWeight: '700' as const,
-    marginBottom: 16,
+    fontSize: 28,
+    fontWeight: '900' as const,
+    marginBottom: 14,
   },
-  specsContainer: {
-    gap: 8,
-  },
-  specItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  specText: {
-    fontSize: 14,
-  },
+  specsContainer: { gap: 8 },
+  specItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  specText: { fontSize: 14 },
+
   colorSection: {
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
-    marginBottom: 20,
-  },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    marginBottom: 12,
-  },
-  colorOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  colorOption: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 2,
-  },
-  selectedColorOption: {
-    borderWidth: 2,
-  },
-  colorText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-  },
-  formSection: {
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600' as const,
-    marginBottom: 20,
-  },
-  inputGroup: {
     marginBottom: 16,
+    borderWidth: 1,
   },
-  inputLabel: {
-    fontSize: 14,
-    marginBottom: 8,
-    fontWeight: '500' as const,
+  sectionLabel: { fontSize: 16, fontWeight: '700' as const, marginBottom: 12 },
+  colorOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  colorOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 2,
   },
+  colorText: { fontSize: 14, fontWeight: '700' as const },
+
+  formSection: {
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+  },
+  sectionTitle: { fontSize: 18, fontWeight: '800' as const, marginBottom: 16 },
+
+  inputGroup: { marginBottom: 14 },
+  inputLabel: { fontSize: 13, marginBottom: 8, fontWeight: '600' as const },
   input: {
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     fontSize: 16,
+    borderWidth: 1,
   },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
+  textArea: { height: 80, textAlignVertical: 'top' },
+
   deliveryInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
+    gap: 10,
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 14,
+    borderWidth: 1,
   },
-  deliveryInfoText: {
-    flex: 1,
-    fontSize: 14,
-  },
-  checkoutButton: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  checkoutButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600' as const,
-  },
+  deliveryInfoText: { flex: 1, fontSize: 14, fontWeight: '600' as const },
+
+  checkoutButton: { padding: 16, borderRadius: 14, alignItems: 'center' },
+  checkoutButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' as const },
+
   productImageCard: {
     padding: 16,
     borderRadius: 16,
     marginBottom: 16,
     alignItems: 'center',
+    borderWidth: 1,
   },
-  productImage: {
-    width: '100%',
-    height: 200,
-  },
-  productDescription: {
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: 12,
-  },
-  productsGrid: {
-    paddingBottom: 20,
-  },
-  productRow: {
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
+  productImage: { width: '100%', height: 200 },
+  productDescription: { fontSize: 13, lineHeight: 20, marginTop: 12 },
+
+  // Products grid
+  productsGrid: { paddingBottom: 20 },
+  productRow: { justifyContent: 'space-between', marginBottom: 14 },
   productGridCard: {
     width: '48%',
     padding: 12,
     borderRadius: 16,
+    borderWidth: 1,
   },
   gridProductImage: {
     width: '100%',
     height: 140,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  gridProductName: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    marginBottom: 4,
-  },
-  gridProductStorage: {
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  gridProductBattery: {
-    fontSize: 11,
-    marginBottom: 8,
-  },
-  gridProductPrice: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-  },
+  gridProductName: { fontSize: 14, fontWeight: '800' as const, marginBottom: 4 },
+  gridProductStorage: { fontSize: 12, marginBottom: 2 },
+  gridProductBattery: { fontSize: 11, marginBottom: 8 },
+  gridProductPrice: { fontSize: 16, fontWeight: '900' as const },
 });
