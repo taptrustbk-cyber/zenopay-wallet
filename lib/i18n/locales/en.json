@@ -29,10 +29,12 @@
 
   "marketShop": "Market Shop",
   "marketShopSubtitle": "Buy cards, gift cards, phones & travel safely",
-  "market.topup": "Top-Up Cards",
-  "market.gift": "Gift Cards",
-  "market.mobile": "Mobile Shop",
-  "market.travel": "Travel Booking",
+
+  "market": {
+    "topup": "Top-Up Cards",
+    "gift": "Gift Cards",
+    "mobile": "Mobile Shop",
+    "travel": "Travel Booking"
 
   "simCards": "SIM Cards",
   "giftCards": "Gift Cards",
