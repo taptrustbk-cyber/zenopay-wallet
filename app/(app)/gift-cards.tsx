@@ -1,10 +1,20 @@
+import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useRouter } from 'expo-router';
+import { useTheme } from '@/contexts/ThemeContext'; // keep (not breaking)
+import { useRouter, Stack } from 'expo-router';
 import i18n from '@/lib/i18n';
-import React from 'react';
+
+const UI = {
+  bg: '#F5F6FA',
+  card: '#FFFFFF',
+  text: '#111827',
+  text2: '#6B7280',
+  border: '#E5E7EB',
+  green: '#47B08A',
+  greenSoft: '#EAF7F1',
+};
 
 interface GiftCard {
   id: string;
@@ -28,17 +38,19 @@ const giftCards: GiftCard[] = [
 ];
 
 export default function GiftCardsScreen() {
-  const { theme } = useTheme();
+  // ✅ hide default header (removes dark-blue top bar)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const header = <Stack.Screen options={{ headerShown: false }} />;
+
+  const { theme } = useTheme(); // keep theme (not used for colors now)
   const router = useRouter();
   const [selectedCard, setSelectedCard] = React.useState<GiftCard | null>(null);
 
-  const handleCardSelect = (card: GiftCard) => {
-    setSelectedCard(card);
-  };
+  const handleCardSelect = (card: GiftCard) => setSelectedCard(card);
 
   const handleValueSelect = (value: number) => {
     if (!selectedCard) return;
-    
+
     router.push({
       pathname: '/(app)/buy-card' as any,
       params: {
@@ -51,205 +63,246 @@ export default function GiftCardsScreen() {
     });
   };
 
+  const Header = ({ title, onBack }: { title: string; onBack: () => void }) => (
+    <View style={styles.header}>
+      <TouchableOpacity style={styles.headerBtn} onPress={onBack} activeOpacity={0.85}>
+        <Ionicons name="chevron-back" size={22} color={UI.text} />
+        <Text style={styles.headerBack}>{i18n.t('back')}</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.headerTitle} numberOfLines={1}>
+        {title}
+      </Text>
+
+      <View style={{ width: 70 }} />
+    </View>
+  );
+
   if (selectedCard) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-          <View style={styles.content}>
-            <View style={styles.header}>
-              <TouchableOpacity onPress={() => setSelectedCard(null)} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
-              </TouchableOpacity>
-              <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-                {selectedCard.name}
-              </Text>
-              <View style={{ width: 24 }} />
+      <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
+        <Stack.Screen options={{ headerShown: false }} />
+
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <Header title={selectedCard.name} onBack={() => setSelectedCard(null)} />
+
+          <View style={styles.previewCard}>
+            <View style={[styles.previewIcon, { backgroundColor: `${selectedCard.color}14` }]}>
+              <Ionicons name={selectedCard.icon as any} size={56} color={selectedCard.color} />
             </View>
 
-            <View style={[styles.selectedCardPreview, { backgroundColor: theme.colors.card }]}>
-              <View style={[styles.selectedCardIcon, { backgroundColor: `${selectedCard.color}20` }]}>
-                <Ionicons name={selectedCard.icon as any} size={60} color={selectedCard.color} />
-              </View>
-              <Text style={[styles.selectedCardName, { color: theme.colors.text }]}>
-                {selectedCard.name}
-              </Text>
-              <Text style={[styles.selectValueText, { color: theme.colors.textSecondary }]}>
-                {i18n.t('selectValue')}
-              </Text>
-            </View>
-
-            <View style={styles.valuesGrid}>
-              {selectedCard.values.map((value) => (
-                <TouchableOpacity
-                  key={value}
-                  style={[styles.valueCard, { backgroundColor: theme.colors.card }]}
-                  onPress={() => handleValueSelect(value)}
-                >
-                  <Text style={[styles.valueAmount, { color: theme.colors.text }]}>
-                    ${value}
-                  </Text>
-                  <TouchableOpacity 
-                    style={[styles.selectButton, { backgroundColor: theme.colors.primary }]}
-                    onPress={() => handleValueSelect(value)}
-                  >
-                    <Text style={styles.selectButtonText}>{i18n.t('select')}</Text>
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <Text style={styles.previewName}>{selectedCard.name}</Text>
+            <Text style={styles.previewHint}>{i18n.t('selectValue')}</Text>
           </View>
-        </SafeAreaView>
-      </View>
+
+          <View style={styles.valuesGrid}>
+            {selectedCard.values.map((value) => (
+              <TouchableOpacity
+                key={value}
+                style={styles.valueCard}
+                onPress={() => handleValueSelect(value)}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.valueAmount}>${value}</Text>
+
+                <TouchableOpacity
+                  style={styles.primaryBtn}
+                  onPress={() => handleValueSelect(value)}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.primaryBtnText}>{i18n.t('select')}</Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={{ height: 20 }} />
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+    <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Header title={i18n.t('onlineGiftCards')} onBack={() => router.back()} />
+
+        <Text style={styles.subtitle}>{i18n.t('selectGiftCard')}</Text>
+
+        <View style={styles.grid}>
+          {giftCards.map((card) => (
+            <TouchableOpacity
+              key={card.id}
+              style={styles.cardItem}
+              onPress={() => handleCardSelect(card)}
+              activeOpacity={0.9}
+            >
+              <View style={[styles.cardIconContainer, { backgroundColor: `${card.color}14` }]}>
+                <Ionicons name={card.icon as any} size={36} color={card.color} />
+              </View>
+
+              <Text style={styles.cardName}>{card.name}</Text>
+              <Text style={styles.cardValues}>
+                ${card.values[0]} - ${card.values[card.values.length - 1]}
+              </Text>
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-              {i18n.t('onlineGiftCards')}
-            </Text>
-            <View style={{ width: 24 }} />
-          </View>
+          ))}
+        </View>
 
-          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-            {i18n.t('selectGiftCard')}
-          </Text>
-
-          <View style={styles.grid}>
-            {giftCards.map((card) => (
-              <TouchableOpacity
-                key={card.id}
-                style={[styles.cardItem, { backgroundColor: theme.colors.card }]}
-                onPress={() => handleCardSelect(card)}
-              >
-                <View style={[styles.cardIconContainer, { backgroundColor: `${card.color}20` }]}>
-                  <Ionicons name={card.icon as any} size={40} color={card.color} />
-                </View>
-                <Text style={[styles.cardName, { color: theme.colors.text }]}>
-                  {card.name}
-                </Text>
-                <Text style={[styles.cardValues, { color: theme.colors.textSecondary }]}>
-                  ${card.values[0]} - ${card.values[card.values.length - 1]}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+        <View style={{ height: 20 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+
   content: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 24,
   },
+
+  // Header (one only)
   header: {
+    paddingTop: 6,
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
   },
-  backButton: {
-    padding: 4,
+  headerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    width: 90,
+  },
+  headerBack: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: UI.text,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700' as const,
+    fontSize: 17,
+    fontWeight: '900',
+    color: UI.text,
+    maxWidth: 220,
   },
+
   subtitle: {
-    fontSize: 14,
-    textAlign: 'center' as const,
-    marginBottom: 24,
+    fontSize: 13,
+    fontWeight: '700',
+    color: UI.text2,
+    textAlign: 'center',
+    marginBottom: 14,
   },
+
+  // Grid list
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    justifyContent: 'space-between',
+    gap: 12,
   },
   cardItem: {
-    width: '47%',
-    padding: 16,
+    width: '48%',
+    backgroundColor: UI.card,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: UI.border,
+    padding: 14,
     alignItems: 'center',
   },
   cardIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 74,
+    height: 74,
+    borderRadius: 37,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   cardName: {
     fontSize: 14,
-    fontWeight: '600' as const,
-    textAlign: 'center' as const,
+    fontWeight: '900',
+    color: UI.text,
+    textAlign: 'center',
     marginBottom: 4,
   },
   cardValues: {
     fontSize: 12,
-    textAlign: 'center' as const,
+    fontWeight: '700',
+    color: UI.text2,
+    textAlign: 'center',
   },
-  selectedCardPreview: {
-    padding: 32,
-    borderRadius: 20,
+
+  // Selected preview
+  previewCard: {
+    backgroundColor: UI.card,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: UI.border,
+    padding: 18,
     alignItems: 'center',
-    marginBottom: 24,
+    marginTop: 4,
+    marginBottom: 12,
   },
-  selectedCardIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  previewIcon: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  selectedCardName: {
-    fontSize: 28,
-    fontWeight: '700' as const,
-    marginBottom: 8,
+  previewName: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: UI.text,
+    marginBottom: 6,
   },
-  selectValueText: {
-    fontSize: 14,
+  previewHint: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: UI.text2,
   },
+
+  // Values grid
   valuesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    justifyContent: 'space-between',
+    gap: 12,
   },
   valueCard: {
-    width: '47%',
-    padding: 20,
+    width: '48%',
+    backgroundColor: UI.card,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: UI.border,
+    padding: 14,
     alignItems: 'center',
   },
   valueAmount: {
-    fontSize: 32,
-    fontWeight: '700' as const,
-    marginBottom: 16,
+    fontSize: 28,
+    fontWeight: '900',
+    color: UI.text,
+    marginBottom: 12,
   },
-  selectButton: {
+
+  // Green button
+  primaryBtn: {
     width: '100%',
-    paddingVertical: 10,
-    borderRadius: 10,
+    backgroundColor: UI.green,
+    borderRadius: 14,
+    paddingVertical: 12,
     alignItems: 'center',
   },
-  selectButtonText: {
-    color: 'white',
+  primaryBtnText: {
+    color: '#fff',
     fontSize: 14,
-    fontWeight: '600' as const,
+    fontWeight: '900',
   },
 });
