@@ -11,18 +11,28 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Stack, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
-
+import { useTheme } from '@/contexts/ThemeContext'; // keep (not breaking)
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { CryptoType } from '@/lib/types';
 import * as ImagePicker from 'expo-image-picker';
-import { Upload, Copy } from 'lucide-react-native';
 import i18n from '@/lib/i18n';
 import * as Clipboard from 'expo-clipboard';
 
-const CRYPTO_ADDRESSES = {
+const UI = {
+  bg: '#F5F6FA',
+  card: '#FFFFFF',
+  text: '#111827',
+  text2: '#6B7280',
+  border: '#E5E7EB',
+  green: '#47B08A',
+  greenSoft: '#EAF7F1',
+};
+
+const CRYPTO_ADDRESSES: Record<string, string> = {
   BTC: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
   USDT_TRC20: 'TX5rcy8dZJ259igNNebcyyaVn7hWLkjxzY',
   XRP: 'rN7n7otQDd6FczFgLdlqtyMVrn3HMgk5j',
@@ -30,15 +40,18 @@ const CRYPTO_ADDRESSES = {
   ETH: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
 };
 
-const CRYPTO_QR_CODES = {
-  USDT_TRC20: {
-    uri: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/qr/usdt-qrcode.png',
-  },
-};
+const USDT_QR =
+  'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/qr/usdt-qrcode.png';
 
 export default function DepositScreen() {
+  // ✅ hide default header (removes dark-blue top bar)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const header = <Stack.Screen options={{ headerShown: false }} />;
+
+  const router = useRouter();
   const { user } = useAuth();
-  const { theme } = useTheme();
+  const { theme } = useTheme(); // keep (not used for colors now)
+
   const [amount, setAmount] = useState('');
   const [selectedCrypto, setSelectedCrypto] = useState<CryptoType | null>(null);
   const [transactionId, setTransactionId] = useState('');
@@ -47,23 +60,7 @@ export default function DepositScreen() {
 
   const copyToClipboard = async (text: string) => {
     await Clipboard.setStringAsync(text);
-    Alert.alert('Success copied');
-  };
-
-  const QRCode = ({ crypto, size = 200 }: { crypto: CryptoType; size?: number }) => {
-    const qrCodeUrl = CRYPTO_QR_CODES[crypto];
-    
-    return (
-      <View style={styles.qrContainer}>
-        <Image
-          source={{
-    uri: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/qr/usdt-qrcode.png',
-  }}
-          style={{ width: 220, height: 220 }}
-          resizeMode="contain"
-        />
-      </View>
-    );
+    Alert.alert(i18n.t('success'), i18n.t('done'));
   };
 
   const pickImage = async () => {
@@ -80,22 +77,29 @@ export default function DepositScreen() {
         setScreenshot(result.assets[0].uri);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      Alert.alert(i18n.t('error'), 'Failed to pick image. Please try again.');
       console.error('Image picker error:', error);
     }
   };
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      if (!amount || !selectedCrypto || !transactionId) {
-        throw new Error('Please fill all required fields');
+      if (!user?.id) throw new Error('User not found');
+
+      if (!amount.trim() || !selectedCrypto || !transactionId.trim()) {
+        throw new Error(i18n.t('fillAllFields'));
+      }
+
+      const amountNum = parseFloat(amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        throw new Error(i18n.t('invalidAmount'));
       }
 
       const { error } = await supabase.from('deposit_orders').insert({
-        user_id: user!.id,
-        amount: parseFloat(amount),
+        user_id: user.id,
+        amount: amountNum,
         crypto_type: selectedCrypto,
-        transaction_id: transactionId,
+        transaction_id: transactionId.trim(),
         screenshot_url: screenshot,
         status: 'pending',
       });
@@ -107,26 +111,26 @@ export default function DepositScreen() {
       setAmount('');
       setTransactionId('');
       setScreenshot(null);
+      setSelectedCrypto(null);
     },
     onError: (error: any) => {
-      Alert.alert('Error', error.message);
+      Alert.alert(i18n.t('error'), error?.message || 'Failed to submit order');
     },
   });
 
+  // ✅ Success view (same white + green style)
   if (orderSubmitted) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
-        <View style={styles.successContainer}>
-          <View style={[styles.successCard, { backgroundColor: theme.colors.card }]}>
-            <Text style={[styles.successTitle, { color: theme.colors.success }]}>{i18n.t('orderSubmitted')}</Text>
-            <Text style={[styles.successText, { color: theme.colors.textSecondary }]}>
-              {i18n.t('depositSuccessMessage')}
-            </Text>
-            <TouchableOpacity
-              style={styles.doneButton}
-              onPress={() => setOrderSubmitted(false)}
-            >
-              <Text style={styles.doneButtonText}>{i18n.t('done')}</Text>
+      <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.successWrap}>
+          <View style={styles.successCard}>
+            <Ionicons name="checkmark-circle" size={46} color={UI.green} />
+            <Text style={styles.successTitle}>{i18n.t('orderSubmitted')}</Text>
+            <Text style={styles.successText}>{i18n.t('depositSuccessMessage')}</Text>
+
+            <TouchableOpacity style={styles.primaryBtn} onPress={() => setOrderSubmitted(false)} activeOpacity={0.9}>
+              <Text style={styles.primaryBtnText}>{i18n.t('done')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -134,227 +138,333 @@ export default function DepositScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>{i18n.t('depositMoney')}</Text>
+  const selectedAddress = selectedCrypto ? CRYPTO_ADDRESSES[selectedCrypto] : '';
 
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>{i18n.t('amount')} (USD)</Text>
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {/* ✅ Custom header (only one) */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
+            <Ionicons name="chevron-back" size={22} color={UI.text} />
+            <Text style={styles.headerBack}>{i18n.t('back')}</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.headerTitle}>{i18n.t('deposit')}</Text>
+
+          <View style={{ width: 70 }} />
+        </View>
+
+        {/* Main Card */}
+        <View style={styles.card}>
+          <Text style={styles.title}>{i18n.t('depositMoney')}</Text>
+
+          <Text style={styles.label}>{i18n.t('amount')} (USD)</Text>
           <TextInput
-            style={[styles.input, { backgroundColor: theme.colors.cardSecondary, color: theme.colors.text }]}
+            style={styles.input}
             placeholder={i18n.t('enterAmount')}
-            placeholderTextColor={theme.colors.textSecondary}
-            keyboardType="numeric"
+            placeholderTextColor={UI.text2}
+            keyboardType="decimal-pad"
             value={amount}
             onChangeText={setAmount}
           />
 
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>{i18n.t('selectPaymentMethod')}</Text>
-          <View style={styles.cryptoGrid}>
-            {(['USDT_TRC20'] as CryptoType[]).map((crypto) => (
-              <TouchableOpacity
-                key={crypto}
-                style={[
-                  styles.cryptoButton,
-                  { backgroundColor: theme.colors.cardSecondary, borderColor: 'transparent' },
-                  selectedCrypto === crypto && [styles.cryptoButtonActive, { borderColor: theme.colors.primary, backgroundColor: theme.colors.card }],
-                ]}
-                onPress={() => setSelectedCrypto(crypto)}
-              >
-                <Text
-                  style={[
-                    styles.cryptoText,
-                    { color: theme.colors.textSecondary },
-                    selectedCrypto === crypto && [styles.cryptoTextActive, { color: theme.colors.primary }],
-                  ]}
-                >
-                  {crypto.replace('_', ' ')}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text style={styles.label}>{i18n.t('selectPaymentMethod')}</Text>
+
+          {/* Only USDT TRC20 (clean button) */}
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => setSelectedCrypto('USDT_TRC20' as CryptoType)}
+            style={[
+              styles.cryptoBtn,
+              selectedCrypto === ('USDT_TRC20' as CryptoType) && styles.cryptoBtnActive,
+            ]}
+          >
+            <View style={styles.cryptoLeft}>
+              <View style={styles.cryptoIconCircle}>
+                <Ionicons name="card" size={18} color={UI.green} />
+              </View>
+              <Text style={[styles.cryptoBtnText, selectedCrypto && styles.cryptoBtnTextActive]}>
+                USDT TRC20
+              </Text>
+            </View>
+            {selectedCrypto === ('USDT_TRC20' as CryptoType) ? (
+              <Ionicons name="checkmark-circle" size={20} color={UI.green} />
+            ) : (
+              <Ionicons name="chevron-forward" size={18} color={UI.text2} />
+            )}
+          </TouchableOpacity>
 
           {selectedCrypto && (
             <>
-              <View style={styles.addressSection}>
-                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{i18n.t('sendToAddress')}</Text>
-                <QRCode crypto={selectedCrypto} size={200} />
+              {/* Address + QR */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>{i18n.t('sendToAddress')}</Text>
+
+                <View style={styles.qrBox}>
+                  <Image source={{ uri: USDT_QR }} style={{ width: 220, height: 220 }} resizeMode="contain" />
+                </View>
+
                 <TouchableOpacity
-                  style={[styles.addressBox, { backgroundColor: theme.colors.cardSecondary }]}
-                  onPress={() => copyToClipboard(CRYPTO_ADDRESSES[selectedCrypto])}
+                  style={styles.addressBox}
+                  onPress={() => copyToClipboard(selectedAddress)}
+                  activeOpacity={0.9}
                 >
-                  <Text style={[styles.addressText, { color: theme.colors.primary }]}>
-                    {CRYPTO_ADDRESSES[selectedCrypto]}
+                  <Text style={styles.addressText} numberOfLines={2}>
+                    {selectedAddress}
                   </Text>
-                  <Copy size={16} color={theme.colors.primary} style={{ marginTop: 8 }} />
+                  <View style={styles.copyRow}>
+                    <Ionicons name="copy" size={16} color={UI.green} />
+                    <Text style={styles.copyText}>Copy</Text>
+                  </View>
                 </TouchableOpacity>
               </View>
 
-              <Text style={[styles.label, { color: theme.colors.textSecondary }]}>{i18n.t('transactionID')}</Text>
+              <Text style={styles.label}>{i18n.t('transactionID')}</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: theme.colors.cardSecondary, color: theme.colors.text }]}
+                style={styles.input}
                 placeholder={i18n.t('enterTransactionID')}
-                placeholderTextColor={theme.colors.textSecondary}
+                placeholderTextColor={UI.text2}
                 value={transactionId}
                 onChangeText={setTransactionId}
               />
 
-              <Text style={[styles.label, { color: theme.colors.textSecondary }]}>{i18n.t('uploadScreenshot')}</Text>
-              <TouchableOpacity style={[styles.uploadButton, { backgroundColor: theme.colors.cardSecondary }]} onPress={pickImage}>
-                <Upload size={20} color={theme.colors.primary} />
-                <Text style={[styles.uploadText, { color: theme.colors.primary }]}>
+              <Text style={styles.label}>{i18n.t('uploadScreenshot')}</Text>
+              <TouchableOpacity style={styles.uploadBtn} onPress={pickImage} activeOpacity={0.9}>
+                <Ionicons name="cloud-upload" size={20} color={UI.green} />
+                <Text style={styles.uploadText}>
                   {screenshot ? i18n.t('screenshotSelected') : i18n.t('chooseScreenshot')}
                 </Text>
               </TouchableOpacity>
 
+              {screenshot ? (
+                <View style={styles.previewWrap}>
+                  <Image source={{ uri: screenshot }} style={styles.previewImg} resizeMode="cover" />
+                </View>
+              ) : null}
+
               <TouchableOpacity
-                style={styles.submitButton}
+                style={[styles.primaryBtn, submitMutation.isPending && { opacity: 0.7 }]}
                 onPress={() => submitMutation.mutate()}
                 disabled={submitMutation.isPending}
+                activeOpacity={0.9}
               >
                 {submitMutation.isPending ? (
-                  <ActivityIndicator color="#FFF" />
+                  <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.submitButtonText}>{i18n.t('submitOrder')}</Text>
+                  // ✅ use existing key to avoid: missing 'en.submitOrder'
+                  <Text style={styles.primaryBtnText}>{i18n.t('submit')}</Text>
                 )}
               </TouchableOpacity>
             </>
           )}
         </View>
+
+        <View style={{ height: 70 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-  },
-  card: {
-    borderRadius: 20,
-    padding: 24,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700' as const,
-    marginBottom: 24,
-    textAlign: 'center' as const,
-  },
-  label: {
-    fontSize: 14,
-    marginBottom: 8,
-    marginTop: 12,
-  },
-  input: {
-    borderRadius: 12,
+  container: { flex: 1 },
+
+  scroll: {
     padding: 16,
-    fontSize: 16,
+    paddingTop: 8,
+  },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
   },
-  cryptoGrid: {
+  headerBtn: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  cryptoButton: {
-    width: '47%',
-    padding: 16,
-    borderRadius: 12,
     alignItems: 'center',
-    borderWidth: 2,
+    gap: 2,
+    width: 90,
   },
-  cryptoButtonActive: {},
-  cryptoText: {
-    fontWeight: '600' as const,
+  headerBack: {
     fontSize: 14,
+    fontWeight: '900',
+    color: UI.text,
   },
-  cryptoTextActive: {},
-  addressSection: {
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: UI.text,
+  },
+
+  // Card
+  card: {
+    backgroundColor: UI.card,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: UI.text,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+
+  label: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: UI.text,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+
+  input: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: UI.border,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    fontSize: 15,
+    fontWeight: '700',
+    color: UI.text,
+  },
+
+  // Crypto button
+  cryptoBtn: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: UI.border,
+    backgroundColor: '#F8FAFC',
+    padding: 14,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 20,
+    justifyContent: 'space-between',
+  },
+  cryptoBtnActive: {
+    borderColor: 'rgba(71,176,138,0.55)',
+    backgroundColor: 'rgba(71,176,138,0.08)',
+  },
+  cryptoLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cryptoIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: UI.greenSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cryptoBtnText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: UI.text,
+  },
+  cryptoBtnTextActive: { color: UI.text },
+
+  // Section
+  section: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: UI.border,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    marginBottom: 16,
+    fontSize: 15,
+    fontWeight: '900',
+    color: UI.text,
+    textAlign: 'center',
+    marginBottom: 12,
   },
-  qrContainer: {
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 16,
+
+  qrBox: {
+    alignSelf: 'center',
+    padding: 14,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: UI.border,
   },
+
   addressBox: {
-    padding: 16,
-    borderRadius: 12,
-    width: '100%',
+    marginTop: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: UI.border,
+    backgroundColor: '#F8FAFC',
+    padding: 14,
     alignItems: 'center',
   },
   addressText: {
     fontSize: 12,
-    textAlign: 'center' as const,
+    fontWeight: '800',
+    color: UI.text,
+    textAlign: 'center',
   },
-  uploadButton: {
-    padding: 16,
-    borderRadius: 12,
+  copyRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
+  copyText: { color: UI.green, fontWeight: '900', fontSize: 13 },
+
+  uploadBtn: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: UI.border,
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginBottom: 20,
+    gap: 10,
+    marginBottom: 12,
   },
-  uploadText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
+  uploadText: { color: UI.text, fontWeight: '900', fontSize: 14 },
+
+  previewWrap: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: UI.border,
+    marginBottom: 12,
   },
-  submitButton: {
-    backgroundColor: '#2563EB',
-    padding: 16,
-    borderRadius: 12,
+  previewImg: { width: '100%', height: 170 },
+
+  // Primary button (green)
+  primaryBtn: {
+    backgroundColor: UI.green,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 8,
   },
-  submitButtonText: {
-    color: '#FFFFFF',
+  primaryBtnText: {
+    color: '#fff',
     fontSize: 16,
-    fontWeight: '600' as const,
+    fontWeight: '900',
   },
-  successContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
+
+  // Success
+  successWrap: { flex: 1, justifyContent: 'center', padding: 16 },
   successCard: {
-    borderRadius: 20,
-    padding: 32,
+    backgroundColor: UI.card,
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: UI.border,
     alignItems: 'center',
   },
-  successTitle: {
-    fontSize: 28,
-    fontWeight: '700' as const,
-    marginBottom: 16,
-  },
+  successTitle: { marginTop: 10, fontSize: 18, fontWeight: '900', color: UI.text },
   successText: {
-    fontSize: 16,
-    textAlign: 'center' as const,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  doneButton: {
-    backgroundColor: '#2563EB',
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 12,
-  },
-  doneButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600' as const,
+    marginTop: 8,
+    marginBottom: 14,
+    fontSize: 14,
+    fontWeight: '700',
+    color: UI.text2,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
