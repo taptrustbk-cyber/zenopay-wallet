@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import i18n from '@/lib/i18n';
 
 import { iphoneProducts, MobileProduct } from '@/data/iphoneProducts';
@@ -24,14 +24,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 
-// ✅ Remove the default (top) header to avoid double header
-export const options = {
-  headerShown: false,
-};
-
 interface Brand {
   id: string;
-  name: string;
+  name: 'Samsung' | 'iPhone' | 'Xiaomi';
 }
 
 const brands: Brand[] = [
@@ -55,16 +50,32 @@ const getAllProducts = (brand: string): MobileProduct[] => {
 
 const defaultColors = ['Black', 'White', 'Blue', 'Silver'];
 
-// 🎨 New light theme (white background, green buttons, black text)
+// 🎨 White background + green cards/buttons + black text
 const COLORS = {
   bg: '#FFFFFF',
   text: '#111827',
   textSecondary: '#6B7280',
   border: '#E5E7EB',
   green: '#16A34A',
-  greenSoft: '#EAF7EF',
-  greenSoft2: '#F3FBF6',
+  greenCard: '#D1FAE5', // green box (soft)
+  greenBorder: '#86EFAC',
+  iconBoxGreen: '#16A34A',
   white: '#FFFFFF',
+  inputBg: '#F3FBF6',
+  infoBg: '#EAF7EF',
+};
+
+const brandIconName = (brand: Brand['name']) => {
+  switch (brand) {
+    case 'iPhone':
+      return 'logo-apple';
+    case 'Samsung':
+      return 'logo-android';
+    case 'Xiaomi':
+      return 'phone-portrait-outline';
+    default:
+      return 'grid-outline';
+  }
 };
 
 export default function MobileShopScreen() {
@@ -81,6 +92,11 @@ export default function MobileShopScreen() {
   const [street, setStreet] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [note, setNote] = React.useState('');
+
+  // ✅ This removes the TOP dark-blue header ("Back / Mobile Shop") for sure
+  // even if your _layout has header enabled.
+  // Keep only the header inside the screen.
+  const ScreenHeaderOff = () => <Stack.Screen options={{ headerShown: false }} />;
 
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
@@ -109,9 +125,7 @@ export default function MobileShopScreen() {
       if (!user?.id || !selectedProduct) throw new Error('Missing data');
 
       const balance = walletQuery.data?.balance || 0;
-      if (balance < selectedProduct.price) {
-        throw new Error('Insufficient balance');
-      }
+      if (balance < selectedProduct.price) throw new Error('Insufficient balance');
 
       const { data, error } = await supabase.rpc('purchase_market_item', {
         p_user_id: user.id,
@@ -190,9 +204,9 @@ export default function MobileShopScreen() {
 
     return (
       <View style={[styles.container, { backgroundColor: COLORS.bg }]}>
+        <ScreenHeaderOff />
         <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
           <ScrollView contentContainerStyle={styles.content}>
-            {/* Only ONE header (inside screen) */}
             <View style={[styles.header, { borderBottomColor: COLORS.border }]}>
               <TouchableOpacity onPress={() => setSelectedProduct(null)} style={styles.backButton}>
                 <Ionicons name="arrow-back" size={22} color={COLORS.green} />
@@ -216,9 +230,7 @@ export default function MobileShopScreen() {
                 </View>
                 <View style={styles.specItem}>
                   <Ionicons name="battery-charging-outline" size={16} color={COLORS.green} />
-                  <Text style={[styles.specText, { color: COLORS.textSecondary }]}>
-                    Battery: {selectedProduct.battery}
-                  </Text>
+                  <Text style={[styles.specText, { color: COLORS.textSecondary }]}>Battery: {selectedProduct.battery}</Text>
                 </View>
                 <View style={styles.specItem}>
                   <Ionicons name="shield-checkmark-outline" size={16} color={COLORS.green} />
@@ -238,7 +250,7 @@ export default function MobileShopScreen() {
                     style={[
                       styles.colorOption,
                       { borderColor: selectedColor === color ? COLORS.green : COLORS.border },
-                      selectedColor === color && { backgroundColor: COLORS.greenSoft },
+                      selectedColor === color && { backgroundColor: COLORS.infoBg },
                     ]}
                     onPress={() => setSelectedColor(color)}
                   >
@@ -254,7 +266,7 @@ export default function MobileShopScreen() {
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{i18n.t('fullName') || 'Full Name'}</Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: COLORS.greenSoft2, color: COLORS.text, borderColor: COLORS.border }]}
+                  style={[styles.input, { backgroundColor: COLORS.inputBg, color: COLORS.text, borderColor: COLORS.border }]}
                   value={fullName}
                   onChangeText={setFullName}
                   placeholder={i18n.t('enterFullName') || 'Enter your full name'}
@@ -265,7 +277,7 @@ export default function MobileShopScreen() {
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{i18n.t('phoneNumber')}</Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: COLORS.greenSoft2, color: COLORS.text, borderColor: COLORS.border }]}
+                  style={[styles.input, { backgroundColor: COLORS.inputBg, color: COLORS.text, borderColor: COLORS.border }]}
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
                   placeholder={i18n.t('enterPhoneNumber')}
@@ -277,7 +289,7 @@ export default function MobileShopScreen() {
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{i18n.t('city')}</Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: COLORS.greenSoft2, color: COLORS.text, borderColor: COLORS.border }]}
+                  style={[styles.input, { backgroundColor: COLORS.inputBg, color: COLORS.text, borderColor: COLORS.border }]}
                   value={city}
                   onChangeText={setCity}
                   placeholder={i18n.t('enterCity')}
@@ -288,7 +300,7 @@ export default function MobileShopScreen() {
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{i18n.t('streetAddress')}</Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: COLORS.greenSoft2, color: COLORS.text, borderColor: COLORS.border }]}
+                  style={[styles.input, { backgroundColor: COLORS.inputBg, color: COLORS.text, borderColor: COLORS.border }]}
                   value={street}
                   onChangeText={setStreet}
                   placeholder={i18n.t('enterStreetAddress')}
@@ -299,7 +311,7 @@ export default function MobileShopScreen() {
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: COLORS.textSecondary }]}>{i18n.t('email')}</Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: COLORS.greenSoft2, color: COLORS.text, borderColor: COLORS.border }]}
+                  style={[styles.input, { backgroundColor: COLORS.inputBg, color: COLORS.text, borderColor: COLORS.border }]}
                   value={email}
                   onChangeText={setEmail}
                   placeholder={i18n.t('enterEmail')}
@@ -317,7 +329,7 @@ export default function MobileShopScreen() {
                   style={[
                     styles.input,
                     styles.textArea,
-                    { backgroundColor: COLORS.greenSoft2, color: COLORS.text, borderColor: COLORS.border },
+                    { backgroundColor: COLORS.inputBg, color: COLORS.text, borderColor: COLORS.border },
                   ]}
                   value={note}
                   onChangeText={setNote}
@@ -329,16 +341,13 @@ export default function MobileShopScreen() {
               </View>
             </View>
 
-            <View style={[styles.deliveryInfo, { backgroundColor: COLORS.greenSoft, borderColor: '#B7E3C6' }]}>
+            <View style={[styles.deliveryInfo, { backgroundColor: COLORS.infoBg, borderColor: COLORS.greenBorder }]}>
               <Ionicons name="information-circle" size={22} color={COLORS.green} />
               <Text style={[styles.deliveryInfoText, { color: COLORS.text }]}>{i18n.t('deliveryEstimate')}</Text>
             </View>
 
             <TouchableOpacity
-              style={[
-                styles.checkoutButton,
-                { backgroundColor: COLORS.green, opacity: purchaseMutation.isPending ? 0.7 : 1 },
-              ]}
+              style={[styles.checkoutButton, { backgroundColor: COLORS.green, opacity: purchaseMutation.isPending ? 0.7 : 1 }]}
               onPress={handleCheckout}
               disabled={purchaseMutation.isPending}
             >
@@ -370,6 +379,7 @@ export default function MobileShopScreen() {
 
     return (
       <View style={[styles.container, { backgroundColor: COLORS.bg }]}>
+        <ScreenHeaderOff />
         <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
           <FlatList
             data={brandProducts}
@@ -387,9 +397,7 @@ export default function MobileShopScreen() {
                   {item.name}
                 </Text>
                 <Text style={[styles.gridProductStorage, { color: COLORS.textSecondary }]}>{item.storage}</Text>
-                <Text style={[styles.gridProductBattery, { color: COLORS.textSecondary }]}>
-                  Battery: {item.battery}
-                </Text>
+                <Text style={[styles.gridProductBattery, { color: COLORS.textSecondary }]}>Battery: {item.battery}</Text>
                 <Text style={[styles.gridProductPrice, { color: COLORS.green }]}>${item.price}</Text>
               </TouchableOpacity>
             )}
@@ -403,9 +411,10 @@ export default function MobileShopScreen() {
   // ---------- MAIN BRAND LIST ----------
   return (
     <View style={[styles.container, { backgroundColor: COLORS.bg }]}>
+      <ScreenHeaderOff />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <View style={styles.content}>
-          {/* Only ONE header (no extra native header because headerShown:false) */}
+          {/* ✅ Only THIS header remains (no top dark-blue header anymore) */}
           <View style={[styles.header, { borderBottomColor: COLORS.border }]}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={22} color={COLORS.green} />
@@ -420,15 +429,16 @@ export default function MobileShopScreen() {
             {brands.map((brand) => (
               <TouchableOpacity
                 key={brand.id}
-                style={[styles.brandCard, { backgroundColor: COLORS.greenSoft, borderColor: '#B7E3C6' }]}
+                style={[styles.brandCard, { backgroundColor: COLORS.greenCard, borderColor: COLORS.greenBorder }]}
                 onPress={() => handleBrandSelect(brand.name)}
                 activeOpacity={0.85}
               >
-                {/* Modern "Apple style" icon container */}
-                <View style={[styles.brandIconContainer, { backgroundColor: COLORS.white, borderColor: '#D1D5DB' }]}>
-                  <Ionicons name="grid-outline" size={26} color={COLORS.green} />
+                {/* ✅ Silver icon box -> GREEN icon box */}
+                <View style={[styles.brandIconContainer, { backgroundColor: COLORS.iconBoxGreen }]}>
+                  <Ionicons name={brandIconName(brand.name)} size={26} color={COLORS.white} />
                 </View>
 
+                {/* ✅ Black text */}
                 <Text style={[styles.brandName, { color: COLORS.text }]}>{brand.name}</Text>
 
                 <Ionicons name="chevron-forward" size={20} color={COLORS.text} />
@@ -444,7 +454,6 @@ export default function MobileShopScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
-
   content: { padding: 20 },
 
   header: {
@@ -455,20 +464,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderBottomWidth: 1,
   },
-  backButton: {
-    padding: 6,
-    borderRadius: 12,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700' as const,
-  },
+  backButton: { padding: 6, borderRadius: 12 },
+  headerTitle: { fontSize: 22, fontWeight: '700' as const },
 
-  subtitle: {
-    fontSize: 14,
-    textAlign: 'center' as const,
-    marginBottom: 18,
-  },
+  subtitle: { fontSize: 14, textAlign: 'center' as const, marginBottom: 18 },
 
   brandsGrid: { gap: 14 },
 
@@ -481,12 +480,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   brandIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14, // rounded-square (modern)
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
   },
   brandName: {
     flex: 1,
@@ -508,47 +506,24 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textAlign: 'center' as const,
   },
-  productPrice: {
-    fontSize: 28,
-    fontWeight: '900' as const,
-    marginBottom: 14,
-  },
+  productPrice: { fontSize: 28, fontWeight: '900' as const, marginBottom: 14 },
+
   specsContainer: { gap: 8 },
   specItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   specText: { fontSize: 14 },
 
-  colorSection: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-  },
+  colorSection: { padding: 16, borderRadius: 16, marginBottom: 16, borderWidth: 1 },
   sectionLabel: { fontSize: 16, fontWeight: '700' as const, marginBottom: 12 },
   colorOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  colorOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 2,
-  },
+  colorOption: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 2 },
   colorText: { fontSize: 14, fontWeight: '700' as const },
 
-  formSection: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-  },
+  formSection: { padding: 16, borderRadius: 16, marginBottom: 16, borderWidth: 1 },
   sectionTitle: { fontSize: 18, fontWeight: '800' as const, marginBottom: 16 },
 
   inputGroup: { marginBottom: 14 },
   inputLabel: { fontSize: 13, marginBottom: 8, fontWeight: '600' as const },
-  input: {
-    padding: 12,
-    borderRadius: 12,
-    fontSize: 16,
-    borderWidth: 1,
-  },
+  input: { padding: 12, borderRadius: 12, fontSize: 16, borderWidth: 1 },
   textArea: { height: 80, textAlignVertical: 'top' },
 
   deliveryInfo: {
@@ -565,31 +540,15 @@ const styles = StyleSheet.create({
   checkoutButton: { padding: 16, borderRadius: 14, alignItems: 'center' },
   checkoutButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' as const },
 
-  productImageCard: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
+  productImageCard: { padding: 16, borderRadius: 16, marginBottom: 16, alignItems: 'center', borderWidth: 1 },
   productImage: { width: '100%', height: 200 },
   productDescription: { fontSize: 13, lineHeight: 20, marginTop: 12 },
 
   // Products grid
   productsGrid: { paddingBottom: 20 },
   productRow: { justifyContent: 'space-between', marginBottom: 14 },
-  productGridCard: {
-    width: '48%',
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  gridProductImage: {
-    width: '100%',
-    height: 140,
-    borderRadius: 12,
-    marginBottom: 10,
-  },
+  productGridCard: { width: '48%', padding: 12, borderRadius: 16, borderWidth: 1 },
+  gridProductImage: { width: '100%', height: 140, borderRadius: 12, marginBottom: 10 },
   gridProductName: { fontSize: 14, fontWeight: '800' as const, marginBottom: 4 },
   gridProductStorage: { fontSize: 12, marginBottom: 2 },
   gridProductBattery: { fontSize: 11, marginBottom: 8 },
