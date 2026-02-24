@@ -13,14 +13,12 @@
   "selectExistingPhoto": "اختيار من المعرض",
   "takeNewPhoto": "التقاط صورة جديدة",
   "removePhoto": "إزالة الصورة",
-
   "save": "حفظ",
   "saveChanges": "حفظ التغييرات",
   "editProfile": "تعديل الملف الشخصي",
   "updateProfile": "تحديث الملف الشخصي",
   "profileUpdated": "تم تحديث الملف الشخصي بنجاح",
   "updateFailed": "فشل التحديث",
-
   "personalDetails": "البيانات الشخصية",
   "personalInformation": "المعلومات الشخصية",
   "fullName": "الاسم الكامل",
