@@ -19,23 +19,22 @@
   "submit": "Submit",
   "submitting": "Submitting...",
   "update": "Update",
-
   "accountBalance": "Account Balance",
   "accountStatusActive": "Account Active",
   "failedToLoadBalance": "Failed to load balance",
   "balance": "Balance",
   "yourBalance": "Your Balance",
   "walletBalance": "Wallet Balance",
-
   "marketShop": "Market Shop",
   "marketShopSubtitle": "Buy cards, gift cards, phones & travel safely",
+  "ramadanOfferTitle": "Ramadan Offer",
+  "ramadanOfferMessage": "Enjoy special Ramadan discounts and rewards.",
   "market": {
     "topup": "Top-Up Cards",
     "gift": "Gift Cards",
     "mobile": "Mobile Shop",
     "travel": "Travel Booking"
   },
-
   "simCards": "SIM Cards",
   "giftCards": "Gift Cards",
   "mobileShop": "Mobile Shop",
@@ -46,10 +45,8 @@
   "onlineGiftCards": "Online Gift Cards",
   "selectGiftCard": "Select a gift card below",
   "selectBrand": "Select a brand below",
-
   "travelBookingInfo": "Book hotels, flights, car rentals, and train tickets through our trusted partners.",
   "travelBookingSafe": "You will be redirected to secure external booking platforms.",
-
   "purchaseFailed": "Purchase failed",
   "confirmPurchase": "Confirm Purchase",
   "purchaseConfirmMessage": "Are you sure you want to purchase",
@@ -62,7 +59,6 @@
   "amount": "Amount",
   "backToDashboard": "Back to Dashboard",
   "insufficientBalanceForPurchase": "Insufficient balance for this purchase",
-
   "checkout": "Checkout",
   "selectColor": "Select Color",
   "deliveryInformation": "Delivery Information",
@@ -85,11 +81,9 @@
   "orderPlacedMessage": "Your order has been placed successfully.",
   "insufficientBalance": "Insufficient balance. Please deposit funds.",
   "fillAllFields": "Please fill all required fields",
-
   "consulate": "Consulate",
   "capital": "Capital",
   "consulateInfo": "Consulate Info",
-
   "cryptoTrade": "Crypto Trading",
   "tradeDescription": "Trade cryptocurrencies in real-time",
   "buyCrypto": "Buy",
@@ -107,7 +101,6 @@
   "noCryptoFound": "No cryptocurrencies found",
   "liveCharts": "Live Charts",
   "chartComingSoon": "Chart coming soon",
-
   "portfolio": "Portfolio",
   "portfolioSubtitle": "Track your investments",
   "portfolioItems": "Portfolio Items",
@@ -119,10 +112,8 @@
   "invalidValue": "Invalid value",
   "noPortfolioItems": "No portfolio items",
   "needHelp": "Need help?",
-
   "cannotOpenLink": "Cannot open this link",
   "failedToOpenLink": "Failed to open the link",
-
   "kycVerificationRequired": "KYC Verification Required",
   "kycPendingMessage": "Your documents are under review",
   "whatsNext": "What happens next?",
@@ -153,10 +144,8 @@
   "kycApprovedInfo": "Your account has been approved",
   "docsSecure": "Documents are secure",
   "infoSecure": "Your information is secure",
-
   "signOut": "Sign Out",
   "privacyPolicy": "Privacy Policy",
-
   "language": "Language",
   "support": "Support",
   "profile": "Profile",
@@ -165,10 +154,8 @@
   "security": "Security",
   "termsConditions": "Terms & Conditions",
   "adminPanel": "Admin Panel",
-
   "internetSim": "Internet & SIM Cards",
   "selectSimCard": "Select a card below",
-
   "login": "Login",
   "signup": "Sign Up",
   "createAccount": "Create Account",
@@ -184,7 +171,6 @@
   "backToLogin": "Back to Login",
   "backToLogin2": "Go to Login",
   "userNotFound": "User not found",
-
   "verifyYourEmail": "Verify Your Email",
   "pleaseConfirmEmail": "Please confirm your email address",
   "checkEmailInbox": "Check your inbox for verification link",
@@ -204,7 +190,6 @@
   "verificationEmailResent": "Verification email resent",
   "emailNotVerifiedYet": "Email not verified yet",
   "pleaseWait": "Please wait",
-
   "dateOfBirth": "Date of Birth",
   "dateOfBirthLabel": "Date of Birth",
   "pleaseSelectDOB": "Please select your date of birth",
@@ -216,20 +201,17 @@
   "address": "Address",
   "phoneLabel": "Phone",
   "phonePlaceholder": "Enter phone number",
-
   "accountApproved": "Account Approved!",
   "accountActive": "Account is active",
   "fullAccessInfo": "You now have full access",
   "readyToActivate": "Ready to activate",
   "waitingActivation": "Waiting for activation",
-
   "accountUnderReview": "Account Under Review",
   "pendingAdminReview": "Pending admin review",
   "reviewTakes1To6Hours": "Review takes 1-6 hours",
   "waitForApproval2": "Wait for approval",
   "readyWait": "Please wait",
   "securityWaitInfo": "For security, we review all new accounts",
-
   "updateProfile": "Update Profile",
   "profileUpdated": "Profile updated successfully",
   "currentPassword": "Current Password",
@@ -241,7 +223,6 @@
   "passwordTooShort": "Password must be at least 6 characters",
   "currentPasswordIncorrect": "Current password is incorrect",
   "passwordChangeError": "Failed to change password",
-
   "dangerZone": "Danger Zone",
   "deleteAccount": "Delete Account",
   "deleteAccountDesc": "Permanently delete your account",
@@ -251,10 +232,8 @@
   "deletingAccount": "Deleting account...",
   "accountDeleted": "Account deleted successfully",
   "accountDeleteError": "Failed to delete account",
-
   "emailNotification": "Email Notifications",
   "emailNotificationDesc": "Receive updates via email",
-
   "loadingTransactions": "Loading transactions...",
   "errorLoadingTransactions": "Error loading transactions",
   "noTransactions": "No transactions yet",
@@ -270,7 +249,6 @@
   "moneyTransfer": "Money Transfer",
   "moneyReceived": "Money Received",
   "transactionSuccess": "Transaction successful",
-
   "sendToAddress": "Send to Address",
   "walletAddress": "Wallet Address",
   "enterWalletAddress": "Enter wallet address",
@@ -279,29 +257,22 @@
   "invalidAmount": "Invalid amount",
   "network": "Network",
   "selectPaymentMethod": "Select Payment Method",
-
   "depositSuccessMessage": "Deposit successful",
   "transactionID": "Transaction ID",
   "enterTransactionID": "Enter transaction ID",
-
   "withdrawHistory": "Withdrawal History",
   "noWithdrawalsYet": "No withdrawals yet",
   "withdrawalAmount": "Withdrawal Amount",
   "withdrawSuccessMessage": "Withdrawal request submitted",
-
   "orderSubmitted": "Order Submitted",
   "contactSupport": "Contact Support",
-
   "approveAccountPrompt": "Approve this account?",
-
   "hours": "hours",
   "minute": "minute",
   "minutes": "minutes",
   "second": "second",
   "seconds": "seconds",
   "timeRemaining": "Time remaining",
-
-
   "ppLastUpdated": "Last updated: January 2025",
   "ppIntro": "ZenoPay Wallet (\"we,\" \"our,\" or \"us\") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application and services.",
   "ppNewSection1Title": "1. Information We Collect",
@@ -358,7 +329,6 @@
   "ppNewSection11Desc2": "Email: info@zenopay.bond",
   "ppNewSection12Title": "12. Consent",
   "ppNewSection12Desc": "By using ZenoPay Wallet, you consent to this Privacy Policy and agree to its terms.",
-
   "tcNewLastUpdated": "Last updated: January 2025",
   "tcNewIntro": "Welcome to ZenoPay Wallet. By accessing or using our mobile application and services, you agree to be bound by these Terms and Conditions. Please read them carefully.",
   "tcNewSection1Title": "1. Acceptance of Terms",
