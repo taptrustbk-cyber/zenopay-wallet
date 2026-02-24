@@ -56,8 +56,10 @@ export default function DepositScreen() {
     return (
       <View style={styles.qrContainer}>
         <Image
-          source={{ uri: qrCodeUrl }}
-          style={{ width: size, height: size }}
+          source={{
+    uri: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/qr/usdt-qrcode.png',
+  }}
+          style={{ width: 220, height: 220 }}
           resizeMode="contain"
         />
       </View>
