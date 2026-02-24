@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { useState } from 'react';
 import {
   StyleSheet,
@@ -101,13 +101,20 @@ export default function SendMoneyScreen() {
   const currencyText = walletQuery.data?.currency || 'USD';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
+      {/* ✅ Hide the default expo-router header (dark blue bar) */}
+      <Stack.Screen options={{ headerShown: false }} />
+
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {/* Header row (optional - nice modern look) */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ✅ Your clean header only (no double header now) */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
               <Ionicons name="chevron-back" size={22} color={UI.text} />
@@ -123,6 +130,7 @@ export default function SendMoneyScreen() {
           <View style={styles.balanceCard}>
             <View style={styles.balanceTopRow}>
               <Text style={styles.balanceTitle}>{i18n.t('accountBalance')}</Text>
+
               <View style={styles.currencyChip}>
                 <Ionicons name="logo-usd" size={16} color="#fff" />
                 <Text style={styles.currencyChipText}>{currencyText}</Text>
@@ -170,7 +178,10 @@ export default function SendMoneyScreen() {
             />
 
             <TouchableOpacity
-              style={[styles.sendButton, (sendMutation.isPending || walletQuery.isLoading) && { opacity: 0.7 }]}
+              style={[
+                styles.sendButton,
+                (sendMutation.isPending || walletQuery.isLoading) && { opacity: 0.7 },
+              ]}
               onPress={() => sendMutation.mutate()}
               disabled={sendMutation.isPending || walletQuery.isLoading}
               activeOpacity={0.9}
@@ -183,7 +194,7 @@ export default function SendMoneyScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={{ height: 60 }} />
+          <View style={{ height: 24 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -194,17 +205,17 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   keyboardView: { flex: 1 },
 
+  // ✅ moved up (no extra paddingTop now)
   scrollContent: {
     padding: 16,
-    paddingTop: 10,
+    paddingTop: 6,
   },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
-    paddingTop: 4,
+    marginBottom: 12,
   },
   headerBtn: {
     flexDirection: 'row',
