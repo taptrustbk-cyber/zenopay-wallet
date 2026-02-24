@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import i18n from '@/lib/i18n';
 
 interface SimCard {
@@ -78,19 +78,6 @@ const ProviderLogo = ({ provider }: { provider: string }) => {
 export default function SimCardsScreen() {
   const router = useRouter();
 
-  // double click back => go to dashboard
-  const lastBackTap = useRef(0);
-  const onBackPress = () => {
-    const now = Date.now();
-    if (now - lastBackTap.current < 350) {
-      // Double tap -> Dashboard
-      router.replace('/(app)/dashboard' as any);
-      return;
-    }
-    lastBackTap.current = now;
-    router.back();
-  };
-
   const handleCardPress = (card: SimCard) => {
     router.push({
       pathname: '/(app)/buy-card' as any,
@@ -106,24 +93,32 @@ export default function SimCardsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header (same design like terms-conditions) */}
+      {/* ✅ Remove expo-router default header (dark blue one) */}
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* ✅ Single header only (one back icon + centered title) */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBackPress} style={styles.backButton} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={24} color="#111111" />
+        <TouchableOpacity
+          onPress={() => router.replace('/(app)/dashboard' as any)}
+          style={styles.backButton}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="arrow-back" size={22} color="#16a34a" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>{i18n.t('internetSim')}</Text>
+        {/* ✅ Title must be: Top-Up Cards */}
+        <Text style={styles.headerTitle}>{i18n.t('market.topup') || 'Top-Up Cards'}</Text>
 
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
-        {/* Top card (same style like terms-conditions) */}
+        {/* ✅ Change big title inside card to: Top-Up Cards */}
         <View style={styles.topCard}>
-          <Text style={styles.pageTitle}>{i18n.t('internetSim')}</Text>
+          <Text style={styles.pageTitle}>{i18n.t('market.topup') || 'Top-Up Cards'}</Text>
 
-          {/* keep subtitle inside the card (NOT another header above screen) */}
-          <Text style={styles.pageSubtitle}>{i18n.t('selectSimCard')}</Text>
+          {/* ✅ Change subtitle text to: Top-Up Cards */}
+          <Text style={styles.pageSubtitle}>{i18n.t('market.topup') || 'Top-Up Cards'}</Text>
         </View>
 
         <View style={styles.grid}>
@@ -143,12 +138,7 @@ export default function SimCardsScreen() {
 
                 <Text style={[styles.cardPrice, { color: config.color }]}>${card.price.toFixed(2)}</Text>
 
-                {/* Green button design like terms-conditions (but keep provider color for price/logo only) */}
-                <TouchableOpacity
-                  style={styles.buyButton}
-                  activeOpacity={0.9}
-                  onPress={() => handleCardPress(card)}
-                >
+                <TouchableOpacity style={styles.buyButton} activeOpacity={0.9} onPress={() => handleCardPress(card)}>
                   <Text style={styles.buyButtonText}>{i18n.t('buyNow')}</Text>
                 </TouchableOpacity>
               </TouchableOpacity>
@@ -163,7 +153,6 @@ export default function SimCardsScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Same base style like terms-conditions
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -280,7 +269,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  // Green button same like terms-conditions
   buyButton: {
     width: '100%',
     paddingVertical: 11,
