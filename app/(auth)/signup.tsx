@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { useState } from 'react';
 import {
   StyleSheet,
@@ -12,11 +12,27 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 import * as Linking from 'expo-linking';
+
+// ✅ remove default header
+export const options = {
+  headerShown: false,
+};
+
+// 🎨 white + green + black (same style you want)
+const COLORS = {
+  bg: '#FFFFFF',
+  text: '#111827',
+  textSecondary: '#6B7280',
+  border: '#E5E7EB',
+  inputBg: '#F3FBF6',
+  green: '#16A34A',
+  white: '#FFFFFF',
+};
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -28,9 +44,10 @@ export default function SignupScreen() {
       if (!email || !password) {
         throw new Error(i18n.t('enterEmail'));
       }
+
       const redirectUrl = Linking.createURL('/(auth)/login');
       console.log('Signup redirect URL:', redirectUrl);
-      
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -66,136 +83,166 @@ export default function SignupScreen() {
   });
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.gradient}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <View style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          {/* ✅ White header + back icon */}
           <View style={styles.header}>
-            <Text style={styles.logo}>💳</Text>
-            <Text style={styles.title}>ZenoPay</Text>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backIconBtn} activeOpacity={0.8}>
+              <Ionicons name="arrow-back" size={22} color={COLORS.green} />
+            </TouchableOpacity>
+
+            <Text style={styles.headerTitle}>ZenoPay</Text>
+            <View style={{ width: 24 }} />
           </View>
 
-          <View style={styles.formContainer}>
+          <View style={styles.card}>
             <Text style={styles.welcomeText}>{i18n.t('signup')}</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder={i18n.t('email')}
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>{i18n.t('email')}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder={i18n.t('email')}
+                placeholderTextColor={COLORS.textSecondary}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder={i18n.t('password')}
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>{i18n.t('password')}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder={i18n.t('password')}
+                placeholderTextColor={COLORS.textSecondary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
 
             <TouchableOpacity
-              style={styles.signupButton}
+              style={[styles.signupButton, { opacity: signupMutation.isPending ? 0.7 : 1 }]}
               onPress={() => signupMutation.mutate()}
               disabled={signupMutation.isPending}
+              activeOpacity={0.9}
             >
               {signupMutation.isPending ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text style={styles.signupButtonText}>{i18n.t('signup')}</Text>
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.loginButton}
-              onPress={() => router.back()}
-            >
-              <Text style={styles.loginText}>
-                {i18n.t('login')}
-              </Text>
+            <TouchableOpacity style={styles.loginButton} onPress={() => router.replace('/(auth)/login' as any)}>
+              <Text style={styles.loginText}>{i18n.t('login')}</Text>
             </TouchableOpacity>
           </View>
+
+          <View style={{ height: 24 }} />
         </ScrollView>
-      </LinearGradient>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1 },
+
+  screen: {
     flex: 1,
+    backgroundColor: COLORS.bg,
   },
-  gradient: {
-    flex: 1,
-  },
+
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 54 : 40,
+    paddingBottom: 30,
   },
+
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 40,
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.bg,
   },
-  logo: {
-    fontSize: 60,
-    marginBottom: 10,
+  backIconBtn: {
+    padding: 6,
+    borderRadius: 10,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold' as const,
-    color: '#FFFFFF',
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '900' as const,
+    color: COLORS.text,
   },
-  formContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+
+  card: {
+    backgroundColor: COLORS.white,
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
+
   welcomeText: {
-    fontSize: 24,
-    fontWeight: 'bold' as const,
-    color: '#333',
-    marginBottom: 24,
+    fontSize: 22,
+    fontWeight: '900' as const,
+    color: COLORS.text,
+    marginBottom: 16,
     textAlign: 'center' as const,
   },
-  input: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    fontSize: 16,
-    color: '#333',
+
+  inputGroup: { marginBottom: 14 },
+  label: {
+    fontSize: 13,
+    fontWeight: '800' as const,
+    color: COLORS.text,
+    marginBottom: 8,
   },
-  signupButton: {
-    backgroundColor: '#667eea',
+  input: {
+    backgroundColor: COLORS.inputBg,
     borderRadius: 12,
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    color: COLORS.text,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+
+  signupButton: {
+    backgroundColor: COLORS.green,
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 6,
   },
   signupButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold' as const,
+    fontSize: 16,
+    fontWeight: '900' as const,
   },
+
   loginButton: {
-    marginTop: 16,
+    marginTop: 14,
     alignItems: 'center',
+    paddingVertical: 6,
   },
   loginText: {
-    color: '#667eea',
-    fontSize: 16,
-    fontWeight: '600' as const,
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '800' as const,
+    textDecorationLine: 'underline' as const,
   },
 });
