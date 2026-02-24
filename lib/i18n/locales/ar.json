@@ -28,11 +28,13 @@
   "walletBalance": "رصيد المحفظة",
 
   "marketShop": "متجر السوق",
-  "marketShopSubtitle": "اشترِ البطاقات، بطاقات الهدايا، الهواتف والسفر بأمان",
-  "market.topup": "بطاقات الشحن",
-  "market.gift": "بطاقات الهدايا",
-  "market.mobile": "متجر الموبايل",
-  "market.travel": "حجز السفر",
+  "marketShopSubtitle": "اشتر البطاقات, بطاقات الهدايا, الهواتف و السفر بامان",
+  "market": {
+    "topup": "بطاقات الشحن",
+    "gift": "بطاقات الهدايا",
+    "mobile": "متجر الموبايل",
+    "travel": "حجز السفر"
+  },
 
   "simCards": "بطاقات SIM",
   "giftCards": "بطاقات الهدايا",
