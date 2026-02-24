@@ -1,12 +1,32 @@
-import { StyleSheet, View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
+import { useCallback } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  FlatList,
+  ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext'; // keep (not breaking)
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
-import { useCallback } from 'react';
+import { Stack, useRouter } from 'expo-router';
+
+const UI = {
+  bg: '#F5F6FA',
+  card: '#FFFFFF',
+  text: '#111827',
+  text2: '#6B7280',
+  border: '#E5E7EB',
+  green: '#47B08A',
+  greenSoft: '#EAF7F1',
+  red: '#EF4444',
+};
 
 interface TransactionData {
   id: string;
@@ -21,19 +41,23 @@ interface TransactionData {
 }
 
 export default function TransactionsScreen() {
+  // ✅ hide default header (removes dark-blue top bar)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const header = <Stack.Screen options={{ headerShown: false }} />;
+
+  const router = useRouter();
   const { user } = useAuth();
-  const { theme } = useTheme();
+  const { theme } = useTheme(); // keep theme (not used for colors)
 
   const transactionsQuery = useQuery({
     queryKey: ['transactions', user?.id],
     queryFn: async () => {
-      if (!user?.id) {
-        throw new Error('User ID not found');
-      }
-      
+      if (!user?.id) throw new Error('User ID not found');
+
       const { data, error } = await supabase
         .from('transactions')
-        .select(`
+        .select(
+          `
           id,
           type,
           status,
@@ -43,7 +67,8 @@ export default function TransactionsScreen() {
           sender_id,
           receiver_id,
           balance_after
-        `)
+        `
+        )
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -51,17 +76,20 @@ export default function TransactionsScreen() {
         console.log('Transaction fetch error:', JSON.stringify(error));
         throw new Error('Failed to fetch transactions');
       }
-      
+
       return (data || []) as TransactionData[];
     },
     enabled: !!user?.id,
     staleTime: 0,
+    gcTime: 0,
   });
 
-  const getTransactionInfo = (tx: TransactionData): { title: string; subtitle: string; isOutgoing: boolean } => {
+  const getTransactionInfo = (
+    tx: TransactionData
+  ): { title: string; subtitle: string; isOutgoing: boolean } => {
     const isOutgoing = tx.sender_id === user?.id;
     const txType = tx.type;
-    
+
     if (txType === 'send' || txType === 'receive') {
       return {
         title: isOutgoing ? i18n.t('sent') : i18n.t('received'),
@@ -69,6 +97,7 @@ export default function TransactionsScreen() {
         isOutgoing,
       };
     }
+
     if (txType === 'deposit') {
       return {
         title: i18n.t('deposit'),
@@ -76,6 +105,7 @@ export default function TransactionsScreen() {
         isOutgoing: false,
       };
     }
+
     if (txType === 'purchase_mobile') {
       return {
         title: i18n.t('mobilePurchase'),
@@ -83,6 +113,7 @@ export default function TransactionsScreen() {
         isOutgoing: true,
       };
     }
+
     if (txType === 'purchase_card' || txType === 'purchase_giftcard') {
       return {
         title: i18n.t('cardPurchase'),
@@ -90,6 +121,7 @@ export default function TransactionsScreen() {
         isOutgoing: true,
       };
     }
+
     return {
       title: String(txType).charAt(0).toUpperCase() + String(txType).slice(1),
       subtitle: tx.description || 'Transaction',
@@ -118,55 +150,44 @@ export default function TransactionsScreen() {
     const { title, subtitle, isOutgoing } = getTransactionInfo(item);
     const status = item.status || 'completed';
     const displayAmount = Math.abs(item.amount);
-    
+
+    const statusBg =
+      status === 'completed' ? 'rgba(71,176,138,0.12)' : status === 'pending' ? '#FEF3C7' : '#FEE2E2';
+    const statusColor =
+      status === 'completed' ? UI.green : status === 'pending' ? '#F59E0B' : UI.red;
+
     return (
-      <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
+      <View style={styles.card}>
         <View style={styles.cardLeft}>
-          <View style={[
-            styles.iconContainer,
-            { backgroundColor: isOutgoing ? '#FEE2E2' : '#DCFCE7' }
-          ]}>
-            <Ionicons 
-              name={isOutgoing ? 'arrow-up' : 'arrow-down'} 
-              size={20} 
-              color={isOutgoing ? '#EF4444' : '#10B981'} 
+          <View
+            style={[
+              styles.iconContainer,
+              { backgroundColor: isOutgoing ? '#FEE2E2' : 'rgba(71,176,138,0.14)' },
+            ]}
+          >
+            <Ionicons
+              name={isOutgoing ? 'arrow-up' : 'arrow-down'}
+              size={20}
+              color={isOutgoing ? UI.red : UI.green}
             />
           </View>
+
           <View style={styles.cardDetails}>
-            <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
-              {title}
-            </Text>
-            <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+            <Text style={styles.cardTitle}>{title}</Text>
+            <Text style={styles.cardSubtitle} numberOfLines={1}>
               {subtitle}
             </Text>
-            <Text style={[styles.cardDate, { color: theme.colors.textSecondary }]}>
-              {formatDateTime(item.created_at)}
-            </Text>
+            <Text style={styles.cardDate}>{formatDateTime(item.created_at)}</Text>
           </View>
         </View>
+
         <View style={styles.cardRight}>
-          <Text style={[
-            styles.cardAmount,
-            { color: isOutgoing ? '#EF4444' : '#10B981' }
-          ]}>
+          <Text style={[styles.cardAmount, { color: isOutgoing ? UI.red : UI.green }]}>
             {isOutgoing ? '-' : '+'}${displayAmount.toFixed(2)}
           </Text>
-          <View style={[
-            styles.statusBadge,
-            {
-              backgroundColor:
-                status === 'completed' ? '#DCFCE7' :
-                status === 'pending' ? '#FEF3C7' : '#FEE2E2',
-            },
-          ]}>
-            <Text style={[
-              styles.statusText,
-              {
-                color:
-                  status === 'completed' ? '#10B981' :
-                  status === 'pending' ? '#F59E0B' : '#EF4444',
-              },
-            ]}>
+
+          <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
+            <Text style={[styles.statusText, { color: statusColor }]}>
               {status.charAt(0).toUpperCase() + status.slice(1)}
             </Text>
           </View>
@@ -177,12 +198,11 @@ export default function TransactionsScreen() {
 
   if (transactionsQuery.isLoading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
+        <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.loaderContainer}>
-          <ActivityIndicator color="#667eea" size="large" />
-          <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
-            {i18n.t('loadingTransactions')}
-          </Text>
+          <ActivityIndicator color={UI.green} size="large" />
+          <Text style={styles.loadingText}>{i18n.t('loadingTransactions')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -190,24 +210,31 @@ export default function TransactionsScreen() {
 
   if (transactionsQuery.isError) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
+        <Stack.Screen options={{ headerShown: false }} />
+
+        {/* Custom header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
+            <Ionicons name="chevron-back" size={22} color={UI.text} />
+            <Text style={styles.headerBack}>{i18n.t('back')}</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.headerTitle}>{i18n.t('transactions')}</Text>
+          <View style={{ width: 70 }} />
+        </View>
+
         <View style={styles.errorStateContainer}>
           <View style={styles.errorIconContainer}>
-            <Ionicons name="alert-circle" size={48} color="#EF4444" />
+            <Ionicons name="alert-circle" size={46} color={UI.red} />
           </View>
-          <Text style={[styles.errorTitle, { color: theme.colors.text }]}>
-            {i18n.t('failedToLoad')}
-          </Text>
-          <Text style={[styles.errorMessage, { color: theme.colors.textSecondary }]}>
-            {i18n.t('errorLoadingTransactions')}
-          </Text>
-          <TouchableOpacity 
-            style={styles.retryButton}
-            onPress={() => transactionsQuery.refetch()}
-            activeOpacity={0.8}
-          >
+
+          <Text style={styles.errorTitle}>{i18n.t('failedToLoad')}</Text>
+          <Text style={styles.errorMessage}>{i18n.t('errorLoadingTransactions')}</Text>
+
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => transactionsQuery.refetch()} activeOpacity={0.9}>
             <Ionicons name="refresh" size={18} color="#fff" />
-            <Text style={styles.retryButtonText}>{i18n.t('retry')}</Text>
+            <Text style={styles.primaryBtnText}>{i18n.t('retry')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -215,31 +242,37 @@ export default function TransactionsScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
+      <Stack.Screen options={{ headerShown: false }} />
+
       <FlatList
         data={transactionsQuery.data}
         keyExtractor={(item) => item.id}
         renderItem={renderTransaction}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={onRefresh}
-            tintColor={theme.colors.primary}
-            colors={[theme.colors.primary]}
-          />
+          <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={UI.green} colors={[UI.green]} />
+        }
+        ListHeaderComponent={
+          // ✅ Custom header (only one)
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
+              <Ionicons name="chevron-back" size={22} color={UI.text} />
+              <Text style={styles.headerBack}>{i18n.t('back')}</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.headerTitle}>{i18n.t('transactions')}</Text>
+
+            <View style={{ width: 70 }} />
+          </View>
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={styles.emptyIconContainer}>
-              <Ionicons name="receipt-outline" size={48} color={theme.colors.textSecondary} />
+              <Ionicons name="receipt-outline" size={44} color={UI.text2} />
             </View>
-            <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
-              {i18n.t('noTransactions')}
-            </Text>
-            <Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>
-              {i18n.t('transactionsWillAppear')}
-            </Text>
+            <Text style={styles.emptyTitle}>{i18n.t('noTransactions')}</Text>
+            <Text style={styles.emptySubtitle}>{i18n.t('transactionsWillAppear')}</Text>
           </View>
         }
         showsVerticalScrollIndicator={false}
@@ -249,25 +282,49 @@ export default function TransactionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container: { flex: 1 },
+
+  // Header
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
+  headerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    width: 90,
+  },
+  headerBack: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: UI.text,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: UI.text,
+  },
+
   listContent: {
-    padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 28,
   },
+
   card: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: UI.card,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: UI.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
   },
   cardLeft: {
     flexDirection: 'row',
@@ -277,43 +334,49 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  cardDetails: {
-    flex: 1,
-  },
+  cardDetails: { flex: 1 },
+
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '600' as const,
+    fontSize: 15,
+    fontWeight: '900',
+    color: UI.text,
   },
   cardSubtitle: {
     fontSize: 13,
-    marginTop: 2,
+    fontWeight: '700',
+    color: UI.text2,
+    marginTop: 3,
   },
   cardDate: {
     fontSize: 12,
-    marginTop: 4,
+    fontWeight: '700',
+    color: UI.text2,
+    marginTop: 5,
   },
-  cardRight: {
-    alignItems: 'flex-end',
-  },
+
+  cardRight: { alignItems: 'flex-end' },
   cardAmount: {
-    fontSize: 17,
-    fontWeight: '700' as const,
+    fontSize: 16,
+    fontWeight: '900',
   },
+
   statusBadge: {
     paddingVertical: 4,
     paddingHorizontal: 10,
-    borderRadius: 8,
-    marginTop: 6,
+    borderRadius: 10,
+    marginTop: 8,
   },
   statusText: {
     fontSize: 11,
-    fontWeight: '600' as const,
+    fontWeight: '900',
   },
+
+  // Loading
   loaderContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -321,38 +384,48 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loadingText: {
-    fontSize: 15,
+    fontSize: 14,
+    fontWeight: '800',
+    color: UI.text2,
+    textAlign: 'center',
   },
+
+  // Empty
   emptyState: {
-    flex: 1,
-    justifyContent: 'center',
+    paddingTop: 70,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    paddingTop: 80,
   },
   emptyIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    backgroundColor: '#EEF2F7',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '600' as const,
+    fontWeight: '900',
+    color: UI.text,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    textAlign: 'center' as const,
+    fontWeight: '700',
+    color: UI.text2,
+    textAlign: 'center',
+    lineHeight: 20,
   },
+
+  // Error
   errorStateContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
-    gap: 12,
+    paddingHorizontal: 28,
+    gap: 10,
   },
   errorIconContainer: {
     width: 80,
@@ -361,31 +434,36 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   errorTitle: {
-    fontSize: 20,
-    fontWeight: '700' as const,
-    textAlign: 'center' as const,
+    fontSize: 18,
+    fontWeight: '900',
+    color: UI.text,
+    textAlign: 'center',
   },
   errorMessage: {
-    fontSize: 15,
-    textAlign: 'center' as const,
-    lineHeight: 22,
+    fontSize: 14,
+    fontWeight: '700',
+    color: UI.text2,
+    textAlign: 'center',
+    lineHeight: 20,
   },
-  retryButton: {
-    backgroundColor: '#667EEA',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 12,
+
+  // Green button
+  primaryBtn: {
     marginTop: 8,
+    backgroundColor: UI.green,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  retryButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600' as const,
+  primaryBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '900',
   },
 });
