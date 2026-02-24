@@ -110,6 +110,9 @@
   "noCryptoFound": "هیچ کریپتۆکارەنسیەک نەدۆزرایەوە",
   "liveCharts": "نەخشێن ڕاستەقینە",
   "chartComingSoon": "نەخشە بەم زووانە",
+  {
+  "tapToChangePhoto": "دەست بدە بۆ گۆڕینا وێنەی پرۆفایلێ"
+}
 
   "portfolio": "پۆرتفۆلیۆ",
   "portfolioSubtitle": "وەبەرهێنانا خۆ بەدواداچوو",
