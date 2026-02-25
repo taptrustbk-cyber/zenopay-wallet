@@ -104,14 +104,18 @@ export default function AiChatScreen() {
 
   const listRef = useRef<FlatList<ChatMsg> | null>(null);
 
+  // ✅ FIX: Do NOT use process.env.<URL> (invalid)
+  // Option A: hardcode (works now)
   const functionUrl = useMemo(() => {
-    // ✅ You MUST set this env value in app config OR replace with your function URL
-    // Example: https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai
-    const url = (process.env.https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai || '').trim();
-    // If you prefer hardcode:
-    // const url = 'https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai';
-    return url.endsWith('/support_ai') ? url : url ? `${url.replace(/\/+$/, '')}/support_ai` : '';
+    const url = 'https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai';
+    return url;
   }, []);
+
+  // ✅ Optional (better): use env variable
+  // Put in .env:
+  // EXPO_PUBLIC_SUPPORT_AI_URL=https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai
+  // then replace above with:
+  // const functionUrl = useMemo(() => (process.env.EXPO_PUBLIC_SUPPORT_AI_URL || '').trim(), []);
 
   const scrollToEnd = () => {
     requestAnimationFrame(() => {
@@ -134,18 +138,15 @@ export default function AiChatScreen() {
       setMessages((data || []) as any);
       setTimeout(scrollToEnd, 50);
     } catch (e) {
-      // If RLS blocks or table missing, keep UI usable
       console.error('Load chat history error:', e);
     } finally {
       setLoadingHistory(false);
     }
   };
 
-  // If you want: resume last session automatically
   useEffect(() => {
     const boot = async () => {
       try {
-        // last session for user
         const { data: s } = await supabase
           .from('support_chat_sessions')
           .select('id, created_at')
@@ -157,7 +158,6 @@ export default function AiChatScreen() {
           setSessionId(last);
           await loadHistory(last);
         } else {
-          // No session yet: show greeting only
           const hello: ChatMsg = {
             id: uuidLike(),
             role: 'assistant',
@@ -180,15 +180,13 @@ export default function AiChatScreen() {
     };
 
     boot();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [lang]);
 
   const sendMessage = async () => {
     const msg = text.trim();
     if (!msg || sending) return;
 
     if (!functionUrl) {
-      // Help user if URL not set
       const warning: ChatMsg = {
         id: uuidLike(),
         role: 'assistant',
@@ -196,14 +194,18 @@ export default function AiChatScreen() {
         created_at: new Date().toISOString(),
         text:
           lang === 'kmr'
-            ? 'URL ـێ function نەدیت. تکایە https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai دابنێ یان URL ـەکە hardcode بکە.'
+            ? 'URL ـێ function نەدیت. تکایە URL دروست بکە.'
             : lang === 'ckb'
-            ? 'URL ـی function دانەنراوە. تکایە https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai دابنێ یان URL بنووسە.'
+            ? 'URL ـی function دانەنراوە.'
             : lang === 'ar'
-            ? 'لم يتم إعداد رابط الوظيفة. ضع https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai أو أضف الرابط داخل الكود.'
-            : 'Function URL is missing. Set https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai or hardcode it in this file.',
+            ? 'رابط الوظيفة غير مضبوط.'
+            : 'Function URL is missing.',
       };
-      setMessages((prev) => [...prev, { id: uuidLike(), role: 'user', lang, created_at: new Date().toISOString(), text: msg }, warning]);
+      setMessages((prev) => [
+        ...prev,
+        { id: uuidLike(), role: 'user', lang, created_at: new Date().toISOString(), text: msg },
+        warning,
+      ]);
       setText('');
       setTimeout(scrollToEnd, 30);
       return;
@@ -220,7 +222,6 @@ export default function AiChatScreen() {
       text: msg,
     };
 
-    // optimistic add
     setMessages((prev) => [...prev, userLocal]);
     setText('');
     setTimeout(scrollToEnd, 30);
@@ -243,7 +244,15 @@ export default function AiChatScreen() {
         }),
       });
 
-      const json = await res.json();
+      // safer JSON parse
+      const raw = await res.text();
+      let json: any = {};
+      try {
+        json = raw ? JSON.parse(raw) : {};
+      } catch {
+        json = { error: raw || 'Invalid JSON response' };
+      }
+
       if (!res.ok) throw new Error(json?.error || 'Request failed');
 
       const sid = json?.session_id as string | undefined;
@@ -270,11 +279,7 @@ export default function AiChatScreen() {
       setMessages((prev) => [...prev, botMsg]);
       setTimeout(scrollToEnd, 60);
 
-      // Refresh history from DB (optional, keeps consistent)
-      if (sid) {
-        // small delay to ensure server saved
-        setTimeout(() => loadHistory(sid), 250);
-      }
+      if (sid) setTimeout(() => loadHistory(sid), 250);
     } catch (e: any) {
       console.error('Send chat error:', e);
       const errMsg: ChatMsg = {
@@ -314,7 +319,6 @@ export default function AiChatScreen() {
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.85}>
           <Ionicons name="arrow-back" size={22} color={UI.green} />
@@ -327,7 +331,6 @@ export default function AiChatScreen() {
 
       <SafeAreaView style={styles.safe} edges={['bottom'] as any}>
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          {/* Messages */}
           <View style={styles.listWrap}>
             {loadingHistory ? (
               <View style={styles.center}>
@@ -345,7 +348,6 @@ export default function AiChatScreen() {
               />
             )}
 
-            {/* Typing indicator */}
             {typing ? (
               <View style={[styles.msgRow, styles.msgRowLeft, { paddingBottom: 6 }]}>
                 <View style={[styles.bubble, styles.bubbleBot, styles.typingBubble]}>
@@ -355,7 +357,6 @@ export default function AiChatScreen() {
             ) : null}
           </View>
 
-          {/* Composer */}
           <View style={styles.composer}>
             <View style={styles.inputWrap}>
               <TextInput
@@ -373,19 +374,14 @@ export default function AiChatScreen() {
                 disabled={sending || !text.trim()}
                 style={[styles.sendBtn, (sending || !text.trim()) && { opacity: 0.5 }]}
               >
-                {sending ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Ionicons name="send" size={18} color="#fff" />
-                )}
+                {sending ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send" size={18} color="#fff" />}
               </TouchableOpacity>
             </View>
 
             <View style={styles.helpRow}>
               <Ionicons name="mail" size={14} color={UI.green} />
               <Text style={styles.helpText}>
-                {i18n.t('needHelp') || 'Need Help?'}{' '}
-                <Text style={styles.helpEmail}>info@zenopay.bond</Text>
+                {i18n.t('needHelp') || 'Need Help?'} <Text style={styles.helpEmail}>info@zenopay.bond</Text>
               </Text>
             </View>
           </View>
@@ -447,12 +443,7 @@ const styles = StyleSheet.create({
   typingBubble: { paddingVertical: 12, paddingHorizontal: 14 },
 
   typingDotsRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#9CA3AF',
-  },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#9CA3AF' },
 
   composer: {
     paddingHorizontal: 16,
@@ -482,14 +473,7 @@ const styles = StyleSheet.create({
     color: UI.text,
     fontWeight: '700' as const,
   },
-  sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: UI.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  sendBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: UI.green, alignItems: 'center', justifyContent: 'center' },
 
   helpRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   helpText: { color: UI.text2, fontSize: 12.5, fontWeight: '700' as const },
