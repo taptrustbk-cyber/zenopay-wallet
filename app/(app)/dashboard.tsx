@@ -1,4 +1,3 @@
-//// import React, { useCallback } from 'react';
 import React, { useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import {
@@ -120,7 +119,7 @@ export default function DashboardScreen() {
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await hardRefresh(); // IMPORTANT: this should refresh profile (avatar_url + full_name)
+      await hardRefresh(); // refresh profile
       await walletQuery.refetch();
     } finally {
       setIsRefreshing(false);
@@ -148,7 +147,9 @@ export default function DashboardScreen() {
   const fullName = (profile as any)?.full_name as string | undefined;
 
   // cache-bust so avatar updates immediately after upload
-  const avatarPreview = avatarUrl ? `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}t=${Date.now()}` : null;
+  const avatarPreview = avatarUrl
+    ? `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
+    : null;
 
   return (
     <View style={[styles.container, { backgroundColor: UI.bg }]}>
@@ -184,16 +185,8 @@ export default function DashboardScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* RIGHT: ✅ Only ONE icon (Support/Chat) */}
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              style={styles.headerIconBtn}
-              activeOpacity={0.85}
-              onPress={() => router.push('/(app)/support-chat' as any)}
-            >
-              <Ionicons name="headset" size={22} color={UI.iconGray} />
-            </TouchableOpacity>
-          </View>
+          {/* RIGHT: ❌ removed Support/Chat icon */}
+          <View style={styles.headerRight} />
         </View>
 
         {/* Balance green card */}
@@ -343,7 +336,10 @@ export default function DashboardScreen() {
       {/* Bottom nav */}
       <View style={[styles.bottomNav, { borderColor: UI.border, backgroundColor: UI.card }]}>
         <NavItem icon="home" label={i18n.t('home')} active onPress={() => {}} />
-        <NavItem icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
+
+        {/* ✅ replaced Send with Cards */}
+        <NavItem icon="card" label="Cards" onPress={() => router.push('/(app)/cards' as any)} />
+
         <NavItem
           icon="chatbox"
           label={i18n.t('consulateInfo')}
