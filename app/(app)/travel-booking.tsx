@@ -2,7 +2,7 @@ import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Linking, Alert } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext'; // keep (not breaking)
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import i18n from '@/lib/i18n';
 
 const UI = {
@@ -87,9 +87,12 @@ export default function TravelBookingScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: UI.bg }]}>
+      {/* ✅ REMOVE Expo Router default dark header (fix double back/title) */}
+      <Stack.Screen options={{ headerShown: false }} />
+
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Header (same style as other updated pages) */}
+          {/* Header (single header only) */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.85}>
               <Ionicons name="arrow-back" size={22} color={UI.text} />
