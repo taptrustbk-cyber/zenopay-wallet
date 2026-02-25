@@ -1,237 +1,497 @@
-import React, { useMemo, useRef, useState } from 'react';
+// /(app)/ai-chat.tsx
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Animated,
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
+import i18n, { getCurrentLanguage } from '@/lib/i18n';
+
+type Role = 'user' | 'assistant';
+type Lang = 'en' | 'ar' | 'ckb' | 'kmr';
+
+type ChatMsg = {
+  id: string;
+  role: Role;
+  text: string;
+  lang: Lang;
+  created_at: string;
+};
 
 const UI = {
-  bg: '#F5F6FA',
+  bg: '#FFFFFF',
   card: '#FFFFFF',
   text: '#111827',
   text2: '#6B7280',
   border: '#E5E7EB',
-  green: '#47B08A',
-  greenSoft: '#EAF7F1',
+  green: '#16A34A',
+  greenSoft: '#EAF7EF',
+  inputBg: '#F9FAFB',
 };
 
-type Msg = {
-  id: string;
-  role: 'user' | 'ai';
-  text: string;
-  ts: number;
-};
+function normalizeLang(l: string): Lang {
+  const v = (l || 'en').toLowerCase();
+  if (v.includes('ar')) return 'ar';
+  if (v.includes('ckb')) return 'ckb';
+  if (v.includes('kmr')) return 'kmr';
+  return 'en';
+}
 
-export default function SupportChatScreen() {
+function uuidLike() {
+  return `local_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function TypingDots() {
+  const a1 = useRef(new Animated.Value(0.3)).current;
+  const a2 = useRef(new Animated.Value(0.3)).current;
+  const a3 = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(a1, { toValue: 1, duration: 280, useNativeDriver: true }),
+          Animated.timing(a2, { toValue: 0.3, duration: 280, useNativeDriver: true }),
+          Animated.timing(a3, { toValue: 0.3, duration: 280, useNativeDriver: true }),
+        ]),
+        Animated.parallel([
+          Animated.timing(a1, { toValue: 0.3, duration: 280, useNativeDriver: true }),
+          Animated.timing(a2, { toValue: 1, duration: 280, useNativeDriver: true }),
+          Animated.timing(a3, { toValue: 0.3, duration: 280, useNativeDriver: true }),
+        ]),
+        Animated.parallel([
+          Animated.timing(a1, { toValue: 0.3, duration: 280, useNativeDriver: true }),
+          Animated.timing(a2, { toValue: 0.3, duration: 280, useNativeDriver: true }),
+          Animated.timing(a3, { toValue: 1, duration: 280, useNativeDriver: true }),
+        ]),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [a1, a2, a3]);
+
+  return (
+    <View style={styles.typingDotsRow}>
+      <Animated.View style={[styles.dot, { opacity: a1 }]} />
+      <Animated.View style={[styles.dot, { opacity: a2 }]} />
+      <Animated.View style={[styles.dot, { opacity: a3 }]} />
+    </View>
+  );
+}
+
+export default function AiChatScreen() {
   const router = useRouter();
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      id: 'm0',
-      role: 'ai',
-      text: 'Hi 👋 I’m ZenoPay Support. How can I help you today?',
-      ts: Date.now(),
-    },
-  ]);
 
-  const listRef = useRef<FlatList<Msg>>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [text, setText] = useState<string>('');
+  const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
+  const [sending, setSending] = useState<boolean>(false);
+  const [typing, setTyping] = useState<boolean>(false);
 
-  const canSend = useMemo(() => input.trim().length > 0, [input]);
+  const lang = useMemo(() => normalizeLang(getCurrentLanguage()), []);
 
-  const send = () => {
-    const text = input.trim();
-    if (!text) return;
+  const listRef = useRef<FlatList<ChatMsg> | null>(null);
 
-    const userMsg: Msg = {
-      id: `u-${Date.now()}`,
-      role: 'user',
-      text,
-      ts: Date.now(),
-    };
+  const functionUrl = useMemo(() => {
+    // ✅ You MUST set this env value in app config OR replace with your function URL
+    // Example: https://YOUR_PROJECT_REF.functions.supabase.co/support_ai
+    const url = (process.env.EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL || '').trim();
+    // If you prefer hardcode:
+    // const url = 'https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai';
+    return url.endsWith('/support_ai') ? url : url ? `${url.replace(/\/+$/, '')}/support_ai` : '';
+  }, []);
 
-    setMessages((prev) => [...prev, userMsg]);
-    setInput('');
-
-    // ✅ demo AI reply (replace later with real AI API)
-    setTimeout(() => {
-      const aiMsg: Msg = {
-        id: `a-${Date.now()}`,
-        role: 'ai',
-        text: "Thanks! I got your message. (AI live can be connected here.)",
-        ts: Date.now(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-      listRef.current?.scrollToEnd({ animated: true });
-    }, 500);
-
-    setTimeout(() => {
-      listRef.current?.scrollToEnd({ animated: true });
-    }, 50);
+  const scrollToEnd = () => {
+    requestAnimationFrame(() => {
+      try {
+        listRef.current?.scrollToEnd({ animated: true });
+      } catch {}
+    });
   };
 
-  const renderItem = ({ item }: { item: Msg }) => {
-    const mine = item.role === 'user';
+  const loadHistory = async (sid: string) => {
+    setLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('support_chat_messages')
+        .select('id, role, text, lang, created_at')
+        .eq('session_id', sid)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setMessages((data || []) as any);
+      setTimeout(scrollToEnd, 50);
+    } catch (e) {
+      // If RLS blocks or table missing, keep UI usable
+      console.error('Load chat history error:', e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // If you want: resume last session automatically
+  useEffect(() => {
+    const boot = async () => {
+      try {
+        // last session for user
+        const { data: s } = await supabase
+          .from('support_chat_sessions')
+          .select('id, created_at')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        const last = s?.[0]?.id;
+        if (last) {
+          setSessionId(last);
+          await loadHistory(last);
+        } else {
+          // No session yet: show greeting only
+          const hello: ChatMsg = {
+            id: uuidLike(),
+            role: 'assistant',
+            lang,
+            created_at: new Date().toISOString(),
+            text:
+              lang === 'kmr'
+                ? 'سلاڤ 👋 من AI پشتگیریێ ZenoPay ـم. بپرسە هەر شتێک لسەر دانانا پارە، راکێشان، KYC، کارت…'
+                : lang === 'ckb'
+                ? 'سڵاو 👋 من پشتگیری AI ی ZenoPay ـم. پرسیار بکە لەسەر دانان، راکێشان، KYC، کارت…'
+                : lang === 'ar'
+                ? 'مرحباً 👋 أنا دعم ZenoPay الذكي. اسألني عن الإيداع، السحب، KYC، البطاقات…'
+                : 'Hi 👋 I’m ZenoPay Support AI. Ask me about deposit, withdraw, KYC, cards…',
+          };
+          setMessages([hello]);
+        }
+      } catch (e) {
+        console.error('Boot chat error:', e);
+      }
+    };
+
+    boot();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const sendMessage = async () => {
+    const msg = text.trim();
+    if (!msg || sending) return;
+
+    if (!functionUrl) {
+      // Help user if URL not set
+      const warning: ChatMsg = {
+        id: uuidLike(),
+        role: 'assistant',
+        lang,
+        created_at: new Date().toISOString(),
+        text:
+          lang === 'kmr'
+            ? 'URL ـێ function نەدیت. تکایە EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL دابنێ یان URL ـەکە hardcode بکە.'
+            : lang === 'ckb'
+            ? 'URL ـی function دانەنراوە. تکایە EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL دابنێ یان URL بنووسە.'
+            : lang === 'ar'
+            ? 'لم يتم إعداد رابط الوظيفة. ضع EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL أو أضف الرابط داخل الكود.'
+            : 'Function URL is missing. Set EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL or hardcode it in this file.',
+      };
+      setMessages((prev) => [...prev, { id: uuidLike(), role: 'user', lang, created_at: new Date().toISOString(), text: msg }, warning]);
+      setText('');
+      setTimeout(scrollToEnd, 30);
+      return;
+    }
+
+    setSending(true);
+    setTyping(true);
+
+    const userLocal: ChatMsg = {
+      id: uuidLike(),
+      role: 'user',
+      lang,
+      created_at: new Date().toISOString(),
+      text: msg,
+    };
+
+    // optimistic add
+    setMessages((prev) => [...prev, userLocal]);
+    setText('');
+    setTimeout(scrollToEnd, 30);
+
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+
+      const res = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'x-app-lang': lang,
+        },
+        body: JSON.stringify({
+          message: msg,
+          session_id: sessionId,
+          lang,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Request failed');
+
+      const sid = json?.session_id as string | undefined;
+      if (sid && sid !== sessionId) setSessionId(sid);
+
+      const answerText = String(json?.answer || '').trim();
+
+      const botMsg: ChatMsg = {
+        id: uuidLike(),
+        role: 'assistant',
+        lang,
+        created_at: new Date().toISOString(),
+        text:
+          answerText ||
+          (lang === 'kmr'
+            ? 'ببورە، من نەتوانی جواب بدەم. تکایە دوبارە هەول بدە یان info@zenopay.bond پەیوەندی بکە.'
+            : lang === 'ckb'
+            ? 'ببورە، ناتوانم وەڵام بدەم. دووبارە هەوڵ بدە یان پەیوەندی بکە: info@zenopay.bond'
+            : lang === 'ar'
+            ? 'عذراً، لم أستطع الرد. جرّب مرة أخرى أو تواصل: info@zenopay.bond'
+            : 'Sorry, I could not answer. Please try again or contact info@zenopay.bond'),
+      };
+
+      setMessages((prev) => [...prev, botMsg]);
+      setTimeout(scrollToEnd, 60);
+
+      // Refresh history from DB (optional, keeps consistent)
+      if (sid) {
+        // small delay to ensure server saved
+        setTimeout(() => loadHistory(sid), 250);
+      }
+    } catch (e: any) {
+      console.error('Send chat error:', e);
+      const errMsg: ChatMsg = {
+        id: uuidLike(),
+        role: 'assistant',
+        lang,
+        created_at: new Date().toISOString(),
+        text:
+          lang === 'kmr'
+            ? `هەڵە: ${e?.message || 'Unknown'}\nئەگەر کێشە بەردەوامە، پەیوەندی بکە: info@zenopay.bond`
+            : lang === 'ckb'
+            ? `هەڵە: ${e?.message || 'Unknown'}\nپەیوەندی: info@zenopay.bond`
+            : lang === 'ar'
+            ? `خطأ: ${e?.message || 'Unknown'}\nتواصل: info@zenopay.bond`
+            : `Error: ${e?.message || 'Unknown'}\nContact: info@zenopay.bond`,
+      };
+      setMessages((prev) => [...prev, errMsg]);
+      setTimeout(scrollToEnd, 60);
+    } finally {
+      setTyping(false);
+      setSending(false);
+    }
+  };
+
+  const renderItem = ({ item }: { item: ChatMsg }) => {
+    const isUser = item.role === 'user';
     return (
-      <View style={[styles.bubbleRow, mine ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' }]}>
-        <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleAi]}>
-          <Text style={[styles.bubbleText, mine ? { color: '#fff' } : { color: UI.text }]}>{item.text}</Text>
+      <View style={[styles.msgRow, isUser ? styles.msgRowRight : styles.msgRowLeft]}>
+        <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
+          <Text style={[styles.msgText, isUser ? styles.msgTextUser : styles.msgTextBot]}>{item.text}</Text>
         </View>
       </View>
     );
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* header */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.85}>
-          <Ionicons name="arrow-back" size={22} color={UI.text} />
+          <Ionicons name="arrow-back" size={22} color={UI.green} />
         </TouchableOpacity>
 
-        <View style={styles.headerCenter}>
-          <View style={styles.supportIcon}>
-            <Ionicons name="headset" size={18} color="#fff" />
-          </View>
-          <View>
-            <Text style={styles.headerTitle}>Support Chat</Text>
-            <Text style={styles.headerSub}>Online • AI Assistant</Text>
-          </View>
-        </View>
+        <Text style={styles.headerTitle}>{i18n.t('supportChat') || 'Support Chat'}</Text>
 
-        <View style={{ width: 34 }} />
+        <View style={{ width: 28 }} />
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <FlatList
-          ref={listRef}
-          data={messages}
-          keyExtractor={(m) => m.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-        />
+      <SafeAreaView style={styles.safe} edges={['bottom'] as any}>
+        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          {/* Messages */}
+          <View style={styles.listWrap}>
+            {loadingHistory ? (
+              <View style={styles.center}>
+                <ActivityIndicator color={UI.green} />
+              </View>
+            ) : (
+              <FlatList
+                ref={(r) => (listRef.current = r)}
+                data={messages}
+                keyExtractor={(it) => it.id}
+                renderItem={renderItem}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+                onContentSizeChange={scrollToEnd}
+              />
+            )}
 
-        {/* input */}
-        <View style={styles.inputBar}>
-          <View style={styles.inputWrap}>
-            <TextInput
-              value={input}
-              onChangeText={setInput}
-              placeholder="Type your message..."
-              placeholderTextColor="#9CA3AF"
-              style={styles.input}
-              multiline
-            />
+            {/* Typing indicator */}
+            {typing ? (
+              <View style={[styles.msgRow, styles.msgRowLeft, { paddingBottom: 6 }]}>
+                <View style={[styles.bubble, styles.bubbleBot, styles.typingBubble]}>
+                  <TypingDots />
+                </View>
+              </View>
+            ) : null}
           </View>
 
-          <TouchableOpacity
-            onPress={send}
-            activeOpacity={0.9}
-            disabled={!canSend}
-            style={[styles.sendBtn, !canSend && { opacity: 0.5 }]}
-          >
-            <Ionicons name="send" size={18} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+          {/* Composer */}
+          <View style={styles.composer}>
+            <View style={styles.inputWrap}>
+              <TextInput
+                value={text}
+                onChangeText={setText}
+                placeholder={i18n.t('typeMessage') || 'Type a message...'}
+                placeholderTextColor="#9CA3AF"
+                style={styles.input}
+                multiline
+                maxLength={1200}
+              />
+              <TouchableOpacity
+                onPress={sendMessage}
+                activeOpacity={0.9}
+                disabled={sending || !text.trim()}
+                style={[styles.sendBtn, (sending || !text.trim()) && { opacity: 0.5 }]}
+              >
+                {sending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Ionicons name="send" size={18} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.helpRow}>
+              <Ionicons name="mail" size={14} color={UI.green} />
+              <Text style={styles.helpText}>
+                {i18n.t('needHelp') || 'Need Help?'}{' '}
+                <Text style={styles.helpEmail}>info@zenopay.bond</Text>
+              </Text>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: UI.bg },
+  screen: { flex: 1, backgroundColor: UI.bg },
+  flex: { flex: 1 },
+  safe: { flex: 1 },
 
   header: {
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: UI.border,
-    paddingTop: Platform.OS === 'ios' ? 54 : 46,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingTop: Platform.OS === 'ios' ? 54 : 46,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: UI.border,
+    backgroundColor: UI.bg,
   },
-  backBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#EEF2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginLeft: 10 },
-  supportIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: UI.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: { fontSize: 16, fontWeight: '900' as const, color: UI.text },
-  headerSub: { fontSize: 12, fontWeight: '700' as const, color: UI.text2, marginTop: 2 },
+  backBtn: { padding: 6, borderRadius: 10 },
+  headerTitle: { fontSize: 18, fontWeight: '900' as const, color: UI.text },
 
-  listContent: { paddingHorizontal: 14, paddingVertical: 12, paddingBottom: 10 },
+  listWrap: { flex: 1, backgroundColor: UI.bg },
+  listContent: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 },
 
-  bubbleRow: { flexDirection: 'row', marginBottom: 10 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  msgRow: { width: '100%', marginBottom: 10, flexDirection: 'row' },
+  msgRowLeft: { justifyContent: 'flex-start' },
+  msgRowRight: { justifyContent: 'flex-end' },
+
   bubble: {
     maxWidth: '82%',
-    borderRadius: 16,
-    paddingHorizontal: 12,
+    borderRadius: 18,
     paddingVertical: 10,
+    paddingHorizontal: 12,
     borderWidth: 1,
   },
-  bubbleMine: {
+  bubbleUser: {
     backgroundColor: UI.green,
     borderColor: UI.green,
     borderTopRightRadius: 6,
   },
-  bubbleAi: {
+  bubbleBot: {
     backgroundColor: '#FFFFFF',
     borderColor: UI.border,
     borderTopLeftRadius: 6,
   },
-  bubbleText: { fontSize: 14, fontWeight: '700' as const, lineHeight: 18 },
+  msgText: { fontSize: 14.5, lineHeight: 20, fontWeight: '700' as const },
+  msgTextUser: { color: '#FFFFFF' },
+  msgTextBot: { color: UI.text },
 
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  typingBubble: { paddingVertical: 12, paddingHorizontal: 14 },
+
+  typingDotsRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#9CA3AF',
+  },
+
+  composer: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
     borderTopWidth: 1,
     borderTopColor: UI.border,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.bg,
   },
   inputWrap: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: UI.inputBg,
     borderWidth: 1,
     borderColor: UI.border,
-    backgroundColor: '#F9FAFB',
     borderRadius: 16,
-    paddingHorizontal: 12,
+    paddingLeft: 12,
+    paddingRight: 10,
     paddingVertical: 10,
-    minHeight: 48,
-    maxHeight: 120,
+    gap: 10,
   },
-  input: { fontSize: 14, fontWeight: '700' as const, color: UI.text },
+  input: {
+    flex: 1,
+    minHeight: 22,
+    maxHeight: 120,
+    fontSize: 15,
+    color: UI.text,
+    fontWeight: '700' as const,
+  },
   sendBtn: {
-    width: 46,
-    height: 46,
+    width: 42,
+    height: 42,
     borderRadius: 14,
     backgroundColor: UI.green,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  helpRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  helpText: { color: UI.text2, fontSize: 12.5, fontWeight: '700' as const },
+  helpEmail: { color: UI.green, fontWeight: '900' as const },
 });
