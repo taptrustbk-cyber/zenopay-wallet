@@ -4,7 +4,6 @@ import { StyleSheet, View, Text, Animated, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '@/lib/supabase';
 
-
 const { width, height } = Dimensions.get('window');
 
 export default function SplashScreen() {
@@ -74,10 +73,10 @@ export default function SplashScreen() {
   useEffect(() => {
     const checkSession = async () => {
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       try {
         const { data, error } = await supabase.auth.getSession();
-        
+
         if (error || !data?.session) {
           router.replace('/(auth)/login' as any);
           return;
@@ -88,7 +87,7 @@ export default function SplashScreen() {
         router.replace('/(auth)/login' as any);
       }
     };
-    
+
     checkSession();
   }, [router]);
 
@@ -124,71 +123,75 @@ export default function SplashScreen() {
 
   const logoGlow = logoGlowAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.6, 1],
+    outputRange: [0.25, 0.7],
   });
 
   return (
     <View style={styles.container}>
+      {/* ✅ Modern clean green background like your image */}
       <LinearGradient
-        colors={['#0F0C29', '#302b63', '#24243e']}
+        colors={['#16A34A', '#12B76A']}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
 
+      {/* ✅ soft highlight (very light) */}
       <LinearGradient
-        colors={['rgba(102, 126, 234, 0.4)', 'transparent', 'rgba(118, 75, 162, 0.4)']}
+        colors={['rgba(255,255,255,0.10)', 'transparent', 'rgba(0,0,0,0.10)']}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
 
+      {/* particles (keep your animation but modern white soft) */}
       <Animated.View
         style={[
           styles.particle,
           {
-            left: width * 0.2,
-            bottom: 100,
+            left: width * 0.18,
+            bottom: 90,
             opacity: particle1Opacity,
             transform: [{ translateY: particle1Y }],
           },
         ]}
       >
-        <View style={[styles.particleDot, { width: 8, height: 8 }]} />
+        <View style={[styles.particleDot, { width: 7, height: 7 }]} />
       </Animated.View>
 
       <Animated.View
         style={[
           styles.particle,
           {
-            right: width * 0.25,
-            bottom: 150,
+            right: width * 0.22,
+            bottom: 160,
             opacity: particle2Opacity,
             transform: [{ translateY: particle2Y }],
           },
         ]}
       >
-        <View style={[styles.particleDot, { width: 6, height: 6 }]} />
+        <View style={[styles.particleDot, { width: 6, height: 6, opacity: 0.7 }]} />
       </Animated.View>
 
       <Animated.View
         style={[
           styles.particle,
           {
-            left: width * 0.7,
-            bottom: 80,
+            left: width * 0.70,
+            bottom: 70,
             opacity: particle3Opacity,
             transform: [{ translateY: particle3Y }],
           },
         ]}
       >
-        <View style={[styles.particleDot, { width: 10, height: 10 }]} />
+        <View style={[styles.particleDot, { width: 9, height: 9, opacity: 0.6 }]} />
       </Animated.View>
 
+      {/* decorative circles (green glass) */}
       <View style={styles.decorativeCircle1} />
       <View style={styles.decorativeCircle2} />
 
-      <Animated.View 
+      <Animated.View
         style={[
           styles.logoContainer,
           {
@@ -197,171 +200,116 @@ export default function SplashScreen() {
           },
         ]}
       >
+        {/* ✅ optional logo circle (minimal like your design) */}
         <View style={styles.logoWrapper}>
-          <Animated.View
-            style={[
-              styles.logoGlow,
-              {
-                opacity: logoGlow,
-              },
-            ]}
-          />
+          <Animated.View style={[styles.logoGlow, { opacity: logoGlow }]} />
           <LinearGradient
-            colors={['#667eea', '#764ba2']}
+            colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.10)']}
             style={styles.logoCircle}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Text style={styles.logoText}>ZP</Text>
+            <Text style={styles.logoText}>Z</Text>
           </LinearGradient>
         </View>
 
-        <View style={styles.taglineContainer}>
-          <View style={styles.divider} />
-          <Text style={styles.tagline}>Your Digital Wallet</Text>
-          <View style={styles.divider} />
-        </View>
-
-        <View style={styles.subtitleContainer}>
-          <View style={styles.dotIndicator} />
-          <Text style={styles.subtitle}>Fast • Secure • Reliable</Text>
-        </View>
+        {/* ✅ Text like your image */}
+        <Text style={styles.appName}>ZenoPay</Text>
+        <Text style={styles.tagline}>Safe &amp; Trust Wallet</Text>
       </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    zIndex: 10,
-  },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  logoContainer: { alignItems: 'center', zIndex: 10 },
+
   logoWrapper: {
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: 16,
   },
+
   logoCircle: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 2,
-    borderWidth: 4,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-    elevation: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 12,
   },
+
   logoText: {
-    fontSize: 72,
+    fontSize: 56,
     fontWeight: '900' as const,
     color: '#FFFFFF',
-    letterSpacing: 2,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  logoGlow: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: 'rgba(102, 126, 234, 0.5)',
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 40,
-    elevation: 20,
-  },
-  taglineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  tagline: {
-    fontSize: 17,
-    fontWeight: '500' as const,
-    color: '#FFFFFF',
-    opacity: 0.9,
-    marginHorizontal: 16,
     letterSpacing: 1,
   },
-  divider: {
-    width: 40,
-    height: 1.5,
-    backgroundColor: '#FFFFFF',
-    opacity: 0.5,
-  },
-  subtitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
-    opacity: 0.75,
-    letterSpacing: 1.5,
-  },
-  dotIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#667eea',
-    marginRight: 8,
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  particle: {
+
+  logoGlow: {
     position: 'absolute',
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    shadowColor: 'rgba(255,255,255,0.35)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 40,
+    elevation: 16,
   },
+
+  appName: {
+    fontSize: 34,
+    fontWeight: '900' as const,
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+
+  tagline: {
+    marginTop: 6,
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: 'rgba(255,255,255,0.92)',
+  },
+
+  particle: { position: 'absolute' },
   particleDot: {
     borderRadius: 100,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
     shadowColor: '#FFFFFF',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
+    shadowOpacity: 0.55,
     shadowRadius: 10,
     elevation: 10,
   },
+
   decorativeCircle1: {
     position: 'absolute',
-    top: -100,
-    right: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(102, 126, 234, 0.15)',
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 50,
+    top: -120,
+    right: -120,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   decorativeCircle2: {
     position: 'absolute',
-    bottom: -150,
-    left: -120,
-    width: 350,
-    height: 350,
-    borderRadius: 175,
-    backgroundColor: 'rgba(118, 75, 162, 0.15)',
-    shadowColor: '#764ba2',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 50,
+    bottom: -160,
+    left: -140,
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: 'rgba(0,0,0,0.06)',
   },
 });
