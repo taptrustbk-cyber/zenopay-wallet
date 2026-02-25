@@ -113,7 +113,7 @@ export default function SimCardsScreen() {
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
         {/* ✅ GREEN top card background + only ONE text: "Mobile Cards" */}
         <View style={styles.topCard}>
-          <Text style={styles.pageTitle}>{i18n.t('mobileShop') || 'Mobile Cards'}</Text>
+          <Text style={styles.pageTitle}>{i18n.t('mobileCards') || 'Mobile Cards'}</Text>
           {/* ✅ Removed pageSubtitle completely */}
         </View>
 
