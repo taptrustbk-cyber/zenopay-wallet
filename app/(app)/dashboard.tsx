@@ -1,3 +1,4 @@
+//// import React, { useCallback } from 'react';
 import React, { useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import {
@@ -183,22 +184,14 @@ export default function DashboardScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* RIGHT: AI Chat + Notifications */}
+          {/* RIGHT: ✅ Only ONE icon (Support/Chat) */}
           <View style={styles.headerRight}>
             <TouchableOpacity
               style={styles.headerIconBtn}
               activeOpacity={0.85}
-              onPress={() => router.push('/(app)/ai-chat' as any)}
+              onPress={() => router.push('/(app)/support-chat' as any)}
             >
-              <Ionicons name="chatbubbles" size={22} color={UI.iconGray} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.headerIconBtn}
-              activeOpacity={0.85}
-              onPress={() => router.push('/(app)/notifications' as any)}
-            >
-              <Ionicons name="notifications" size={22} color={UI.iconGray} />
+              <Ionicons name="headset" size={22} color={UI.iconGray} />
             </TouchableOpacity>
           </View>
         </View>
