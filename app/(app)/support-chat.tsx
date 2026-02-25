@@ -31,12 +31,10 @@ type ChatMsg = {
 
 const UI = {
   bg: '#FFFFFF',
-  card: '#FFFFFF',
   text: '#111827',
   text2: '#6B7280',
   border: '#E5E7EB',
   green: '#16A34A',
-  greenSoft: '#EAF7EF',
   inputBg: '#F9FAFB',
 };
 
@@ -50,6 +48,14 @@ function normalizeLang(l: string): Lang {
 
 function uuidLike() {
   return `local_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function withTimeout(fetchPromise: Promise<Response>, ms = 15000) {
+  let timeoutId: any;
+  const timeout = new Promise<Response>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('Request timeout')), ms);
+  });
+  return Promise.race([fetchPromise, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
 function TypingDots() {
@@ -95,27 +101,20 @@ export default function AiChatScreen() {
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
-  const [text, setText] = useState<string>('');
-  const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
-  const [sending, setSending] = useState<boolean>(false);
-  const [typing, setTyping] = useState<boolean>(false);
+  const [text, setText] = useState('');
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [typing, setTyping] = useState(false);
 
   const lang = useMemo(() => normalizeLang(getCurrentLanguage()), []);
-
   const listRef = useRef<FlatList<ChatMsg> | null>(null);
 
-  // ✅ FIX: Do NOT use process.env.<URL> (invalid)
-  // Option A: hardcode (works now)
+  // ✅ IMPORTANT: Put the exact function URL here
+  // Must be: https://<project-ref>.supabase.co/functions/v1/<function-name>
   const functionUrl = useMemo(() => {
-    const url = 'https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai';
-    return url;
+    const raw = 'https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai';
+    return raw.replace(/\/+$/, '');
   }, []);
-
-  // ✅ Optional (better): use env variable
-  // Put in .env:
-  // EXPO_PUBLIC_SUPPORT_AI_URL=https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai
-  // then replace above with:
-  // const functionUrl = useMemo(() => (process.env.EXPO_PUBLIC_SUPPORT_AI_URL || '').trim(), []);
 
   const scrollToEnd = () => {
     requestAnimationFrame(() => {
@@ -157,23 +156,24 @@ export default function AiChatScreen() {
         if (last) {
           setSessionId(last);
           await loadHistory(last);
-        } else {
-          const hello: ChatMsg = {
-            id: uuidLike(),
-            role: 'assistant',
-            lang,
-            created_at: new Date().toISOString(),
-            text:
-              lang === 'kmr'
-                ? 'سلاڤ 👋 من AI پشتگیریێ ZenoPay ـم. بپرسە هەر شتێک لسەر دانانا پارە، راکێشان، KYC، کارت…'
-                : lang === 'ckb'
-                ? 'سڵاو 👋 من پشتگیری AI ی ZenoPay ـم. پرسیار بکە لەسەر دانان، راکێشان، KYC، کارت…'
-                : lang === 'ar'
-                ? 'مرحباً 👋 أنا دعم ZenoPay الذكي. اسألني عن الإيداع، السحب، KYC، البطاقات…'
-                : 'Hi 👋 I’m ZenoPay Support AI. Ask me about deposit, withdraw, KYC, cards…',
-          };
-          setMessages([hello]);
+          return;
         }
+
+        const hello: ChatMsg = {
+          id: uuidLike(),
+          role: 'assistant',
+          lang,
+          created_at: new Date().toISOString(),
+          text:
+            lang === 'kmr'
+              ? 'سلاڤ 👋 من AI پشتگیریێ ZenoPay ـم. بپرسە هەر شتێک لسەر دانانا پارە، راکێشان، KYC، کارت…'
+              : lang === 'ckb'
+              ? 'سڵاو 👋 من پشتگیری AI ی ZenoPay ـم. پرسیار بکە لەسەر دانان، راکێشان، KYC، کارت…'
+              : lang === 'ar'
+              ? 'مرحباً 👋 أنا دعم ZenoPay الذكي. اسألني عن الإيداع، السحب، KYC، البطاقات…'
+              : 'Hi 👋 I’m ZenoPay Support AI. Ask me about deposit, withdraw, KYC, cards…',
+        };
+        setMessages([hello]);
       } catch (e) {
         console.error('Boot chat error:', e);
       }
@@ -186,34 +186,6 @@ export default function AiChatScreen() {
     const msg = text.trim();
     if (!msg || sending) return;
 
-    if (!functionUrl) {
-      const warning: ChatMsg = {
-        id: uuidLike(),
-        role: 'assistant',
-        lang,
-        created_at: new Date().toISOString(),
-        text:
-          lang === 'kmr'
-            ? 'URL ـێ function نەدیت. تکایە URL دروست بکە.'
-            : lang === 'ckb'
-            ? 'URL ـی function دانەنراوە.'
-            : lang === 'ar'
-            ? 'رابط الوظيفة غير مضبوط.'
-            : 'Function URL is missing.',
-      };
-      setMessages((prev) => [
-        ...prev,
-        { id: uuidLike(), role: 'user', lang, created_at: new Date().toISOString(), text: msg },
-        warning,
-      ]);
-      setText('');
-      setTimeout(scrollToEnd, 30);
-      return;
-    }
-
-    setSending(true);
-    setTyping(true);
-
     const userLocal: ChatMsg = {
       id: uuidLike(),
       role: 'user',
@@ -222,29 +194,37 @@ export default function AiChatScreen() {
       text: msg,
     };
 
+    setSending(true);
+    setTyping(true);
     setMessages((prev) => [...prev, userLocal]);
     setText('');
     setTimeout(scrollToEnd, 30);
 
     try {
+      if (!functionUrl.startsWith('https://') || !functionUrl.includes('/functions/v1/')) {
+        throw new Error('Function URL is invalid. Check your Edge Function URL.');
+      }
+
       const { data: sess } = await supabase.auth.getSession();
       const token = sess?.session?.access_token;
 
-      const res = await fetch(functionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          'x-app-lang': lang,
-        },
-        body: JSON.stringify({
-          message: msg,
-          session_id: sessionId,
-          lang,
+      const res = await withTimeout(
+        fetch(functionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            'x-app-lang': lang,
+          },
+          body: JSON.stringify({
+            message: msg,
+            session_id: sessionId,
+            lang,
+          }),
         }),
-      });
+        20000
+      );
 
-      // safer JSON parse
       const raw = await res.text();
       let json: any = {};
       try {
@@ -253,9 +233,13 @@ export default function AiChatScreen() {
         json = { error: raw || 'Invalid JSON response' };
       }
 
-      if (!res.ok) throw new Error(json?.error || 'Request failed');
+      if (!res.ok) {
+        // show more info for debugging
+        const status = `${res.status} ${res.statusText}`;
+        throw new Error(json?.error ? `${status}: ${json.error}` : `${status}: Request failed`);
+      }
 
-      const sid = json?.session_id as string | undefined;
+      const sid = (json?.session_id as string | undefined) || undefined;
       if (sid && sid !== sessionId) setSessionId(sid);
 
       const answerText = String(json?.answer || '').trim();
@@ -282,6 +266,23 @@ export default function AiChatScreen() {
       if (sid) setTimeout(() => loadHistory(sid), 250);
     } catch (e: any) {
       console.error('Send chat error:', e);
+
+      // ✅ Better message for "Failed to fetch" (CORS/URL/Network)
+      const isFailedFetch =
+        String(e?.message || '').toLowerCase().includes('failed to fetch') ||
+        String(e?.message || '').toLowerCase().includes('network request failed');
+
+      const details =
+        isFailedFetch
+          ? lang === 'kmr'
+            ? `Failed to fetch.\n1) URL ـی function راستە؟\n2) ل Edge Function CORS هەیە؟\n3) device internet هەیە؟\n\nURL: ${functionUrl}`
+            : lang === 'ckb'
+            ? `Failed to fetch.\n1) URL ـی function دروستە؟\n2) CORS هەیە؟\n3) ئینتەرنێت هەیە؟\n\nURL: ${functionUrl}`
+            : lang === 'ar'
+            ? `Failed to fetch.\n1) هل رابط الوظيفة صحيح؟\n2) هل يوجد CORS؟\n3) هل الانترنت يعمل؟\n\nURL: ${functionUrl}`
+            : `Failed to fetch.\n1) Is function URL correct?\n2) CORS enabled on Edge Function?\n3) Internet working?\n\nURL: ${functionUrl}`
+          : (e?.message || 'Unknown error');
+
       const errMsg: ChatMsg = {
         id: uuidLike(),
         role: 'assistant',
@@ -289,13 +290,14 @@ export default function AiChatScreen() {
         created_at: new Date().toISOString(),
         text:
           lang === 'kmr'
-            ? `هەڵە: ${e?.message || 'Unknown'}\nئەگەر کێشە بەردەوامە، پەیوەندی بکە: info@zenopay.bond`
+            ? `هەڵە: ${details}\nپەیوەندی: info@zenopay.bond`
             : lang === 'ckb'
-            ? `هەڵە: ${e?.message || 'Unknown'}\nپەیوەندی: info@zenopay.bond`
+            ? `هەڵە: ${details}\nپەیوەندی: info@zenopay.bond`
             : lang === 'ar'
-            ? `خطأ: ${e?.message || 'Unknown'}\nتواصل: info@zenopay.bond`
-            : `Error: ${e?.message || 'Unknown'}\nContact: info@zenopay.bond`,
+            ? `خطأ: ${details}\nتواصل: info@zenopay.bond`
+            : `Error: ${details}\nContact: info@zenopay.bond`,
       };
+
       setMessages((prev) => [...prev, errMsg]);
       setTimeout(scrollToEnd, 60);
     } finally {
@@ -374,7 +376,11 @@ export default function AiChatScreen() {
                 disabled={sending || !text.trim()}
                 style={[styles.sendBtn, (sending || !text.trim()) && { opacity: 0.5 }]}
               >
-                {sending ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send" size={18} color="#fff" />}
+                {sending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Ionicons name="send" size={18} color="#fff" />
+                )}
               </TouchableOpacity>
             </View>
 
@@ -473,7 +479,14 @@ const styles = StyleSheet.create({
     color: UI.text,
     fontWeight: '700' as const,
   },
-  sendBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: UI.green, alignItems: 'center', justifyContent: 'center' },
+  sendBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: UI.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   helpRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   helpText: { color: UI.text2, fontSize: 12.5, fontWeight: '700' as const },
