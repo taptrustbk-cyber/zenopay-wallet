@@ -106,8 +106,8 @@ export default function AiChatScreen() {
 
   const functionUrl = useMemo(() => {
     // ✅ You MUST set this env value in app config OR replace with your function URL
-    // Example: https://YOUR_PROJECT_REF.functions.supabase.co/support_ai
-    const url = (process.env.EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL || '').trim();
+    // Example: https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai
+    const url = (process.env.https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai || '').trim();
     // If you prefer hardcode:
     // const url = 'https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai';
     return url.endsWith('/support_ai') ? url : url ? `${url.replace(/\/+$/, '')}/support_ai` : '';
@@ -196,12 +196,12 @@ export default function AiChatScreen() {
         created_at: new Date().toISOString(),
         text:
           lang === 'kmr'
-            ? 'URL ـێ function نەدیت. تکایە EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL دابنێ یان URL ـەکە hardcode بکە.'
+            ? 'URL ـێ function نەدیت. تکایە https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai دابنێ یان URL ـەکە hardcode بکە.'
             : lang === 'ckb'
-            ? 'URL ـی function دانەنراوە. تکایە EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL دابنێ یان URL بنووسە.'
+            ? 'URL ـی function دانەنراوە. تکایە https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai دابنێ یان URL بنووسە.'
             : lang === 'ar'
-            ? 'لم يتم إعداد رابط الوظيفة. ضع EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL أو أضف الرابط داخل الكود.'
-            : 'Function URL is missing. Set EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL or hardcode it in this file.',
+            ? 'لم يتم إعداد رابط الوظيفة. ضع https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai أو أضف الرابط داخل الكود.'
+            : 'Function URL is missing. Set https://wzjnwgygmiznavrdgppo.supabase.co/functions/v1/supabase-functions-new-support_ai or hardcode it in this file.',
       };
       setMessages((prev) => [...prev, { id: uuidLike(), role: 'user', lang, created_at: new Date().toISOString(), text: msg }, warning]);
       setText('');
