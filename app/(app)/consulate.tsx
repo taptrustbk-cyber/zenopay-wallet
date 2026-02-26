@@ -1,4 +1,5 @@
-import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -84,7 +85,7 @@ const CONSULATES: Consulate[] = [
     country: 'Belgium',
     city: 'Baghdad',
     capital: 'Brussels',
-    address: '15 Avenue de l\'Europe, Baghdad',
+    address: "15 Avenue de l'Europe, Baghdad",
     contact: '+964 770 444 5555',
     image: 'https://images.unsplash.com/photo-1559113202-c916b8e44373?w=400&q=80',
   },
@@ -99,79 +100,82 @@ const CONSULATES: Consulate[] = [
   },
 ];
 
+const UI = {
+  bg: '#FFFFFF',
+  text: '#111827',
+  textSecondary: '#6B7280',
+  border: '#E5E7EB',
+  green: '#16A34A',
+  greenDark: '#15803D',
+};
+
 export default function ConsulateScreen() {
-  const { theme } = useTheme();
+  // Keeping your theme hook (even if we use a fixed white design)
+  useTheme();
   const router = useRouter();
 
   const groupedByCity = CONSULATES.reduce((acc, consulate) => {
-    if (!acc[consulate.city]) {
-      acc[consulate.city] = [];
-    }
+    if (!acc[consulate.city]) acc[consulate.city] = [];
     acc[consulate.city].push(consulate);
     return acc;
   }, {} as Record<string, Consulate[]>);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
-      
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <StatusBar barStyle="dark-content" />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      {/* New Header (white bg, black title, green back button) */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          activeOpacity={0.85}
+          style={styles.headerBackBtn}
+        >
+          <Ionicons name="arrow-back" size={18} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>{i18n.t('consulateInfo')}</Text>
+
+        {/* Spacer to keep title centered */}
+        <View style={styles.headerRightSpacer} />
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {Object.entries(groupedByCity).map(([city, cityConsulates]) => (
           <View key={city} style={styles.citySection}>
-            <Text style={[styles.cityTitle, { color: theme.colors.text }]}>{city}</Text>
+            <Text style={styles.cityTitle}>{city}</Text>
+
             <View style={styles.grid}>
               {cityConsulates.map((consulate) => (
-                <View
-                  key={consulate.id}
-                  style={[styles.card, { backgroundColor: theme.colors.card }]}
-                >
-                  <Image
-                    source={{ uri: consulate.image }}
-                    style={styles.image}
-                    resizeMode="cover"
-                  />
+                <View key={consulate.id} style={styles.card}>
+                  <Image source={{ uri: consulate.image }} style={styles.image} resizeMode="cover" />
+
                   <View style={styles.cardContent}>
-                    <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
+                    <Text style={styles.cardTitle}>
                       {consulate.country} {i18n.t('consulate')}
                     </Text>
+
                     <View style={styles.infoRow}>
-                      <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
-                        {i18n.t('city')}:
-                      </Text>
-                      <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                        {consulate.city}
-                      </Text>
+                      <Text style={styles.infoLabel}>{i18n.t('city')}:</Text>
+                      <Text style={styles.infoValue}>{consulate.city}</Text>
                     </View>
+
                     <View style={styles.infoRow}>
-                      <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
-                        {i18n.t('capital')}:
-                      </Text>
-                      <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                        {consulate.capital}
-                      </Text>
+                      <Text style={styles.infoLabel}>{i18n.t('capital')}:</Text>
+                      <Text style={styles.infoValue}>{consulate.capital}</Text>
                     </View>
-                    <Text style={[styles.cardAddress, { color: theme.colors.textSecondary }]}>
-                      {consulate.address}
-                    </Text>
-                    <Text style={[styles.cardContact, { color: '#60A5FA' }]}>
-                      {consulate.contact}
-                    </Text>
+
+                    <Text style={styles.cardAddress}>{consulate.address}</Text>
+                    <Text style={styles.cardContact}>{consulate.contact}</Text>
                   </View>
                 </View>
               ))}
             </View>
           </View>
         ))}
-        
-        <View style={styles.bottomButtonContainer}>
-          <TouchableOpacity 
-            style={[styles.backToDashboardButton, { backgroundColor: theme.colors.primary }]}
-            onPress={() => router.push('/(app)/dashboard' as any)}
-          >
-            <Ionicons name="arrow-back" size={20} color="white" />
-            <Text style={styles.backToDashboardText}>{i18n.t('backToDashboard')}</Text>
-          </TouchableOpacity>
-        </View>
+
+        {/* Removed: Back to Dashboard bottom button */}
+        <View style={{ height: 8 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -180,103 +184,114 @@ export default function ConsulateScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: UI.bg,
   },
+
   header: {
+    backgroundColor: UI.bg,
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 20,
     borderBottomWidth: 1,
+    borderBottomColor: UI.border,
   },
-  backButton: {
-    flexDirection: 'row',
+  headerBackBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: UI.green,
     alignItems: 'center',
-    gap: 4,
-    padding: 4,
+    justifyContent: 'center',
   },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600' as const,
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '800',
+    color: UI.text,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700' as const,
+  headerRightSpacer: {
+    width: 38,
+    height: 38,
   },
+
+  scrollContent: {
+    paddingBottom: 18,
+  },
+
   citySection: {
-    marginTop: 24,
+    marginTop: 18,
   },
   cityTitle: {
-    fontSize: 24,
-    fontWeight: '700' as const,
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    fontSize: 20,
+    fontWeight: '800',
+    color: UI.text,
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
+
   grid: {
-    paddingHorizontal: 20,
-    gap: 16,
+    paddingHorizontal: 16,
+    gap: 14,
   },
+
   card: {
-    borderRadius: 16,
+    backgroundColor: UI.bg,
+    borderRadius: 18,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: UI.border,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-    marginBottom: 16,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 2,
+    marginBottom: 14,
   },
   image: {
     width: '100%',
-    height: 200,
+    height: 190,
+    backgroundColor: UI.border,
   },
   cardContent: {
-    padding: 16,
+    padding: 14,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    marginBottom: 12,
+    fontSize: 16,
+    fontWeight: '800',
+    color: UI.text,
+    marginBottom: 10,
   },
+
   infoRow: {
-    flexDirection: 'row' as const,
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 6,
     gap: 8,
   },
   infoLabel: {
-    fontSize: 14,
-    fontWeight: '600' as const,
+    fontSize: 13,
+    fontWeight: '700',
+    color: UI.textSecondary,
   },
   infoValue: {
-    fontSize: 14,
-    fontWeight: '500' as const,
+    fontSize: 13,
+    fontWeight: '700',
+    color: UI.text,
   },
+
   cardAddress: {
     fontSize: 13,
+    color: UI.textSecondary,
     marginTop: 8,
+    lineHeight: 18,
   },
   cardContact: {
     fontSize: 13,
-    marginTop: 4,
-    fontWeight: '500' as const,
-  },
-  bottomButtonContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    marginTop: 20,
-  },
-  backToDashboardButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 10,
-  },
-  backToDashboardText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600' as const,
+    marginTop: 6,
+    fontWeight: '800',
+    color: UI.greenDark,
   },
 });
