@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import i18n from '@/lib/i18n';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ✅ remove default header
 export const options = {
@@ -34,6 +35,9 @@ const COLORS = {
   greenSoft: '#EAF7EF',
   white: '#FFFFFF',
 };
+
+// ✅ store pending profile safely (for confirm page after deep link)
+const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v1';
 
 function isAtLeast18(dob: Date): boolean {
   const today = new Date();
@@ -153,14 +157,22 @@ export default function CreateAccount() {
     try {
       const dobISO = toISODateOnly(dob);
 
+      // ✅ Save pending profile locally so /auth/confirm can insert into profiles after email confirm
+      await AsyncStorage.setItem(
+        PENDING_PROFILE_KEY,
+        JSON.stringify({
+          email: cleanEmail,
+          full_name: cleanFullName,
+          city: cleanCity,
+          country: cleanCountry,
+          phone: phoneE164,
+          date_of_birth: dobISO,
+        })
+      );
+
       /**
        * ✅ IMPORTANT FIX:
-       * Many Supabase projects have a DB trigger on auth.users that reads raw_user_meta_data
-       * and inserts into profiles. If you send extra fields (city/country/phone/dob) and any
-       * column/constraint/type mismatch exists, signup fails with:
-       * "Database error saving new user"
-       *
-       * So we only send safe metadata (full_name).
+       * Keep metadata minimal to avoid "Database error saving new user"
        */
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
@@ -184,14 +196,7 @@ export default function CreateAccount() {
         return;
       }
 
-      /**
-       * ✅ If email confirmation is ON:
-       * data.session will be null -> user is NOT authenticated yet
-       * => profile upsert will fail under RLS (anon).
-       *
-       * So we only upsert when a session exists.
-       * If session is null, we pass profile fields to email-verification screen and finish later.
-       */
+      // ✅ If email confirmation is OFF (session exists), we can write profile now
       const hasSession = !!data?.session;
 
       if (hasSession) {
@@ -209,26 +214,15 @@ export default function CreateAccount() {
         );
 
         if (profileError) {
-          Alert.alert(i18n.t('error'), profileError.message);
-          return;
+          // don’t block account creation
+          console.log('Profile upsert error:', profileError.message);
         }
-
-        router.replace('/(auth)/email-verification' as any);
-        return;
       }
 
-      // Email confirmation flow (no session yet)
+      // ✅ go to email verification screen (your folder is /app/auth/)
       router.replace({
-        pathname: '/(auth)/email-verification' as any,
-        params: {
-          email: cleanEmail,
-          // pass pending profile info to complete after verification/login
-          pending_full_name: cleanFullName,
-          pending_city: cleanCity,
-          pending_country: cleanCountry,
-          pending_phone: phoneE164,
-          pending_dob: dobISO,
-        },
+        pathname: '/auth/email-verification' as any,
+        params: { email: cleanEmail },
       } as any);
     } catch (e: any) {
       Alert.alert(i18n.t('error'), e?.message ?? 'Unknown error');
