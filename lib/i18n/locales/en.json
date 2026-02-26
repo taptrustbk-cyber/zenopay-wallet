@@ -324,6 +324,7 @@
   "date": "Date",
   "status": "Status",
   "reason": "Reason",
+  "resetLinkSent": "Reset Link Sent",
   "sent": "Sent",
   "received": "Received",
   "active": "Active",
