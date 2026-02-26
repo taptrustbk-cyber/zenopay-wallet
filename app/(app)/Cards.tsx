@@ -36,17 +36,38 @@ type WalletRow = {
   is_locked: boolean;
 };
 
+type CardRow = {
+  id: string;
+  user_id: string;
+  full_name: string;
+  phone: string;
+  country: string;
+  city: string;
+  address: string;
+
+  brand: string;
+  last4: string;
+  pan_masked: string;
+  exp_month: number;
+  exp_year: number;
+  cvv_masked: string;
+
+  price: number;
+  status: string;
+  created_at: string;
+};
+
 type PurchaseCardResponse = {
   ok: boolean;
   message?: string;
   card?: {
     id: string;
     last4: string;
-    pan_masked: string; // "4242 4242 4242 4242"
+    pan_masked: string;
     exp_month: number;
     exp_year: number;
-    cvv_masked: string; // "***"
-    brand: string; // "ZENOPAY"
+    cvv_masked: string;
+    brand: string;
   };
   new_balance?: number;
 };
@@ -65,7 +86,6 @@ function formatCardNumber16(digits: string) {
 }
 
 function randomCardDigits16() {
-  // UI-only preview. Real number should be generated server-side.
   const arr = new Array(16).fill(0).map(() => Math.floor(Math.random() * 10));
   return arr.join('');
 }
@@ -81,6 +101,12 @@ function randomExp() {
   return { month, year };
 }
 
+function formatExp(month: number, year: number) {
+  const mm = String(month).padStart(2, '0');
+  const yy = String(year).slice(-2);
+  return `${mm}/${yy}`;
+}
+
 export default function CardsScreen() {
   const router = useRouter();
   const { user, profile } = useAuth();
@@ -93,7 +119,7 @@ export default function CardsScreen() {
 
   const [isCreating, setIsCreating] = useState(false);
 
-  // Local preview values (not real card values)
+  // Preview (UI-only)
   const preview = useMemo(() => {
     const digits = randomCardDigits16();
     const exp = randomExp();
@@ -104,7 +130,6 @@ export default function CardsScreen() {
       cvv,
       name: (fullName || '').toUpperCase() || 'YOUR NAME',
     };
-    // only re-generate preview when name changes (nice UX)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullName]);
 
@@ -123,6 +148,22 @@ export default function CardsScreen() {
       if (error) throw error;
       if (!data) throw new Error('Wallet not found');
       return data as WalletRow;
+    },
+    staleTime: 0,
+    gcTime: 0,
+  });
+
+  const cardsQuery = useQuery({
+    queryKey: ['cards', user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cards')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as CardRow[];
     },
     staleTime: 0,
     gcTime: 0,
@@ -157,8 +198,6 @@ export default function CardsScreen() {
 
     setIsCreating(true);
     try {
-      // ✅ Atomic server-side operation recommended
-      // Expects an RPC function "purchase_card" created in Supabase
       const { data, error } = await supabase.rpc('purchase_card', {
         p_user_id: user.id,
         p_full_name: fullName.trim(),
@@ -172,7 +211,6 @@ export default function CardsScreen() {
       if (error) throw error;
 
       const res = data as PurchaseCardResponse;
-
       if (!res?.ok) {
         Alert.alert('Failed', res?.message || 'Unable to create card.');
         return;
@@ -180,14 +218,61 @@ export default function CardsScreen() {
 
       Alert.alert('Success', `Card created. ${CARD_PRICE}$ deducted from your balance.`);
       await walletQuery.refetch();
-      // optional: navigate to card details page
-      // router.push('/(app)/card-details' as any);
+      await cardsQuery.refetch();
     } catch (e: any) {
       console.error(e);
       Alert.alert('Error', e?.message || 'Something went wrong.');
     } finally {
       setIsCreating(false);
     }
+  };
+
+  const CardItem = ({ card }: { card: CardRow }) => {
+    const exp = formatExp(card.exp_month, card.exp_year);
+
+    return (
+      <View style={styles.cardItemOuter}>
+        <View style={styles.cardItemGreen}>
+          <View style={styles.itemTopRow}>
+            <View style={styles.logoPill}>
+              <View style={styles.logoDot} />
+              <Text style={styles.logoText}>{(card.brand || 'ZENOPAY').toUpperCase()}</Text>
+            </View>
+
+            <View style={[styles.statusPill, card.status !== 'active' && { opacity: 0.7 }]}>
+              <Text style={styles.statusText}>{(card.status || 'active').toUpperCase()}</Text>
+            </View>
+          </View>
+
+          <Text style={styles.itemNumber}>{card.pan_masked}</Text>
+
+          <View style={styles.itemBottomRow}>
+            <View>
+              <Text style={styles.smallLabel}>CARD HOLDER</Text>
+              <Text style={styles.smallValue}>{(card.full_name || '').toUpperCase()}</Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 18 }}>
+              <View>
+                <Text style={styles.smallLabel}>EXP</Text>
+                <Text style={styles.smallValue}>{exp}</Text>
+              </View>
+              <View>
+                <Text style={styles.smallLabel}>LAST 4</Text>
+                <Text style={styles.smallValue}>{card.last4}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.itemMetaRow}>
+          <Ionicons name="time-outline" size={14} color={UI.text2} />
+          <Text style={styles.itemMetaText}>
+            Created: {new Date(card.created_at).toLocaleString()}
+          </Text>
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -235,6 +320,43 @@ export default function CardsScreen() {
             ) : null}
           </View>
 
+          {/* Existing cards list */}
+          <View style={styles.listWrap}>
+            <View style={styles.listHeaderRow}>
+              <Text style={styles.listTitle}>Your Cards</Text>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => cardsQuery.refetch()}
+                style={styles.refreshBtn}
+              >
+                <Ionicons name="refresh" size={18} color={UI.text} />
+              </TouchableOpacity>
+            </View>
+
+            {cardsQuery.isLoading ? (
+              <View style={styles.loadingBox}>
+                <ActivityIndicator />
+                <Text style={styles.loadingText}>Loading cards...</Text>
+              </View>
+            ) : cardsQuery.isError ? (
+              <View style={styles.loadingBox}>
+                <Ionicons name="alert-circle" size={20} color={UI.danger} />
+                <Text style={[styles.loadingText, { color: UI.danger }]}>Failed to load cards</Text>
+              </View>
+            ) : (cardsQuery.data?.length || 0) === 0 ? (
+              <View style={styles.emptyBox}>
+                <Ionicons name="card-outline" size={26} color={UI.text2} />
+                <Text style={styles.emptyText}>No cards yet. Create your first card below.</Text>
+              </View>
+            ) : (
+              <View style={{ gap: 12 }}>
+                {cardsQuery.data!.map((c) => (
+                  <CardItem key={c.id} card={c} />
+                ))}
+              </View>
+            )}
+          </View>
+
           {/* Card preview */}
           <View style={styles.previewWrap}>
             <View style={styles.previewCard}>
@@ -273,13 +395,13 @@ export default function CardsScreen() {
             </View>
 
             <Text style={styles.previewHint}>
-              This is a preview design. Real card details will be issued securely after purchase.
+              Preview design only. Real card details are issued securely after purchase.
             </Text>
           </View>
 
           {/* Form */}
           <View style={styles.formCard}>
-            <Text style={styles.formTitle}>Your Information</Text>
+            <Text style={styles.formTitle}>Create New Card</Text>
 
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Full Name</Text>
@@ -342,10 +464,7 @@ export default function CardsScreen() {
               activeOpacity={0.9}
               onPress={createCard}
               disabled={!canBuy || !isFormValid || isCreating}
-              style={[
-                styles.createBtn,
-                (!canBuy || !isFormValid || isCreating) && { opacity: 0.55 },
-              ]}
+              style={[styles.createBtn, (!canBuy || !isFormValid || isCreating) && { opacity: 0.55 }]}
             >
               {isCreating ? (
                 <ActivityIndicator color="#fff" />
@@ -421,15 +540,49 @@ const styles = StyleSheet.create({
   warnRow: { marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
   warnText: { color: UI.danger, fontWeight: '800' },
 
-  previewWrap: { marginTop: 14, paddingHorizontal: 16 },
-  previewCard: {
+  listWrap: { marginTop: 14, paddingHorizontal: 16 },
+  listHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  listTitle: { fontSize: 16, fontWeight: '900', color: UI.text },
+  refreshBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#EEF2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  loadingBox: {
+    backgroundColor: UI.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: UI.border,
+    padding: 16,
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadingText: { color: UI.text2, fontWeight: '800' },
+
+  emptyBox: {
+    backgroundColor: UI.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: UI.border,
+    padding: 16,
+    alignItems: 'center',
+    gap: 10,
+  },
+  emptyText: { color: UI.text2, fontWeight: '800', textAlign: 'center' },
+
+  cardItemOuter: { gap: 8 },
+  cardItemGreen: {
     borderRadius: 20,
-    padding: 18,
+    padding: 16,
     backgroundColor: UI.green,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.20)',
   },
-  previewTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  itemTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
   logoPill: {
     flexDirection: 'row',
@@ -442,6 +595,46 @@ const styles = StyleSheet.create({
   },
   logoDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' },
   logoText: { color: '#fff', fontWeight: '900', letterSpacing: 0.6 },
+
+  statusPill: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  statusText: { color: '#fff', fontWeight: '900', fontSize: 11, letterSpacing: 0.6 },
+
+  itemNumber: {
+    marginTop: 14,
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 20,
+    letterSpacing: 1.1,
+  },
+
+  itemBottomRow: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  smallLabel: { color: 'rgba(255,255,255,0.85)', fontWeight: '800', fontSize: 11, letterSpacing: 0.6 },
+  smallValue: { marginTop: 4, color: '#fff', fontWeight: '900', fontSize: 13 },
+
+  itemMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 6 },
+  itemMetaText: { color: UI.text2, fontWeight: '700', fontSize: 12 },
+
+  previewWrap: { marginTop: 14, paddingHorizontal: 16 },
+  previewCard: {
+    borderRadius: 20,
+    padding: 18,
+    backgroundColor: UI.green,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)',
+  },
+  previewTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
   chip: {
     width: 52,
@@ -469,8 +662,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
   },
-  smallLabel: { color: 'rgba(255,255,255,0.85)', fontWeight: '800', fontSize: 11, letterSpacing: 0.6 },
-  smallValue: { marginTop: 4, color: '#fff', fontWeight: '900', fontSize: 13 },
 
   previewHint: {
     marginTop: 10,
