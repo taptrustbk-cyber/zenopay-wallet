@@ -2,8 +2,9 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Pla
 import { Mail, RefreshCw, CheckCircle2 } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import i18n from '@/lib/i18n';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ✅ remove default header
 export const options = { headerShown: false };
@@ -21,13 +22,7 @@ const COLORS = {
   danger: '#DC2626',
 };
 
-type PendingProfile = {
-  pending_full_name?: string;
-  pending_city?: string;
-  pending_country?: string;
-  pending_phone?: string;
-  pending_dob?: string;
-};
+const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v1';
 
 function safeStr(v: unknown): string {
   if (typeof v === 'string') return v;
@@ -44,20 +39,9 @@ export default function EmailVerificationScreen() {
   const params = useLocalSearchParams();
 
   const emailParam = safeStr(params.email);
-  const pendingProfile: PendingProfile = useMemo(
-    () => ({
-      pending_full_name: safeStr(params.pending_full_name),
-      pending_city: safeStr(params.pending_city),
-      pending_country: safeStr(params.pending_country),
-      pending_phone: safeStr(params.pending_phone),
-      pending_dob: safeStr(params.pending_dob),
-    }),
-    [params]
-  );
 
   const [checking, setChecking] = useState(false);
   const [verified, setVerified] = useState(false);
-
   const [userEmail, setUserEmail] = useState<string>(emailParam || '');
   const [resending, setResending] = useState(false);
 
@@ -89,82 +73,53 @@ export default function EmailVerificationScreen() {
     loadEmail();
   }, [emailParam]);
 
-  async function finalizeProfileIfPossible() {
-    // ✅ Only possible when the user has a session (signed in after clicking email confirm deep link)
-    const { data } = await supabase.auth.getSession();
-    const session = data?.session;
-    const user = session?.user;
-
-    if (!user) return false;
-
-    // If email verified, and we have pending fields, save them now
-    if (user.email_confirmed_at) {
-      const hasPending =
-        !!pendingProfile.pending_full_name ||
-        !!pendingProfile.pending_city ||
-        !!pendingProfile.pending_country ||
-        !!pendingProfile.pending_phone ||
-        !!pendingProfile.pending_dob;
-
-      if (hasPending) {
-        const payload: any = {
-          id: user.id,
-          email: user.email,
-        };
-
-        if (pendingProfile.pending_full_name) payload.full_name = pendingProfile.pending_full_name;
-        if (pendingProfile.pending_city) payload.city = pendingProfile.pending_city;
-        if (pendingProfile.pending_country) payload.country = pendingProfile.pending_country;
-        if (pendingProfile.pending_phone) payload.phone = pendingProfile.pending_phone;
-        if (pendingProfile.pending_dob) payload.date_of_birth = pendingProfile.pending_dob;
-
-        const { error: upsertError } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
-
-        if (upsertError) {
-          // Do NOT block the user forever; show message and continue login redirect.
-          console.log('profiles upsert error:', upsertError.message);
-        }
-      }
-
-      return true;
-    }
-
-    return false;
-  }
-
   async function goToLoginWithSuccess() {
     if (redirectedRef.current) return;
     redirectedRef.current = true;
 
-    // ✅ show success message on login screen
     router.replace({
-      pathname: '/(auth)/login' as any,
-      params: {
-        created: '1',
-      },
+      pathname: '/auth/login' as any,
+      params: { created: '1' },
     } as any);
   }
 
-  // ✅ Auto check verification (works when user comes back to app via deep link and is signed-in)
+  /**
+   * ✅ New correct behavior:
+   * Email verification happens by clicking the link → it opens /auth/confirm.
+   * Confirm screen sets the session + saves profile + redirects to login.
+   *
+   * This screen only:
+   * - helps the user resend / check status
+   * - if user somehow already has session and confirmed, redirect to login
+   */
+  async function checkIfVerifiedWithSession() {
+    const { data } = await supabase.auth.getSession();
+    const user = data?.session?.user;
+    if (user?.email_confirmed_at) return true;
+    return false;
+  }
+
+  // ✅ Auto check (if session exists and email confirmed)
   useEffect(() => {
     let mounted = true;
     let pollingInterval: ReturnType<typeof setInterval> | undefined;
 
     const tick = async () => {
       try {
-        // Try finalize with session
-        const ok = await finalizeProfileIfPossible();
+        const ok = await checkIfVerifiedWithSession();
         if (!mounted) return;
 
         if (ok) {
           setVerified(true);
 
-          // Optional: small pause then sign out and go login
-          await sleep(900);
-          await supabase.auth.signOut();
+          // pending profile will be saved by /auth/confirm, but if user is verified already,
+          // we can clean pending data to avoid keeping it
+          await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
 
+          await sleep(700);
+          await supabase.auth.signOut();
           if (!mounted) return;
-          await sleep(300);
+          await sleep(200);
           await goToLoginWithSuccess();
         }
       } catch (e: any) {
@@ -172,30 +127,26 @@ export default function EmailVerificationScreen() {
       }
     };
 
-    // Run once quickly
     tick();
 
     pollingInterval = setInterval(() => {
       if (!verified) tick();
     }, 4000);
 
-    // Listen to auth changes (best for deep-link confirmed flows)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
-      // After email confirm deep link, many times you get SIGNED_IN or USER_UPDATED
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
         if (session?.user?.email_confirmed_at && !verified) {
-          const ok = await finalizeProfileIfPossible();
+          setVerified(true);
+          await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
+          await sleep(700);
+          await supabase.auth.signOut();
           if (!mounted) return;
-          if (ok) {
-            setVerified(true);
-            await sleep(900);
-            await supabase.auth.signOut();
-            if (!mounted) return;
-            await sleep(300);
-            await goToLoginWithSuccess();
-          }
+          await sleep(200);
+          await goToLoginWithSuccess();
         }
       }
     });
@@ -205,18 +156,19 @@ export default function EmailVerificationScreen() {
       if (pollingInterval) clearInterval(pollingInterval);
       subscription.unsubscribe();
     };
-  }, [verified, pendingProfile, router]);
+  }, [verified, router]);
 
   const checkStatus = async () => {
     setChecking(true);
     try {
-      const ok = await finalizeProfileIfPossible();
+      const ok = await checkIfVerifiedWithSession();
 
       if (ok) {
         setVerified(true);
-        await sleep(900);
+        await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
+        await sleep(700);
         await supabase.auth.signOut();
-        await sleep(300);
+        await sleep(200);
         await goToLoginWithSuccess();
       } else {
         Alert.alert(i18n.t('emailNotVerifiedYet'), i18n.t('pleaseConfirmEmail'), [{ text: 'OK' }]);
@@ -250,7 +202,7 @@ export default function EmailVerificationScreen() {
 
       if (error) throw error;
 
-      setCooldown(30); // 30 sec cooldown
+      setCooldown(30);
       Alert.alert(i18n.t('success'), i18n.t('verificationEmailResent'));
     } catch (error: any) {
       Alert.alert(i18n.t('error'), error?.message || 'Failed to resend email');
@@ -278,9 +230,7 @@ export default function EmailVerificationScreen() {
             )}
           </View>
 
-          <Text style={styles.title}>
-            {verified ? i18n.t('emailVerified') : i18n.t('verifyYourEmail')}
-          </Text>
+          <Text style={styles.title}>{verified ? i18n.t('emailVerified') : i18n.t('verifyYourEmail')}</Text>
 
           <Text style={styles.subtitle}>
             {verified ? i18n.t('redirectingToLogin') : i18n.t('verificationEmailSent')}
@@ -293,6 +243,7 @@ export default function EmailVerificationScreen() {
               <Text style={styles.infoText}>• {i18n.t('checkEmailInbox')}</Text>
               <Text style={styles.infoText}>• {i18n.t('checkSpamFolder')}</Text>
               <Text style={styles.infoText}>• {i18n.t('autoCheckingStatus')}</Text>
+              <Text style={styles.infoText}>• {i18n.t('afterConfirmOpenApp') || 'After clicking confirm, Zenopay will open automatically.'}</Text>
             </View>
           ) : (
             <View style={styles.successBox}>
@@ -321,10 +272,7 @@ export default function EmailVerificationScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.secondaryButton,
-                  (resending || cooldown > 0) && styles.secondaryButtonDisabled,
-                ]}
+                style={[styles.secondaryButton, (resending || cooldown > 0) && styles.secondaryButtonDisabled]}
                 onPress={resendEmail}
                 disabled={resending || cooldown > 0}
                 activeOpacity={0.9}
@@ -333,9 +281,7 @@ export default function EmailVerificationScreen() {
                   <ActivityIndicator color={COLORS.green} />
                 ) : (
                   <Text style={styles.secondaryButtonText}>
-                    {cooldown > 0
-                      ? `${i18n.t('resendEmail')} (${cooldown}s)`
-                      : i18n.t('resendEmail')}
+                    {cooldown > 0 ? `${i18n.t('resendEmail')} (${cooldown}s)` : i18n.t('resendEmail')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -344,7 +290,7 @@ export default function EmailVerificationScreen() {
                 style={styles.backButton}
                 onPress={async () => {
                   await supabase.auth.signOut();
-                  router.replace('/(auth)/login' as any);
+                  router.replace('/auth/login' as any);
                 }}
                 activeOpacity={0.9}
               >
@@ -353,17 +299,15 @@ export default function EmailVerificationScreen() {
 
               <Text style={styles.hintText}>
                 {Platform.OS === 'ios' || Platform.OS === 'android'
-                  ? i18n.t('openEmailAppHint') || 'After clicking confirm in your email, you will return here automatically.'
-                  : i18n.t('openEmailWebHint') || 'Click the confirm link in your email, then return here to continue.'}
+                  ? i18n.t('openEmailAppHint') || 'After clicking confirm in your email, the app will open automatically.'
+                  : i18n.t('openEmailWebHint') || 'Click the confirm link in your email, then return to the app.'}
               </Text>
             </>
           ) : (
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={goToLoginWithSuccess}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.primaryButtonText}>{i18n.t('continueToLogin') || 'Continue to login'}</Text>
+            <TouchableOpacity style={styles.primaryButton} onPress={goToLoginWithSuccess} activeOpacity={0.9}>
+              <Text style={styles.primaryButtonText}>
+                {i18n.t('continueToLogin') || 'Continue to login'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
