@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import i18n from '@/lib/i18n';
@@ -110,7 +110,7 @@ const UI = {
 };
 
 export default function ConsulateScreen() {
-  // Keeping your theme hook (even if we use a fixed white design)
+  // keep theme hook (no need to use colors)
   useTheme();
   const router = useRouter();
 
@@ -122,21 +122,20 @@ export default function ConsulateScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      {/* ✅ This removes the top dark-blue header (native Stack header) */}
+      <Stack.Screen options={{ headerShown: false }} />
+
       <StatusBar barStyle="dark-content" />
 
-      {/* New Header (white bg, black title, green back button) */}
+      {/* ✅ Only ONE header now (your custom header), placed at the top correctly */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.85}
-          style={styles.headerBackBtn}
-        >
+        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.85} style={styles.headerBackBtn}>
           <Ionicons name="arrow-back" size={18} color="#FFFFFF" />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{i18n.t('consulateInfo')}</Text>
 
-        {/* Spacer to keep title centered */}
+        {/* spacer to keep title centered */}
         <View style={styles.headerRightSpacer} />
       </View>
 
@@ -174,8 +173,8 @@ export default function ConsulateScreen() {
           </View>
         ))}
 
-        {/* Removed: Back to Dashboard bottom button */}
-        <View style={{ height: 8 }} />
+        {/* bottom spacing */}
+        <View style={{ height: 10 }} />
       </ScrollView>
     </SafeAreaView>
   );
