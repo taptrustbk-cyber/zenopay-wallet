@@ -1,5 +1,12 @@
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
+  Alert,
+} from 'react-native';
 import { Clock, Mail, RefreshCw } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -53,7 +60,7 @@ export default function WaitingReviewScreen() {
 
   const checkStatus = async () => {
     if (!user) return;
-    
+
     setChecking(true);
     try {
       const { data, error } = await supabase
@@ -84,249 +91,261 @@ export default function WaitingReviewScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#0F172A', '#1E293B', '#334155']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradient}
-      >
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.iconContainer}>
-            <Clock size={80} color="#F59E0B" strokeWidth={1.5} />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.iconContainer}>
+          <Clock size={72} color="#16A34A" strokeWidth={1.8} />
+        </View>
+
+        <Text style={styles.title}>{i18n.t('pendingAdminReview')}</Text>
+        <Text style={styles.subtitle}>{i18n.t('accountUnderReview')}</Text>
+
+        <View style={styles.infoCard}>
+          <View style={styles.infoIconWrap}>
+            <Mail size={22} color="#16A34A" />
           </View>
 
-          <Text style={styles.title}>{i18n.t('pendingAdminReview')}</Text>
-          <Text style={styles.subtitle}>
-            {i18n.t('accountUnderReview')}
-          </Text>
-
-          <View style={styles.infoCard}>
-            <Mail size={24} color="#3B82F6" style={styles.cardIcon} />
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>{i18n.t('emailNotification')}</Text>
-              <Text style={styles.cardDescription}>
-                {i18n.t('emailNotificationDesc')}
-              </Text>
-            </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitle}>{i18n.t('emailNotification')}</Text>
+            <Text style={styles.cardDescription}>{i18n.t('emailNotificationDesc')}</Text>
           </View>
+        </View>
 
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              {i18n.t('checkEmailRegularly')}
+        <View style={styles.infoBox}>
+          <Text style={styles.infoText}>{i18n.t('checkEmailRegularly')}</Text>
+          <Text style={styles.infoText}>{i18n.t('reviewTakes1To6Hours')}</Text>
+          <Text style={styles.infoText}>{i18n.t('infoSecure')}</Text>
+        </View>
+
+        <TouchableOpacity style={styles.primaryButton} onPress={checkStatus} disabled={checking}>
+          {checking ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <>
+              <RefreshCw size={20} color="#000" />
+              <Text style={styles.primaryButtonText}>{i18n.t('checkStatus')}</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.kycSection}>
+          <Text style={styles.kycTitle}>{i18n.t('kycDocuments')}</Text>
+          <Text style={styles.kycSubtitle}>{i18n.t('uploadDocsToComplete')}</Text>
+
+          <TouchableOpacity onPress={() => pickImage(setIdFront)} style={styles.uploadBtn}>
+            <Text style={styles.uploadText}>
+              {idFront ? `${i18n.t('idFrontSelected')} ✅` : i18n.t('uploadIDFront')}
             </Text>
-            <Text style={styles.infoText}>
-              {i18n.t('reviewTakes1To6Hours')}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => pickImage(setIdBack)} style={styles.uploadBtn}>
+            <Text style={styles.uploadText}>
+              {idBack ? `${i18n.t('idBackSelected')} ✅` : i18n.t('uploadIDBack')}
             </Text>
-            <Text style={styles.infoText}>
-              {i18n.t('infoSecure')}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => pickImage(setSelfie)} style={styles.uploadBtn}>
+            <Text style={styles.uploadText}>
+              {selfie ? `${i18n.t('selfieSelected')} ✅` : i18n.t('uploadSelfie')}
             </Text>
-          </View>
+          </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={checkStatus}
-            disabled={checking}
+            style={[
+              styles.primaryButton,
+              styles.uploadButton,
+              (!idFront || !idBack || !selfie || uploading) && styles.buttonDisabled,
+            ]}
+            onPress={uploadKYCDocuments}
+            disabled={!idFront || !idBack || !selfie || uploading}
           >
-            {checking ? (
-              <ActivityIndicator color="#FFF" />
+            {uploading ? (
+              <ActivityIndicator color="#000" />
             ) : (
-              <>
-                <RefreshCw size={20} color="#FFF" />
-                <Text style={styles.refreshButtonText}>{i18n.t('checkStatus')}</Text>
-              </>
+              <Text style={styles.primaryButtonText}>{i18n.t('uploadDocuments')}</Text>
             )}
           </TouchableOpacity>
+        </View>
 
-          <View style={styles.kycSection}>
-            <Text style={styles.kycTitle}>{i18n.t('kycDocuments')}</Text>
-            <Text style={styles.kycSubtitle}>{i18n.t('uploadDocsToComplete')}</Text>
-
-            <TouchableOpacity onPress={() => pickImage(setIdFront)} style={styles.uploadBtn}>
-              <Text style={styles.uploadText}>
-                {idFront ? `${i18n.t('idFrontSelected')} ✅` : i18n.t('uploadIDFront')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => pickImage(setIdBack)} style={styles.uploadBtn}>
-              <Text style={styles.uploadText}>
-                {idBack ? `${i18n.t('idBackSelected')} ✅` : i18n.t('uploadIDBack')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => pickImage(setSelfie)} style={styles.uploadBtn}>
-              <Text style={styles.uploadText}>
-                {selfie ? `${i18n.t('selfieSelected')} ✅` : i18n.t('uploadSelfie')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.uploadKYCButton, (!idFront || !idBack || !selfie || uploading) && styles.uploadKYCButtonDisabled]}
-              onPress={uploadKYCDocuments}
-              disabled={!idFront || !idBack || !selfie || uploading}
-            >
-              {uploading ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.uploadKYCButtonText}>{i18n.t('uploadDocuments')}</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-            <Text style={styles.signOutText}>{i18n.t('signOut')}</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </LinearGradient>
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <Text style={styles.signOutText}>{i18n.t('signOut')}</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 }
 
+const GREEN = '#16A34A';
+const BORDER = '#E5E7EB';
+const TEXT = '#111827';
+const MUTED = '#6B7280';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  gradient: {
-    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   content: {
-    paddingHorizontal: 24,
-    paddingVertical: 40,
-    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 28,
     alignItems: 'center',
   },
+
   iconContainer: {
-    marginBottom: 32,
-    padding: 24,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderRadius: 100,
-    borderWidth: 2,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    marginBottom: 18,
+    width: 104,
+    height: 104,
+    borderRadius: 999,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+
   title: {
-    fontSize: 28,
-    fontWeight: 'bold' as const,
-    color: '#FFFFFF',
-    textAlign: 'center' as const,
-    marginBottom: 12,
+    fontSize: 26,
+    fontWeight: '800',
+    color: TEXT,
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: 0.2,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#94A3B8',
-    textAlign: 'center' as const,
-    marginBottom: 32,
-    lineHeight: 24,
+    fontSize: 15,
+    color: MUTED,
+    textAlign: 'center',
+    marginBottom: 18,
+    lineHeight: 22,
   },
+
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
     width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: 14,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  cardIcon: {
-    marginRight: 16,
+  infoIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   cardContent: {
     flex: 1,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
-    marginBottom: 8,
+    fontSize: 15,
+    fontWeight: '800',
+    color: TEXT,
+    marginBottom: 4,
   },
   cardDescription: {
-    fontSize: 14,
-    color: '#94A3B8',
+    fontSize: 13.5,
+    color: MUTED,
     lineHeight: 20,
   },
+
   infoBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
-    padding: 20,
     width: '100%',
-    marginBottom: 32,
-    gap: 12,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: 16,
+    gap: 10,
   },
   infoText: {
-    fontSize: 14,
-    color: '#CBD5E1',
+    fontSize: 13.5,
+    color: MUTED,
     lineHeight: 20,
   },
-  refreshButton: {
-    flexDirection: 'row',
-    backgroundColor: '#3B82F6',
+
+  primaryButton: {
+    width: '100%',
+    height: 52,
     borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
+    backgroundColor: GREEN,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    width: '100%',
-    marginBottom: 16,
+    flexDirection: 'row',
+    gap: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
   },
-  refreshButtonText: {
-    color: '#FFFFFF',
+  primaryButtonText: {
+    color: '#000000',
     fontSize: 16,
-    fontWeight: '600' as const,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
-  signOutButton: {
-    paddingVertical: 12,
-  },
-  signOutText: {
-    color: '#94A3B8',
-    fontSize: 15,
-    fontWeight: '600' as const,
-  },
+
   kycSection: {
-    marginTop: 32,
+    marginTop: 18,
     width: '100%',
   },
   kycTitle: {
-    fontSize: 20,
-    fontWeight: '700' as const,
-    color: '#FFFFFF',
-    marginBottom: 8,
+    fontSize: 18,
+    fontWeight: '900',
+    color: TEXT,
+    marginBottom: 6,
   },
   kycSubtitle: {
-    fontSize: 14,
-    color: '#94A3B8',
-    marginBottom: 20,
+    fontSize: 13.5,
+    color: MUTED,
+    marginBottom: 14,
   },
+
   uploadBtn: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
-    borderStyle: 'dashed' as const,
+    width: '100%',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    backgroundColor: '#F0FDF4',
     alignItems: 'center',
   },
   uploadText: {
-    fontSize: 15,
-    color: '#FFFFFF',
-    fontWeight: '600' as const,
+    fontSize: 14.5,
+    color: TEXT,
+    fontWeight: '800',
   },
-  uploadKYCButton: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    width: '100%',
+
+  uploadButton: {
+    marginTop: 10,
   },
-  uploadKYCButtonDisabled: {
-    opacity: 0.5,
+  buttonDisabled: {
+    opacity: 0.55,
   },
-  uploadKYCButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600' as const,
+
+  signOutButton: {
+    marginTop: 14,
+    paddingVertical: 10,
+  },
+  signOutText: {
+    color: MUTED,
+    fontSize: 14.5,
+    fontWeight: '800',
   },
 });
