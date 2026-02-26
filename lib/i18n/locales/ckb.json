@@ -5,6 +5,7 @@
   "cards": {
     "title": "کاردەکان",
     "available_balance": "باڵانسی بەردەست",
+    "buyCard": "کڕینی کارت",
     "create_price": "دروستکردن",
     "insufficient_inline": "باڵانس بەس نییە بۆ دروستکردنی کارد.",
     "your_cards": "کاردەکانت",
