@@ -1,5 +1,4 @@
-// import React, { useEffect, useMemo, useRef, useState } from 'react';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -16,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter, Stack, useFocusEffect } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -40,47 +39,67 @@ function safeText(v: any) {
   return String(v);
 }
 
+/**
+ * DB column names
+ * ✅ You asked: connect to profiles.date_of_brith (typo in DB)
+ */
+const COL_DATE = 'date_of_brith';
+const COL_DATE_FALLBACK = 'date_of_birth';
+
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, profile, refreshProfile } = useAuth();
 
-  // ✅ local state from profile (auto fill)
+  // -----------------------------
+  // Local state
+  // -----------------------------
   const [fullName, setFullName] = useState(profile?.full_name || '');
-  const [dob, setDob] = useState(safeText((profile as any)?.date_of_birth));
+  const [dob, setDob] = useState(
+    safeText((profile as any)?.[COL_DATE] ?? (profile as any)?.[COL_DATE_FALLBACK])
+  );
   const [phone, setPhone] = useState(safeText((profile as any)?.phone));
   const [country, setCountry] = useState(safeText((profile as any)?.country));
-  const [email, setEmail] = useState(user?.email || safeText((profile as any)?.email));
-  const [accountActiveText, setAccountActiveText] = useState('Account Active');
+  const [email] = useState(user?.email || safeText((profile as any)?.email));
+
+  const [accountActiveText, setAccountActiveText] = useState('Account is active');
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>((profile as any)?.avatar_url ?? null);
-
   const [pickerOpen, setPickerOpen] = useState(false);
   const [savingAvatar, setSavingAvatar] = useState(false);
 
   // -----------------------------
-  // ✅ Sync UI state with profile after refresh/reopen
+  // ✅ Refresh profile whenever screen is focused
+  // (Fixes avatar/text not persisting on refresh / back navigation)
+  // -----------------------------
+  useFocusEffect(
+    useCallback(() => {
+      refreshProfile?.();
+    }, [refreshProfile])
+  );
+
+  // -----------------------------
+  // Sync UI state with profile changes
   // -----------------------------
   useEffect(() => {
     setFullName(profile?.full_name || '');
-    setDob(safeText((profile as any)?.date_of_birth));
+    setDob(safeText((profile as any)?.[COL_DATE] ?? (profile as any)?.[COL_DATE_FALLBACK]));
     setPhone(safeText((profile as any)?.phone));
     setCountry(safeText((profile as any)?.country));
-    setEmail(user?.email || safeText((profile as any)?.email));
     setAvatarUrl((profile as any)?.avatar_url ?? null);
 
-    // you asked: inside box show "Account Active"
-    setAccountActiveText(i18n.t('accountActive') || 'Account Active');
+    setAccountActiveText(i18n.t('accountActive') || 'Account is active');
   }, [
     profile?.full_name,
-    (profile as any)?.date_of_birth,
+    (profile as any)?.[COL_DATE],
+    (profile as any)?.[COL_DATE_FALLBACK],
     (profile as any)?.phone,
     (profile as any)?.country,
     (profile as any)?.avatar_url,
-    user?.email,
   ]);
 
-  // ✅ ALWAYS show uploaded image from Supabase (persist)
-  // If avatar_url exists, use it; add cache-bust ONLY when URL changes (not every render)
+  // -----------------------------
+  // ✅ Avatar cache-bust (prevents showing old cached image)
+  // -----------------------------
   const lastAvatarUrlRef = useRef<string | null>(null);
   const [avatarCacheBust, setAvatarCacheBust] = useState<number>(Date.now());
 
@@ -100,16 +119,15 @@ export default function ProfileScreen() {
   }, [(profile as any)?.avatar_url, avatarUrl, avatarCacheBust]);
 
   // -----------------------------
-  // ✅ Auto-save ALL fields (debounced) when user edits inputs
-  // (also keep manual save button)
+  // ✅ Auto-save (debounced) when user edits inputs
   // -----------------------------
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const lastSaved = useRef({
     full_name: profile?.full_name || '',
-    date_of_birth: safeText((profile as any)?.date_of_birth),
+    date_of_brith: safeText((profile as any)?.[COL_DATE] ?? (profile as any)?.[COL_DATE_FALLBACK]),
     phone: safeText((profile as any)?.phone),
     country: safeText((profile as any)?.country),
-    email: user?.email || safeText((profile as any)?.email),
   });
 
   useEffect(() => {
@@ -117,27 +135,23 @@ export default function ProfileScreen() {
 
     const current = {
       full_name: fullName.trim(),
-      date_of_birth: dob.trim(),
+      date_of_brith: dob.trim(),
       phone: phone.trim(),
       country: country.trim(),
-      email: (user?.email || email).trim(), // keep auth email priority
     };
 
     const prev = {
       full_name: (lastSaved.current.full_name || '').trim(),
-      date_of_birth: (lastSaved.current.date_of_birth || '').trim(),
+      date_of_brith: (lastSaved.current.date_of_brith || '').trim(),
       phone: (lastSaved.current.phone || '').trim(),
       country: (lastSaved.current.country || '').trim(),
-      email: (lastSaved.current.email || '').trim(),
     };
 
-    // if nothing changed, stop
     if (
       current.full_name === prev.full_name &&
-      current.date_of_birth === prev.date_of_birth &&
+      current.date_of_brith === prev.date_of_brith &&
       current.phone === prev.phone &&
-      current.country === prev.country &&
-      current.email === prev.email
+      current.country === prev.country
     ) {
       return;
     }
@@ -148,38 +162,38 @@ export default function ProfileScreen() {
       try {
         const payload: any = {
           full_name: current.full_name,
-          date_of_birth: current.date_of_birth,
+          [COL_DATE]: current.date_of_brith, // ✅ profiles.date_of_brith
           phone: current.phone,
           country: current.country,
-          email: current.email,
         };
 
         const { error } = await supabase.from('profiles').update(payload).eq('id', user.id);
         if (error) throw error;
 
         lastSaved.current = { ...current };
-        await refreshProfile();
+        await refreshProfile?.();
       } catch (e: any) {
         console.error('Auto save profile error:', e);
       }
-    }, 700);
+    }, 650);
 
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [fullName, dob, phone, country, email, user?.id, refreshProfile, user?.email]);
+  }, [fullName, dob, phone, country, user?.id, refreshProfile]);
 
-  // Manual save button (kept)
+  // -----------------------------
+  // Manual Save (button)
+  // -----------------------------
   const updateMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('Not authenticated');
 
       const payload: any = {
         full_name: fullName.trim(),
-        date_of_birth: dob.trim(),
+        [COL_DATE]: dob.trim(),
         phone: phone.trim(),
         country: country.trim(),
-        email: (user?.email || email).trim(),
       };
 
       const { error } = await supabase.from('profiles').update(payload).eq('id', user.id);
@@ -188,25 +202,24 @@ export default function ProfileScreen() {
     onSuccess: async () => {
       lastSaved.current = {
         full_name: fullName.trim(),
-        date_of_birth: dob.trim(),
+        date_of_brith: dob.trim(),
         phone: phone.trim(),
         country: country.trim(),
-        email: (user?.email || email).trim(),
       };
-      await refreshProfile();
-      Alert.alert(i18n.t('success'), i18n.t('profileUpdated'));
+      await refreshProfile?.();
+      Alert.alert(i18n.t('success') || 'Success', i18n.t('profileUpdated') || 'Profile updated');
     },
     onError: (error: any) => {
-      Alert.alert(i18n.t('error'), error.message);
+      Alert.alert(i18n.t('error') || 'Error', error?.message || 'Failed');
     },
   });
 
   // -----------------------------
-  // Avatar upload helpers
+  // Avatar upload
   // -----------------------------
   const uploadAvatarToSupabase = async (uri: string) => {
     if (!user?.id) {
-      Alert.alert(i18n.t('error'), 'Not authenticated');
+      Alert.alert(i18n.t('error') || 'Error', 'Not authenticated');
       return;
     }
 
@@ -220,7 +233,7 @@ export default function ProfileScreen() {
       const mime = blob.type || 'image/jpeg';
       const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
 
-      // fixed path = overwrite old avatar
+      // ✅ fixed path (overwrite old avatar)
       const filePath = `${user.id}/avatar.${ext}`;
 
       const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, arrayBuffer, {
@@ -228,25 +241,26 @@ export default function ProfileScreen() {
         contentType: mime,
         cacheControl: '0',
       });
-
       if (uploadError) throw uploadError;
 
+      // ✅ get public URL
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const publicUrl = data?.publicUrl;
       if (!publicUrl) throw new Error('Failed to get public URL');
 
+      // ✅ save url in profiles.avatar_url
       const { error: dbError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
       if (dbError) throw dbError;
 
-      // ✅ persist and show after refresh
+      // ✅ update UI + cache-bust + refresh
       setAvatarUrl(publicUrl);
       setAvatarCacheBust(Date.now());
-      await refreshProfile();
+      await refreshProfile?.();
 
-      Alert.alert(i18n.t('success'), i18n.t('profileUpdated'));
+      Alert.alert(i18n.t('success') || 'Success', i18n.t('profileUpdated') || 'Profile updated');
     } catch (e: any) {
       console.error('Avatar upload error:', e);
-      Alert.alert(i18n.t('error'), e?.message || 'Upload failed');
+      Alert.alert(i18n.t('error') || 'Error', e?.message || 'Upload failed');
     } finally {
       setSavingAvatar(false);
     }
@@ -257,7 +271,7 @@ export default function ProfileScreen() {
 
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(i18n.t('error'), 'Permission to access photos is required');
+      Alert.alert(i18n.t('error') || 'Error', 'Permission to access photos is required');
       return;
     }
 
@@ -280,7 +294,7 @@ export default function ProfileScreen() {
 
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(i18n.t('error'), 'Permission to use camera is required');
+      Alert.alert(i18n.t('error') || 'Error', 'Permission to use camera is required');
       return;
     }
 
@@ -297,10 +311,10 @@ export default function ProfileScreen() {
     await uploadAvatarToSupabase(uri);
   };
 
-  // ✅ account status text (you asked: "Account Active")
+  // Status text
   const statusText =
-    profile?.kyc_status === 'approved'
-      ? i18n.t('active')
+    (profile as any)?.kyc_status === 'approved'
+      ? i18n.t('active') || 'Active'
       : (i18n.t((profile as any)?.kyc_status || 'notStarted') as any);
 
   return (
@@ -312,13 +326,17 @@ export default function ProfileScreen() {
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>{i18n.t('profile')}</Text>
+        <Text style={styles.headerTitle}>{i18n.t('profile') || 'Profile'}</Text>
 
         <View style={{ width: 24 }} />
       </View>
 
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.card}>
             {/* Avatar */}
             <View style={styles.avatarWrap}>
@@ -337,71 +355,84 @@ export default function ProfileScreen() {
                 )}
 
                 <View style={styles.avatarPencil}>
-                  {savingAvatar ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Ionicons name="camera" size={16} color="#FFFFFF" />}
+                  {savingAvatar ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <Ionicons name="camera" size={16} color="#FFFFFF" />
+                  )}
                 </View>
               </TouchableOpacity>
 
-              <Text style={styles.avatarHint}>{i18n.t('tapToChangePhoto')}</Text>
+              <Text style={styles.avatarHint}>{i18n.t('tapToChangePhoto') || 'Tap to change photo'}</Text>
             </View>
 
-            {/* ✅ New input boxes (exact order you asked) */}
-            <Text style={styles.label}>full_name</Text>
+            {/* Full Name */}
+            <Text style={styles.label}>Full Name</Text>
             <TextInput
               style={styles.input}
-              placeholder="full_name"
+              placeholder="Enter your full name"
               placeholderTextColor={COLORS.textSecondary}
               value={fullName}
               onChangeText={setFullName}
+              autoCapitalize="words"
             />
 
-            <Text style={styles.label}>date_of_birth</Text>
+            {/* Date Of Birth */}
+            <Text style={styles.label}>Date Of Birth</Text>
             <TextInput
               style={styles.input}
-              placeholder="date_of_birth"
+              placeholder="YYYY-MM-DD"
               placeholderTextColor={COLORS.textSecondary}
               value={dob}
               onChangeText={setDob}
             />
 
-            <Text style={styles.label}>phone</Text>
+            {/* Phone Number */}
+            <Text style={styles.label}>Phone Number</Text>
             <TextInput
               style={styles.input}
-              placeholder="phone"
+              placeholder="Add your phone number here"
               placeholderTextColor={COLORS.textSecondary}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
             />
 
-            <Text style={styles.label}>email</Text>
+            {/* Email (readonly) */}
+            <Text style={styles.label}>Email</Text>
             <View style={styles.infoBox}>
               <Text style={styles.infoText}>{user?.email || email}</Text>
             </View>
 
-            <Text style={styles.label}>country</Text>
+            {/* Country */}
+            <Text style={styles.label}>Country</Text>
             <TextInput
               style={styles.input}
-              placeholder="country"
+              placeholder="Add your country here"
               placeholderTextColor={COLORS.textSecondary}
               value={country}
               onChangeText={setCountry}
             />
 
-            {/* ✅ Status box inside profile (Account Active) */}
+            {/* Account status */}
             <Text style={styles.label}>{accountActiveText}</Text>
             <View style={styles.statusBox}>
               <View style={styles.statusDot} />
               <Text style={styles.statusText}>{statusText}</Text>
             </View>
 
-            {/* Manual Save */}
+            {/* Save */}
             <TouchableOpacity
               style={[styles.primaryButton, (updateMutation.isPending || savingAvatar) && { opacity: 0.7 }]}
               onPress={() => updateMutation.mutate()}
               disabled={updateMutation.isPending || savingAvatar}
               activeOpacity={0.9}
             >
-              {updateMutation.isPending ? <ActivityIndicator color="#FFF" /> : <Text style={styles.primaryButtonText}>{i18n.t('save')}</Text>}
+              {updateMutation.isPending ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.primaryButtonText}>{i18n.t('save') || 'Save'}</Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -413,20 +444,20 @@ export default function ProfileScreen() {
       <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setPickerOpen(false)} />
         <View style={styles.modalSheet}>
-          <Text style={styles.modalTitle}>{i18n.t('changePhoto')}</Text>
+          <Text style={styles.modalTitle}>{i18n.t('changePhoto') || 'Change photo'}</Text>
 
           <TouchableOpacity style={styles.sheetButton} activeOpacity={0.9} onPress={pickFromGallery}>
             <Ionicons name="images" size={18} color={COLORS.text} />
-            <Text style={styles.sheetButtonText}>{i18n.t('selectExistingPhoto')}</Text>
+            <Text style={styles.sheetButtonText}>{i18n.t('selectExistingPhoto') || 'Select existing photo'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.sheetButton} activeOpacity={0.9} onPress={takeNewPhoto}>
             <Ionicons name="camera" size={18} color={COLORS.text} />
-            <Text style={styles.sheetButtonText}>{i18n.t('takeNewPhoto')}</Text>
+            <Text style={styles.sheetButtonText}>{i18n.t('takeNewPhoto') || 'Take new photo'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.9} onPress={() => setPickerOpen(false)}>
-            <Text style={styles.cancelText}>{i18n.t('cancel')}</Text>
+            <Text style={styles.cancelText}>{i18n.t('cancel') || 'Cancel'}</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -450,7 +481,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bg,
   },
   backButton: { padding: 6, borderRadius: 10 },
-  headerTitle: { fontSize: 20, fontWeight: '900' as const, color: COLORS.text },
+  headerTitle: { fontSize: 20, fontWeight: '900', color: COLORS.text },
 
   content: { flex: 1, backgroundColor: COLORS.bg },
   contentContainer: { paddingBottom: 10 },
@@ -490,9 +521,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarHint: { marginTop: 10, fontSize: 13, color: COLORS.textSecondary, fontWeight: '700' as const },
+  avatarHint: { marginTop: 10, fontSize: 13, color: COLORS.textSecondary, fontWeight: '700' },
 
-  label: { fontSize: 13, fontWeight: '900' as const, marginBottom: 8, color: COLORS.text },
+  label: { fontSize: 13, fontWeight: '900', marginBottom: 8, color: COLORS.text },
 
   input: {
     borderRadius: 14,
@@ -502,7 +533,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     height: 52,
     fontSize: 16,
-    fontWeight: '700' as const,
+    fontWeight: '700',
     color: COLORS.text,
     marginBottom: 16,
   },
@@ -517,7 +548,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  infoText: { fontSize: 16, fontWeight: '800' as const, color: COLORS.text },
+  infoText: { fontSize: 16, fontWeight: '800', color: COLORS.text },
 
   statusBox: {
     borderRadius: 14,
@@ -532,7 +563,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   statusDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.green },
-  statusText: { fontSize: 15, fontWeight: '900' as const, color: COLORS.text },
+  statusText: { fontSize: 15, fontWeight: '900', color: COLORS.text },
 
   primaryButton: {
     marginTop: 6,
@@ -542,7 +573,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: COLORS.green,
   },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' as const },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
   modalSheet: {
@@ -558,7 +589,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 16,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     color: COLORS.text,
     textAlign: 'center',
     marginBottom: 10,
@@ -575,7 +606,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 10,
   },
-  sheetButtonText: { fontSize: 15, fontWeight: '900' as const, color: COLORS.text },
+  sheetButtonText: { fontSize: 15, fontWeight: '900', color: COLORS.text },
   cancelBtn: {
     height: 50,
     borderRadius: 14,
@@ -584,5 +615,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#F3F4F6',
   },
-  cancelText: { fontSize: 15, fontWeight: '900' as const, color: COLORS.text },
+  cancelText: { fontSize: 15, fontWeight: '900', color: COLORS.text },
 });
