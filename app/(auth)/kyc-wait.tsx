@@ -1,41 +1,92 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
-import { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Alert,
+  ActivityIndicator,
+  Platform,
+} from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
-import { Upload, CheckCircle } from 'lucide-react-native';
+import { Upload, CheckCircle, X, RefreshCw } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import i18n from '@/lib/i18n';
+
+type PickedImage = {
+  uri: string;
+  mimeType: string;
+  width?: number;
+  height?: number;
+};
+
+const UI = {
+  bg: '#FFFFFF',
+  card: '#FFFFFF',
+  text: '#111827',
+  text2: '#6B7280',
+  border: '#E5E7EB',
+  green: '#16A34A',
+  greenSoft: '#EAF7EF',
+  danger: '#DC2626',
+  shadow: '#000000',
+};
 
 export default function KycWait() {
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const [idFront, setIdFront] = useState<{ uri: string; mimeType: string } | null>(null);
-  const [idBack, setIdBack] = useState<{ uri: string; mimeType: string } | null>(null);
-  const [selfie, setSelfie] = useState<{ uri: string; mimeType: string } | null>(null);
+
+  const [idFront, setIdFront] = useState<PickedImage | null>(null);
+  const [idBack, setIdBack] = useState<PickedImage | null>(null);
+  const [selfie, setSelfie] = useState<PickedImage | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const canSubmit = idFront && idBack && selfie;
+  const canSubmit = useMemo(() => !!(idFront && idBack && selfie), [idFront, idBack, selfie]);
 
   const pickImage = async (type: 'idFront' | 'idBack' | 'selfie') => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-      base64: false,
-    });
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(i18n.t('permissionRequired'), i18n.t('photoPermissionDenied'));
+        return;
+      }
 
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      const uri = asset.uri;
-      const mimeType = asset.mimeType || 'image/jpeg';
-      
-      const imageData = { uri, mimeType };
-      if (type === 'idFront') setIdFront(imageData);
-      else if (type === 'idBack') setIdBack(imageData);
-      else if (type === 'selfie') setSelfie(imageData);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.85,
+        base64: false,
+      });
+
+      if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        const imageData: PickedImage = {
+          uri: asset.uri,
+          mimeType: asset.mimeType || 'image/jpeg',
+          width: asset.width,
+          height: asset.height,
+        };
+
+        if (type === 'idFront') setIdFront(imageData);
+        if (type === 'idBack') setIdBack(imageData);
+        if (type === 'selfie') setSelfie(imageData);
+      }
+    } catch (e) {
+      console.error('pickImage error:', e);
+      Alert.alert(i18n.t('error'), i18n.t('failedPickImage'));
     }
+  };
+
+  const clearImage = (type: 'idFront' | 'idBack' | 'selfie') => {
+    if (type === 'idFront') setIdFront(null);
+    if (type === 'idBack') setIdBack(null);
+    if (type === 'selfie') setSelfie(null);
   };
 
   const submitKycDocuments = async () => {
@@ -44,7 +95,7 @@ export default function KycWait() {
     setLoading(true);
 
     try {
-      const uploadFile = async (imageData: { uri: string; mimeType: string }, basename: string) => {
+      const uploadFile = async (imageData: PickedImage, basename: string) => {
         const response = await fetch(imageData.uri);
         const blob = await response.blob();
         const arrayBuffer = await new Response(blob).arrayBuffer();
@@ -53,14 +104,12 @@ export default function KycWait() {
         const extension = imageData.mimeType.split('/')[1] || 'jpg';
         const filename = `${basename}.${extension}`;
         const path = `${user.id}/${filename}`;
-        
-        const { error } = await supabase.storage
-          .from('kyc-documents')
-          .upload(path, file, { 
-            upsert: true,
-            contentType: imageData.mimeType
-          });
-        
+
+        const { error } = await supabase.storage.from('kyc-documents').upload(path, file, {
+          upsert: true,
+          contentType: imageData.mimeType,
+        });
+
         if (error) throw error;
       };
 
@@ -72,19 +121,17 @@ export default function KycWait() {
         .from('profiles')
         .update({
           kyc_status: 'pending',
-          kyc_submitted_at: new Date().toISOString()
+          kyc_submitted_at: new Date().toISOString(),
         })
         .eq('id', user.id);
 
       if (updateError) throw updateError;
 
-      setIdFront(null);
-      setIdBack(null);
-      setSelfie(null);
+      // Keep UX clean
       setSubmitted(true);
     } catch (error) {
       console.error('KYC submission error:', error);
-      Alert.alert('Error', 'Failed to submit KYC documents. Please try again.');
+      Alert.alert(i18n.t('error'), i18n.t('kycSubmitFailed'));
     } finally {
       setLoading(false);
     }
@@ -95,35 +142,97 @@ export default function KycWait() {
     router.replace('/(auth)/login');
   };
 
+  const UploadCard = ({
+    label,
+    value,
+    onPick,
+    onClear,
+  }: {
+    label: string;
+    value: PickedImage | null;
+    onPick: () => void;
+    onClear: () => void;
+  }) => {
+    const aspectRatio =
+      value?.width && value?.height && value.height > 0 ? value.width / value.height : undefined;
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.labelRow}>
+          <Text style={styles.label}>{label}</Text>
+
+          {value ? (
+            <View style={styles.actionsRow}>
+              <TouchableOpacity style={styles.smallBtn} onPress={onPick} activeOpacity={0.85}>
+                <RefreshCw size={16} color={UI.text} />
+                <Text style={styles.smallBtnText}>{i18n.t('change')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.smallBtn, styles.smallBtnDanger]} onPress={onClear} activeOpacity={0.85}>
+                <X size={16} color={UI.danger} />
+                <Text style={[styles.smallBtnText, { color: UI.danger }]}>{i18n.t('remove')}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.uploadBox, value ? styles.uploadBoxFilled : styles.uploadBoxEmpty]}
+          onPress={onPick}
+          activeOpacity={0.9}
+        >
+          {value ? (
+            <View style={styles.previewWrap}>
+              <Image
+                source={{ uri: value.uri }}
+                style={[
+                  styles.previewImage,
+                  aspectRatio ? { aspectRatio } : null,
+                ]}
+                resizeMode="contain"
+              />
+            </View>
+          ) : (
+            <View style={styles.placeholder}>
+              <View style={styles.iconCircle}>
+                <Upload size={22} color={UI.green} />
+              </View>
+              <Text style={styles.placeholderTitle}>{i18n.t('tapToUpload')}</Text>
+              <Text style={styles.placeholderSub}>{i18n.t('uploadHint')}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   if (submitted) {
     return (
       <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.successIconContainer}>
-            <CheckCircle size={80} color="#10B981" strokeWidth={2} />
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <View style={styles.center}>
+            <View style={styles.successCircle}>
+              <CheckCircle size={62} color={UI.green} strokeWidth={2.2} />
+            </View>
+
+            <Text style={styles.successTitle}>{i18n.t('kycDocsSubmitted')}</Text>
+
+            <Text style={styles.successText}>{i18n.t('waitForApproval2')}</Text>
+
+            <Text style={styles.successText}>
+              {i18n.t('contactSupport')}{' '}
+              <Text style={styles.emailText}>info@zenopay.bond</Text>
+            </Text>
+
+            <Text style={styles.securityText}>{i18n.t('docsSecure')}</Text>
+
+            {/* ✅ new text above button */}
+            <Text style={styles.approvalTimeNote}>{i18n.t('approvalTimeNote')}</Text>
+
+            <TouchableOpacity style={styles.primaryBtn} onPress={handleBackToLogin} activeOpacity={0.9}>
+              <Text style={styles.primaryBtnText}>{i18n.t('backToLogin2')}</Text>
+            </TouchableOpacity>
           </View>
-
-          <Text style={styles.successTitle}>{i18n.t('kycDocsSubmitted')}</Text>
-
-          <Text style={styles.successText}>
-            {i18n.t('waitForApproval2')}
-          </Text>
-
-          <Text style={styles.successText}>
-            {i18n.t('contactSupport')}{' '}
-            <Text style={styles.emailText}>info@zenopay.bond</Text>
-          </Text>
-
-          <Text style={styles.securityText}>
-            {i18n.t('docsSecure')}
-          </Text>
-
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={handleBackToLogin}
-          >
-            <Text style={styles.backButtonText}>{i18n.t('backToLogin2')}</Text>
-          </TouchableOpacity>
         </ScrollView>
       </View>
     );
@@ -131,210 +240,215 @@ export default function KycWait() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.header}>ZenoPay</Text>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <Text style={styles.brand}>ZenoPay</Text>
 
-        <Text style={styles.title}>{i18n.t('uploadKycDocs')}</Text>
-        
-        <Text style={styles.description}>
-          {i18n.t('approveAccountPrompt')}
-        </Text>
-
-        <View style={styles.uploadsContainer}>
-          <View style={styles.uploadSection}>
-            <Text style={styles.label}>{i18n.t('governmentIDFront')}</Text>
-            <TouchableOpacity 
-              style={styles.uploadButton}
-              onPress={() => pickImage('idFront')}
-            >
-              {idFront ? (
-                <Image source={{ uri: idFront.uri }} style={styles.previewImage} />
-              ) : (
-                <View style={styles.uploadPlaceholder}>
-                  <Upload size={32} color="#64748B" />
-                  <Text style={styles.uploadText}>{i18n.t('tapToUpload')}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.uploadSection}>
-            <Text style={styles.label}>{i18n.t('governmentIDBack')}</Text>
-            <TouchableOpacity 
-              style={styles.uploadButton}
-              onPress={() => pickImage('idBack')}
-            >
-              {idBack ? (
-                <Image source={{ uri: idBack.uri }} style={styles.previewImage} />
-              ) : (
-                <View style={styles.uploadPlaceholder}>
-                  <Upload size={32} color="#64748B" />
-                  <Text style={styles.uploadText}>{i18n.t('tapToUpload')}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.uploadSection}>
-            <Text style={styles.label}>{i18n.t('selfieWithID')}</Text>
-            <TouchableOpacity 
-              style={styles.uploadButton}
-              onPress={() => pickImage('selfie')}
-            >
-              {selfie ? (
-                <Image source={{ uri: selfie.uri }} style={styles.previewImage} />
-              ) : (
-                <View style={styles.uploadPlaceholder}>
-                  <Upload size={32} color="#64748B" />
-                  <Text style={styles.uploadText}>{i18n.t('tapToUpload')}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
+        <View style={styles.headerCard}>
+          <Text style={styles.title}>{i18n.t('uploadKycDocs')}</Text>
+          <Text style={styles.desc}>{i18n.t('approveAccountPrompt')}</Text>
         </View>
 
-        <TouchableOpacity 
-          style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
+        <UploadCard
+          label={i18n.t('governmentIDFront')}
+          value={idFront}
+          onPick={() => pickImage('idFront')}
+          onClear={() => clearImage('idFront')}
+        />
+
+        <UploadCard
+          label={i18n.t('governmentIDBack')}
+          value={idBack}
+          onPick={() => pickImage('idBack')}
+          onClear={() => clearImage('idBack')}
+        />
+
+        <UploadCard
+          label={i18n.t('selfieWithID')}
+          value={selfie}
+          onPick={() => pickImage('selfie')}
+          onClear={() => clearImage('selfie')}
+        />
+
+        <TouchableOpacity
+          style={[styles.primaryBtn, (!canSubmit || loading) && styles.primaryBtnDisabled]}
           onPress={submitKycDocuments}
           disabled={!canSubmit || loading}
+          activeOpacity={0.9}
         >
-          <Text style={styles.submitButtonText}>
-            {loading ? i18n.t('submitting') : i18n.t('submitKycDocuments')}
-          </Text>
+          {loading ? (
+            <View style={styles.loadingRow}>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text style={styles.primaryBtnText}>{i18n.t('submitting')}</Text>
+            </View>
+          ) : (
+            <Text style={styles.primaryBtnText}>{i18n.t('submitKycDocuments')}</Text>
+          )}
         </TouchableOpacity>
+
+        <Text style={styles.footerNote}>{i18n.t('kycPrivacyNote')}</Text>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0F172A',
+  container: { flex: 1, backgroundColor: UI.bg },
+  scroll: {
+    padding: 18,
+    paddingTop: Platform.select({ ios: 54, android: 34, default: 34 }),
+    paddingBottom: 28,
   },
-  scrollContent: {
-    padding: 24,
-    paddingTop: 60,
-    paddingBottom: 80,
-  },
-  header: {
+
+  brand: {
     fontSize: 28,
-    fontWeight: '800' as const,
-    color: '#3B82F6',
+    fontWeight: '900',
+    color: UI.text,
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 14,
+    letterSpacing: 0.3,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: '700' as const,
-    color: '#FFFFFF',
-    marginBottom: 12,
+
+  headerCard: {
+    backgroundColor: UI.card,
+    borderWidth: 1,
+    borderColor: UI.border,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 14,
+    shadowColor: UI.shadow,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 2,
   },
-  description: {
-    fontSize: 14,
-    color: '#CBD5E1',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  uploadsContainer: {
-    marginBottom: 24,
-  },
-  uploadSection: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
+  title: { fontSize: 18, fontWeight: '800', color: UI.text, marginBottom: 6 },
+  desc: { fontSize: 13.5, color: UI.text2, lineHeight: 19 },
+
+  section: { marginTop: 12 },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
     marginBottom: 8,
   },
-  uploadButton: {
-    borderWidth: 2,
-    borderColor: '#334155',
-    borderRadius: 12,
-    borderStyle: 'dashed' as const,
-    overflow: 'hidden',
-  },
-  uploadPlaceholder: {
-    height: 140,
-    justifyContent: 'center',
+  label: { fontSize: 14.5, fontWeight: '700', color: UI.text },
+
+  actionsRow: { flexDirection: 'row', gap: 8 },
+  smallBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: UI.border,
+    backgroundColor: '#FFFFFF',
   },
-  uploadText: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#64748B',
+  smallBtnDanger: { borderColor: '#FECACA', backgroundColor: '#FFF7F7' },
+  smallBtnText: { fontSize: 12.5, color: UI.text, fontWeight: '700' },
+
+  uploadBox: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: UI.border,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    shadowColor: UI.shadow,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  uploadBoxEmpty: {},
+  uploadBoxFilled: {},
+
+  placeholder: {
+    paddingVertical: 18,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 170,
+    backgroundColor: UI.greenSoft,
+  },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: UI.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  placeholderTitle: { fontSize: 14.5, fontWeight: '800', color: UI.text },
+  placeholderSub: { marginTop: 4, fontSize: 12.5, color: UI.text2, textAlign: 'center' },
+
+  previewWrap: {
+    padding: 10,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   previewImage: {
     width: '100%',
-    height: 140,
-    resizeMode: 'cover',
+    // height is handled by aspectRatio
+    borderRadius: 14,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: UI.border,
   },
-  submitButton: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 16,
-    borderRadius: 12,
+
+  primaryBtn: {
+    marginTop: 18,
+    backgroundColor: UI.green,
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: 'center',
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowColor: UI.green,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 3,
   },
-  submitButtonDisabled: {
-    backgroundColor: '#475569',
-    shadowOpacity: 0,
+  primaryBtnDisabled: { opacity: 0.55 },
+  primaryBtnText: { color: '#FFFFFF', fontSize: 15.5, fontWeight: '800' },
+
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+
+  footerNote: {
+    marginTop: 12,
+    fontSize: 12.5,
+    color: UI.text2,
+    textAlign: 'center',
+    lineHeight: 18,
   },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600' as const,
-  },
-  successIconContainer: {
+
+  center: { alignItems: 'center', paddingTop: 30, paddingBottom: 24 },
+  successCircle: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: UI.greenSoft,
     alignItems: 'center',
-    marginBottom: 24,
-    marginTop: 40,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: UI.border,
+    marginBottom: 14,
   },
-  successTitle: {
-    fontSize: 22,
-    fontWeight: '700' as const,
-    color: '#10B981',
+  successTitle: { fontSize: 20, fontWeight: '900', color: UI.text, textAlign: 'center', marginBottom: 10 },
+  successText: { fontSize: 14, color: UI.text2, textAlign: 'center', lineHeight: 20, marginBottom: 10 },
+  emailText: { color: UI.green, fontWeight: '800', textDecorationLine: 'underline' },
+  securityText: { fontSize: 12.5, color: UI.text2, textAlign: 'center', marginTop: 2, marginBottom: 14 },
+
+  approvalTimeNote: {
+    fontSize: 13.5,
+    color: UI.text,
+    fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 20,
-  },
-  successText: {
-    fontSize: 15,
-    color: '#CBD5E1',
-    textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 22,
-  },
-  boldText: {
-    fontWeight: '700' as const,
-    color: '#FFFFFF',
-  },
-  emailText: {
-    color: '#3B82F6',
-    textDecorationLine: 'underline' as const,
-  },
-  securityText: {
-    fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 32,
+    marginBottom: 14,
     lineHeight: 20,
-  },
-  backButton: {
-    backgroundColor: '#475569',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600' as const,
   },
 });
