@@ -3,8 +3,9 @@
   "create_btn": "إنشاء بطاقة افتراضية",
   "virtual_info": "هذه بطاقة افتراضية داخلية لاستخدام محفظة زينوباي فقط.",
   "send": "إرسال",
-  "Cards": "البيطاقات",
+  "Cards": "البطاقات",
   "sendMoney": "إرسال المال",
+
   "tcPlatformNoticeTitle": "تنبيه المنصة",
   "tcPlatformNoticeIntro": "Zenopay هي منصة محفظة رقمية. نحن لسنا بنكًا ولا نقوم بإصدار بطاقات Visa أو Mastercard.",
   "tcPlatformNotice2Title": "2. بطاقة افتراضية داخلية",
@@ -18,12 +19,14 @@
   "tcPlatformNotice5Item2": "يجب على المستخدم التأكد من صحة معلوماته.",
   "tcPlatformNotice6Title": "6. إيقاف الحساب",
   "tcPlatformNotice6Desc": "تحتفظ Zenopay بالحق في إيقاف الحسابات في حال وجود نشاط مشبوه.",
+
   "deposit": "إيداع",
   "depositMoney": "إيداع المال",
   "mobileCards": "بطاقات الهاتف",
   "welcomeBack": "مرحباً بعودتك!",
   "buyCard": "شراء بطاقة",
   "supportChat": "دردشة الدعم",
+
   "cards": {
     "title": "البطاقات",
     "available_balance": "الرصيد المتاح",
@@ -49,7 +52,7 @@
     "city_ph": "أربيل",
     "address": "العنوان",
     "address_ph": "الشارع / المنطقة",
-    "create_btn": "إنشاء بطاقة خصم",
+    "create_btn": "إنشاء بطاقة افتراضية",
     "note": "عند إنشاء بطاقة، سيتم خصم 25$ تلقائياً من رصيد محفظتك.",
     "missing_info_title": "معلومات ناقصة",
     "missing_info_desc": "يرجى تعبئة جميع الحقول بشكل صحيح.",
@@ -58,6 +61,7 @@
     "create_failed": "تعذر إنشاء البطاقة.",
     "created_success": "تم إنشاء البطاقة. تم خصم 25$ من رصيدك."
   },
+
   "common": {
     "error": "خطأ",
     "failed": "فشل",
@@ -65,17 +69,18 @@
     "failed_to_load": "فشل التحميل",
     "something_wrong": "حدث خطأ ما."
   },
+
   "auth": {
     "user_not_found": "المستخدم غير موجود"
   },
-  
+
   "typeMessage": "اكتب رسالة...",
-  "needHelp": "هل تحتاج مساعدة؟",
+  "needHelp": "تحتاج مساعدة؟",
   "pleaseLoginToYourAccount": "يرجى تسجيل الدخول إلى حسابك",
   "rememberMe": "تذكرني؟",
   "createNewAccount": "إنشاء حساب جديد",
-  "needHelp": "تحتاج مساعدة؟",
   "contactUsAt": "تواصل معنا على",
+
   "withdraw": "سحب",
   "transactions": "المعاملات",
   "retry": "إعادة المحاولة",
@@ -89,6 +94,7 @@
   "save": "حفظ",
   "back": "رجوع",
   "settings": "الإعدادات",
+
   "success": "نجاح",
   "logout": "تسجيل الخروج",
   "done": "تم",
@@ -201,7 +207,6 @@
   "updateFailed": "فشل التحديث",
   "invalidValue": "قيمة غير صالحة",
   "noPortfolioItems": "لا توجد عناصر في المحفظة",
-  "needHelp": "تحتاج مساعدة؟",
 
   "cannotOpenLink": "لا يمكن فتح هذا الرابط",
   "failedToOpenLink": "فشل فتح الرابط",
@@ -288,6 +293,13 @@
   "verificationEmailResent": "تم إعادة إرسال بريد التحقق",
   "emailNotVerifiedYet": "البريد الإلكتروني لم يتم التحقق منه بعد",
   "pleaseWait": "يرجى الانتظار",
+
+  "afterConfirmOpenApp": "بعد الضغط على تأكيد داخل البريد الإلكتروني، سيتم فتح Zenopay تلقائياً.",
+  "accountCreatedSuccessfully": "تم إنشاء الحساب بنجاح",
+  "noEmailFound": "لم يتم العثور على بريد إلكتروني",
+  "openEmailAppHint": "بعد الضغط على تأكيد داخل بريدك الإلكتروني، سيتم فتح التطبيق تلقائياً.",
+  "openEmailWebHint": "اضغط على رابط التأكيد في بريدك الإلكتروني، ثم ارجع إلى التطبيق.",
+  "continueToLogin": "متابعة لتسجيل الدخول",
 
   "dateOfBirth": "تاريخ الميلاد",
   "dateOfBirthLabel": "تاريخ الميلاد",
