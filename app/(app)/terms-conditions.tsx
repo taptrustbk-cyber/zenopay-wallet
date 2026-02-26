@@ -27,8 +27,6 @@ export default function TermsConditionsScreen() {
           <Text style={styles.mainTitle}>{i18n.t('termsConditions')}</Text>
           <Text style={styles.lastUpdated}>{i18n.t('tcNewLastUpdated')}</Text>
 
-          {/* Optional green action button (example) */}
-          {/* If you don't want any button, just delete this TouchableOpacity */}
           <TouchableOpacity style={styles.primaryButton} activeOpacity={0.9} onPress={() => router.back()}>
             <Text style={styles.primaryButtonText}>{i18n.t('back') ?? 'Back'}</Text>
           </TouchableOpacity>
@@ -151,6 +149,29 @@ export default function TermsConditionsScreen() {
           </View>
         </View>
 
+        {/* ✅ NEW: Platform Notice (your requested text, safer wording) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{i18n.t('tcPlatformNoticeTitle')}</Text>
+
+          <Text style={styles.sectionText}>{i18n.t('tcPlatformNoticeIntro')}</Text>
+
+          <Text style={[styles.sectionTitle, { marginTop: 14 }]}>{i18n.t('tcPlatformNotice2Title')}</Text>
+          <Text style={styles.bulletItem}>• {i18n.t('tcPlatformNotice2Item1')}</Text>
+
+          <Text style={[styles.sectionTitle, { marginTop: 14 }]}>{i18n.t('tcPlatformNotice3Title')}</Text>
+          <Text style={styles.bulletItem}>• {i18n.t('tcPlatformNotice3Item1')}</Text>
+
+          <Text style={[styles.sectionTitle, { marginTop: 14 }]}>{i18n.t('tcPlatformNotice4Title')}</Text>
+          <Text style={styles.bulletItem}>• {i18n.t('tcPlatformNotice4Item1')}</Text>
+
+          <Text style={[styles.sectionTitle, { marginTop: 14 }]}>{i18n.t('tcPlatformNotice5Title')}</Text>
+          <Text style={styles.bulletItem}>• {i18n.t('tcPlatformNotice5Item1')}</Text>
+          <Text style={styles.bulletItem}>• {i18n.t('tcPlatformNotice5Item2')}</Text>
+
+          <Text style={[styles.sectionTitle, { marginTop: 14 }]}>{i18n.t('tcPlatformNotice6Title')}</Text>
+          <Text style={styles.sectionText}>{i18n.t('tcPlatformNotice6Desc')}</Text>
+        </View>
+
         <View style={{ height: 28 }} />
       </ScrollView>
     </View>
@@ -222,7 +243,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#16a34a', // green
+    backgroundColor: '#16a34a',
   },
   primaryButtonText: {
     color: '#FFFFFF',
