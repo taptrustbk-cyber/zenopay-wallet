@@ -2,6 +2,21 @@
   "home": "Home",
   "send": "Send",
   "mobileCards": "mobile cards",
+  {
+  "tcPlatformNoticeTitle": "Platform Notice",
+  "tcPlatformNoticeIntro": "Zenopay is a digital wallet platform. We are not a bank, and we do not issue Visa or Mastercard cards.",
+  "tcPlatformNotice2Title": "2. Virtual Internal Card",
+  "tcPlatformNotice2Item1": "The Zenopay card is an internal virtual card that works only inside the Zenopay system.",
+  "tcPlatformNotice3Title": "3. No Bank Deposit",
+  "tcPlatformNotice3Item1": "Funds stored in Zenopay are not bank deposits and are not covered by deposit insurance.",
+  "tcPlatformNotice4Title": "4. Fees",
+  "tcPlatformNotice4Item1": "Card creation fee: $25",
+  "tcPlatformNotice5Title": "5. User Responsibility",
+  "tcPlatformNotice5Item1": "Users are responsible for how their account is used.",
+  "tcPlatformNotice5Item2": "Users must ensure their information is accurate.",
+  "tcPlatformNotice6Title": "6. Account Suspension",
+  "tcPlatformNotice6Desc": "Zenopay reserves the right to suspend accounts in case of suspicious activity."
+}
   "sendMoney": "Send Money",
   "buyCard": "Buy Card",
   "supportChat": "Support Chat",
