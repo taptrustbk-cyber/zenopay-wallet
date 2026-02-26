@@ -377,9 +377,14 @@
   "withdrawHistory": "مێژووا دەرکشانێ",
   "noWithdrawalsYet": "هێشتا هیچ دەرکشانەک نینە",
   "withdrawalAmount": "بڕا دەرکشانێ",
-  "withdrawSuccessMessage": "داواکاریا دەرکشانێ نێردرا",
+  "withdrawSuccessMessage": "داواکاریا دەرکشانێ هاتە فرێکرن",
+  "loginSubWelcome": "هیڤیە هژمارا خو ڤەکە",
+  "rememberMe": "من ژبیر نەکە ؟",
+  "createNewAccount": "هژمارەکا نوی چێکە",
+  "needHelp": "تە پێدڤی ب هاریکاریێ هەیە؟",
+  "contactUsAt": "پەیوەندیێ ب مەبکە ل",
 
-  "orderSubmitted": "داواکاری نێردرا",
+  "orderSubmitted": "داواکاری هاتە فرێکرن",
   "contactSupport": "پەیوەندی بە پشتگیریێڤە بکە",
 
   "approveAccountPrompt": "ڤە ئەکاونتێ پەسەند بکەیت؟",
