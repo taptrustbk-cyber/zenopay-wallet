@@ -225,6 +225,7 @@
   "selfieSelected": "وێنێ خۆ هەڵبژێردرا",
   "screenshotSelected": "وێنێ شاشێ هەڵبژێردرا",
   "chooseScreenshot": "وێنێ شاشێ هەڵبژێرە",
+  "resetLinkSent": "لینکێ نیکرنێ هاتە فرێکرن",
   "kycDocsSubmitted": "بەڵگەنامێن پشتڕاستکرنێ بە سەرکەفتوویی نێردران",
   "kycDocsUploadedSuccess": "بەڵگەنامان بە سەرکەفتوویی بارکران",
   "completeAllFields": "تکایە هەموو خانان تەواو بکە",
