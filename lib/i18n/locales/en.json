@@ -2,7 +2,12 @@
   "home": "Home",
   "send": "Send",
   "Cards": "Cards",
-  "mobileCards": "mobile cards",
+  "mobileCards": "Mobile Cards",
+
+  "create_btn": "Create Virtual Card",
+  "virtual_info": "This is a virtual internal card for Zenopay wallet use only.",
+
+  "sendMoney": "Send Money",
   "tcPlatformNoticeTitle": "Platform Notice",
   "tcPlatformNoticeIntro": "Zenopay is a digital wallet platform. We are not a bank, and we do not issue Visa or Mastercard cards.",
   "tcPlatformNotice2Title": "2. Virtual Internal Card",
@@ -16,53 +21,24 @@
   "tcPlatformNotice5Item2": "Users must ensure their information is accurate.",
   "tcPlatformNotice6Title": "6. Account Suspension",
   "tcPlatformNotice6Desc": "Zenopay reserves the right to suspend accounts in case of suspicious activity.",
-  "sendMoney": "Send Money",
-  "buyCard": "Buy Card",
-  "supportChat": "Support Chat",
+
   "typeMessage": "Type a message...",
   "needHelp": "Need Help?",
   "deposit": "Deposit",
   "depositMoney": "Deposit Money",
   "withdraw": "Withdraw",
+  "transactions": "Transactions",
+  "retry": "Retry",
+
   "tapToChangePhoto": "Tap to change photo",
   "changePhoto": "Change Photo",
   "profilePhoto": "Profile Photo",
-  "welcomeBack": "Welcome Back!",
+  "selectExistingPhoto": "Choose from Gallery",
+  "takeNewPhoto": "Take a new photo",
 
-  "cards": {
-    "title": "Cards",
-    "available_balance": "Available Balance",
-    "create_price": "Create",
-    "insufficient_inline": "Insufficient balance to create a card.",
-    "your_cards": "Your Cards",
-    "loading_cards": "Loading cards...",
-    "failed_cards": "Failed to load cards",
-    "empty": "No cards yet. Create your first card below.",
-    "card_holder": "CARD HOLDER",
-    "exp": "EXP",
-    "last4": "LAST 4",
-    "created": "Created",
-    "preview_hint": "Preview design only. Real card details are issued securely after purchase.",
-    "create_new": "Create New Card",
-    "full_name": "Full Name",
-    "full_name_ph": "Your full name",
-    "phone": "Phone",
-    "phone_ph": "07xxxxxxxx",
-    "country": "Country",
-    "country_ph": "Iraq",
-    "city": "City",
-    "city_ph": "Erbil",
-    "address": "Address",
-    "address_ph": "Street / Area",
-    "create_btn": "Create Debit Card",
-    "note": "By creating a card, 25$ will be deducted automatically from your wallet balance.",
-    "missing_info_title": "Missing info",
-    "missing_info_desc": "Please fill all fields correctly.",
-    "insufficient_title": "Insufficient balance",
-    "insufficient_desc": "You need at least 25 USD.",
-    "create_failed": "Unable to create card.",
-    "created_success": "Card created. 25$ deducted from your balance."
-  },
+  "welcomeBack": "Welcome Back!",
+  "buyCard": "Buy Card",
+  "supportChat": "Support Chat",
 
   "common": {
     "error": "Error",
@@ -80,13 +56,11 @@
   "rememberMe": "Remember me?",
   "createNewAccount": "Create New Account",
   "contactUsAt": "Contact us at",
-  "selectExistingPhoto": "Choose from Gallery",
-  "takeNewPhoto": "Take a new photo",
+
+  "forgotEmailContact": "Contact support",
+  "resetHelpText": "If you forgot your email address, please contact support.",
+
   "save": "Save",
-  "forgotEmailContact": "forget email suport",
-  "resetHelpText": "if you forget you email account please contact us",
-  "transactions": "Transactions",
-  "retry": "Retry",
   "back": "Back",
   "settings": "Settings",
   "success": "Success",
@@ -99,18 +73,19 @@
   "submit": "Submit",
   "submitting": "Submitting...",
   "update": "Update",
-  "create_btn": "Create Virtual Card",
-  "virtual_info": "This is a virtual internal card for Zenopay wallet use only.",
+
+  "ramadanOfferTitle": "Ramadan Offer",
+  "ramadanOfferMessage": "Enjoy special Ramadan discounts and rewards.",
+
   "accountBalance": "Account Balance",
   "accountStatusActive": "Account Active",
   "failedToLoadBalance": "Failed to load balance",
   "balance": "Balance",
   "yourBalance": "Your Balance",
   "walletBalance": "Wallet Balance",
+
   "marketShop": "Market Shop",
   "marketShopSubtitle": "Buy cards, gift cards, phones & travel safely",
-  "ramadanOfferTitle": "Ramadan Offer",
-  "ramadanOfferMessage": "Enjoy special Ramadan discounts and rewards.",
 
   "market": {
     "topup": "Top-Up Cards",
@@ -129,8 +104,10 @@
   "onlineGiftCards": "Online Gift Cards",
   "selectGiftCard": "Select a gift card below",
   "selectBrand": "Select a brand below",
+
   "travelBookingInfo": "Book hotels, flights, car rentals, and train tickets through our trusted partners.",
   "travelBookingSafe": "You will be redirected to secure external booking platforms.",
+
   "purchaseFailed": "Purchase failed",
   "confirmPurchase": "Confirm Purchase",
   "purchaseConfirmMessage": "Are you sure you want to purchase",
@@ -143,6 +120,7 @@
   "amount": "Amount",
   "backToDashboard": "Back to Dashboard",
   "insufficientBalanceForPurchase": "Insufficient balance for this purchase",
+
   "checkout": "Checkout",
   "selectColor": "Select Color",
   "deliveryInformation": "Delivery Information",
@@ -165,9 +143,11 @@
   "orderPlacedMessage": "Your order has been placed successfully.",
   "insufficientBalance": "Insufficient balance. Please deposit funds.",
   "fillAllFields": "Please fill all required fields",
+
   "consulate": "Consulate",
   "capital": "Capital",
   "consulateInfo": "Consulate Info",
+
   "cryptoTrade": "Crypto Trading",
   "tradeDescription": "Trade cryptocurrencies in real-time",
   "buyCrypto": "Buy",
@@ -185,6 +165,7 @@
   "noCryptoFound": "No cryptocurrencies found",
   "liveCharts": "Live Charts",
   "chartComingSoon": "Chart coming soon",
+
   "portfolio": "Portfolio",
   "portfolioSubtitle": "Track your investments",
   "portfolioItems": "Portfolio Items",
@@ -195,10 +176,13 @@
   "updateFailed": "Update failed",
   "invalidValue": "Invalid value",
   "noPortfolioItems": "No portfolio items",
+
   "cannotOpenLink": "Cannot open this link",
   "failedToOpenLink": "Failed to open the link",
+
   "kycVerificationRequired": "KYC Verification Required",
   "kycPendingMessage": "Your documents are under review",
+  "resetLinkSent": "Reset link sent",
   "whatsNext": "What happens next?",
   "kycNextSteps": "Our team will review your documents shortly",
   "documentsSecure": "Your documents are encrypted and secure",
@@ -227,6 +211,7 @@
   "kycApprovedInfo": "Your account has been approved",
   "docsSecure": "Documents are secure",
   "infoSecure": "Your information is secure",
+
   "signOut": "Sign Out",
   "privacyPolicy": "Privacy Policy",
   "language": "Language",
@@ -239,6 +224,7 @@
   "adminPanel": "Admin Panel",
   "internetSim": "Internet & SIM Cards",
   "selectSimCard": "Select a card below",
+
   "login": "Login",
   "signup": "Sign Up",
   "createAccount": "Create Account",
@@ -254,6 +240,7 @@
   "backToLogin": "Back to Login",
   "backToLogin2": "Go to Login",
   "userNotFound": "User not found",
+
   "verifyYourEmail": "Verify Your Email",
   "pleaseConfirmEmail": "Please confirm your email address",
   "checkEmailInbox": "Check your inbox for verification link",
@@ -273,6 +260,14 @@
   "verificationEmailResent": "Verification email resent",
   "emailNotVerifiedYet": "Email not verified yet",
   "pleaseWait": "Please wait",
+
+  "afterConfirmOpenApp": "After clicking confirm in your email, Zenopay will open automatically.",
+  "accountCreatedSuccessfully": "Account created successfully",
+  "noEmailFound": "No email address found",
+  "openEmailAppHint": "After clicking confirm in your email, the app will open automatically.",
+  "openEmailWebHint": "Click the confirm link in your email, then return to the app.",
+  "continueToLogin": "Continue to login",
+
   "dateOfBirth": "Date of Birth",
   "dateOfBirthLabel": "Date of Birth",
   "pleaseSelectDOB": "Please select your date of birth",
@@ -284,6 +279,7 @@
   "address": "Address",
   "phoneLabel": "Phone",
   "phonePlaceholder": "Enter phone number",
+
   "accountApproved": "Account Approved!",
   "accountActive": "Account is active",
   "fullAccessInfo": "You now have full access",
@@ -295,6 +291,7 @@
   "waitForApproval2": "Wait for approval",
   "readyWait": "Please wait",
   "securityWaitInfo": "For security, we review all new accounts",
+
   "updateProfile": "Update Profile",
   "profileUpdated": "Profile updated successfully",
   "currentPassword": "Current Password",
@@ -306,6 +303,7 @@
   "passwordTooShort": "Password must be at least 6 characters",
   "currentPasswordIncorrect": "Current password is incorrect",
   "passwordChangeError": "Failed to change password",
+
   "dangerZone": "Danger Zone",
   "deleteAccount": "Delete Account",
   "deleteAccountDesc": "Permanently delete your account",
@@ -315,8 +313,10 @@
   "deletingAccount": "Deleting account...",
   "accountDeleted": "Account deleted successfully",
   "accountDeleteError": "Failed to delete account",
+
   "emailNotification": "Email Notifications",
   "emailNotificationDesc": "Receive updates via email",
+
   "loadingTransactions": "Loading transactions...",
   "errorLoadingTransactions": "Error loading transactions",
   "noTransactions": "No transactions yet",
@@ -324,7 +324,6 @@
   "date": "Date",
   "status": "Status",
   "reason": "Reason",
-  "resetLinkSent": "Reset Link Sent",
   "sent": "Sent",
   "received": "Received",
   "active": "Active",
@@ -333,6 +332,7 @@
   "moneyTransfer": "Money Transfer",
   "moneyReceived": "Money Received",
   "transactionSuccess": "Transaction successful",
+
   "sendToAddress": "Send to Address",
   "walletAddress": "Wallet Address",
   "enterWalletAddress": "Enter wallet address",
@@ -341,16 +341,20 @@
   "invalidAmount": "Invalid amount",
   "network": "Network",
   "selectPaymentMethod": "Select Payment Method",
+
   "depositSuccessMessage": "Deposit successful",
   "transactionID": "Transaction ID",
   "enterTransactionID": "Enter transaction ID",
+
   "withdrawHistory": "Withdrawal History",
   "noWithdrawalsYet": "No withdrawals yet",
   "withdrawalAmount": "Withdrawal Amount",
   "withdrawSuccessMessage": "Withdrawal request submitted",
+
   "orderSubmitted": "Order Submitted",
   "contactSupport": "Contact Support",
   "approveAccountPrompt": "Approve this account?",
+
   "hours": "hours",
   "minute": "minute",
   "minutes": "minutes",
@@ -360,6 +364,7 @@
 
   "ppLastUpdated": "Last updated: January 2025",
   "ppIntro": "ZenoPay Wallet (\"we,\" \"our,\" or \"us\") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application and services.",
+
   "ppNewSection1Title": "1. Information We Collect",
   "ppPersonalInfo": "Personal Information",
   "ppPersonalInfoDesc": "When you create an account or use our services, we may collect:",
@@ -368,12 +373,14 @@
   "ppPersonalInfoItem3": "Address and country of residence",
   "ppPersonalInfoItem4": "Selfie or photo for identity verification",
   "ppPersonalInfoItem5": "Transaction history and wallet information",
+
   "ppUsageInfo": "Usage Information",
   "ppUsageInfoDesc": "We automatically collect certain information when you use our app:",
   "ppUsageInfoItem1": "Device information (model, operating system)",
   "ppUsageInfoItem2": "IP address and location data",
   "ppUsageInfoItem3": "App usage patterns and preferences",
   "ppUsageInfoItem4": "Cookies and similar tracking technologies",
+
   "ppNewSection2Title": "2. How We Use Your Information",
   "ppNewSection2Desc": "We use your information to:",
   "ppNewSection2Item1": "Provide and maintain our services",
@@ -382,79 +389,99 @@
   "ppNewSection2Item4": "Send you notifications and updates",
   "ppNewSection2Item5": "Improve our app and develop new features",
   "ppNewSection2Item6": "Comply with legal obligations",
+
   "ppNewSection3Title": "3. Information Sharing",
   "ppNewSection3Desc": "We do not sell your personal information. We may share your data with trusted third parties only when necessary to provide our services, comply with the law, or protect our rights.",
+
   "ppNewSection4Title": "4. Data Security",
   "ppNewSection4Desc": "We implement industry-standard security measures to protect your information, including encryption and secure storage. However, no method of transmission over the internet is 100% secure.",
+
   "ppNewSection5Title": "5. Your Rights",
   "ppNewSection5Desc1": "You have the right to:",
   "ppNewSection5Desc2": "Access, update, or delete your personal information",
   "ppNewSection5Desc3": "Opt-out of marketing communications",
+
   "ppNewSection6Title": "6. Data Retention",
   "ppNewSection6Desc": "We retain your information for as long as your account is active or as needed to provide services. After account deletion, we may retain certain information to comply with legal obligations.",
   "ppNewSection6Desc2": "Retained data includes:",
   "ppNewSection6Item1": "Transaction records (for regulatory compliance)",
   "ppNewSection6Item2": "KYC documents (as required by law)",
   "ppNewSection6Item3": "Fraud prevention data",
+
   "ppNewSection7Title": "7. Children's Privacy",
   "ppNewSection7Desc": "Our services are not intended for users under 18 years of age. We do not knowingly collect information from children.",
   "ppNewSection7Desc2": "If we discover that a child has provided us with personal information, we will delete it immediately.",
+
   "ppNewSection8Title": "8. International Transfers",
   "ppNewSection8Desc": "Your information may be transferred to and processed in countries other than your country of residence. We ensure appropriate safeguards are in place.",
+
   "ppNewSection9Title": "9. Third-Party Services",
   "ppNewSection9Desc": "Our app may contain links to third-party services. We are not responsible for their privacy practices.",
   "ppNewSection9Desc2": "Third-party services include:",
   "ppNewSection9Item1": "Payment processors",
   "ppNewSection9Item2": "Analytics providers",
   "ppNewSection9Item3": "Social media platforms",
+
   "ppNewSection10Title": "10. Changes to This Policy",
   "ppNewSection10Desc": "We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page.",
+
   "ppNewSection11Title": "11. Contact Us",
   "ppNewSection11Desc": "If you have questions about this Privacy Policy, please contact us:",
   "ppNewSection11Desc2": "Email: info@zenopay.bond",
+
   "ppNewSection12Title": "12. Consent",
   "ppNewSection12Desc": "By using ZenoPay Wallet, you consent to this Privacy Policy and agree to its terms.",
 
   "tcNewLastUpdated": "Last updated: January 2025",
   "tcNewIntro": "Welcome to ZenoPay Wallet. By accessing or using our mobile application and services, you agree to be bound by these Terms and Conditions. Please read them carefully.",
+
   "tcNewSection1Title": "1. Acceptance of Terms",
   "tcNewSection1Item1": "By creating an account, you accept these terms",
   "tcNewSection1Item2": "You must be at least 18 years old to use our services",
   "tcNewSection1Item3": "You agree to provide accurate and complete information",
+
   "tcNewSection2Title": "2. Account Registration",
   "tcNewSection2Item1": "You must complete KYC verification to access full features",
   "tcNewSection2Item2": "You are responsible for maintaining the security of your account",
   "tcNewSection2Item3": "Notify us immediately of any unauthorized access",
   "tcNewSection2Item4": "One account per person is allowed",
+
   "tcNewSection3Title": "3. Services Provided",
   "tcNewSection3Item1": "Digital wallet for managing funds",
   "tcNewSection3Item2": "Marketplace for purchasing cards, phones, and travel bookings",
+
   "tcNewSection4Title": "4. User Responsibilities",
   "tcNewSection4Item1": "Comply with all applicable laws and regulations",
   "tcNewSection4Item2": "Do not use our services for illegal activities",
   "tcNewSection4Item3": "Do not attempt to manipulate or defraud the system",
+
   "tcNewSection5Title": "5. Fees and Payments",
   "tcNewSection5Desc": "Fees may apply to certain transactions. We reserve the right to change fees with notice.",
   "tcNewSection5Item1": "Transaction fees are disclosed before confirmation",
   "tcNewSection5Item2": "All payments are final and non-refundable unless otherwise stated",
   "tcNewSection5Item3": "You are responsible for any applicable taxes",
   "tcNewSection5Desc2": "Payment methods include bank transfers, cards, and cryptocurrencies.",
+
   "tcNewSection6Title": "6. Prohibited Activities",
   "tcNewSection6Item1": "Money laundering or terrorist financing",
   "tcNewSection6Item2": "Fraudulent transactions",
-  "tcNewSection6Item3": "Fraudulent transactions",
+  "tcNewSection6Item3": "Intellectual property infringement",
+
   "tcNewSection7Title": "7. Account Suspension and Termination",
   "tcNewSection7Item1": "We may suspend or terminate your account for violating these terms",
   "tcNewSection7Item2": "You may close your account at any time",
   "tcNewSection7Item3": "Upon termination, outstanding balances will be handled according to our policy",
+
   "tcNewSection8Title": "8. Limitation of Liability",
   "tcNewSection8Item1": "We are not liable for indirect, incidental, or consequential damages",
   "tcNewSection8Item2": "Our liability is limited to the amount of fees you paid in the past 12 months",
   "tcNewSection8Item3": "We do not guarantee uninterrupted or error-free service",
+
   "tcNewSection9Title": "9. Intellectual Property",
   "tcNewSection9Item1": "All content and trademarks are owned by ZenoPay or our licensors",
   "tcNewSection9Item2": "You may not reproduce or distribute our content without permission",
   "tcNewSection9Item3": "User-generated content remains your property, but you grant us a license to use it",
+
   "tcNewSection10Title": "10. Dispute Resolution",
   "tcNewSection10Desc": "Any disputes arising from these terms will be resolved through arbitration.",
   "tcNewSection10Desc2": "Governing law:",
@@ -462,9 +489,11 @@
   "tcNewSection10Item2": "Arbitration will be conducted in [Location]",
   "tcNewSection10Item3": "You waive the right to participate in class-action lawsuits",
   "tcNewSection10Item4": "Exceptions: Small claims court disputes are allowed",
+
   "tcNewSection11Title": "11. Changes to Terms",
   "tcNewSection11Item1": "We may modify these terms at any time",
   "tcNewSection11Item2": "Continued use of our services constitutes acceptance of changes",
+
   "tcNewSection12Title": "12. Third-Party Services",
   "tcNewSection12Desc": "Our app integrates with third-party services for payments, bookings, and other features.",
   "tcNewSection12Desc2": "Third-party terms apply:",
@@ -472,12 +501,15 @@
   "tcNewSection12Item2": "Third-party privacy policies govern their data practices",
   "tcNewSection12Item3": "We do not endorse third-party products or services",
   "tcNewSection12Desc3": "Examples: Payment processors, travel booking platforms, and cryptocurrency exchanges.",
+
   "tcNewSection13Title": "13. Privacy",
   "tcNewSection13Item1": "Your use of our services is also governed by our Privacy Policy",
   "tcNewSection13Item2": "By using our app, you consent to data collection as described in the Privacy Policy",
+
   "tcNewSection14Title": "14. Contact Information",
   "tcNewSection14Item1": "For questions or concerns, contact us at: info@zenopay.bond",
   "tcNewSection14Item2": "We aim to respond within 48 hours",
+
   "tcNewSection15Title": "15. Severability",
   "tcNewSection15Desc": "If any provision of these terms is found to be unenforceable, the remaining provisions will remain in effect."
 }
