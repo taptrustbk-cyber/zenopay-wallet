@@ -208,6 +208,7 @@
 
   "kycVerificationRequired": "التحقق من الهوية مطلوب",
   "kycPendingMessage": "مستنداتك قيد المراجعة",
+  "resetLinkSent": "تم إرسال رابط إعادة التعيين",
   "whatsNext": "ما التالي؟",
   "kycNextSteps": "سيراجع فريقنا مستنداتك قريباً",
   "documentsSecure": "مستنداتك مشفرة وآمنة",
