@@ -1,13 +1,23 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Image } from 'react-native';
+import React from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+  Image,
+  StatusBar,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import i18n from '@/lib/i18n';
-import React from 'react';
 
 interface CardPin {
   id: string;
@@ -40,13 +50,26 @@ const providerConfig: Record<string, { color: string; bgColor: string; logo: str
   },
 };
 
+const UI = {
+  bg: '#FFFFFF',
+  text: '#111827',
+  textSecondary: '#6B7280',
+  border: '#E5E7EB',
+  green: '#16A34A',
+  greenDark: '#15803D',
+  black: '#0B1220',
+  white: '#FFFFFF',
+};
+
 export default function BuyCardScreen() {
-  const { theme } = useTheme();
+  // keep theme hook (not used for colors now)
+  useTheme();
+
   const router = useRouter();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const params = useLocalSearchParams();
-  
+
   const cardName = params.name as string;
   const price = parseFloat(params.price as string);
   const provider = params.provider as string;
@@ -59,13 +82,13 @@ export default function BuyCardScreen() {
     queryKey: ['wallet', user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error('User not found');
-      
+
       const { data, error } = await supabase
         .from('wallets')
         .select('id, balance')
         .eq('user_id', user.id)
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -76,9 +99,9 @@ export default function BuyCardScreen() {
     mutationFn: async () => {
       if (!user?.id) throw new Error('User not found');
       if (!walletQuery.data) throw new Error('Wallet not found');
-      
+
       const balance = walletQuery.data.balance;
-      
+
       if (balance < price) {
         throw new Error('Insufficient balance');
       }
@@ -110,15 +133,13 @@ export default function BuyCardScreen() {
 
       if (markUsedError) throw markUsedError;
 
-      const { error: txError } = await supabase
-        .from('transactions')
-        .insert({
-          to_user_id: user.id,
-          type: 'purchase',
-          amount: -price,
-          description: `Purchased ${cardName}`,
-          status: 'completed',
-        });
+      const { error: txError } = await supabase.from('transactions').insert({
+        to_user_id: user.id,
+        type: 'purchase',
+        amount: -price,
+        description: `Purchased ${cardName}`,
+        status: 'completed',
+      });
 
       if (txError) throw txError;
 
@@ -139,330 +160,405 @@ export default function BuyCardScreen() {
       i18n.t('confirmPurchase'),
       `${i18n.t('purchaseConfirmMessage')} ${cardName} ${i18n.t('for')} $${price.toFixed(2)}?`,
       [
+        // ✅ Cancel: black bg with white text (cannot style default Alert buttons perfectly on Android/iOS)
         { text: i18n.t('cancel'), style: 'cancel' },
-        { 
-          text: i18n.t('confirm'), 
-          onPress: () => purchaseMutation.mutate() 
-        },
+        // ✅ Confirm: will proceed
+        { text: i18n.t('confirm'), onPress: () => purchaseMutation.mutate() },
       ]
     );
   };
 
+  // ✅ helper: go back to top-up cards screen
+  const goBackToTopupCards = () => {
+    // if you have a specific route, replace this with your exact path:
+    // router.push('/(app)/top-up-cards' as any);
+    router.back();
+  };
+
+  // SUCCESS SCREEN (after buy)
   if (purchasedPin) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-          <ScrollView contentContainerStyle={styles.successContent}>
-            <View style={styles.successIconContainer}>
-              <Ionicons name="checkmark-circle" size={100} color="#10B981" />
-            </View>
-            
-            <Text style={[styles.successTitle, { color: theme.colors.text }]}>
-              {i18n.t('purchaseSuccess')}
-            </Text>
-            
-            <View style={[styles.pinCard, { backgroundColor: theme.colors.card }]}>
-              <Text style={[styles.pinLabel, { color: theme.colors.textSecondary }]}>
-                {i18n.t('yourPinCode')}
-              </Text>
-              <Text style={[styles.pinCode, { color: theme.colors.text }]}>
-                {purchasedPin}
-              </Text>
-              <Text style={[styles.pinWarning, { color: theme.colors.textSecondary }]}>
-                {i18n.t('saveThisPin')}
-              </Text>
-            </View>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <StatusBar barStyle="dark-content" />
 
-            <View style={[styles.detailsCard, { backgroundColor: theme.colors.card }]}>
-              <Text style={[styles.detailsTitle, { color: theme.colors.text }]}>
-                {i18n.t('purchaseDetails')}
-              </Text>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>
-                  {i18n.t('product')}
-                </Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                  {cardName}
-                </Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>
-                  {i18n.t('amount')}
-                </Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                  ${price.toFixed(2)}
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.doneButton, { backgroundColor: theme.colors.primary }]}
-              onPress={() => router.back()}
-            >
-              <Text style={styles.doneButtonText}>{i18n.t('backToDashboard')}</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
-      </View>
-    );
-  }
-
-  return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <View style={[styles.cardPreview, { backgroundColor: theme.colors.card }]}>
-            {cardType === 'sim' ? (
-              <View style={[styles.cardIconContainer, { 
-                backgroundColor: providerConfig[provider]?.bgColor || 'rgba(59, 130, 246, 0.1)' 
-              }]}>
-                {providerConfig[provider]?.logo ? (
-                  <Image 
-                    source={{ uri: providerConfig[provider].logo }} 
-                    style={styles.providerLogo}
-                    resizeMode="contain"
-                  />
-                ) : (
-                  <Ionicons name="cellular" size={60} color={providerConfig[provider]?.color || '#3B82F6'} />
-                )}
-              </View>
-            ) : (
-              <View style={[styles.cardIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                <Ionicons name="gift" size={60} color="#10B981" />
-              </View>
-            )}
-            <Text style={[styles.cardName, { color: theme.colors.text }]}>
-              {cardName}
-            </Text>
-            <Text style={[styles.cardPrice, { color: theme.colors.primary }]}>
-              ${price.toFixed(2)}
-            </Text>
-          </View>
-
-          <View style={[styles.balanceCard, { backgroundColor: theme.colors.card }]}>
-            <Text style={[styles.balanceLabel, { color: theme.colors.textSecondary }]}>
-              {i18n.t('yourBalance')}
-            </Text>
-            {walletQuery.isLoading ? (
-              <ActivityIndicator color={theme.colors.primary} />
-            ) : (
-              <Text style={[styles.balanceAmount, { color: theme.colors.text }]}>
-                ${walletQuery.data?.balance.toFixed(2) || '0.00'}
-              </Text>
-            )}
-          </View>
-
-          {walletQuery.data && walletQuery.data.balance < price && (
-            <View style={styles.insufficientWarning}>
-              <Ionicons name="warning" size={24} color="#EF4444" />
-              <Text style={styles.insufficientText}>
-                {i18n.t('insufficientBalanceForPurchase')}
-              </Text>
-            </View>
-          )}
-
-          <TouchableOpacity 
-            style={[
-              styles.purchaseButton, 
-              { backgroundColor: theme.colors.primary },
-              (purchaseMutation.isPending || (walletQuery.data && walletQuery.data.balance < price)) && styles.disabledButton
-            ]}
-            onPress={handlePurchase}
-            disabled={purchaseMutation.isPending || (walletQuery.data ? walletQuery.data.balance < price : true)}
-          >
-            {purchaseMutation.isPending ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <>
-                <Ionicons name="cart" size={20} color="white" />
-                <Text style={styles.purchaseButtonText}>{i18n.t('buyNow')}</Text>
-              </>
-            )}
+        {/* White custom header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={goBackToTopupCards} activeOpacity={0.85} style={styles.headerBackBtn}>
+            <Ionicons name="arrow-back" size={18} color={UI.white} />
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.cancelButton, { borderColor: theme.colors.border }]}
-            onPress={() => router.back()}
-          >
-            <Text style={[styles.cancelButtonText, { color: theme.colors.text }]}>
-              {i18n.t('cancel')}
-            </Text>
+          <Text style={styles.headerTitle}>{i18n.t('buyCard')}</Text>
+
+          <View style={styles.headerRightSpacer} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.successContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.successIconContainer}>
+            <Ionicons name="checkmark-circle" size={96} color={UI.green} />
+          </View>
+
+          <Text style={styles.successTitle}>{i18n.t('purchaseSuccess')}</Text>
+
+          <View style={styles.pinCard}>
+            <Text style={styles.pinLabel}>{i18n.t('yourPinCode')}</Text>
+            <Text style={styles.pinCode}>{purchasedPin}</Text>
+            <Text style={styles.pinWarning}>{i18n.t('saveThisPin')}</Text>
+          </View>
+
+          <View style={styles.detailsCard}>
+            <Text style={styles.detailsTitle}>{i18n.t('purchaseDetails')}</Text>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>{i18n.t('product')}</Text>
+              <Text style={styles.detailValue}>{cardName}</Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>{i18n.t('amount')}</Text>
+              <Text style={styles.detailValue}>${price.toFixed(2)}</Text>
+            </View>
+          </View>
+
+          {/* ✅ Confirm button style (green) */}
+          <TouchableOpacity style={styles.primaryButton} onPress={goBackToTopupCards} activeOpacity={0.9}>
+            <Text style={styles.primaryButtonText}>{i18n.t('done')}</Text>
+          </TouchableOpacity>
+
+          {/* ✅ Cancel style (black bg white text) */}
+          <TouchableOpacity style={styles.secondaryBlackButton} onPress={goBackToTopupCards} activeOpacity={0.9}>
+            <Text style={styles.secondaryBlackButtonText}>{i18n.t('back')}</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
-    </View>
+    );
+  }
+
+  // BUY SCREEN
+  return (
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      {/* ✅ Remove the default expo-router header (the dark header you see) */}
+      <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar barStyle="dark-content" />
+
+      {/* ✅ New Header: white bg, black title, green back button */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={goBackToTopupCards} activeOpacity={0.85} style={styles.headerBackBtn}>
+          <Ionicons name="arrow-back" size={18} color={UI.white} />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>{i18n.t('buyCard')}</Text>
+
+        <View style={styles.headerRightSpacer} />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.cardPreview}>
+          {cardType === 'sim' ? (
+            <View
+              style={[
+                styles.cardIconContainer,
+                { backgroundColor: providerConfig[provider]?.bgColor || 'rgba(22, 163, 74, 0.10)' },
+              ]}
+            >
+              {providerConfig[provider]?.logo ? (
+                <Image source={{ uri: providerConfig[provider].logo }} style={styles.providerLogo} resizeMode="contain" />
+              ) : (
+                <Ionicons name="cellular" size={58} color={providerConfig[provider]?.color || UI.green} />
+              )}
+            </View>
+          ) : (
+            <View style={[styles.cardIconContainer, { backgroundColor: 'rgba(22, 163, 74, 0.10)' }]}>
+              <Ionicons name="gift" size={58} color={UI.green} />
+            </View>
+          )}
+
+          <Text style={styles.cardName}>{cardName}</Text>
+          <Text style={styles.cardPrice}>${price.toFixed(2)}</Text>
+        </View>
+
+        <View style={styles.balanceCard}>
+          <Text style={styles.balanceLabel}>{i18n.t('yourBalance')}</Text>
+          {walletQuery.isLoading ? (
+            <ActivityIndicator color={UI.green} />
+          ) : (
+            <Text style={styles.balanceAmount}>${walletQuery.data?.balance.toFixed(2) || '0.00'}</Text>
+          )}
+        </View>
+
+        {walletQuery.data && walletQuery.data.balance < price && (
+          <View style={styles.insufficientWarning}>
+            <Ionicons name="warning" size={22} color="#EF4444" />
+            <Text style={styles.insufficientText}>{i18n.t('insufficientBalanceForPurchase')}</Text>
+          </View>
+        )}
+
+        {/* ✅ Buy button: green bg */}
+        <TouchableOpacity
+          style={[
+            styles.primaryButton,
+            (purchaseMutation.isPending || (walletQuery.data && walletQuery.data.balance < price)) && styles.disabledButton,
+          ]}
+          onPress={handlePurchase}
+          disabled={purchaseMutation.isPending || (walletQuery.data ? walletQuery.data.balance < price : true)}
+          activeOpacity={0.9}
+        >
+          {purchaseMutation.isPending ? (
+            <ActivityIndicator color={UI.white} />
+          ) : (
+            <>
+              <Ionicons name="cart" size={20} color={UI.white} />
+              <Text style={styles.primaryButtonText}>{i18n.t('buyNow')}</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        {/* ✅ Cancel button: black bg + white text */}
+        <TouchableOpacity style={styles.secondaryBlackButton} onPress={goBackToTopupCards} activeOpacity={0.9}>
+          <Text style={styles.secondaryBlackButtonText}>{i18n.t('cancel')}</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 8 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: UI.bg,
   },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    padding: 20,
-  },
-  successContent: {
-    padding: 20,
+
+  // Header
+  header: {
+    backgroundColor: UI.bg,
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: UI.border,
   },
-  cardPreview: {
-    padding: 32,
-    borderRadius: 20,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  cardIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 20,
+  headerBackBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: UI.green,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '800',
+    color: UI.text,
+  },
+  headerRightSpacer: {
+    width: 38,
+    height: 38,
+  },
+
+  content: {
+    padding: 20,
+    paddingBottom: 18,
+  },
+
+  // Cards (white design)
+  cardPreview: {
+    backgroundColor: UI.bg,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: UI.border,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  cardIconContainer: {
+    width: 110,
+    height: 110,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
     overflow: 'hidden' as const,
   },
   providerLogo: {
-    width: 90,
-    height: 90,
-  },
-  ftthContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ftthText: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    marginTop: 4,
+    width: 82,
+    height: 82,
   },
   cardName: {
-    fontSize: 24,
-    fontWeight: '700' as const,
-    marginBottom: 8,
+    fontSize: 20,
+    fontWeight: '800' as const,
+    marginBottom: 6,
     textAlign: 'center' as const,
+    color: UI.text,
   },
   cardPrice: {
-    fontSize: 32,
-    fontWeight: '700' as const,
+    fontSize: 30,
+    fontWeight: '900' as const,
+    color: UI.greenDark,
   },
+
   balanceCard: {
-    padding: 20,
+    backgroundColor: UI.bg,
     borderRadius: 16,
-    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: UI.border,
+    padding: 16,
+    marginBottom: 16,
   },
   balanceLabel: {
-    fontSize: 14,
+    fontSize: 13,
     marginBottom: 8,
-  },
-  balanceAmount: {
-    fontSize: 28,
+    color: UI.textSecondary,
     fontWeight: '700' as const,
   },
+  balanceAmount: {
+    fontSize: 26,
+    fontWeight: '900' as const,
+    color: UI.text,
+  },
+
   insufficientWarning: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 16,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    gap: 10,
+    padding: 14,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
     borderRadius: 12,
-    marginBottom: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.18)',
   },
   insufficientText: {
     flex: 1,
     color: '#EF4444',
-    fontSize: 14,
-    fontWeight: '600' as const,
+    fontSize: 13,
+    fontWeight: '800' as const,
   },
-  purchaseButton: {
+
+  // Buttons
+  primaryButton: {
+    backgroundColor: UI.green,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    padding: 16,
-    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 2,
+  },
+  primaryButtonText: {
+    color: UI.white,
+    fontSize: 16,
+    fontWeight: '800' as const,
+  },
+  secondaryBlackButton: {
+    backgroundColor: UI.black,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryBlackButtonText: {
+    color: UI.white,
+    fontSize: 16,
+    fontWeight: '800' as const,
   },
   disabledButton: {
     opacity: 0.5,
   },
-  purchaseButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600' as const,
-  },
-  cancelButton: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
+
+  // Success screen
+  successContent: {
+    padding: 20,
+    paddingBottom: 24,
     alignItems: 'center',
   },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-  },
   successIconContainer: {
-    marginVertical: 32,
+    marginTop: 16,
+    marginBottom: 18,
   },
   successTitle: {
-    fontSize: 28,
-    fontWeight: '700' as const,
-    marginBottom: 32,
+    fontSize: 24,
+    fontWeight: '900' as const,
+    marginBottom: 18,
     textAlign: 'center' as const,
+    color: UI.text,
   },
   pinCard: {
     width: '100%',
-    padding: 24,
+    backgroundColor: UI.bg,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: UI.border,
+    padding: 18,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 14,
   },
   pinLabel: {
-    fontSize: 14,
-    marginBottom: 12,
+    fontSize: 13,
+    marginBottom: 10,
+    color: UI.textSecondary,
+    fontWeight: '800' as const,
   },
   pinCode: {
-    fontSize: 36,
-    fontWeight: '700' as const,
-    letterSpacing: 4,
-    marginBottom: 16,
+    fontSize: 34,
+    fontWeight: '900' as const,
+    letterSpacing: 3,
+    marginBottom: 10,
+    color: UI.text,
   },
   pinWarning: {
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'center' as const,
+    color: UI.textSecondary,
+    fontWeight: '700' as const,
   },
+
   detailsCard: {
     width: '100%',
-    padding: 20,
+    backgroundColor: UI.bg,
     borderRadius: 16,
-    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: UI.border,
+    padding: 16,
+    marginBottom: 18,
   },
   detailsTitle: {
-    fontSize: 18,
-    fontWeight: '600' as const,
-    marginBottom: 16,
+    fontSize: 16,
+    fontWeight: '900' as const,
+    marginBottom: 12,
+    color: UI.text,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   detailLabel: {
-    fontSize: 14,
+    fontSize: 13,
+    color: UI.textSecondary,
+    fontWeight: '800' as const,
   },
   detailValue: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-  },
-  doneButton: {
-    width: '100%',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  doneButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600' as const,
+    fontSize: 13,
+    fontWeight: '900' as const,
+    color: UI.text,
   },
 });
