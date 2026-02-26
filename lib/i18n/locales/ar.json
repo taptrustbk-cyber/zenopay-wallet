@@ -150,6 +150,11 @@
   "product": "المنتج",
   "amount": "المبلغ",
   "backToDashboard": "العودة إلى لوحة التحكم",
+  "loginSubWelcome": "يرجى تسجيل الدخول إلى حسابك",
+  "rememberMe": "تذكرني؟",
+  "createNewAccount": "إنشاء حساب جديد",
+  "needHelp": "تحتاج مساعدة؟",
+  "contactUsAt": "تواصل معنا على",
   "insufficientBalanceForPurchase": "رصيد غير كافٍ لهذا الشراء",
 
   "checkout": "الدفع",
