@@ -12,7 +12,7 @@
   "changePhoto": "Change Photo",
   "profilePhoto": "Profile Photo",
   "welcomeBack": "Welcome Back!",
-  {
+
   "cards": {
     "title": "Cards",
     "available_balance": "Available Balance",
@@ -47,6 +47,7 @@
     "create_failed": "Unable to create card.",
     "created_success": "Card created. 25$ deducted from your balance."
   },
+
   "common": {
     "error": "Error",
     "failed": "Failed",
@@ -54,10 +55,11 @@
     "failed_to_load": "Failed to load",
     "something_wrong": "Something went wrong."
   },
+
   "auth": {
     "user_not_found": "User not found"
-  }
-}
+  },
+
   "pleaseLoginToYourAccount": "Please login to your account",
   "rememberMe": "Remember me?",
   "createNewAccount": "Create New Account",
@@ -91,12 +93,14 @@
   "marketShopSubtitle": "Buy cards, gift cards, phones & travel safely",
   "ramadanOfferTitle": "Ramadan Offer",
   "ramadanOfferMessage": "Enjoy special Ramadan discounts and rewards.",
+
   "market": {
     "topup": "Top-Up Cards",
     "gift": "Gift Cards",
     "mobile": "Mobile Shop",
     "travel": "Travel Booking"
   },
+
   "simCards": "SIM Cards",
   "giftCards": "Gift Cards",
   "mobileShop": "Mobile Shop",
@@ -334,6 +338,7 @@
   "second": "second",
   "seconds": "seconds",
   "timeRemaining": "Time remaining",
+
   "ppLastUpdated": "Last updated: January 2025",
   "ppIntro": "ZenoPay Wallet (\"we,\" \"our,\" or \"us\") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application and services.",
   "ppNewSection1Title": "1. Information We Collect",
@@ -390,6 +395,7 @@
   "ppNewSection11Desc2": "Email: info@zenopay.bond",
   "ppNewSection12Title": "12. Consent",
   "ppNewSection12Desc": "By using ZenoPay Wallet, you consent to this Privacy Policy and agree to its terms.",
+
   "tcNewLastUpdated": "Last updated: January 2025",
   "tcNewIntro": "Welcome to ZenoPay Wallet. By accessing or using our mobile application and services, you agree to be bound by these Terms and Conditions. Please read them carefully.",
   "tcNewSection1Title": "1. Acceptance of Terms",
