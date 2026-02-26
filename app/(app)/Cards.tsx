@@ -100,6 +100,25 @@ function formatExp(month: number, year: number) {
   return `${mm}/${yy}`;
 }
 
+// ✅ NEW: show only first 12 digits on the card UI
+function formatPan12ForDisplay(panMasked: string) {
+  const digits = onlyDigits(panMasked);
+
+  // if db returns 16 digits, show first 12 digits only
+  if (digits.length >= 16) {
+    const first12 = digits.slice(0, 12);
+    return first12.replace(/(\d{4})(?=\d)/g, '$1 ');
+  }
+
+  // if already 12 digits, format it nicely
+  if (digits.length === 12) {
+    return digits.replace(/(\d{4})(?=\d)/g, '$1 ');
+  }
+
+  // fallback to original
+  return panMasked;
+}
+
 export default function CardsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -234,8 +253,9 @@ export default function CardsScreen() {
             </View>
           </View>
 
+          {/* ✅ 12-digit display */}
           <Text style={styles.itemNumber} numberOfLines={1}>
-            {card.pan_masked}
+            {formatPan12ForDisplay(card.pan_masked)}
           </Text>
 
           <View style={styles.itemBottomRow}>
@@ -359,8 +379,6 @@ export default function CardsScreen() {
             )}
           </View>
 
-          {/* ✅ Preview card + preview hint REMOVED */}
-
           {/* Form */}
           <View style={styles.formCard}>
             <Text style={styles.formTitle}>{t('cards.create_new', 'Create New Card')}</Text>
@@ -434,10 +452,16 @@ export default function CardsScreen() {
               ) : (
                 <>
                   <Ionicons name="card" size={18} color="#fff" />
-                  <Text style={styles.createBtnText}>{t('cards.create_btn', 'Create Debit Card')}</Text>
+                  {/* ✅ Button renamed */}
+                  <Text style={styles.createBtnText}>{t('cards.create_btn', 'Create Virtual Card')}</Text>
                 </>
               )}
             </TouchableOpacity>
+
+            {/* ✅ NEW TEXT under button */}
+            <Text style={styles.virtualInfo}>
+              {t('cards.virtual_info', 'This is a virtual internal card for Zenopay wallet use only.')}
+            </Text>
 
             <Text style={styles.note}>
               {t('cards.note', `By creating a card, ${CARD_PRICE}$ will be deducted automatically from your wallet balance.`).replace(
@@ -636,8 +660,17 @@ const styles = StyleSheet.create({
   },
   createBtnText: { color: '#fff', fontWeight: '900', fontSize: 15 },
 
+  // ✅ NEW style for the new info text
+  virtualInfo: {
+    marginTop: 10,
+    color: UI.text,
+    fontWeight: '800',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+
   note: {
-    marginTop: 12,
+    marginTop: 10,
     color: UI.text2,
     fontWeight: '700',
     fontSize: 12,
