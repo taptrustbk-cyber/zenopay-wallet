@@ -46,6 +46,38 @@ function toISODateOnly(d: Date) {
   return d.toISOString().split('T')[0];
 }
 
+function isValidEmail(v: string) {
+  // simple safe check
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+function normalizeIraqPhoneToE164(input: string) {
+  // Accept: "0750...." OR "750...." OR "+964750...."
+  // Returns "+9647xxxxxxxxx"
+  const raw = (input || '').trim().replace(/[^\d+]/g, '');
+
+  if (!raw) return '';
+
+  // if already +964...
+  if (raw.startsWith('+964')) {
+    const after = raw.replace('+', '');
+    // ensure only digits after +
+    return `+${after.replace(/[^\d]/g, '')}`;
+  }
+
+  // remove any leading zeros
+  let digits = raw.replace(/[^\d]/g, '');
+  while (digits.startsWith('0')) digits = digits.slice(1);
+
+  // if user typed country code without plus (964...)
+  if (digits.startsWith('964')) {
+    return `+${digits}`;
+  }
+
+  // default Iraq
+  return `+964${digits}`;
+}
+
 export default function CreateAccount() {
   const router = useRouter();
   const [fullName, setFullName] = useState<string>('');
@@ -79,8 +111,24 @@ export default function CreateAccount() {
   }
 
   async function createAccount() {
-    if (!fullName || !email || !password || !city || !phone || !country) {
+    const cleanFullName = fullName.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanCity = city.trim();
+    const cleanCountry = country.trim() || 'Iraq';
+    const cleanPassword = password; // keep as is (spaces could be intended)
+
+    if (!cleanFullName || !cleanEmail || !cleanPassword || !cleanCity || !phone.trim() || !cleanCountry) {
       Alert.alert(i18n.t('error'), i18n.t('completeAllFields'));
+      return;
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      Alert.alert(i18n.t('error'), i18n.t('invalidEmail') || 'Invalid email');
+      return;
+    }
+
+    if (cleanPassword.length < 6) {
+      Alert.alert(i18n.t('error'), i18n.t('passwordTooShort') || 'Password must be at least 6 characters');
       return;
     }
 
@@ -95,24 +143,32 @@ export default function CreateAccount() {
       return;
     }
 
+    const phoneE164 = normalizeIraqPhoneToE164(phone);
+    if (!phoneE164 || phoneE164.length < 8) {
+      Alert.alert(i18n.t('error'), i18n.t('invalidPhone') || 'Invalid phone number');
+      return;
+    }
+
     setIsCreating(true);
     try {
-      const phoneE164 = `+964${phone}`;
       const dobISO = toISODateOnly(dob);
 
-      // 1) Create auth user
+      /**
+       * ✅ IMPORTANT FIX:
+       * Many Supabase projects have a DB trigger on auth.users that reads raw_user_meta_data
+       * and inserts into profiles. If you send extra fields (city/country/phone/dob) and any
+       * column/constraint/type mismatch exists, signup fails with:
+       * "Database error saving new user"
+       *
+       * So we only send safe metadata (full_name).
+       */
       const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: cleanEmail,
+        password: cleanPassword,
         options: {
           emailRedirectTo: 'zenopay://confirm',
           data: {
-            // keep metadata (optional)
-            full_name: fullName,
-            city,
-            country,
-            phone: phoneE164,
-            date_of_birth: dobISO,
+            full_name: cleanFullName,
           },
         },
       });
@@ -128,27 +184,52 @@ export default function CreateAccount() {
         return;
       }
 
-      // 2) Save profile ONLY when button clicked (now)
-      //    profiles columns: id(uuid), email, full_name, date_of_birth, city, country, phone
-      const { error: profileError } = await supabase.from('profiles').upsert(
-        {
-          id: userId, // uuid user
-          email,
-          full_name: fullName,
-          date_of_birth: dobISO,
-          city,
-          country,
-          phone: phoneE164,
-        },
-        { onConflict: 'id' }
-      );
+      /**
+       * ✅ If email confirmation is ON:
+       * data.session will be null -> user is NOT authenticated yet
+       * => profile upsert will fail under RLS (anon).
+       *
+       * So we only upsert when a session exists.
+       * If session is null, we pass profile fields to email-verification screen and finish later.
+       */
+      const hasSession = !!data?.session;
 
-      if (profileError) {
-        Alert.alert(i18n.t('error'), profileError.message);
+      if (hasSession) {
+        const { error: profileError } = await supabase.from('profiles').upsert(
+          {
+            id: userId,
+            email: cleanEmail,
+            full_name: cleanFullName,
+            date_of_birth: dobISO,
+            city: cleanCity,
+            country: cleanCountry,
+            phone: phoneE164,
+          },
+          { onConflict: 'id' }
+        );
+
+        if (profileError) {
+          Alert.alert(i18n.t('error'), profileError.message);
+          return;
+        }
+
+        router.replace('/(auth)/email-verification' as any);
         return;
       }
 
-      router.replace('/(auth)/email-verification' as any);
+      // Email confirmation flow (no session yet)
+      router.replace({
+        pathname: '/(auth)/email-verification' as any,
+        params: {
+          email: cleanEmail,
+          // pass pending profile info to complete after verification/login
+          pending_full_name: cleanFullName,
+          pending_city: cleanCity,
+          pending_country: cleanCountry,
+          pending_phone: phoneE164,
+          pending_dob: dobISO,
+        },
+      } as any);
     } catch (e: any) {
       Alert.alert(i18n.t('error'), e?.message ?? 'Unknown error');
     } finally {
@@ -160,7 +241,6 @@ export default function CreateAccount() {
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ✅ Top center title only (keep header title), remove duplicate title inside card */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backIconBtn} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={22} color={COLORS.green} />
@@ -172,8 +252,6 @@ export default function CreateAccount() {
 
       <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
-          {/* ❌ removed: <Text style={styles.title}>{i18n.t('createAccount')}</Text> */}
-
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{i18n.t('fullName')}</Text>
             <TextInput
@@ -397,11 +475,7 @@ export default function CreateAccount() {
             disabled={isCreating || !!dobError || !dob}
             activeOpacity={0.9}
           >
-            {isCreating ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>
-            )}
+            {isCreating ? <ActivityIndicator color="#fff" /> : <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.9}>
@@ -443,7 +517,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
 
-  // (title style kept in case you need it later)
   title: {
     fontSize: 22,
     fontWeight: '900' as const,
