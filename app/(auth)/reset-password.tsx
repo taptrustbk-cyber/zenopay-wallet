@@ -1,5 +1,5 @@
 import { useRouter, Stack } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import * as Linking from 'expo-linking';
 
 // ✅ Remove default header (if any) to avoid double header
 export const options = {
@@ -39,22 +40,88 @@ export default function ResetPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      console.log('Reset password session:', data.session);
-      if (data.session) {
-        setIsReady(true);
-      } else {
-        Alert.alert(
-          'Error',
-          'Invalid or expired reset link. Please request a new password reset.',
-          [{ text: 'OK', onPress: () => router.replace('/(auth)/forgot-password' as any) }]
-        );
-      }
-    };
-    checkSession();
+  const failAndGoBack = useCallback(() => {
+    Alert.alert(
+      'Error',
+      'Invalid or expired reset link. Please request a new password reset.',
+      [{ text: 'OK', onPress: () => router.replace('/(auth)/forgot-password' as any) }]
+    );
   }, [router]);
+
+  // ✅ Handle redirect URL from email (code / tokens)
+  const handleIncomingUrl = useCallback(
+    async (url: string) => {
+      try {
+        // 1) PKCE code flow: ?code=xxxxx
+        const parsed = Linking.parse(url);
+        const code = (parsed?.queryParams?.code as string | undefined) ?? undefined;
+
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          setIsReady(true);
+          return;
+        }
+
+        // 2) Hash token flow: #access_token=...&refresh_token=...
+        // Linking.parse doesn't always parse hash, so do manual parse too
+        const hash = url.includes('#') ? url.split('#')[1] : '';
+        if (hash) {
+          const params = new URLSearchParams(hash);
+          const access_token = params.get('access_token');
+          const refresh_token = params.get('refresh_token');
+
+          if (access_token && refresh_token) {
+            const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+            if (error) throw error;
+            setIsReady(true);
+            return;
+          }
+        }
+
+        // If no usable token/code:
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          setIsReady(true);
+          return;
+        }
+
+        failAndGoBack();
+      } catch (e: any) {
+        console.log('Reset URL error:', e?.message);
+        failAndGoBack();
+      }
+    },
+    [failAndGoBack]
+  );
+
+  useEffect(() => {
+    let sub: any;
+
+    const init = async () => {
+      // ✅ 1) if app opened by email link -> get initial URL
+      const initialUrl = await Linking.getInitialURL();
+      if (initialUrl) {
+        await handleIncomingUrl(initialUrl);
+      } else {
+        // ✅ 2) If user already has session (rare but possible)
+        const { data } = await supabase.auth.getSession();
+        if (data.session) setIsReady(true);
+        else failAndGoBack();
+      }
+
+      // ✅ 3) Listen for incoming links while app is open
+      sub = Linking.addEventListener('url', ({ url }) => {
+        handleIncomingUrl(url);
+      });
+    };
+
+    init();
+
+    return () => {
+      if (sub?.remove) sub.remove();
+    };
+  }, [handleIncomingUrl, failAndGoBack]);
 
   const resetMutation = useMutation({
     mutationFn: async () => {
@@ -81,9 +148,7 @@ export default function ResetPasswordScreen() {
   if (!isReady) {
     return (
       <View style={styles.loadingContainer}>
-        {/* ✅ hide default header */}
         <Stack.Screen options={{ headerShown: false }} />
-
         <ActivityIndicator size="large" color={COLORS.green} />
         <Text style={styles.loadingText}>Verifying reset link...</Text>
       </View>
@@ -92,13 +157,10 @@ export default function ResetPasswordScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      {/* ✅ hide default header */}
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ✅ White background */}
       <View style={styles.screen}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {/* ✅ Top header box (white) + back icon */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backIconBtn} activeOpacity={0.8}>
               <Ionicons name="arrow-back" size={22} color={COLORS.green} />
