@@ -1,4 +1,3 @@
-//import { useRouter } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -63,9 +62,7 @@ export default function LoginScreen() {
       return { success: true };
     },
     onSuccess: (data) => {
-      if (data?.redirectHandled) {
-        return;
-      }
+      if (data?.redirectHandled) return;
     },
     onError: (error: any) => {
       console.error('Login error:', error);
@@ -139,7 +136,6 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      {/* ✅ White page like image */}
       <LinearGradient
         colors={['#FFFFFF', '#FFFFFF']}
         start={{ x: 0, y: 0 }}
@@ -171,7 +167,9 @@ export default function LoginScreen() {
             <Text style={styles.appName}>ZenoPay</Text>
 
             <Text style={styles.welcomeBack}>Welcome Back!</Text>
-            <Text style={styles.subWelcome}>Please login to your account</Text>
+
+            {/* ✅ translated line (selected in your image) */}
+            <Text style={styles.subWelcome}>{i18n.t('loginSubWelcome')}</Text>
           </View>
 
           {/* Card */}
@@ -213,15 +211,13 @@ export default function LoginScreen() {
 
             {/* Remember + Forgot */}
             <View style={styles.rowBetween}>
-              <Pressable
-                onPress={() => setRememberMe((v) => !v)}
-                style={styles.rememberRow}
-                hitSlop={10}
-              >
+              <Pressable onPress={() => setRememberMe((v) => !v)} style={styles.rememberRow} hitSlop={10}>
                 <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
                   {rememberMe ? <Text style={styles.checkMark}>✓</Text> : null}
                 </View>
-                <Text style={styles.rememberText}>Remember me?</Text>
+
+                {/* ✅ translated (selected in your image) */}
+                <Text style={styles.rememberText}>{i18n.t('rememberMe')}</Text>
               </Pressable>
 
               <TouchableOpacity
@@ -240,11 +236,7 @@ export default function LoginScreen() {
               disabled={loginMutation.isPending}
               activeOpacity={0.9}
             >
-              {loginMutation.isPending ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.loginButtonText}>{i18n.t('login')}</Text>
-              )}
+              {loginMutation.isPending ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginButtonText}>{i18n.t('login')}</Text>}
             </TouchableOpacity>
 
             {/* Create New Account */}
@@ -253,7 +245,8 @@ export default function LoginScreen() {
               style={styles.createAccountButton}
               activeOpacity={0.9}
             >
-              <Text style={styles.createAccountText}>Create New Account</Text>
+              {/* ✅ translated (selected in your image) */}
+              <Text style={styles.createAccountText}>{i18n.t('createNewAccount')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -271,9 +264,13 @@ export default function LoginScreen() {
             </View>
 
             <View style={{ flex: 1 }}>
-              <Text style={styles.helpTitle}>Need Help?</Text>
+              {/* ✅ translated (selected in your image) */}
+              <Text style={styles.helpTitle}>{i18n.t('needHelp')}</Text>
+
+              {/* ✅ translated "Contact us at" part */}
               <Text style={styles.helpText}>
-                Contact us at <Text style={styles.helpEmail}>info@zenopay.bond</Text>
+                {i18n.t('contactUsAt')}{' '}
+                <Text style={styles.helpEmail}>info@zenopay.bond</Text>
               </Text>
             </View>
           </View>
@@ -410,6 +407,7 @@ const styles = StyleSheet.create({
     borderColor: '#16A34A',
   },
   checkMark: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' as const },
+
   rememberText: { color: '#6B7280', fontSize: 13.5, fontWeight: '700' as const },
 
   forgotButton: { paddingVertical: 6, paddingHorizontal: 6 },
