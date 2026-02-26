@@ -313,6 +313,8 @@
   "currentPassword": "وشەی نهێنی ئێستا",
   "newPassword": "وشەی نهێنی نوێ",
   "confirmNewPassword": "پشتڕاستکردنەوەی وشەی نهێنی نوێ",
+  "create_btn": "دروستکردنی کارتێکی ڤێرچووڵ",
+  "virtual_info": "ئەمە کارتێکی ڤێرچووڵی ناوخۆییە بۆ تەنها بەکارهێنانی کیفپۆچی زینۆپەی.",
   "enterCurrentPassword": "وشەی نهێنی ئێستا بنووسە",
   "enterNewPassword": "وشەی نهێنی نوێ بنووسە",
   "passwordsDoNotMatch": "وشەکانی نهێنی یەکناگرنەوە",
