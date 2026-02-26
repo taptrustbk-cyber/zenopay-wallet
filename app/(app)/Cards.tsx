@@ -12,11 +12,12 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import i18n from '@/lib/i18n';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const UI = {
   bg: '#F5F6FA',
@@ -93,29 +94,6 @@ function onlyDigits(v: string) {
   return (v || '').replace(/[^\d]/g, '');
 }
 
-function formatCardNumber16(digits: string) {
-  const d = onlyDigits(digits).slice(0, 16);
-  const parts = [];
-  for (let i = 0; i < d.length; i += 4) parts.push(d.slice(i, i + 4));
-  return parts.join(' ');
-}
-
-function randomCardDigits16() {
-  const arr = new Array(16).fill(0).map(() => Math.floor(Math.random() * 10));
-  return arr.join('');
-}
-
-function randomCvv3() {
-  return String(Math.floor(100 + Math.random() * 900));
-}
-
-function randomExp() {
-  const now = new Date();
-  const month = Math.floor(1 + Math.random() * 12);
-  const year = now.getFullYear() + 3 + Math.floor(Math.random() * 3);
-  return { month, year };
-}
-
 function formatExp(month: number, year: number) {
   const mm = String(month).padStart(2, '0');
   const yy = String(year).slice(-2);
@@ -124,6 +102,7 @@ function formatExp(month: number, year: number) {
 
 export default function CardsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, profile } = useAuth();
 
   const [fullName, setFullName] = useState<string>((profile as any)?.full_name || '');
@@ -133,20 +112,6 @@ export default function CardsScreen() {
   const [address, setAddress] = useState<string>('');
 
   const [isCreating, setIsCreating] = useState(false);
-
-  // Preview (UI-only)
-  const preview = useMemo(() => {
-    const digits = randomCardDigits16();
-    const exp = randomExp();
-    const cvv = randomCvv3();
-    return {
-      cardNumber: formatCardNumber16(digits),
-      exp: `${String(exp.month).padStart(2, '0')}/${String(exp.year).slice(-2)}`,
-      cvv,
-      name: (fullName || '').toUpperCase() || 'YOUR NAME',
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fullName]);
 
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
@@ -199,13 +164,18 @@ export default function CardsScreen() {
       return;
     }
     if (!isFormValid) {
-      Alert.alert(t('cards.missing_info_title', 'Missing info'), t('cards.missing_info_desc', 'Please fill all fields correctly.'));
+      Alert.alert(
+        t('cards.missing_info_title', 'Missing info'),
+        t('cards.missing_info_desc', 'Please fill all fields correctly.')
+      );
       return;
     }
     if (!canBuy) {
       Alert.alert(
         t('cards.insufficient_title', 'Insufficient balance'),
-        t('cards.insufficient_desc', `You need at least ${CARD_PRICE} ${currency}.`).replace(String(CARD_PRICE), String(CARD_PRICE)).replace('USD', currency)
+        t('cards.insufficient_desc', `You need at least ${CARD_PRICE} ${currency}.`)
+          .replace(String(CARD_PRICE), String(CARD_PRICE))
+          .replace('USD', currency)
       );
       return;
     }
@@ -230,7 +200,13 @@ export default function CardsScreen() {
         return;
       }
 
-      Alert.alert(t('common.success', 'Success'), t('cards.created_success', `Card created. ${CARD_PRICE}$ deducted from your balance.`).replace('25', String(CARD_PRICE)));
+      Alert.alert(
+        t('common.success', 'Success'),
+        t('cards.created_success', `Card created. ${CARD_PRICE}$ deducted from your balance.`).replace(
+          '25',
+          String(CARD_PRICE)
+        )
+      );
       await walletQuery.refetch();
       await cardsQuery.refetch();
     } catch (e: any) {
@@ -254,7 +230,6 @@ export default function CardsScreen() {
             </View>
 
             <View style={[styles.statusPill, card.status !== 'active' && { opacity: 0.7 }]}>
-              {/* If you want translate status: use t(`status.${card.status}`, card.status.toUpperCase()) */}
               <Text style={styles.statusText}>{(card.status || 'active').toUpperCase()}</Text>
             </View>
           </View>
@@ -296,10 +271,13 @@ export default function CardsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: UI.bg }]}>
+      {/* ✅ removes the extra (blue/dark) header from expo-router stack */}
+      <Stack.Screen options={{ headerShown: false }} />
+
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
-          {/* Header */}
-          <View style={styles.header}>
+          {/* Header (your custom back + title) */}
+          <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
             <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.85}>
               <Ionicons name="arrow-back" size={22} color={UI.text} />
             </TouchableOpacity>
@@ -326,7 +304,6 @@ export default function CardsScreen() {
                     {t('common.failed_to_load', 'Failed to load')}
                   </Text>
                 ) : (
-                  // ✅ Fix wrap: keep one line
                   <Text style={styles.balanceValue} numberOfLines={1} ellipsizeMode="tail">
                     {balance.toFixed(2)} <Text style={styles.balanceCurrency}>{currency}</Text>
                   </Text>
@@ -382,51 +359,7 @@ export default function CardsScreen() {
             )}
           </View>
 
-          {/* Preview */}
-          <View style={styles.previewWrap}>
-            <View style={styles.previewCard}>
-              <View style={styles.previewTopRow}>
-                <View style={styles.logoPill}>
-                  <View style={styles.logoDot} />
-                  <Text style={styles.logoText}>ZENOPAY</Text>
-                </View>
-
-                <View style={styles.chip}>
-                  <View style={styles.chipLine} />
-                  <View style={styles.chipLine} />
-                  <View style={styles.chipLine} />
-                </View>
-              </View>
-
-              <Text style={styles.cardNumber} numberOfLines={1}>
-                {preview.cardNumber || '0000 0000 0000 0000'}
-              </Text>
-
-              <View style={styles.previewBottomRow}>
-                <View style={{ flex: 1, paddingRight: 10 }}>
-                  <Text style={styles.smallLabel}>{t('cards.card_holder', 'CARD HOLDER')}</Text>
-                  <Text style={styles.smallValue} numberOfLines={1}>
-                    {preview.name}
-                  </Text>
-                </View>
-
-                <View style={{ flexDirection: 'row', gap: 18 }}>
-                  <View>
-                    <Text style={styles.smallLabel}>{t('cards.exp', 'EXP')}</Text>
-                    <Text style={styles.smallValue}>{preview.exp}</Text>
-                  </View>
-                  <View>
-                    <Text style={styles.smallLabel}>CVV</Text>
-                    <Text style={styles.smallValue}>{preview.cvv}</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            <Text style={styles.previewHint}>
-              {t('cards.preview_hint', 'Preview design only. Real card details are issued securely after purchase.')}
-            </Text>
-          </View>
+          {/* ✅ Preview card + preview hint REMOVED */}
 
           {/* Form */}
           <View style={styles.formCard}>
@@ -507,7 +440,10 @@ export default function CardsScreen() {
             </TouchableOpacity>
 
             <Text style={styles.note}>
-              {t('cards.note', `By creating a card, ${CARD_PRICE}$ will be deducted automatically from your wallet balance.`).replace('25', String(CARD_PRICE))}
+              {t('cards.note', `By creating a card, ${CARD_PRICE}$ will be deducted automatically from your wallet balance.`).replace(
+                '25',
+                String(CARD_PRICE)
+              )}
             </Text>
           </View>
         </ScrollView>
@@ -520,7 +456,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
 
   header: {
-    paddingTop: 54,
     paddingHorizontal: 16,
     paddingBottom: 10,
     flexDirection: 'row',
@@ -662,51 +597,6 @@ const styles = StyleSheet.create({
 
   itemMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 6 },
   itemMetaText: { color: UI.text2, fontWeight: '700', fontSize: 12, flexShrink: 1 },
-
-  previewWrap: { marginTop: 14, paddingHorizontal: 16 },
-  previewCard: {
-    borderRadius: 20,
-    padding: 18,
-    backgroundColor: UI.green,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)',
-  },
-  previewTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-
-  chip: {
-    width: 52,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-    padding: 8,
-    justifyContent: 'space-between',
-  },
-  chipLine: { height: 3, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.65)' },
-
-  cardNumber: {
-    marginTop: 18,
-    color: '#fff',
-    fontWeight: '900',
-    fontSize: 22,
-    letterSpacing: 1.2,
-  },
-
-  previewBottomRow: {
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
-
-  previewHint: {
-    marginTop: 10,
-    color: UI.text2,
-    fontWeight: '700',
-    fontSize: 12,
-    lineHeight: 18,
-  },
 
   formCard: {
     marginHorizontal: 16,
