@@ -367,53 +367,52 @@ export default function ProfileScreen() {
             </View>
 
             {/* Full Name */}
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your full name"
-              placeholderTextColor={COLORS.textSecondary}
-              value={fullName}
-              onChangeText={setFullName}
-              autoCapitalize="words"
-            />
+<Text style={styles.label}>{i18n.t('fullName')}</Text>
+<TextInput
+  style={styles.input}
+  placeholder={i18n.t('fullNamePlaceholder')}
+  placeholderTextColor={COLORS.textSecondary}
+  value={fullName}
+  onChangeText={setFullName}
+  autoCapitalize="words"
+/>
 
-            {/* Date Of Birth */}
-            <Text style={styles.label}>Date Of Birth</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={COLORS.textSecondary}
-              value={dob}
-              onChangeText={setDob}
-            />
+{/* Date Of Birth */}
+<Text style={styles.label}>{i18n.t('dateOfBirth')}</Text>
+<TextInput
+  style={styles.input}
+  placeholder={i18n.t('dateOfBirthPlaceholder')}
+  placeholderTextColor={COLORS.textSecondary}
+  value={dob}
+  onChangeText={setDob}
+/>
 
-            {/* Phone Number */}
-            <Text style={styles.label}>Phone Number</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Add your phone number here"
-              placeholderTextColor={COLORS.textSecondary}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
+{/* Phone Number */}
+<Text style={styles.label}>{i18n.t('phoneNumber')}</Text>
+<TextInput
+  style={styles.input}
+  placeholder={i18n.t('phoneNumberPlaceholder')}
+  placeholderTextColor={COLORS.textSecondary}
+  value={phone}
+  onChangeText={setPhone}
+  keyboardType="phone-pad"
+/>
 
-            {/* Email (readonly) */}
-            <Text style={styles.label}>Email</Text>
-            <View style={styles.infoBox}>
-              <Text style={styles.infoText}>{user?.email || email}</Text>
-            </View>
+{/* Email (readonly) */}
+<Text style={styles.label}>{i18n.t('email')}</Text>
+<View style={styles.infoBox}>
+  <Text style={styles.infoText}>{user?.email || email}</Text>
+</View>
 
-            {/* Country */}
-            <Text style={styles.label}>Country</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Add your country here"
-              placeholderTextColor={COLORS.textSecondary}
-              value={country}
-              onChangeText={setCountry}
-            />
-
+{/* Country */}
+<Text style={styles.label}>{i18n.t('country')}</Text>
+<TextInput
+  style={styles.input}
+  placeholder={i18n.t('countryPlaceholder')}
+  placeholderTextColor={COLORS.textSecondary}
+  value={country}
+  onChangeText={setCountry}
+/>
             {/* Account status */}
             <Text style={styles.label}>{accountActiveText}</Text>
             <View style={styles.statusBox}>
