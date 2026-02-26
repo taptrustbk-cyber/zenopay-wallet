@@ -98,6 +98,8 @@
   "submit": "Submit",
   "submitting": "Submitting...",
   "update": "Update",
+  "create_btn": "Create Virtual Card",
+  "virtual_info": "This is a virtual internal card for Zenopay wallet use only.",
   "accountBalance": "Account Balance",
   "accountStatusActive": "Account Active",
   "failedToLoadBalance": "Failed to load balance",
