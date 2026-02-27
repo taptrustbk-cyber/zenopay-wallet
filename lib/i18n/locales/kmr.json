@@ -379,6 +379,8 @@
   "noWithdrawalsYet": "هێشتا هیچ دەرکشانەک نینە",
   "withdrawalAmount": "بڕا دەرکشانێ",
   "withdrawSuccessMessage": "داواکاریا دەرکشانێ هاتە فرێکرن",
+  "afterConfirmOpenApp": "پاش کلیککرن ل سەر لینکێ پشتڕاستکرنێ ل ئیمێلەکێ، Zenopay خۆکارانە دڤەکرێتەوە.",
+  "openEmailWebHint": "ل ئیمێلەکێ دا کلیک ل سەر لینکێ پشتڕاستکرن بکە، پاشان بگەڕێوە بۆ ئەپەکە.",
   "loginSubWelcome": "هیڤیە هژمارا خو ڤەکە",
   "rememberMe": "من ژبیر نەکە ؟",
   "createNewAccount": "هژمارەکا نوی چێکە",
