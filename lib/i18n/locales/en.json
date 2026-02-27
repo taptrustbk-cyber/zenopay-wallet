@@ -189,6 +189,8 @@
   "kycVerificationRequired": "KYC Verification Required",
   "kycPendingMessage": "Your documents are under review",
   "resetLinkSent": "Reset link sent",
+  "afterConfirmOpenApp": "After clicking confirm in your email, Zenopay will open automatically.",
+  "openEmailWebHint": "Click the confirm link in your email, then return to the app.",
   "whatsNext": "What happens next?",
   "kycNextSteps": "Our team will review your documents shortly",
   "documentsSecure": "Your documents are encrypted and secure",
