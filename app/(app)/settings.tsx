@@ -1,4 +1,14 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Alert, Linking } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  Linking,
+  Modal,
+  Pressable,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +45,9 @@ export default function SettingsScreen() {
   const [, forceUpdate] = useState({});
   const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
 
+  // ✅ Custom logout modal state (replaces Alert.alert)
+  const [logoutOpen, setLogoutOpen] = useState(false);
+
   useEffect(() => {
     setSelectedLanguage(getCurrentLanguage());
   }, []);
@@ -54,11 +67,9 @@ export default function SettingsScreen() {
     ]);
   };
 
+  // ✅ Open custom modal instead of system Alert
   const handleLogout = () => {
-    Alert.alert(i18n.t('logout'), i18n.t('logout') + '?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: i18n.t('logout'), style: 'destructive', onPress: signOut },
-    ]);
+    setLogoutOpen(true);
   };
 
   const supportItems = [
@@ -301,6 +312,46 @@ export default function SettingsScreen() {
           <Text style={[styles.menuText, { color: theme.colors.error }]}>{i18n.t('logout')}</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* ✅ Custom Logout Modal (small + white background + styled buttons) */}
+      <Modal
+        visible={logoutOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLogoutOpen(false)}
+      >
+        <Pressable style={stylesLogout.backdrop} onPress={() => setLogoutOpen(false)}>
+          <Pressable style={stylesLogout.card} onPress={() => {}}>
+            <Text style={stylesLogout.title}>{i18n.t('logout')}</Text>
+            <Text style={stylesLogout.message}>{i18n.t('logout')}?</Text>
+
+            <View style={stylesLogout.row}>
+              <TouchableOpacity
+                style={[stylesLogout.btn, stylesLogout.cancelBtn]}
+                onPress={() => setLogoutOpen(false)}
+                activeOpacity={0.9}
+              >
+                <Text style={[stylesLogout.btnText, stylesLogout.cancelText]}>
+                  {i18n.t('cancel') || 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[stylesLogout.btn, stylesLogout.confirmBtn]}
+                onPress={() => {
+                  setLogoutOpen(false);
+                  signOut();
+                }}
+                activeOpacity={0.9}
+              >
+                <Text style={[stylesLogout.btnText, stylesLogout.confirmText]}>
+                  {i18n.t('logout')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -403,5 +454,64 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '900' as const,
+  },
+});
+
+// ✅ Logout modal styles (small card)
+const stylesLogout = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 18,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 340, // ✅ smaller
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF', // ✅ white background
+    padding: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#111827', // ✅ black text
+    marginBottom: 6,
+    textAlign: 'left',
+  },
+  message: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6B7280',
+    marginBottom: 14,
+    textAlign: 'left',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  btn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelBtn: {
+    backgroundColor: '#111827', // ✅ black button
+  },
+  confirmBtn: {
+    backgroundColor: '#16A34A', // ✅ green button (logout)
+  },
+  btnText: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  cancelText: {
+    color: '#FFFFFF',
+  },
+  confirmText: {
+    color: '#FFFFFF',
   },
 });
