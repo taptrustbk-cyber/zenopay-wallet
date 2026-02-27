@@ -51,34 +51,22 @@ function toISODateOnly(d: Date) {
 }
 
 function isValidEmail(v: string) {
-  // simple safe check
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
 
 function normalizeIraqPhoneToE164(input: string) {
-  // Accept: "0750...." OR "750...." OR "+964750...."
-  // Returns "+9647xxxxxxxxx"
   const raw = (input || '').trim().replace(/[^\d+]/g, '');
-
   if (!raw) return '';
 
-  // if already +964...
   if (raw.startsWith('+964')) {
     const after = raw.replace('+', '');
-    // ensure only digits after +
     return `+${after.replace(/[^\d]/g, '')}`;
   }
 
-  // remove any leading zeros
   let digits = raw.replace(/[^\d]/g, '');
   while (digits.startsWith('0')) digits = digits.slice(1);
 
-  // if user typed country code without plus (964...)
-  if (digits.startsWith('964')) {
-    return `+${digits}`;
-  }
-
-  // default Iraq
+  if (digits.startsWith('964')) return `+${digits}`;
   return `+964${digits}`;
 }
 
@@ -119,7 +107,7 @@ export default function CreateAccount() {
     const cleanEmail = email.trim().toLowerCase();
     const cleanCity = city.trim();
     const cleanCountry = country.trim() || 'Iraq';
-    const cleanPassword = password; // keep as is (spaces could be intended)
+    const cleanPassword = password;
 
     if (!cleanFullName || !cleanEmail || !cleanPassword || !cleanCity || !phone.trim() || !cleanCountry) {
       Alert.alert(i18n.t('error'), i18n.t('completeAllFields'));
@@ -158,6 +146,7 @@ export default function CreateAccount() {
       const dobISO = toISODateOnly(dob);
 
       // ✅ Save pending profile locally so /auth/confirm can insert into profiles after email confirm
+      // IMPORTANT: column name in your DB is date_of_brith (typo), so we store that key.
       await AsyncStorage.setItem(
         PENDING_PROFILE_KEY,
         JSON.stringify({
@@ -166,60 +155,48 @@ export default function CreateAccount() {
           city: cleanCity,
           country: cleanCountry,
           phone: phoneE164,
-          date_of_birth: dobISO,
+          date_of_brith: dobISO,
         })
       );
 
-      /**
-       * ✅ IMPORTANT FIX:
-       * Keep metadata minimal to avoid "Database error saving new user"
-       */
+      // ✅ Sign up (keep metadata empty to avoid trigger failures)
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: cleanPassword,
         options: {
           emailRedirectTo: 'zenopay://confirm',
-          data: {
-            full_name: cleanFullName,
-          },
+          data: {}, // keep empty
         },
       });
 
       if (error) {
-        Alert.alert(i18n.t('error'), error.message);
-        return;
-      }
-
-      const userId = data?.user?.id;
-      if (!userId) {
-        Alert.alert(i18n.t('error'), 'Failed to create user. Please try again.');
+        const extra = (error as any)?.status ? ` (status ${(error as any).status})` : '';
+        Alert.alert(i18n.t('error'), `${error.message}${extra}`);
         return;
       }
 
       // ✅ If email confirmation is OFF (session exists), we can write profile now
+      const userId = data?.user?.id;
       const hasSession = !!data?.session;
 
-      if (hasSession) {
+      if (hasSession && userId) {
         const { error: profileError } = await supabase.from('profiles').upsert(
           {
             id: userId,
-            email: cleanEmail,
             full_name: cleanFullName,
-            date_of_birth: dobISO,
             city: cleanCity,
             country: cleanCountry,
             phone: phoneE164,
+            date_of_brith: dobISO, // ✅ matches your column
           },
           { onConflict: 'id' }
         );
 
         if (profileError) {
-          // don’t block account creation
           console.log('Profile upsert error:', profileError.message);
         }
       }
 
-      // ✅ go to email verification screen (your folder is /app/auth/)
       router.replace({
         pathname: '/auth/email-verification' as any,
         params: { email: cleanEmail },
@@ -469,7 +446,11 @@ export default function CreateAccount() {
             disabled={isCreating || !!dobError || !dob}
             activeOpacity={0.9}
           >
-            {isCreating ? <ActivityIndicator color="#fff" /> : <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>}
+            {isCreating ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.9}>
@@ -509,14 +490,6 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderColor: COLORS.border,
-  },
-
-  title: {
-    fontSize: 22,
-    fontWeight: '900' as const,
-    color: COLORS.text,
-    marginBottom: 16,
-    textAlign: 'center' as const,
   },
 
   inputGroup: { marginBottom: 14 },
