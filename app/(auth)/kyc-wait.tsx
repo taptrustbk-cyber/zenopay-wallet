@@ -36,6 +36,8 @@ const UI = {
   shadow: '#000000',
 };
 
+const KYC_BUCKET = 'kyc-documents';
+
 export default function KycWait() {
   const router = useRouter();
   const { user, signOut } = useAuth();
@@ -89,49 +91,62 @@ export default function KycWait() {
     if (type === 'selfie') setSelfie(null);
   };
 
+  // ✅ convert any picked image to JPEG bytes and upload with a fixed name: id_front.jpeg etc
+  const uploadAsJpeg = async (imageData: PickedImage, fixedBaseName: 'id_front' | 'id_back' | 'selfie') => {
+    if (!user) throw new Error('No user');
+
+    // Always write .jpeg (even if source is png/heic). This keeps your bucket consistent.
+    const filename = `${fixedBaseName}.jpeg`;
+    const path = `${user.id}/${filename}`;
+
+    const response = await fetch(imageData.uri);
+    const blob = await response.blob();
+
+    // NOTE: On iOS/Android, expo-image-picker usually returns JPEG already,
+    // but we still upload as image/jpeg to force consistency.
+    const arrayBuffer = await new Response(blob).arrayBuffer();
+    const file = new Uint8Array(arrayBuffer);
+
+    const { error } = await supabase.storage.from(KYC_BUCKET).upload(path, file, {
+      upsert: true,
+      contentType: 'image/jpeg',
+      cacheControl: '3600',
+    });
+
+    if (error) throw error;
+
+    return path; // return "userId/id_front.jpeg" etc
+  };
+
   const submitKycDocuments = async () => {
     if (!canSubmit || !user) return;
 
     setLoading(true);
 
     try {
-      const uploadFile = async (imageData: PickedImage, basename: string) => {
-        const response = await fetch(imageData.uri);
-        const blob = await response.blob();
-        const arrayBuffer = await new Response(blob).arrayBuffer();
-        const file = new Uint8Array(arrayBuffer);
+      // ✅ upload files (fixed names)
+      const idFrontPath = await uploadAsJpeg(idFront!, 'id_front');
+      const idBackPath = await uploadAsJpeg(idBack!, 'id_back');
+      const selfiePath = await uploadAsJpeg(selfie!, 'selfie');
 
-        const extension = imageData.mimeType.split('/')[1] || 'jpg';
-        const filename = `${basename}.${extension}`;
-        const path = `${user.id}/${filename}`;
-
-        const { error } = await supabase.storage.from('kyc-documents').upload(path, file, {
-          upsert: true,
-          contentType: imageData.mimeType,
-        });
-
-        if (error) throw error;
-      };
-
-      await uploadFile(idFront!, 'id_front');
-      await uploadFile(idBack!, 'id_back');
-      await uploadFile(selfie!, 'selfie');
-
+      // ✅ update profiles table with file paths + mark kyc pending
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           kyc_status: 'pending',
           kyc_submitted_at: new Date().toISOString(),
+          id_front: idFrontPath,
+          id_back: idBackPath,
+          selfie: selfiePath,
         })
         .eq('id', user.id);
 
       if (updateError) throw updateError;
 
-      // Keep UX clean
       setSubmitted(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('KYC submission error:', error);
-      Alert.alert(i18n.t('error'), i18n.t('kycSubmitFailed'));
+      Alert.alert(i18n.t('error'), `${i18n.t('kycSubmitFailed')}\n${error?.message || ''}`.trim());
     } finally {
       setLoading(false);
     }
@@ -168,7 +183,11 @@ export default function KycWait() {
                 <Text style={styles.smallBtnText}>{i18n.t('change')}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.smallBtn, styles.smallBtnDanger]} onPress={onClear} activeOpacity={0.85}>
+              <TouchableOpacity
+                style={[styles.smallBtn, styles.smallBtnDanger]}
+                onPress={onClear}
+                activeOpacity={0.85}
+              >
                 <X size={16} color={UI.danger} />
                 <Text style={[styles.smallBtnText, { color: UI.danger }]}>{i18n.t('remove')}</Text>
               </TouchableOpacity>
@@ -185,10 +204,7 @@ export default function KycWait() {
             <View style={styles.previewWrap}>
               <Image
                 source={{ uri: value.uri }}
-                style={[
-                  styles.previewImage,
-                  aspectRatio ? { aspectRatio } : null,
-                ]}
+                style={[styles.previewImage, aspectRatio ? { aspectRatio } : null]}
                 resizeMode="contain"
               />
             </View>
@@ -394,7 +410,6 @@ const styles = StyleSheet.create({
   },
   previewImage: {
     width: '100%',
-    // height is handled by aspectRatio
     borderRadius: 14,
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
@@ -438,8 +453,20 @@ const styles = StyleSheet.create({
     borderColor: UI.border,
     marginBottom: 14,
   },
-  successTitle: { fontSize: 20, fontWeight: '900', color: UI.text, textAlign: 'center', marginBottom: 10 },
-  successText: { fontSize: 14, color: UI.text2, textAlign: 'center', lineHeight: 20, marginBottom: 10 },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: UI.text,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  successText: {
+    fontSize: 14,
+    color: UI.text2,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 10,
+  },
   emailText: { color: UI.green, fontWeight: '800', textDecorationLine: 'underline' },
   securityText: { fontSize: 12.5, color: UI.text2, textAlign: 'center', marginTop: 2, marginBottom: 14 },
 
