@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -40,6 +40,8 @@ import {
   ShoppingBag,
   BarChart3,
   ReceiptText,
+  Image as ImageIcon,
+  Search,
 } from 'lucide-react-native';
 import { trpc } from '@/lib/trpc';
 
@@ -79,10 +81,13 @@ type TabKey =
   | 'add_balance'
   | 'withdraw_balance'
   | 'kyc_documents'
+  | 'user_documents' // ✅ NEW
   | 'products'
   | 'orders'
   | 'market_analytics'
   | 'transactions';
+
+type KycKind = 'id_front' | 'id_back' | 'selfie';
 
 export default function AdminScreen() {
   const { user, signOut } = useAuth();
@@ -96,6 +101,9 @@ export default function AdminScreen() {
   const [txEmailFilter, setTxEmailFilter] = useState('');
   const [txTypeFilter, setTxTypeFilter] = useState('all');
   const [txAmountFilter, setTxAmountFilter] = useState('all');
+
+  // ✅ NEW: search for user documents tab
+  const [docSearch, setDocSearch] = useState('');
 
   const [showAddBalanceModal, setShowAddBalanceModal] = useState(false);
   const [showWithdrawBalanceModal, setShowWithdrawBalanceModal] = useState(false);
@@ -121,13 +129,43 @@ export default function AdminScreen() {
   const isLikelyUrl = (v?: string | null) =>
     !!v && (v.startsWith('http://') || v.startsWith('https://'));
 
+  // ✅ NEW: If profiles columns are NULL, scan storage folder {userId}/ and find id_front/id_back/selfie
+  const resolveKycPathByListing = async (userId: string, kind: KycKind) => {
+    try {
+      const { data, error } = await supabase.storage.from(KYC_BUCKET).list(userId, {
+        limit: 200,
+        offset: 0,
+        sortBy: { column: 'name', order: 'asc' },
+      });
+      if (error) return null;
+      if (!data || data.length === 0) return null;
+
+      const lower = kind.toLowerCase();
+      const exact =
+        data.find((f) => (f.name || '').toLowerCase() === `${lower}.jpeg`) ||
+        data.find((f) => (f.name || '').toLowerCase() === `${lower}.jpg`) ||
+        data.find((f) => (f.name || '').toLowerCase() === `${lower}.png`);
+
+      const loose = data.find((f) => (f.name || '').toLowerCase().includes(lower));
+
+      const match = exact || loose;
+      if (!match?.name) return null;
+
+      return `${userId}/${match.name}`;
+    } catch {
+      return null;
+    }
+  };
+
   const getKycUrl = async (pathOrUrl?: string | null) => {
     if (!pathOrUrl) return null;
     if (isLikelyUrl(pathOrUrl)) return pathOrUrl;
 
+    // If bucket is public:
     const pub = supabase.storage.from(KYC_BUCKET).getPublicUrl(pathOrUrl)?.data?.publicUrl;
     if (pub) return pub;
 
+    // If bucket is private:
     try {
       const signed = await supabase.storage.from(KYC_BUCKET).createSignedUrl(pathOrUrl, 60 * 60);
       if (signed?.data?.signedUrl) return signed.data.signedUrl;
@@ -136,18 +174,25 @@ export default function AdminScreen() {
     return null;
   };
 
-  const openKycPreview = async (title: string, pathOrUrl?: string | null) => {
-    if (!pathOrUrl) {
-      Alert.alert('No File', `${title} photo not uploaded`);
-      return;
-    }
+  const openKycPreview = async (title: string, pathOrUrl?: string | null, userId?: string, kind?: KycKind) => {
     setKycPreviewTitle(title);
     setKycPreviewUrl('');
     setKycPreviewOpen(true);
     setKycPreviewLoading(true);
 
-    const url = await getKycUrl(pathOrUrl);
+    let finalPath = pathOrUrl || null;
 
+    if (!finalPath && userId && kind) {
+      finalPath = await resolveKycPathByListing(userId, kind);
+    }
+
+    if (!finalPath) {
+      setKycPreviewLoading(false);
+      Alert.alert('No File', `${title} photo not uploaded`);
+      return;
+    }
+
+    const url = await getKycUrl(finalPath);
     setKycPreviewUrl(url || '');
     setKycPreviewLoading(false);
 
@@ -156,8 +201,14 @@ export default function AdminScreen() {
     }
   };
 
-  const openExternal = async (pathOrUrl?: string | null) => {
-    const url = await getKycUrl(pathOrUrl);
+  const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: KycKind) => {
+    let finalPath = pathOrUrl || null;
+
+    if (!finalPath && userId && kind) {
+      finalPath = await resolveKycPathByListing(userId, kind);
+    }
+
+    const url = await getKycUrl(finalPath);
     if (!url) {
       Alert.alert('Error', 'Cannot open file');
       return;
@@ -236,9 +287,9 @@ export default function AdminScreen() {
     };
   }, [isAdmin, selectedTab, queryClient]);
 
-  // ✅ NEW: realtime for KYC documents so new users appear automatically
+  // ✅ realtime for KYC documents so new users appear automatically
   useEffect(() => {
-    if (!isAdmin || selectedTab !== 'kyc_documents') return;
+    if (!isAdmin || (selectedTab !== 'kyc_documents' && selectedTab !== 'user_documents')) return;
 
     const channel = supabase
       .channel('admin-kyc-documents')
@@ -339,7 +390,7 @@ export default function AdminScreen() {
     enabled: selectedTab === 'account_approval',
   });
 
-  // ✅ FIX #1: KYC tab must show ALL users (approved/rejected/pending) + their docs if exist
+  // ✅ KYC tab must show ALL users (approved/rejected/pending) + their docs if exist
   const kycDocumentsQuery = useQuery({
     queryKey: ['admin-kyc-documents'],
     queryFn: async () => {
@@ -350,10 +401,9 @@ export default function AdminScreen() {
 
       if (error) throw error;
 
-      // ✅ return ALL users (no filter)
       return data || [];
     },
-    enabled: selectedTab === 'kyc_documents',
+    enabled: selectedTab === 'kyc_documents' || selectedTab === 'user_documents',
   });
 
   const waitingUsersQuery = useQuery({
@@ -565,6 +615,18 @@ export default function AdminScreen() {
     },
     enabled: selectedTab === 'transactions',
   });
+
+  // ✅ NEW: filtered list for user_documents tab
+  const filteredDocUsers = useMemo(() => {
+    const list = kycDocumentsQuery.data || [];
+    const q = docSearch.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((u: any) => {
+      const name = (u.full_name || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      return name.includes(q) || email.includes(q);
+    });
+  }, [kycDocumentsQuery.data, docSearch]);
 
   // ---------- mutations ----------
   const updateDepositMutation = useMutation({
@@ -806,7 +868,7 @@ export default function AdminScreen() {
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Access Denied</Text>
           <Text style={styles.errorSubText}>You don&apos;t have permission to access this page.</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.85}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -840,9 +902,28 @@ export default function AdminScreen() {
 
   const kycBadge = (kycStatus?: string | null) => {
     const s = (kycStatus || 'pending').toLowerCase();
-    if (s === 'approved') return { bg: UI.greenSoft, color: UI.green, icon: <CheckCircle size={14} color={UI.green} />, text: 'APPROVED' };
-    if (s === 'rejected') return { bg: UI.redSoft, color: UI.red, icon: <XCircle size={14} color={UI.red} />, text: 'REJECTED' };
-    return { bg: UI.amberSoft, color: UI.amber, icon: <Clock size={14} color={UI.amber} />, text: 'PENDING' };
+    if (s === 'approved') {
+      return {
+        bg: UI.greenSoft,
+        color: UI.green,
+        icon: <CheckCircle size={14} color={UI.green} />,
+        text: 'APPROVED',
+      };
+    }
+    if (s === 'rejected') {
+      return {
+        bg: UI.redSoft,
+        color: UI.red,
+        icon: <XCircle size={14} color={UI.red} />,
+        text: 'REJECTED',
+      };
+    }
+    return {
+      bg: UI.amberSoft,
+      color: UI.amber,
+      icon: <Clock size={14} color={UI.amber} />,
+      text: 'PENDING',
+    };
   };
 
   return (
@@ -883,6 +964,14 @@ export default function AdminScreen() {
         <MenuButton label="Add Balance" tab="add_balance" icon={<PlusCircle size={18} color={selectedTab === 'add_balance' ? UI.blue : UI.text2} />} />
         <MenuButton label="Withdraw Balance" tab="withdraw_balance" icon={<MinusCircle size={18} color={selectedTab === 'withdraw_balance' ? UI.blue : UI.text2} />} />
         <MenuButton label="KYC Document" tab="kyc_documents" icon={<FileText size={18} color={selectedTab === 'kyc_documents' ? UI.blue : UI.text2} />} />
+
+        {/* ✅ NEW BUTTON */}
+        <MenuButton
+          label="Document Image User"
+          tab="user_documents"
+          icon={<ImageIcon size={18} color={selectedTab === 'user_documents' ? UI.blue : UI.text2} />}
+        />
+
         <MenuButton label="Products" tab="products" icon={<Package size={18} color={selectedTab === 'products' ? UI.blue : UI.text2} />} />
         <MenuButton label="Orders" tab="orders" icon={<ShoppingBag size={18} color={selectedTab === 'orders' ? UI.blue : UI.text2} />} />
         <MenuButton label="Market Analytics" tab="market_analytics" icon={<BarChart3 size={18} color={selectedTab === 'market_analytics' ? UI.blue : UI.text2} />} />
@@ -891,6 +980,117 @@ export default function AdminScreen() {
 
       {/* ✅ FIX #3: bigger bottom padding so nothing hides under bottom bars */}
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* ---------------- NEW: Document Image User ---------------- */}
+        {selectedTab === 'user_documents' && (
+          <>
+            <Text style={[styles.sectionTitle, { marginBottom: 10 }]}>Document Image User</Text>
+
+            <View style={styles.searchCard}>
+              <View style={styles.searchLeft}>
+                <Search size={16} color={UI.text2} />
+                <TextInput
+                  value={docSearch}
+                  onChangeText={setDocSearch}
+                  placeholder="Search by email or full name..."
+                  placeholderTextColor={UI.text2}
+                  style={styles.searchInput}
+                />
+              </View>
+              <TouchableOpacity style={styles.searchClearBtn} onPress={() => setDocSearch('')} activeOpacity={0.85}>
+                <Text style={styles.searchClearText}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+
+            {kycDocumentsQuery.isLoading ? (
+              <View style={styles.centerLoading}>
+                <ActivityIndicator color={UI.blue} size="large" />
+                <Text style={styles.emptyText}>Loading users...</Text>
+              </View>
+            ) : filteredDocUsers.length > 0 ? (
+              filteredDocUsers.map((u: any) => {
+                const badge = kycBadge(u.kyc_status);
+                return (
+                  <View key={u.id} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cardTitle}>{u.full_name || 'Unknown User'}</Text>
+                        <Text style={styles.cardSubtitle}>{u.email}</Text>
+                      </View>
+
+                      <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                        {badge.icon}
+                        <Text style={[styles.badgeText, { color: badge.color }]}>{badge.text}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Upload / Registered Time</Text>
+                      <Text style={styles.rowValue}>{new Date(u.created_at).toLocaleString()}</Text>
+                    </View>
+
+                    <View style={styles.kycBlock}>
+                      <Text style={styles.kycBlockTitle}>Documents</Text>
+
+                      <View style={styles.docGrid}>
+                        <TouchableOpacity
+                          style={styles.docBtn}
+                          onPress={() => openKycPreview('ID Front', u.id_front, u.id, 'id_front')}
+                          activeOpacity={0.85}
+                        >
+                          <FileText size={18} color={UI.green} />
+                          <Text style={styles.docBtnText}>ID Front</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.docBtn}
+                          onPress={() => openKycPreview('ID Back', u.id_back, u.id, 'id_back')}
+                          activeOpacity={0.85}
+                        >
+                          <FileText size={18} color={UI.green} />
+                          <Text style={styles.docBtnText}>ID Back</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.docBtn}
+                          onPress={() => openKycPreview('Selfie', u.selfie, u.id, 'selfie')}
+                          activeOpacity={0.85}
+                        >
+                          <FileText size={18} color={UI.green} />
+                          <Text style={styles.docBtnText}>Selfie</Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <View style={{ marginTop: 10, gap: 10 }}>
+                        <TouchableOpacity style={styles.docLinkButton} onPress={() => openExternal(u.id_front, u.id, 'id_front')}>
+                          <ExternalLink size={16} color={UI.blue} />
+                          <Text style={styles.docLinkText}>Open ID Front</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.docLinkButton} onPress={() => openExternal(u.id_back, u.id, 'id_back')}>
+                          <ExternalLink size={16} color={UI.blue} />
+                          <Text style={styles.docLinkText}>Open ID Back</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.docLinkButton} onPress={() => openExternal(u.selfie, u.id, 'selfie')}>
+                          <ExternalLink size={16} color={UI.blue} />
+                          <Text style={styles.docLinkText}>Open Selfie</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })
+            ) : (
+              <View style={{ paddingVertical: 18 }}>
+                <Text style={styles.emptyText}>No users found</Text>
+                <TouchableOpacity style={styles.primaryBtn} onPress={() => kycDocumentsQuery.refetch()}>
+                  <Text style={styles.primaryBtnText}>Refresh</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
+        )}
+
         {/* ---------------- Dashboard ---------------- */}
         {selectedTab === 'dashboard' && (
           <>
@@ -1138,9 +1338,9 @@ export default function AdminScreen() {
                       onPress={() =>
                         Alert.alert(
                           'Activate Account Now',
-                          `⚠️ This will bypass the ${
-                            remaining ? `${remaining.hours}h ${remaining.minutes}m` : ''
-                          } waiting period and activate ${profile.full_name || profile.email} immediately.\n\nUser can login right away.`,
+                          `⚠️ This will bypass the ${remaining ? `${remaining.hours}h ${remaining.minutes}m` : ''} waiting period and activate ${
+                            profile.full_name || profile.email
+                          } immediately.\n\nUser can login right away.`,
                           [
                             { text: 'Cancel', style: 'cancel' },
                             { text: 'Activate Now', onPress: () => activateNowMutation.mutate({ userId: profile.id }) },
@@ -1509,7 +1709,6 @@ export default function AdminScreen() {
             ) : kycDocumentsQuery.data && kycDocumentsQuery.data.length > 0 ? (
               kycDocumentsQuery.data.map((userKYC: any) => {
                 const badge = kycBadge(userKYC.kyc_status);
-                const hasAnyDoc = !!(userKYC.id_front || userKYC.id_back || userKYC.selfie);
 
                 return (
                   <View key={userKYC.id} style={styles.card}>
@@ -1543,80 +1742,57 @@ export default function AdminScreen() {
                     <View style={styles.kycBlock}>
                       <Text style={styles.kycBlockTitle}>KYC Documents</Text>
 
-                      {!hasAnyDoc ? (
-                        <Text style={[styles.emptyText, { marginTop: 0, textAlign: 'left' }]}>
-                          No documents uploaded for this user.
-                        </Text>
-                      ) : (
-                        <>
-                          <View style={styles.thumbRow}>
-                            <TouchableOpacity
-                              style={styles.thumbWrap}
-                              onPress={() => openKycPreview('ID Front', userKYC.id_front)}
-                              activeOpacity={0.85}
-                              disabled={!userKYC.id_front}
-                            >
-                              <View style={styles.thumb}>
-                                <FileText size={18} color={userKYC.id_front ? UI.blue : UI.text2} />
-                                <Text style={[styles.thumbText, !userKYC.id_front && { color: UI.text2 }]}>ID Front</Text>
-                              </View>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                              style={styles.thumbWrap}
-                              onPress={() => openKycPreview('ID Back', userKYC.id_back)}
-                              activeOpacity={0.85}
-                              disabled={!userKYC.id_back}
-                            >
-                              <View style={styles.thumb}>
-                                <FileText size={18} color={userKYC.id_back ? UI.blue : UI.text2} />
-                                <Text style={[styles.thumbText, !userKYC.id_back && { color: UI.text2 }]}>ID Back</Text>
-                              </View>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                              style={styles.thumbWrap}
-                              onPress={() => openKycPreview('Selfie', userKYC.selfie)}
-                              activeOpacity={0.85}
-                              disabled={!userKYC.selfie}
-                            >
-                              <View style={styles.thumb}>
-                                <FileText size={18} color={userKYC.selfie ? UI.blue : UI.text2} />
-                                <Text style={[styles.thumbText, !userKYC.selfie && { color: UI.text2 }]}>Selfie</Text>
-                              </View>
-                            </TouchableOpacity>
+                      <View style={styles.thumbRow}>
+                        <TouchableOpacity
+                          style={styles.thumbWrap}
+                          onPress={() => openKycPreview('ID Front', userKYC.id_front, userKYC.id, 'id_front')}
+                          activeOpacity={0.85}
+                        >
+                          <View style={styles.thumb}>
+                            <FileText size={18} color={UI.blue} />
+                            <Text style={styles.thumbText}>ID Front</Text>
                           </View>
+                        </TouchableOpacity>
 
-                          <View style={{ marginTop: 10, gap: 10 }}>
-                            <TouchableOpacity
-                              style={styles.docLinkButton}
-                              onPress={() => openExternal(userKYC.id_front)}
-                              disabled={!userKYC.id_front}
-                            >
-                              <ExternalLink size={16} color={userKYC.id_front ? UI.blue : UI.text2} />
-                              <Text style={[styles.docLinkText, !userKYC.id_front && { color: UI.text2 }]}>Open ID Front</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                              style={styles.docLinkButton}
-                              onPress={() => openExternal(userKYC.id_back)}
-                              disabled={!userKYC.id_back}
-                            >
-                              <ExternalLink size={16} color={userKYC.id_back ? UI.blue : UI.text2} />
-                              <Text style={[styles.docLinkText, !userKYC.id_back && { color: UI.text2 }]}>Open ID Back</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                              style={styles.docLinkButton}
-                              onPress={() => openExternal(userKYC.selfie)}
-                              disabled={!userKYC.selfie}
-                            >
-                              <ExternalLink size={16} color={userKYC.selfie ? UI.blue : UI.text2} />
-                              <Text style={[styles.docLinkText, !userKYC.selfie && { color: UI.text2 }]}>Open Selfie</Text>
-                            </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.thumbWrap}
+                          onPress={() => openKycPreview('ID Back', userKYC.id_back, userKYC.id, 'id_back')}
+                          activeOpacity={0.85}
+                        >
+                          <View style={styles.thumb}>
+                            <FileText size={18} color={UI.blue} />
+                            <Text style={styles.thumbText}>ID Back</Text>
                           </View>
-                        </>
-                      )}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.thumbWrap}
+                          onPress={() => openKycPreview('Selfie', userKYC.selfie, userKYC.id, 'selfie')}
+                          activeOpacity={0.85}
+                        >
+                          <View style={styles.thumb}>
+                            <FileText size={18} color={UI.blue} />
+                            <Text style={styles.thumbText}>Selfie</Text>
+                          </View>
+                        </TouchableOpacity>
+                      </View>
+
+                      <View style={{ marginTop: 10, gap: 10 }}>
+                        <TouchableOpacity style={styles.docLinkButton} onPress={() => openExternal(userKYC.id_front, userKYC.id, 'id_front')}>
+                          <ExternalLink size={16} color={UI.blue} />
+                          <Text style={styles.docLinkText}>Open ID Front</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.docLinkButton} onPress={() => openExternal(userKYC.id_back, userKYC.id, 'id_back')}>
+                          <ExternalLink size={16} color={UI.blue} />
+                          <Text style={styles.docLinkText}>Open ID Back</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.docLinkButton} onPress={() => openExternal(userKYC.selfie, userKYC.id, 'selfie')}>
+                          <ExternalLink size={16} color={UI.blue} />
+                          <Text style={styles.docLinkText}>Open Selfie</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
 
                     <View style={styles.actionButtons}>
@@ -1934,7 +2110,8 @@ export default function AdminScreen() {
               (() => {
                 const filtered = transactionsQuery.data.filter((tx: any) => {
                   const userEmail = tx.receiver?.email || '';
-                  const matchesEmail = txEmailFilter === '' || userEmail.toLowerCase().includes(txEmailFilter.toLowerCase());
+                  const matchesEmail =
+                    txEmailFilter === '' || userEmail.toLowerCase().includes(txEmailFilter.toLowerCase());
                   const matchesType = txTypeFilter === 'all' || tx.type === txTypeFilter;
                   const matchesAmount =
                     txAmountFilter === 'all' ||
@@ -2340,7 +2517,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 10,
-    // ✅ IMPORTANT: extra bottom padding so content never hides
     paddingBottom: 140,
   },
 
@@ -2704,6 +2880,7 @@ const styles = StyleSheet.create({
     color: UI.text,
     marginBottom: 10,
   },
+
   thumbRow: {
     flexDirection: 'row',
     gap: 10,
@@ -2724,6 +2901,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: UI.blue,
   },
+
   docLinkButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2739,6 +2917,70 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: UI.blue,
     fontWeight: '800',
+  },
+
+  // ✅ NEW user document tab buttons (green background, black text)
+  docGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  docBtn: {
+    flex: 1,
+    borderRadius: 14,
+    backgroundColor: UI.greenSoft,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  docBtnText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: UI.text,
+  },
+
+  // search card
+  searchCard: {
+    backgroundColor: UI.card,
+    borderWidth: 1,
+    borderColor: UI.border,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  searchLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: UI.card2,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
+  searchInput: {
+    flex: 1,
+    color: UI.text,
+    fontWeight: '800',
+  },
+  searchClearBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: UI.blueSoft,
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
+  searchClearText: {
+    color: UI.blue,
+    fontWeight: '900',
   },
 
   modalOverlay: {
