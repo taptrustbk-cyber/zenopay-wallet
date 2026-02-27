@@ -2430,7 +2430,11 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
               )}
             </View>
 
-            <TouchableOpacity style={styles.previewOpenBtn} onPress={() => openExternal(kycPreviewUrl)} disabled={!kycPreviewUrl}>
+            <TouchableOpacity
+  style={styles.previewOpenBtn}
+  onPress={() => kycPreviewUrl && openExternal(kycPreviewUrl)}
+  disabled={!kycPreviewUrl}
+>
               <ExternalLink size={16} color="#fff" />
               <Text style={styles.previewOpenBtnText}>Open in Browser</Text>
             </TouchableOpacity>
