@@ -307,6 +307,8 @@
   "country": "وڵات",
   "countryLabel": "وڵات",
   "cityLabel": "شار",
+  "afterConfirmOpenApp": "دوای کلیککردن لە بەستەری پشتڕاستکردن لە ئیمەیڵەکەت، Zenopay خۆکارانە دەکرێتەوە.",
+  "openEmailWebHint": "لە ئیمەیڵەکەتدا کلیک لە بەستەری پشتڕاستکردن بکە، پاشان بگەڕێوە بۆ ئەپەکە.",
   "address": "ناونیشان",
   "phoneLabel": "تەلەفۆن",
   "phonePlaceholder": "ژمارەی تەلەفۆن بنووسە",
