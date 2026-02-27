@@ -83,7 +83,12 @@ export default function PrivacyPolicyScreen() {
 
           <View style={styles.bulletList}>
             <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection2Item1')}</Text>
-            <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection2Item2')}</Text>
+
+            {/* ✅ REMOVED ONLY THIS LINE:
+                • Process transactions and verify your identity (KYC)
+                <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection2Item2')}</Text>
+            */}
+
             <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection2Item3')}</Text>
             <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection2Item4')}</Text>
             <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection2Item5')}</Text>
