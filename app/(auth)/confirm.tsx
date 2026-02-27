@@ -56,8 +56,10 @@ export default function ConfirmScreen() {
   const [message, setMessage] = useState(i18n.t('confirmingEmail') || 'Confirming your email...');
   const [errorText, setErrorText] = useState('');
 
-  const onceRef = useRef(false);
+  // Prevent running the same confirmation twice
+  const doneRef = useRef(false);
 
+  // Local route params (sometimes Expo Router puts them here)
   const local = useMemo(() => {
     return {
       code: safeStr(params.code),
@@ -68,93 +70,149 @@ export default function ConfirmScreen() {
     };
   }, [params]);
 
-  useEffect(() => {
-    const run = async () => {
-      if (onceRef.current) return;
-      onceRef.current = true;
+  async function ensureSessionFromMerged(merged: Record<string, string>) {
+    // 1) Create session from link
+    if (merged.access_token && merged.refresh_token) {
+      setMessage(i18n.t('signingYouIn') || 'Signing you in...');
+      const { error } = await supabase.auth.setSession({
+        access_token: merged.access_token,
+        refresh_token: merged.refresh_token,
+      });
+      if (error) throw error;
+      return;
+    }
 
-      try {
-        setState('loading');
-        setMessage(i18n.t('confirmingEmail') || 'Confirming your email...');
+    if (merged.code) {
+      setMessage(i18n.t('signingYouIn') || 'Signing you in...');
+      const { error } = await supabase.auth.exchangeCodeForSession(merged.code);
+      if (error) throw error;
+      return;
+    }
 
-        let merged: any = { ...local };
+    if (merged.token_hash && merged.type) {
+      setMessage(i18n.t('verifyingLink') || 'Verifying link...');
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: merged.token_hash,
+        type: merged.type as any,
+      } as any);
+      if (error) throw error;
+      return;
+    }
 
+    // If no params, maybe session already exists
+    const { data } = await supabase.auth.getSession();
+    if (!data?.session) {
+      throw new Error(
+        i18n.t('missingConfirmParams') ||
+          'Missing confirmation parameters. Please open the confirm link again.'
+      );
+    }
+  }
+
+  async function upsertProfileFromPending() {
+    setMessage(i18n.t('preparingAccount') || 'Preparing your account...');
+
+    const raw = await AsyncStorage.getItem(PENDING_PROFILE_KEY);
+    const pending = raw ? JSON.parse(raw) : null;
+
+    const { data } = await supabase.auth.getSession();
+    const user = data?.session?.user;
+
+    if (!user) return;
+
+    // If no pending profile, still succeed (maybe user confirmed from another device)
+    if (!pending) return;
+
+    // ✅ FIX: accept both spellings, but store using your DB column name "date_of_brith"
+    const dob =
+      pending.date_of_brith ?? pending.date_of_birth ?? pending.dob ?? null;
+
+    const payload: any = {
+      id: user.id,
+      email: user.email,
+      full_name: pending.full_name ?? null,
+      city: pending.city ?? null,
+      country: pending.country ?? null,
+      phone: pending.phone ?? null,
+
+      // ✅ FIX: match YOUR column typo
+      date_of_brith: dob,
+    };
+
+    const { error: upsertError } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
+    if (upsertError) {
+      console.log('Profile upsert error:', upsertError.message);
+      // don’t throw; still allow login flow
+    }
+
+    await AsyncStorage.removeItem(PENDING_PROFILE_KEY);
+  }
+
+  async function finalizeAndGoLogin() {
+    setState('success');
+    setMessage(i18n.t('accountCreatedSuccessfully') || 'Account successfully created');
+
+    setTimeout(async () => {
+      await supabase.auth.signOut();
+      router.replace({
+        pathname: '/auth/login' as any,
+        params: { created: '1' },
+      } as any);
+    }, 1200);
+  }
+
+  async function runConfirmFlow(urlFromEvent?: string | null) {
+    if (doneRef.current) return;
+
+    try {
+      setState('loading');
+      setErrorText('');
+      setMessage(i18n.t('confirmingEmail') || 'Confirming your email...');
+
+      // Merge params from:
+      // - event URL (if provided)
+      // - initial URL (cold start)
+      // - router params (expo-router)
+      let merged: Record<string, string> = { ...local } as any;
+
+      if (urlFromEvent) {
+        const all = parseAllParams(urlFromEvent);
+        merged = { ...all, ...merged };
+      } else {
         const initialUrl = await ExpoLinking.getInitialURL();
         if (initialUrl) {
           const all = parseAllParams(initialUrl);
           merged = { ...all, ...merged };
         }
-
-        // 1) Create session from link
-        if (merged.access_token && merged.refresh_token) {
-          setMessage(i18n.t('signingYouIn') || 'Signing you in...');
-          const { error } = await supabase.auth.setSession({
-            access_token: merged.access_token,
-            refresh_token: merged.refresh_token,
-          });
-          if (error) throw error;
-        } else if (merged.code) {
-          setMessage(i18n.t('signingYouIn') || 'Signing you in...');
-          const { error } = await supabase.auth.exchangeCodeForSession(merged.code);
-          if (error) throw error;
-        } else if (merged.token_hash && merged.type) {
-          setMessage(i18n.t('verifyingLink') || 'Verifying link...');
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash: merged.token_hash,
-            type: merged.type,
-          } as any);
-          if (error) throw error;
-        } else {
-          const { data } = await supabase.auth.getSession();
-          if (!data?.session) throw new Error('Missing confirmation parameters. Please open the confirm link again.');
-        }
-
-        // 2) Upsert profile using pending data from AsyncStorage
-        setMessage(i18n.t('preparingAccount') || 'Preparing your account...');
-        const raw = await AsyncStorage.getItem(PENDING_PROFILE_KEY);
-        const pending = raw ? JSON.parse(raw) : null;
-
-        const { data } = await supabase.auth.getSession();
-        const user = data?.session?.user;
-
-        if (user && pending) {
-          const payload: any = {
-            id: user.id,
-            email: user.email,
-            full_name: pending.full_name ?? null,
-            city: pending.city ?? null,
-            country: pending.country ?? null,
-            phone: pending.phone ?? null,
-            date_of_birth: pending.date_of_birth ?? null,
-          };
-
-          const { error: upsertError } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
-          if (upsertError) {
-            console.log('Profile upsert error:', upsertError.message);
-          }
-
-          await AsyncStorage.removeItem(PENDING_PROFILE_KEY);
-        }
-
-        setState('success');
-        setMessage(i18n.t('accountCreatedSuccessfully') || 'Account successfully created');
-
-        // 3) Sign out (optional) and go to login with message
-        setTimeout(async () => {
-          await supabase.auth.signOut();
-          router.replace({
-            pathname: '/auth/login' as any,
-            params: { created: '1' },
-          } as any);
-        }, 1200);
-      } catch (e: any) {
-        setState('error');
-        setErrorText(e?.message || 'Verification failed');
       }
-    };
 
-    run();
-  }, [local, router]);
+      await ensureSessionFromMerged(merged);
+      await upsertProfileFromPending();
+
+      doneRef.current = true;
+      await finalizeAndGoLogin();
+    } catch (e: any) {
+      setState('error');
+      setErrorText(e?.message || 'Verification failed');
+    }
+  }
+
+  useEffect(() => {
+    // Run once for cold start
+    runConfirmFlow(null);
+
+    // ✅ FIX: also handle links when app is already open
+    const sub = ExpoLinking.addEventListener('url', (event) => {
+      // If confirmation already finished, ignore
+      if (doneRef.current) return;
+      runConfirmFlow(event?.url ?? null);
+    });
+
+    return () => {
+      sub?.remove?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [local]);
 
   return (
     <View style={styles.screen}>
@@ -184,7 +242,11 @@ export default function ConfirmScreen() {
               : (i18n.t('workingOnIt') || 'Working on it...')}
           </Text>
 
-          {state === 'error' ? <Text style={styles.subtitleError}>{errorText}</Text> : <Text style={styles.subtitle}>{message}</Text>}
+          {state === 'error' ? (
+            <Text style={styles.subtitleError}>{errorText}</Text>
+          ) : (
+            <Text style={styles.subtitle}>{message}</Text>
+          )}
 
           {state === 'error' ? (
             <TouchableOpacity
