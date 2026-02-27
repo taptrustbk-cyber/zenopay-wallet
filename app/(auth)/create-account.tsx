@@ -159,12 +159,13 @@ export default function CreateAccount() {
         })
       );
 
-      // ✅ Sign up (keep metadata empty to avoid trigger failures)
+      // ✅ Sign up
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: cleanPassword,
         options: {
-          emailRedirectTo: 'zenopay://confirm',
+          // ✅ MUST match your Expo Router route file: app/auth/confirm.tsx -> /auth/confirm
+          emailRedirectTo: 'zenopay://auth/confirm',
           data: {}, // keep empty
         },
       });
@@ -197,6 +198,7 @@ export default function CreateAccount() {
         }
       }
 
+      // ✅ Go to your verification screen file: app/auth/email-verification.tsx -> /auth/email-verification
       router.replace({
         pathname: '/auth/email-verification' as any,
         params: { email: cleanEmail },
@@ -446,11 +448,7 @@ export default function CreateAccount() {
             disabled={isCreating || !!dobError || !dob}
             activeOpacity={0.9}
           >
-            {isCreating ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>
-            )}
+            {isCreating ? <ActivityIndicator color="#fff" /> : <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.9}>
