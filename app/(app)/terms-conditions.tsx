@@ -51,7 +51,7 @@ export default function TermsConditionsScreen() {
         'Welcome to ZenoPay Wallet. By accessing or using our mobile application and services, you agree to be bound by these Terms and Conditions. Please read them carefully.'
       ),
 
-      // Platform notice fallbacks (so you don’t see “missing translation” in UI)
+      // Platform notice
       pnTitle: t('tcPlatformNoticeTitle', 'Platform Notice'),
       pnIntro: t(
         'tcPlatformNoticeIntro',
@@ -152,7 +152,12 @@ export default function TermsConditionsScreen() {
         {/* 2 */}
         <View style={styles.section}>
           {renderNumberedTitle(2, 'tcNewSection2Title', 'Account Registration')}
-          <Text style={styles.bulletItem}>• {t('tcNewSection2Item1', 'You must complete signup account to access full features')}</Text>
+
+          {/* ✅ Removed ONLY this KYC line:
+              • You must complete KYC verification to access full features
+              (We simply don't render tcNewSection2Item1 anymore)
+          */}
+
           <Text style={styles.bulletItem}>• {t('tcNewSection2Item2', 'You are responsible for maintaining the security of your account')}</Text>
           <Text style={styles.bulletItem}>• {t('tcNewSection2Item3', 'Notify us immediately of any unauthorized access')}</Text>
           <Text style={styles.bulletItem}>• {t('tcNewSection2Item4', 'One account per person is allowed')}</Text>
