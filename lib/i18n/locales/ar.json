@@ -172,6 +172,8 @@
   "email": "البريد الإلكتروني",
   "enterEmail": "أدخل البريد الإلكتروني",
   "deliveryNote": "ملاحظة التوصيل",
+  "afterConfirmOpenApp": "بعد الضغط على رابط التأكيد في بريدك، سيتم فتح Zenopay تلقائياً.",
+  "openEmailWebHint": "اضغط على رابط التأكيد في بريدك، ثم ارجع إلى التطبيق.",
   "optional": "اختياري",
   "enterDeliveryNote": "أضف أي تعليمات للتوصيل",
   "deliveryEstimate": "التسليم المتوقع: 3-7 أيام عمل",
