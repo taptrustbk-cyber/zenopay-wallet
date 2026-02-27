@@ -18,6 +18,7 @@ import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import i18n from '@/lib/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Linking from 'expo-linking';
 
 // ✅ remove default header
 export const options = {
@@ -145,7 +146,7 @@ export default function CreateAccount() {
     try {
       const dobISO = toISODateOnly(dob);
 
-      // ✅ Save pending profile locally so /auth/confirm can insert into profiles after email confirm
+      // ✅ Save pending profile locally so /confirm can insert into profiles after email confirm
       // IMPORTANT: column name in your DB is date_of_brith (typo), so we store that key.
       await AsyncStorage.setItem(
         PENDING_PROFILE_KEY,
@@ -159,13 +160,17 @@ export default function CreateAccount() {
         })
       );
 
+      // ✅ expo-router group (auth) is NOT part of the URL.
+      // app/(auth)/confirm.tsx => route is "/confirm"
+      // build deep link safely:
+      const emailRedirectTo = Linking.createURL('confirm'); // => zenopay://confirm (when scheme=zenopay)
+
       // ✅ Sign up
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: cleanPassword,
         options: {
-          // ✅ MUST match your Expo Router route file: app/auth/confirm.tsx -> /auth/confirm
-          emailRedirectTo: 'zenopay://auth/confirm',
+          emailRedirectTo,
           data: {}, // keep empty
         },
       });
@@ -198,9 +203,9 @@ export default function CreateAccount() {
         }
       }
 
-      // ✅ Go to your verification screen file: app/auth/email-verification.tsx -> /auth/email-verification
+      // ✅ app/(auth)/email-verification.tsx => route is "/email-verification" (NOT "/auth/email-verification")
       router.replace({
-        pathname: '/auth/email-verification' as any,
+        pathname: '/email-verification' as any,
         params: { email: cleanEmail },
       } as any);
     } catch (e: any) {
@@ -448,7 +453,11 @@ export default function CreateAccount() {
             disabled={isCreating || !!dobError || !dob}
             activeOpacity={0.9}
           >
-            {isCreating ? <ActivityIndicator color="#fff" /> : <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>}
+            {isCreating ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.9}>
