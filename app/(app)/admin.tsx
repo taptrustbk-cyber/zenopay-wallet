@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -43,12 +43,15 @@ import {
 } from 'lucide-react-native';
 import { trpc } from '@/lib/trpc';
 
+// ✅ IMPORTANT: remove the default (dark blue) navigation header
+export const options = { headerShown: false };
+
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 
-// ✅ Your real bucket name (as you requested)
+// ✅ Your real bucket name
 const KYC_BUCKET = 'kyc-documents';
 
-// 🎨 Modern light admin UI (fixed: not dark)
+// 🎨 Modern light admin UI
 const UI = {
   bg: '#F6F8FB',
   card: '#FFFFFF',
@@ -67,26 +70,28 @@ const UI = {
   shadow: 'rgba(15, 23, 42, 0.08)',
 };
 
+type TabKey =
+  | 'dashboard'
+  | 'account_approval'
+  | 'waiting_users'
+  | 'deposits'
+  | 'withdrawals'
+  | 'add_balance'
+  | 'withdraw_balance'
+  | 'kyc_documents'
+  | 'products'
+  | 'orders'
+  | 'market_analytics'
+  | 'transactions';
+
 export default function AdminScreen() {
   const { user, signOut } = useAuth();
   const { theme } = useTheme(); // kept (not removed) to avoid breaking your app
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [selectedTab, setSelectedTab] = useState<
-    | 'dashboard'
-    | 'account_approval'
-    | 'waiting_users'
-    | 'deposits'
-    | 'withdrawals'
-    | 'add_balance'
-    | 'withdraw_balance'
-    | 'kyc_documents'
-    | 'products'
-    | 'orders'
-    | 'market_analytics'
-    | 'transactions'
-  >('dashboard');
+  // ✅ default open to KYC Documents (as you requested: new users appear here)
+  const [selectedTab, setSelectedTab] = useState<TabKey>('kyc_documents');
 
   const [txEmailFilter, setTxEmailFilter] = useState('');
   const [txTypeFilter, setTxTypeFilter] = useState('all');
@@ -104,7 +109,7 @@ export default function AdminScreen() {
   const [waitTimeValue, setWaitTimeValue] = useState('');
   const [amountToWithdraw, setAmountToWithdraw] = useState('');
 
-  // ✅ KYC preview modal (shows photo inside admin, not only external link)
+  // ✅ KYC preview modal
   const [kycPreviewOpen, setKycPreviewOpen] = useState(false);
   const [kycPreviewTitle, setKycPreviewTitle] = useState('');
   const [kycPreviewUrl, setKycPreviewUrl] = useState('');
@@ -120,11 +125,9 @@ export default function AdminScreen() {
     if (!pathOrUrl) return null;
     if (isLikelyUrl(pathOrUrl)) return pathOrUrl;
 
-    // Try public URL (if bucket is public)
     const pub = supabase.storage.from(KYC_BUCKET).getPublicUrl(pathOrUrl)?.data?.publicUrl;
     if (pub) return pub;
 
-    // If bucket is private, create a signed url
     try {
       const signed = await supabase.storage.from(KYC_BUCKET).createSignedUrl(pathOrUrl, 60 * 60);
       if (signed?.data?.signedUrl) return signed.data.signedUrl;
@@ -173,14 +176,10 @@ export default function AdminScreen() {
 
     const channel = supabase
       .channel('admin-pending-users')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
-          queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      })
       .subscribe();
 
     return () => {
@@ -193,14 +192,10 @@ export default function AdminScreen() {
 
     const channel = supabase
       .channel('admin-waiting-users')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['admin-waiting-users'] });
-          queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-waiting-users'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      })
       .subscribe();
 
     return () => {
@@ -213,14 +208,10 @@ export default function AdminScreen() {
 
     const channel = supabase
       .channel('admin-deposits')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'deposit_orders' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['admin-deposits'] });
-          queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deposit_orders' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-deposits'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      })
       .subscribe();
 
     return () => {
@@ -233,15 +224,28 @@ export default function AdminScreen() {
 
     const channel = supabase
       .channel('admin-withdrawals')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'withdraw_orders' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
-          queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
-          queryClient.invalidateQueries({ queryKey: ['admin-withdraw-stats'] });
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'withdraw_orders' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-withdraw-stats'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAdmin, selectedTab, queryClient]);
+
+  // ✅ NEW: realtime for KYC documents so new users appear automatically
+  useEffect(() => {
+    if (!isAdmin || selectedTab !== 'kyc_documents') return;
+
+    const channel = supabase
+      .channel('admin-kyc-documents')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-kyc-documents'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      })
       .subscribe();
 
     return () => {
@@ -310,13 +314,12 @@ export default function AdminScreen() {
 
       if (error) throw error;
 
-      const withdrawalsWithProfile =
+      return (
         (data || []).map((withdrawal: any) => ({
           ...withdrawal,
           profile: withdrawal.profiles,
-        })) || [];
-
-      return withdrawalsWithProfile as (WithdrawOrder & { profile: Profile })[];
+        })) || []
+      ) as (WithdrawOrder & { profile: Profile })[];
     },
     enabled: selectedTab === 'withdrawals',
   });
@@ -336,7 +339,7 @@ export default function AdminScreen() {
     enabled: selectedTab === 'account_approval',
   });
 
-  // ✅ still reading from profiles table, but now preview actually shows images from bucket
+  // ✅ FIX #1: KYC tab must show ALL users (approved/rejected/pending) + their docs if exist
   const kycDocumentsQuery = useQuery({
     queryKey: ['admin-kyc-documents'],
     queryFn: async () => {
@@ -347,8 +350,8 @@ export default function AdminScreen() {
 
       if (error) throw error;
 
-      // ✅ Only show users that actually have at least one uploaded doc
-      return (data || []).filter((u: any) => !!(u.id_front || u.id_back || u.selfie));
+      // ✅ return ALL users (no filter)
+      return data || [];
     },
     enabled: selectedTab === 'kyc_documents',
   });
@@ -574,7 +577,10 @@ export default function AdminScreen() {
         if (order) {
           const { data: wallet } = await supabase.from('wallets').select('*').eq('user_id', order.user_id).single();
           if (wallet) {
-            await supabase.from('wallets').update({ balance: wallet.balance + order.amount }).eq('user_id', order.user_id);
+            await supabase
+              .from('wallets')
+              .update({ balance: wallet.balance + order.amount })
+              .eq('user_id', order.user_id);
           }
         }
       }
@@ -598,6 +604,7 @@ export default function AdminScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-kyc-documents'] });
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
       Alert.alert('Success', 'Account approved successfully!');
     },
@@ -616,6 +623,7 @@ export default function AdminScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-kyc-documents'] });
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
       Alert.alert('Success', 'Account rejected.');
     },
@@ -678,7 +686,6 @@ export default function AdminScreen() {
       });
 
       if (txError) {
-        // keep same behavior (warn only)
         console.warn('⚠️ Transaction log error:', txError);
       }
 
@@ -795,7 +802,7 @@ export default function AdminScreen() {
   // ---------- deny screen ----------
   if (!isAdmin) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['bottom']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Access Denied</Text>
           <Text style={styles.errorSubText}>You don&apos;t have permission to access this page.</Text>
@@ -807,26 +814,13 @@ export default function AdminScreen() {
     );
   }
 
-  // ---------- UI ----------
   const MenuButton = ({
     label,
     tab,
     icon,
   }: {
     label: string;
-    tab:
-      | 'dashboard'
-      | 'account_approval'
-      | 'waiting_users'
-      | 'deposits'
-      | 'withdrawals'
-      | 'add_balance'
-      | 'withdraw_balance'
-      | 'kyc_documents'
-      | 'products'
-      | 'orders'
-      | 'market_analytics'
-      | 'transactions';
+    tab: TabKey;
     icon: React.ReactNode;
   }) => {
     const active = selectedTab === tab;
@@ -844,15 +838,18 @@ export default function AdminScreen() {
     );
   };
 
+  const kycBadge = (kycStatus?: string | null) => {
+    const s = (kycStatus || 'pending').toLowerCase();
+    if (s === 'approved') return { bg: UI.greenSoft, color: UI.green, icon: <CheckCircle size={14} color={UI.green} />, text: 'APPROVED' };
+    if (s === 'rejected') return { bg: UI.redSoft, color: UI.red, icon: <XCircle size={14} color={UI.red} />, text: 'REJECTED' };
+    return { bg: UI.amberSoft, color: UI.amber, icon: <Clock size={14} color={UI.amber} />, text: 'PENDING' };
+  };
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['bottom']}>
-      {/* ✅ Modern header + NEW left corner button to go dashboard.tsx */}
+    <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
+      {/* ✅ single header (no dark-blue duplicate anymore) */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerLeftBtn}
-          onPress={() => router.push('/dashboard')}
-          activeOpacity={0.85}
-        >
+        <TouchableOpacity style={styles.headerLeftBtn} onPress={() => router.push('/dashboard')} activeOpacity={0.85}>
           <Home size={18} color={UI.text} />
         </TouchableOpacity>
 
@@ -876,70 +873,23 @@ export default function AdminScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ✅ New modern menu grid */}
+      {/* menu grid (same) */}
       <View style={styles.menuWrap}>
-        <MenuButton
-          label="Dashboard"
-          tab="dashboard"
-          icon={<BarChart3 size={18} color={selectedTab === 'dashboard' ? UI.blue : UI.text2} />}
-        />
-        <MenuButton
-          label="Account Approval"
-          tab="account_approval"
-          icon={<ShieldCheck size={18} color={selectedTab === 'account_approval' ? UI.blue : UI.text2} />}
-        />
-        <MenuButton
-          label="Waiting Users"
-          tab="waiting_users"
-          icon={<Users size={18} color={selectedTab === 'waiting_users' ? UI.blue : UI.text2} />}
-        />
-        <MenuButton
-          label="Deposits"
-          tab="deposits"
-          icon={<ArrowDownToLine size={18} color={selectedTab === 'deposits' ? UI.blue : UI.text2} />}
-        />
-        <MenuButton
-          label="Withdrawals"
-          tab="withdrawals"
-          icon={<ArrowUpFromLine size={18} color={selectedTab === 'withdrawals' ? UI.blue : UI.text2} />}
-        />
-        <MenuButton
-          label="Add Balance"
-          tab="add_balance"
-          icon={<PlusCircle size={18} color={selectedTab === 'add_balance' ? UI.blue : UI.text2} />}
-        />
-        <MenuButton
-          label="Withdraw Balance"
-          tab="withdraw_balance"
-          icon={<MinusCircle size={18} color={selectedTab === 'withdraw_balance' ? UI.blue : UI.text2} />}
-        />
-        <MenuButton
-          label="KYC Document"
-          tab="kyc_documents"
-          icon={<FileText size={18} color={selectedTab === 'kyc_documents' ? UI.blue : UI.text2} />}
-        />
-        <MenuButton
-          label="Products"
-          tab="products"
-          icon={<Package size={18} color={selectedTab === 'products' ? UI.blue : UI.text2} />}
-        />
-        <MenuButton
-          label="Orders"
-          tab="orders"
-          icon={<ShoppingBag size={18} color={selectedTab === 'orders' ? UI.blue : UI.text2} />}
-        />
-        <MenuButton
-          label="Market Analytics"
-          tab="market_analytics"
-          icon={<BarChart3 size={18} color={selectedTab === 'market_analytics' ? UI.blue : UI.text2} />}
-        />
-        <MenuButton
-          label="Transactions"
-          tab="transactions"
-          icon={<ReceiptText size={18} color={selectedTab === 'transactions' ? UI.blue : UI.text2} />}
-        />
+        <MenuButton label="Dashboard" tab="dashboard" icon={<BarChart3 size={18} color={selectedTab === 'dashboard' ? UI.blue : UI.text2} />} />
+        <MenuButton label="Account Approval" tab="account_approval" icon={<ShieldCheck size={18} color={selectedTab === 'account_approval' ? UI.blue : UI.text2} />} />
+        <MenuButton label="Waiting Users" tab="waiting_users" icon={<Users size={18} color={selectedTab === 'waiting_users' ? UI.blue : UI.text2} />} />
+        <MenuButton label="Deposits" tab="deposits" icon={<ArrowDownToLine size={18} color={selectedTab === 'deposits' ? UI.blue : UI.text2} />} />
+        <MenuButton label="Withdrawals" tab="withdrawals" icon={<ArrowUpFromLine size={18} color={selectedTab === 'withdrawals' ? UI.blue : UI.text2} />} />
+        <MenuButton label="Add Balance" tab="add_balance" icon={<PlusCircle size={18} color={selectedTab === 'add_balance' ? UI.blue : UI.text2} />} />
+        <MenuButton label="Withdraw Balance" tab="withdraw_balance" icon={<MinusCircle size={18} color={selectedTab === 'withdraw_balance' ? UI.blue : UI.text2} />} />
+        <MenuButton label="KYC Document" tab="kyc_documents" icon={<FileText size={18} color={selectedTab === 'kyc_documents' ? UI.blue : UI.text2} />} />
+        <MenuButton label="Products" tab="products" icon={<Package size={18} color={selectedTab === 'products' ? UI.blue : UI.text2} />} />
+        <MenuButton label="Orders" tab="orders" icon={<ShoppingBag size={18} color={selectedTab === 'orders' ? UI.blue : UI.text2} />} />
+        <MenuButton label="Market Analytics" tab="market_analytics" icon={<BarChart3 size={18} color={selectedTab === 'market_analytics' ? UI.blue : UI.text2} />} />
+        <MenuButton label="Transactions" tab="transactions" icon={<ReceiptText size={18} color={selectedTab === 'transactions' ? UI.blue : UI.text2} />} />
       </View>
 
+      {/* ✅ FIX #3: bigger bottom padding so nothing hides under bottom bars */}
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* ---------------- Dashboard ---------------- */}
         {selectedTab === 'dashboard' && (
@@ -959,16 +909,12 @@ export default function AdminScreen() {
 
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>Pending Deposits</Text>
-                <Text style={styles.statValue}>
-                  {statsQuery.isLoading ? '...' : statsQuery.data?.pendingDeposits || 0}
-                </Text>
+                <Text style={styles.statValue}>{statsQuery.isLoading ? '...' : statsQuery.data?.pendingDeposits || 0}</Text>
               </View>
 
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>Pending Withdrawals</Text>
-                <Text style={styles.statValue}>
-                  {statsQuery.isLoading ? '...' : statsQuery.data?.pendingWithdrawals || 0}
-                </Text>
+                <Text style={styles.statValue}>{statsQuery.isLoading ? '...' : statsQuery.data?.pendingWithdrawals || 0}</Text>
               </View>
             </View>
 
@@ -1412,18 +1358,14 @@ export default function AdminScreen() {
                       <TouchableOpacity
                         style={[styles.actionBtn, { backgroundColor: UI.red }]}
                         onPress={() =>
-                          Alert.alert(
-                            'Reject Withdrawal',
-                            `Reject this withdrawal? The amount will be refunded to user's wallet.`,
-                            [
-                              { text: 'Cancel', style: 'cancel' },
-                              {
-                                text: 'Reject & Refund',
-                                style: 'destructive',
-                                onPress: () => updateWithdrawalMutation.mutate({ id: order.id, status: 'rejected' }),
-                              },
-                            ]
-                          )
+                          Alert.alert('Reject Withdrawal', `Reject this withdrawal? The amount will be refunded to user's wallet.`, [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Reject & Refund',
+                              style: 'destructive',
+                              onPress: () => updateWithdrawalMutation.mutate({ id: order.id, status: 'rejected' }),
+                            },
+                          ])
                         }
                         disabled={updateWithdrawalMutation.isPending}
                       >
@@ -1554,7 +1496,7 @@ export default function AdminScreen() {
           </>
         )}
 
-        {/* ---------------- KYC Documents (FIXED: show photos for ALL users) ---------------- */}
+        {/* ---------------- KYC Documents (ALL USERS) ---------------- */}
         {selectedTab === 'kyc_documents' && (
           <>
             <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>KYC Verification Panel</Text>
@@ -1562,138 +1504,156 @@ export default function AdminScreen() {
             {kycDocumentsQuery.isLoading ? (
               <View style={styles.centerLoading}>
                 <ActivityIndicator color={UI.blue} size="large" />
-                <Text style={styles.emptyText}>Loading KYC documents...</Text>
+                <Text style={styles.emptyText}>Loading users...</Text>
               </View>
             ) : kycDocumentsQuery.data && kycDocumentsQuery.data.length > 0 ? (
-              kycDocumentsQuery.data.map((userKYC: any) => (
-                <View key={userKYC.id} style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{userKYC.full_name || 'Unknown User'}</Text>
-                      <Text style={styles.cardSubtitle}>{userKYC.email}</Text>
-                    </View>
-                    <View style={[styles.badge, { backgroundColor: UI.amberSoft }]}>
-                      <Clock size={14} color={UI.amber} />
-                      <Text style={[styles.badgeText, { color: UI.amber }]}>
-                        {userKYC.kyc_status?.toUpperCase() || 'PENDING'}
-                      </Text>
-                    </View>
-                  </View>
+              kycDocumentsQuery.data.map((userKYC: any) => {
+                const badge = kycBadge(userKYC.kyc_status);
+                const hasAnyDoc = !!(userKYC.id_front || userKYC.id_back || userKYC.selfie);
 
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>KYC Status</Text>
-                    <Text style={styles.rowValue}>{userKYC.kyc_status || 'N/A'}</Text>
-                  </View>
+                return (
+                  <View key={userKYC.id} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cardTitle}>{userKYC.full_name || 'Unknown User'}</Text>
+                        <Text style={styles.cardSubtitle}>{userKYC.email}</Text>
+                      </View>
 
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Status</Text>
-                    <Text style={styles.rowValue}>{userKYC.status || 'N/A'}</Text>
-                  </View>
-
-                  {/* ✅ SHOW PHOTOS INSIDE ADMIN (tap to preview) */}
-                  <View style={styles.kycBlock}>
-                    <Text style={styles.kycBlockTitle}>KYC Documents</Text>
-
-                    <View style={styles.thumbRow}>
-                      <TouchableOpacity
-                        style={styles.thumbWrap}
-                        onPress={() => openKycPreview('ID Front', userKYC.id_front)}
-                        activeOpacity={0.85}
-                      >
-                        <View style={styles.thumb}>
-                          <FileText size={18} color={userKYC.id_front ? UI.blue : UI.text2} />
-                          <Text style={[styles.thumbText, !userKYC.id_front && { color: UI.text2 }]}>ID Front</Text>
-                        </View>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.thumbWrap}
-                        onPress={() => openKycPreview('ID Back', userKYC.id_back)}
-                        activeOpacity={0.85}
-                      >
-                        <View style={styles.thumb}>
-                          <FileText size={18} color={userKYC.id_back ? UI.blue : UI.text2} />
-                          <Text style={[styles.thumbText, !userKYC.id_back && { color: UI.text2 }]}>ID Back</Text>
-                        </View>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.thumbWrap}
-                        onPress={() => openKycPreview('Selfie', userKYC.selfie)}
-                        activeOpacity={0.85}
-                      >
-                        <View style={styles.thumb}>
-                          <FileText size={18} color={userKYC.selfie ? UI.blue : UI.text2} />
-                          <Text style={[styles.thumbText, !userKYC.selfie && { color: UI.text2 }]}>Selfie</Text>
-                        </View>
-                      </TouchableOpacity>
+                      <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                        {badge.icon}
+                        <Text style={[styles.badgeText, { color: badge.color }]}>{badge.text}</Text>
+                      </View>
                     </View>
 
-                    {/* optional external open */}
-                    <View style={{ marginTop: 10, gap: 10 }}>
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>KYC Status</Text>
+                      <Text style={styles.rowValue}>{userKYC.kyc_status || 'pending'}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Status</Text>
+                      <Text style={styles.rowValue}>{userKYC.status || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Registered</Text>
+                      <Text style={styles.rowValue}>{new Date(userKYC.created_at).toLocaleString()}</Text>
+                    </View>
+
+                    <View style={styles.kycBlock}>
+                      <Text style={styles.kycBlockTitle}>KYC Documents</Text>
+
+                      {!hasAnyDoc ? (
+                        <Text style={[styles.emptyText, { marginTop: 0, textAlign: 'left' }]}>
+                          No documents uploaded for this user.
+                        </Text>
+                      ) : (
+                        <>
+                          <View style={styles.thumbRow}>
+                            <TouchableOpacity
+                              style={styles.thumbWrap}
+                              onPress={() => openKycPreview('ID Front', userKYC.id_front)}
+                              activeOpacity={0.85}
+                              disabled={!userKYC.id_front}
+                            >
+                              <View style={styles.thumb}>
+                                <FileText size={18} color={userKYC.id_front ? UI.blue : UI.text2} />
+                                <Text style={[styles.thumbText, !userKYC.id_front && { color: UI.text2 }]}>ID Front</Text>
+                              </View>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={styles.thumbWrap}
+                              onPress={() => openKycPreview('ID Back', userKYC.id_back)}
+                              activeOpacity={0.85}
+                              disabled={!userKYC.id_back}
+                            >
+                              <View style={styles.thumb}>
+                                <FileText size={18} color={userKYC.id_back ? UI.blue : UI.text2} />
+                                <Text style={[styles.thumbText, !userKYC.id_back && { color: UI.text2 }]}>ID Back</Text>
+                              </View>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={styles.thumbWrap}
+                              onPress={() => openKycPreview('Selfie', userKYC.selfie)}
+                              activeOpacity={0.85}
+                              disabled={!userKYC.selfie}
+                            >
+                              <View style={styles.thumb}>
+                                <FileText size={18} color={userKYC.selfie ? UI.blue : UI.text2} />
+                                <Text style={[styles.thumbText, !userKYC.selfie && { color: UI.text2 }]}>Selfie</Text>
+                              </View>
+                            </TouchableOpacity>
+                          </View>
+
+                          <View style={{ marginTop: 10, gap: 10 }}>
+                            <TouchableOpacity
+                              style={styles.docLinkButton}
+                              onPress={() => openExternal(userKYC.id_front)}
+                              disabled={!userKYC.id_front}
+                            >
+                              <ExternalLink size={16} color={userKYC.id_front ? UI.blue : UI.text2} />
+                              <Text style={[styles.docLinkText, !userKYC.id_front && { color: UI.text2 }]}>Open ID Front</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={styles.docLinkButton}
+                              onPress={() => openExternal(userKYC.id_back)}
+                              disabled={!userKYC.id_back}
+                            >
+                              <ExternalLink size={16} color={userKYC.id_back ? UI.blue : UI.text2} />
+                              <Text style={[styles.docLinkText, !userKYC.id_back && { color: UI.text2 }]}>Open ID Back</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={styles.docLinkButton}
+                              onPress={() => openExternal(userKYC.selfie)}
+                              disabled={!userKYC.selfie}
+                            >
+                              <ExternalLink size={16} color={userKYC.selfie ? UI.blue : UI.text2} />
+                              <Text style={[styles.docLinkText, !userKYC.selfie && { color: UI.text2 }]}>Open Selfie</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </>
+                      )}
+                    </View>
+
+                    <View style={styles.actionButtons}>
                       <TouchableOpacity
-                        style={styles.docLinkButton}
-                        onPress={() => openExternal(userKYC.id_front)}
-                        disabled={!userKYC.id_front}
+                        style={[styles.actionBtn, { backgroundColor: UI.green }]}
+                        onPress={() =>
+                          Alert.alert('Approve KYC', `Approve KYC for ${userKYC.full_name || userKYC.email}?`, [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Approve', onPress: () => approveAccountMutation.mutate({ userId: userKYC.id }) },
+                          ])
+                        }
+                        disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
                       >
-                        <ExternalLink size={16} color={userKYC.id_front ? UI.blue : UI.text2} />
-                        <Text style={[styles.docLinkText, !userKYC.id_front && { color: UI.text2 }]}>Open ID Front</Text>
+                        <CheckCircle size={16} color="#fff" />
+                        <Text style={styles.actionBtnText}>Approve</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={styles.docLinkButton}
-                        onPress={() => openExternal(userKYC.id_back)}
-                        disabled={!userKYC.id_back}
+                        style={[styles.actionBtn, { backgroundColor: UI.red }]}
+                        onPress={() =>
+                          Alert.alert('Reject KYC', `Reject KYC for ${userKYC.full_name || userKYC.email}?`, [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Reject', style: 'destructive', onPress: () => rejectAccountMutation.mutate({ userId: userKYC.id }) },
+                          ])
+                        }
+                        disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
                       >
-                        <ExternalLink size={16} color={userKYC.id_back ? UI.blue : UI.text2} />
-                        <Text style={[styles.docLinkText, !userKYC.id_back && { color: UI.text2 }]}>Open ID Back</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.docLinkButton}
-                        onPress={() => openExternal(userKYC.selfie)}
-                        disabled={!userKYC.selfie}
-                      >
-                        <ExternalLink size={16} color={userKYC.selfie ? UI.blue : UI.text2} />
-                        <Text style={[styles.docLinkText, !userKYC.selfie && { color: UI.text2 }]}>Open Selfie</Text>
+                        <XCircle size={16} color="#fff" />
+                        <Text style={styles.actionBtnText}>Reject</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
-
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: UI.green }]}
-                      onPress={() =>
-                        Alert.alert('Approve KYC', `Approve KYC for ${userKYC.full_name || userKYC.email}?`, [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Approve', onPress: () => approveAccountMutation.mutate({ userId: userKYC.id }) },
-                        ])
-                      }
-                      disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
-                    >
-                      <CheckCircle size={16} color="#fff" />
-                      <Text style={styles.actionBtnText}>Approve</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: UI.red }]}
-                      onPress={() =>
-                        Alert.alert('Reject KYC', `Reject KYC for ${userKYC.full_name || userKYC.email}?`, [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Reject', style: 'destructive', onPress: () => rejectAccountMutation.mutate({ userId: userKYC.id }) },
-                        ])
-                      }
-                      disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
-                    >
-                      <XCircle size={16} color="#fff" />
-                      <Text style={styles.actionBtnText}>Reject</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))
+                );
+              })
             ) : (
               <View style={{ paddingVertical: 18 }}>
-                <Text style={styles.emptyText}>No pending KYC documents</Text>
+                <Text style={styles.emptyText}>No users found</Text>
                 <TouchableOpacity style={styles.primaryBtn} onPress={() => kycDocumentsQuery.refetch()}>
                   <Text style={styles.primaryBtnText}>Refresh</Text>
                 </TouchableOpacity>
@@ -1974,8 +1934,7 @@ export default function AdminScreen() {
               (() => {
                 const filtered = transactionsQuery.data.filter((tx: any) => {
                   const userEmail = tx.receiver?.email || '';
-                  const matchesEmail =
-                    txEmailFilter === '' || userEmail.toLowerCase().includes(txEmailFilter.toLowerCase());
+                  const matchesEmail = txEmailFilter === '' || userEmail.toLowerCase().includes(txEmailFilter.toLowerCase());
                   const matchesType = txTypeFilter === 'all' || tx.type === txTypeFilter;
                   const matchesAmount =
                     txAmountFilter === 'all' ||
@@ -2011,12 +1970,7 @@ export default function AdminScreen() {
                           <Text style={styles.cardTitle}>{tx.receiver?.full_name || tx.receiver?.email || 'Unknown User'}</Text>
                           <Text style={styles.cardSubtitle}>{tx.receiver?.email}</Text>
                         </View>
-                        <View
-                          style={[
-                            styles.badge,
-                            tx.amount >= 0 ? { backgroundColor: UI.greenSoft } : { backgroundColor: UI.redSoft },
-                          ]}
-                        >
+                        <View style={[styles.badge, tx.amount >= 0 ? { backgroundColor: UI.greenSoft } : { backgroundColor: UI.redSoft }]}>
                           <Text style={[styles.badgeText, tx.amount >= 0 ? { color: UI.green } : { color: UI.red }]}>
                             {tx.amount >= 0 ? '+' : ''}${tx.amount.toFixed(2)}
                           </Text>
@@ -2134,7 +2088,11 @@ export default function AdminScreen() {
                 }}
                 disabled={addBalanceMutation.isPending}
               >
-                {addBalanceMutation.isPending ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={styles.modalConfirmText}>Add Balance</Text>}
+                {addBalanceMutation.isPending ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Add Balance</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -2142,12 +2100,7 @@ export default function AdminScreen() {
       </Modal>
 
       {/* ---------------- Withdraw Balance Modal ---------------- */}
-      <Modal
-        visible={showWithdrawBalanceModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowWithdrawBalanceModal(false)}
-      >
+      <Modal visible={showWithdrawBalanceModal} transparent animationType="fade" onRequestClose={() => setShowWithdrawBalanceModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Withdraw Balance</Text>
@@ -2186,7 +2139,11 @@ export default function AdminScreen() {
                 }}
                 disabled={withdrawBalanceMutation.isPending}
               >
-                {withdrawBalanceMutation.isPending ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={styles.modalConfirmText}>Withdraw Balance</Text>}
+                {withdrawBalanceMutation.isPending ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Withdraw Balance</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -2233,14 +2190,18 @@ export default function AdminScreen() {
                 }}
                 disabled={updateWaitTimeMutation.isPending}
               >
-                {updateWaitTimeMutation.isPending ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={styles.modalConfirmText}>Update Wait Time</Text>}
+                {updateWaitTimeMutation.isPending ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Update Wait Time</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* ✅ KYC preview modal (shows the image inside app) */}
+      {/* ✅ KYC preview modal */}
       <Modal visible={kycPreviewOpen} transparent animationType="fade" onRequestClose={() => setKycPreviewOpen(false)}>
         <View style={styles.previewOverlay}>
           <View style={styles.previewCard}>
@@ -2266,11 +2227,7 @@ export default function AdminScreen() {
               )}
             </View>
 
-            <TouchableOpacity
-              style={styles.previewOpenBtn}
-              onPress={() => openExternal(kycPreviewUrl)}
-              disabled={!kycPreviewUrl}
-            >
+            <TouchableOpacity style={styles.previewOpenBtn} onPress={() => openExternal(kycPreviewUrl)} disabled={!kycPreviewUrl}>
               <ExternalLink size={16} color="#fff" />
               <Text style={styles.previewOpenBtnText}>Open in Browser</Text>
             </TouchableOpacity>
@@ -2307,7 +2264,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '800' as const,
+    fontWeight: '800',
     color: UI.text,
   },
   headerSub: {
@@ -2327,7 +2284,7 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     color: '#fff',
     fontSize: 13,
-    fontWeight: '700' as const,
+    fontWeight: '700',
   },
 
   menuWrap: {
@@ -2373,7 +2330,7 @@ const styles = StyleSheet.create({
   menuText: {
     flex: 1,
     fontSize: 13,
-    fontWeight: '800' as const,
+    fontWeight: '800',
     color: UI.text,
   },
   menuTextActive: {
@@ -2383,12 +2340,13 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 30,
+    // ✅ IMPORTANT: extra bottom padding so content never hides
+    paddingBottom: 140,
   },
 
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     color: UI.text,
     marginBottom: 10,
   },
@@ -2409,13 +2367,13 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     color: UI.text2,
-    fontWeight: '700' as const,
+    fontWeight: '700',
     marginBottom: 6,
   },
   statValue: {
     fontSize: 24,
     color: UI.text,
-    fontWeight: '900' as const,
+    fontWeight: '900',
   },
 
   totalBalanceCard: {
@@ -2442,12 +2400,12 @@ const styles = StyleSheet.create({
   totalBalanceLabel: {
     fontSize: 12,
     color: UI.text2,
-    fontWeight: '700' as const,
+    fontWeight: '700',
   },
   totalBalanceValue: {
     fontSize: 22,
     color: UI.blue,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     marginTop: 4,
   },
 
@@ -2471,7 +2429,7 @@ const styles = StyleSheet.create({
   },
   quickActionText: {
     fontSize: 14,
-    fontWeight: '800' as const,
+    fontWeight: '800',
     color: UI.text,
   },
 
@@ -2497,7 +2455,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     color: UI.text,
     marginBottom: 4,
   },
@@ -2516,7 +2474,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: '900' as const,
+    fontWeight: '900',
   },
 
   row: {
@@ -2530,21 +2488,21 @@ const styles = StyleSheet.create({
   rowLabel: {
     fontSize: 13,
     color: UI.text2,
-    fontWeight: '700' as const,
+    fontWeight: '700',
   },
   rowValue: {
     fontSize: 13,
     color: UI.text,
-    fontWeight: '800' as const,
+    fontWeight: '800',
     maxWidth: '62%',
-    textAlign: 'right' as const,
+    textAlign: 'right',
   },
   rowValueSmall: {
     fontSize: 12,
     color: UI.blue,
-    fontWeight: '800' as const,
+    fontWeight: '800',
     maxWidth: '62%',
-    textAlign: 'right' as const,
+    textAlign: 'right',
   },
 
   actionButtons: {
@@ -2564,7 +2522,7 @@ const styles = StyleSheet.create({
   actionBtnText: {
     color: '#fff',
     fontSize: 13,
-    fontWeight: '900' as const,
+    fontWeight: '900',
   },
 
   primaryBtn: {
@@ -2581,7 +2539,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     color: '#fff',
-    fontWeight: '900' as const,
+    fontWeight: '900',
   },
 
   smallBtn: {
@@ -2591,7 +2549,7 @@ const styles = StyleSheet.create({
   },
   smallBtnText: {
     color: '#fff',
-    fontWeight: '900' as const,
+    fontWeight: '900',
     fontSize: 13,
   },
 
@@ -2599,7 +2557,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 13,
     color: UI.blue,
-    fontWeight: '800' as const,
+    fontWeight: '800',
   },
 
   timerCard: {
@@ -2617,17 +2575,17 @@ const styles = StyleSheet.create({
   timerTitle: {
     fontSize: 12,
     color: UI.text2,
-    fontWeight: '700' as const,
+    fontWeight: '700',
   },
   timerValue: {
     fontSize: 16,
     color: UI.amber,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     marginTop: 2,
   },
 
   emptyText: {
-    textAlign: 'center' as const,
+    textAlign: 'center',
     color: UI.text2,
     fontSize: 14,
     marginTop: 10,
@@ -2647,14 +2605,14 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 26,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     color: UI.red,
     marginBottom: 10,
   },
   errorSubText: {
     fontSize: 14,
     color: UI.text2,
-    textAlign: 'center' as const,
+    textAlign: 'center',
     marginBottom: 18,
   },
   backButton: {
@@ -2666,22 +2624,21 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '900' as const,
+    fontWeight: '900',
   },
   errorTextSmall: {
-    textAlign: 'center' as const,
+    textAlign: 'center',
     fontSize: 16,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     color: UI.red,
   },
   errorSubTextSmall: {
-    textAlign: 'center' as const,
+    textAlign: 'center',
     fontSize: 13,
     color: UI.text2,
     marginTop: 6,
   },
 
-  // Filters
   filtersCard: {
     backgroundColor: UI.card,
     borderWidth: 1,
@@ -2692,7 +2649,7 @@ const styles = StyleSheet.create({
   },
   filterTitle: {
     fontSize: 15,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     color: UI.text,
     marginBottom: 10,
   },
@@ -2700,7 +2657,7 @@ const styles = StyleSheet.create({
   filterItem: { flex: 1 },
   filterLabel: {
     fontSize: 12,
-    fontWeight: '800' as const,
+    fontWeight: '800',
     color: UI.text2,
     marginBottom: 8,
   },
@@ -2711,7 +2668,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     color: UI.text,
-    fontWeight: '700' as const,
+    fontWeight: '700',
   },
   filterChips: { flexDirection: 'row', gap: 8 },
   filterChip: {
@@ -2729,13 +2686,12 @@ const styles = StyleSheet.create({
   filterChipText: {
     fontSize: 12,
     color: UI.text2,
-    fontWeight: '800' as const,
+    fontWeight: '800',
   },
   filterChipTextActive: {
     color: '#fff',
   },
 
-  // KYC
   kycBlock: {
     marginTop: 14,
     paddingTop: 12,
@@ -2744,7 +2700,7 @@ const styles = StyleSheet.create({
   },
   kycBlockTitle: {
     fontSize: 14,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     color: UI.text,
     marginBottom: 10,
   },
@@ -2765,7 +2721,7 @@ const styles = StyleSheet.create({
   },
   thumbText: {
     fontSize: 12,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     color: UI.blue,
   },
   docLinkButton: {
@@ -2782,10 +2738,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: UI.blue,
-    fontWeight: '800' as const,
+    fontWeight: '800',
   },
 
-  // Modals
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.55)',
@@ -2804,7 +2759,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     color: UI.text,
     marginBottom: 6,
   },
@@ -2822,7 +2777,7 @@ const styles = StyleSheet.create({
     color: UI.text,
     fontSize: 15,
     marginBottom: 12,
-    fontWeight: '700' as const,
+    fontWeight: '700',
   },
   modalButtons: {
     flexDirection: 'row',
@@ -2838,7 +2793,7 @@ const styles = StyleSheet.create({
   },
   modalCancelText: {
     color: '#fff',
-    fontWeight: '900' as const,
+    fontWeight: '900',
   },
   modalConfirmBtn: {
     flex: 1,
@@ -2849,10 +2804,9 @@ const styles = StyleSheet.create({
   },
   modalConfirmText: {
     color: '#fff',
-    fontWeight: '900' as const,
+    fontWeight: '900',
   },
 
-  // Preview modal
   previewOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -2880,7 +2834,7 @@ const styles = StyleSheet.create({
   },
   previewTitle: {
     fontSize: 15,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     color: UI.text,
   },
   previewClose: {
@@ -2910,7 +2864,7 @@ const styles = StyleSheet.create({
   },
   previewOpenBtnText: {
     color: '#fff',
-    fontWeight: '900' as const,
+    fontWeight: '900',
     fontSize: 14,
   },
 });
