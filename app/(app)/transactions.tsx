@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  I18nManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -18,18 +19,19 @@ import i18n from '@/lib/i18n';
 import { Stack, useRouter } from 'expo-router';
 
 const UI = {
-  bg: '#F5F6FA',
+  bg: '#FFFFFF',
   card: '#FFFFFF',
   text: '#111827',
   text2: '#6B7280',
   border: '#E5E7EB',
-  green: '#47B08A',
+  green: '#16A34A',
   greenSoft: '#EAF7F1',
   red: '#EF4444',
 };
 
 interface TransactionData {
   id: string;
+  user_id?: string;
   type: string;
   status: string;
   amount: number;
@@ -38,7 +40,30 @@ interface TransactionData {
   sender_id: string | null;
   receiver_id: string | null;
   balance_after: number | null;
+
+  // ✅ enriched fields (from profiles)
+  sender_name?: string | null;
+  sender_email?: string | null;
+  receiver_name?: string | null;
+  receiver_email?: string | null;
 }
+
+type TxUi = {
+  title: string;
+  subtitleLine1: string;
+  subtitleLine2?: string;
+  iconName: keyof typeof Ionicons.glyphMap;
+  isOutgoing: boolean;
+  kind: 'send' | 'receive' | 'deposit' | 'withdraw' | 'purchase' | 'virtual_card' | 'other';
+};
+
+const safe = (v?: string | null) => (v && String(v).trim().length ? String(v).trim() : null);
+
+const isProbablyAdminLabel = (text?: string | null) => {
+  if (!text) return false;
+  const t = text.toLowerCase();
+  return t.includes('admin') || t.includes('agent') || t.includes('zanopay');
+};
 
 export default function TransactionsScreen() {
   // ✅ hide default header (removes dark-blue top bar)
@@ -49,16 +74,20 @@ export default function TransactionsScreen() {
   const { user } = useAuth();
   const { theme } = useTheme(); // keep theme (not used for colors)
 
+  const isRTL = I18nManager.isRTL;
+
   const transactionsQuery = useQuery({
     queryKey: ['transactions', user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error('User ID not found');
 
+      // 1) fetch transactions
       const { data, error } = await supabase
         .from('transactions')
         .select(
           `
           id,
+          user_id,
           type,
           status,
           amount,
@@ -77,60 +106,60 @@ export default function TransactionsScreen() {
         throw new Error('Failed to fetch transactions');
       }
 
-      return (data || []) as TransactionData[];
+      const txs = (data || []) as TransactionData[];
+
+      // 2) collect profile ids (sender/receiver)
+      const ids = Array.from(
+        new Set(
+          txs
+            .flatMap((t) => [t.sender_id, t.receiver_id])
+            .filter((x): x is string => !!x)
+        )
+      );
+
+      if (!ids.length) return txs;
+
+      // 3) fetch profiles once (id, full_name, email)
+      const { data: profiles, error: pErr } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', ids);
+
+      if (pErr) {
+        // don’t fail the page if profiles fetch fails
+        console.log('Profiles fetch error:', JSON.stringify(pErr));
+        return txs;
+      }
+
+      const map = new Map<string, { full_name: string | null; email: string | null }>();
+      (profiles || []).forEach((p: any) => {
+        map.set(String(p.id), {
+          full_name: safe(p.full_name),
+          email: safe(p.email),
+        });
+      });
+
+      // 4) enrich each tx
+      return txs.map((t) => {
+        const s = t.sender_id ? map.get(t.sender_id) : null;
+        const r = t.receiver_id ? map.get(t.receiver_id) : null;
+        return {
+          ...t,
+          sender_name: s?.full_name ?? null,
+          sender_email: s?.email ?? null,
+          receiver_name: r?.full_name ?? null,
+          receiver_email: r?.email ?? null,
+        };
+      });
     },
     enabled: !!user?.id,
     staleTime: 0,
     gcTime: 0,
   });
 
-  const getTransactionInfo = (
-    tx: TransactionData
-  ): { title: string; subtitle: string; isOutgoing: boolean } => {
-    const isOutgoing = tx.sender_id === user?.id;
-    const txType = tx.type;
-
-    if (txType === 'send' || txType === 'receive') {
-      return {
-        title: isOutgoing ? i18n.t('sent') : i18n.t('received'),
-        subtitle: tx.description || (isOutgoing ? i18n.t('moneyTransfer') : i18n.t('moneyReceived')),
-        isOutgoing,
-      };
-    }
-
-    if (txType === 'deposit') {
-      return {
-        title: i18n.t('deposit'),
-        subtitle: tx.description || 'Admin Top-up',
-        isOutgoing: false,
-      };
-    }
-
-    if (txType === 'purchase_mobile') {
-      return {
-        title: i18n.t('mobilePurchase'),
-        subtitle: tx.description || 'Mobile Shop',
-        isOutgoing: true,
-      };
-    }
-
-    if (txType === 'purchase_card' || txType === 'purchase_giftcard') {
-      return {
-        title: i18n.t('cardPurchase'),
-        subtitle: tx.description || 'Gift Card',
-        isOutgoing: true,
-      };
-    }
-
-    return {
-      title: String(txType).charAt(0).toUpperCase() + String(txType).slice(1),
-      subtitle: tx.description || 'Transaction',
-      isOutgoing: tx.amount < 0,
-    };
-  };
-
   const formatDateTime = (dateStr: string): string => {
     const date = new Date(dateStr);
+    // keep consistent formatting
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -140,6 +169,127 @@ export default function TransactionsScreen() {
     });
   };
 
+  const getTxUi = useCallback(
+    (tx: TransactionData): TxUi => {
+      const myId = user?.id || '';
+      const isOutgoingBySender = tx.sender_id === myId;
+      const absAmount = Math.abs(Number(tx.amount || 0));
+
+      const type = String(tx.type || '').toLowerCase();
+      const desc = safe(tx.description);
+
+      const senderName = safe(tx.sender_name) || i18n.t('unknownUser');
+      const receiverName = safe(tx.receiver_name) || i18n.t('unknownUser');
+      const senderEmail = safe(tx.sender_email);
+      const receiverEmail = safe(tx.receiver_email);
+
+      // ✅ virtual card created (when user buys/creates $25 card)
+      // Accept multiple possible types so it works with your DB without breaking:
+      const isVirtualCard =
+        type === 'virtual_card_create' ||
+        type === 'create_virtual_card' ||
+        type === 'virtual_card' ||
+        type === 'purchase_virtual_card' ||
+        (type === 'purchase_card' && (desc?.toLowerCase().includes('virtual') || false)) ||
+        (desc?.toLowerCase().includes('virtual card') || false) ||
+        (desc?.toLowerCase().includes('card create') || false);
+
+      if (isVirtualCard) {
+        return {
+          title: i18n.t('virtualCardCreated'),
+          subtitleLine1: i18n.t('virtualCardCreation'),
+          subtitleLine2: i18n.t('virtualCardInternalNotice'),
+          iconName: 'card-outline',
+          isOutgoing: true,
+          kind: 'virtual_card',
+        };
+      }
+
+      // ✅ send/receive money
+      if (type === 'send' || type === 'receive' || type === 'transfer') {
+        const isOutgoing = isOutgoingBySender || tx.amount < 0;
+
+        if (isOutgoing) {
+          // Sent -> show who you sent to
+          return {
+            title: i18n.t('sent'),
+            subtitleLine1: `${i18n.t('to')}: ${receiverName}`,
+            subtitleLine2: receiverEmail ? receiverEmail : undefined,
+            iconName: 'arrow-up-outline',
+            isOutgoing: true,
+            kind: 'send',
+          };
+        }
+
+        // Received -> show who you received from
+        return {
+          title: i18n.t('received'),
+          subtitleLine1: `${i18n.t('from')}: ${senderName}`,
+          subtitleLine2: senderEmail ? senderEmail : undefined,
+          iconName: 'arrow-down-outline',
+          isOutgoing: false,
+          kind: 'receive',
+        };
+      }
+
+      // ✅ admin top-up / deposit
+      if (type === 'deposit' || type === 'admin_add' || type === 'topup' || type === 'top_up') {
+        return {
+          title: i18n.t('deposit'),
+          subtitleLine1: desc || i18n.t('adminTopUp'),
+          subtitleLine2: undefined,
+          iconName: 'download-outline',
+          isOutgoing: false,
+          kind: 'deposit',
+        };
+      }
+
+      // ✅ withdraw by agent/admin
+      if (type === 'withdraw' || type === 'admin_withdraw' || type === 'agent_withdraw') {
+        const label = desc && isProbablyAdminLabel(desc) ? desc : i18n.t('zanopayAgentWithdraw');
+        return {
+          title: i18n.t('withdraw'),
+          subtitleLine1: label,
+          subtitleLine2: undefined,
+          iconName: 'cash-outline',
+          isOutgoing: true,
+          kind: 'withdraw',
+        };
+      }
+
+      // ✅ card / giftcard / mobile purchase
+      if (type === 'purchase_mobile') {
+        return {
+          title: i18n.t('mobilePurchase'),
+          subtitleLine1: desc || i18n.t('mobileShop'),
+          iconName: 'phone-portrait-outline',
+          isOutgoing: true,
+          kind: 'purchase',
+        };
+      }
+
+      if (type === 'purchase_card' || type === 'purchase_giftcard') {
+        return {
+          title: i18n.t('cardPurchase'),
+          subtitleLine1: desc || i18n.t('cardPurchaseSubtitle'),
+          iconName: 'pricetag-outline',
+          isOutgoing: true,
+          kind: 'purchase',
+        };
+      }
+
+      // fallback
+      return {
+        title: String(tx.type || '').charAt(0).toUpperCase() + String(tx.type || '').slice(1),
+        subtitleLine1: desc || i18n.t('transaction'),
+        iconName: tx.amount < 0 ? 'arrow-up-outline' : 'arrow-down-outline',
+        isOutgoing: tx.amount < 0,
+        kind: 'other',
+      };
+    },
+    [user?.id]
+  );
+
   const { refetch, isRefetching } = transactionsQuery;
 
   const onRefresh = useCallback(async () => {
@@ -147,43 +297,67 @@ export default function TransactionsScreen() {
   }, [refetch]);
 
   const renderTransaction = ({ item }: { item: TransactionData }) => {
-    const { title, subtitle, isOutgoing } = getTransactionInfo(item);
-    const status = item.status || 'completed';
-    const displayAmount = Math.abs(item.amount);
+    const ui = getTxUi(item);
+
+    const status = String(item.status || 'completed').toLowerCase();
+    const abs = Math.abs(Number(item.amount || 0));
 
     const statusBg =
-      status === 'completed' ? 'rgba(71,176,138,0.12)' : status === 'pending' ? '#FEF3C7' : '#FEE2E2';
+      status === 'completed'
+        ? 'rgba(22,163,74,0.12)'
+        : status === 'pending'
+        ? '#FEF3C7'
+        : '#FEE2E2';
+
     const statusColor =
       status === 'completed' ? UI.green : status === 'pending' ? '#F59E0B' : UI.red;
 
+    const amountColor = ui.isOutgoing ? UI.red : UI.green;
+
+    // ✅ amount sign and placement
+    const sign = ui.isOutgoing ? '-' : '+';
+    const amountText = `${sign}$${abs.toFixed(2)}`;
+
     return (
-      <View style={styles.card}>
-        <View style={styles.cardLeft}>
+      <View style={[styles.card, isRTL && styles.cardRTL]}>
+        <View style={[styles.cardLeft, isRTL && styles.cardLeftRTL]}>
           <View
             style={[
               styles.iconContainer,
-              { backgroundColor: isOutgoing ? '#FEE2E2' : 'rgba(71,176,138,0.14)' },
+              { backgroundColor: ui.isOutgoing ? '#FEE2E2' : 'rgba(22,163,74,0.14)' },
             ]}
           >
-            <Ionicons
-              name={isOutgoing ? 'arrow-up' : 'arrow-down'}
-              size={20}
-              color={isOutgoing ? UI.red : UI.green}
-            />
+            <Ionicons name={ui.iconName} size={20} color={ui.isOutgoing ? UI.red : UI.green} />
           </View>
 
-          <View style={styles.cardDetails}>
-            <Text style={styles.cardTitle}>{title}</Text>
-            <Text style={styles.cardSubtitle} numberOfLines={1}>
-              {subtitle}
+          <View style={[styles.cardDetails, isRTL && styles.cardDetailsRTL]}>
+            <Text style={[styles.cardTitle, isRTL && styles.textRTL]} numberOfLines={1}>
+              {ui.title}
             </Text>
-            <Text style={styles.cardDate}>{formatDateTime(item.created_at)}</Text>
+
+            <Text style={[styles.cardSubtitle, isRTL && styles.textRTL]} numberOfLines={1}>
+              {ui.subtitleLine1}
+            </Text>
+
+            {!!ui.subtitleLine2 && (
+              <Text style={[styles.cardSubSubtitle, isRTL && styles.textRTL]} numberOfLines={1}>
+                {ui.subtitleLine2}
+              </Text>
+            )}
+
+            <Text style={[styles.cardDate, isRTL && styles.textRTL]}>{formatDateTime(item.created_at)}</Text>
           </View>
         </View>
 
-        <View style={styles.cardRight}>
-          <Text style={[styles.cardAmount, { color: isOutgoing ? UI.red : UI.green }]}>
-            {isOutgoing ? '-' : '+'}${displayAmount.toFixed(2)}
+        <View style={[styles.cardRight, isRTL && styles.cardRightRTL]}>
+          <Text
+            style={[
+              styles.cardAmount,
+              { color: amountColor },
+              isRTL && styles.amountRTL, // amount goes to left in RTL
+            ]}
+          >
+            {amountText}
           </Text>
 
           <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
@@ -214,13 +388,13 @@ export default function TransactionsScreen() {
         <Stack.Screen options={{ headerShown: false }} />
 
         {/* Custom header */}
-        <View style={styles.header}>
+        <View style={[styles.header, isRTL && styles.headerRTL]}>
           <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
-            <Ionicons name="chevron-back" size={22} color={UI.text} />
-            <Text style={styles.headerBack}>{i18n.t('back')}</Text>
+            <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
+            <Text style={[styles.headerBack, isRTL && styles.textRTL]}>{i18n.t('back')}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>{i18n.t('transactions')}</Text>
+          <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{i18n.t('transactions')}</Text>
           <View style={{ width: 70 }} />
         </View>
 
@@ -250,18 +424,15 @@ export default function TransactionsScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderTransaction}
         contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={UI.green} colors={[UI.green]} />
-        }
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={UI.green} colors={[UI.green]} />}
         ListHeaderComponent={
-          // ✅ Custom header (only one)
-          <View style={styles.header}>
+          <View style={[styles.header, isRTL && styles.headerRTL]}>
             <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
-              <Ionicons name="chevron-back" size={22} color={UI.text} />
-              <Text style={styles.headerBack}>{i18n.t('back')}</Text>
+              <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
+              <Text style={[styles.headerBack, isRTL && styles.textRTL]}>{i18n.t('back')}</Text>
             </TouchableOpacity>
 
-            <Text style={styles.headerTitle}>{i18n.t('transactions')}</Text>
+            <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{i18n.t('transactions')}</Text>
 
             <View style={{ width: 70 }} />
           </View>
@@ -292,6 +463,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: UI.bg,
+  },
+  headerRTL: {
+    flexDirection: 'row-reverse',
   },
   headerBtn: {
     flexDirection: 'row',
@@ -314,32 +489,52 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
 
+  // Card
   card: {
     marginHorizontal: 16,
     marginBottom: 12,
     backgroundColor: UI.card,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 14,
     borderWidth: 1,
     borderColor: UI.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+
+    // subtle depth
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
+  cardRTL: {
+    flexDirection: 'row-reverse',
+  },
+
   cardLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
+  cardLeftRTL: {
+    flexDirection: 'row-reverse',
+  },
+
   iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 46,
+    height: 46,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
+
   cardDetails: { flex: 1 },
+  cardDetailsRTL: {
+    alignItems: 'flex-end',
+  },
 
   cardTitle: {
     fontSize: 15,
@@ -348,21 +543,32 @@ const styles = StyleSheet.create({
   },
   cardSubtitle: {
     fontSize: 13,
+    fontWeight: '800',
+    color: UI.text2,
+    marginTop: 4,
+  },
+  cardSubSubtitle: {
+    fontSize: 12,
     fontWeight: '700',
     color: UI.text2,
-    marginTop: 3,
+    marginTop: 2,
   },
   cardDate: {
     fontSize: 12,
     fontWeight: '700',
     color: UI.text2,
-    marginTop: 5,
+    marginTop: 6,
   },
 
-  cardRight: { alignItems: 'flex-end' },
+  cardRight: { alignItems: 'flex-end', marginLeft: 10 },
+  cardRightRTL: { alignItems: 'flex-start', marginLeft: 0, marginRight: 10 },
+
   cardAmount: {
     fontSize: 16,
     fontWeight: '900',
+  },
+  amountRTL: {
+    textAlign: 'left',
   },
 
   statusBadge: {
@@ -465,5 +671,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '900',
+  },
+
+  // RTL helpers
+  textRTL: {
+    textAlign: 'right',
   },
 });
