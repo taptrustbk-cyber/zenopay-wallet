@@ -18,32 +18,22 @@ import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 import { Wallet } from '@/lib/types';
 
-const UI = {
-  bg: '#F5F6FA',
-  card: '#FFFFFF',
-  text: '#111827',
-  text2: '#6B7280',
-  border: '#E5E7EB',
-  green: '#47B08A',
-  greenSoft: '#EAF7F1',
-  blueBanner: '#1E66D0',
-  iconGray: '#6B7280',
-};
-
 const ActionCircle = ({
   icon,
   label,
   onPress,
+  ui,
 }: {
   icon: any;
   label: string;
   onPress: () => void;
+  ui: any;
 }) => (
   <TouchableOpacity style={styles.quickItem} onPress={onPress} activeOpacity={0.85}>
-    <View style={styles.quickIconCircle}>
-      <Ionicons name={icon} size={22} color={UI.green} />
+    <View style={[styles.quickIconCircle, { backgroundColor: ui.greenSoft }]}>
+      <Ionicons name={icon} size={22} color={ui.green} />
     </View>
-    <Text style={styles.quickLabel}>{label}</Text>
+    <Text style={[styles.quickLabel, { color: ui.text }]}>{label}</Text>
   </TouchableOpacity>
 );
 
@@ -52,22 +42,42 @@ const NavItem = ({
   label,
   active,
   onPress,
+  ui,
 }: {
   icon: any;
   label: string;
   active?: boolean;
   onPress: () => void;
+  ui: any;
 }) => (
   <TouchableOpacity style={styles.navItem} onPress={onPress} activeOpacity={0.85}>
-    <Ionicons name={icon} size={22} color={active ? UI.green : '#9CA3AF'} />
-    <Text style={[styles.navText, active && { color: UI.green }]}>{label}</Text>
+    <Ionicons name={icon} size={22} color={active ? ui.green : '#9CA3AF'} />
+    <Text style={[styles.navText, active && { color: ui.green }]}>{label}</Text>
   </TouchableOpacity>
 );
 
 export default function DashboardScreen() {
   const router = useRouter();
   const { user, profile, hardRefresh } = useAuth();
-  const { theme } = useTheme(); // keep your theme (not breaking)
+  const { theme, themeMode } = useTheme();
+
+  // ✅ UI now depends on theme (auto dark/light)
+  const UI = React.useMemo(
+    () => ({
+      bg: theme.colors.background,
+      card: theme.colors.card,
+      text: theme.colors.text,
+      text2: theme.colors.textSecondary,
+      border: theme.colors.border,
+      green: theme.colors.green ?? theme.colors.primary,
+      greenSoft: theme.colors.greenSoft ?? theme.colors.cardSecondary,
+      blueBanner: themeMode === 'dark' ? '#1B4E9A' : '#1E66D0', // keep same style, a bit softer in dark
+      iconGray: theme.colors.textSecondary,
+      inputBg: theme.colors.inputBg ?? theme.colors.cardSecondary,
+    }),
+    [theme, themeMode]
+  );
+
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isBalanceHidden, setIsBalanceHidden] = React.useState(false);
 
@@ -173,14 +183,19 @@ export default function DashboardScreen() {
             onPress={() => router.push('/(app)/profile' as any)}
           >
             {avatarPreview ? (
-              <Image source={{ uri: avatarPreview }} style={styles.profileAvatar} />
+              <Image source={{ uri: avatarPreview }} style={[styles.profileAvatar, { backgroundColor: UI.card }]} />
             ) : (
-              <View style={styles.profileAvatarFallback}>
+              <View
+                style={[
+                  styles.profileAvatarFallback,
+                  { backgroundColor: UI.greenSoft, borderColor: UI.border },
+                ]}
+              >
                 <Ionicons name="person" size={20} color={UI.green} />
               </View>
             )}
 
-            <Text style={styles.profileName} numberOfLines={1}>
+            <Text style={[styles.profileName, { color: UI.text }]} numberOfLines={1}>
               {fullName || ''}
             </Text>
           </TouchableOpacity>
@@ -190,7 +205,7 @@ export default function DashboardScreen() {
         </View>
 
         {/* Balance green card */}
-        <View style={styles.balanceCard}>
+        <View style={[styles.balanceCard, { backgroundColor: UI.green }]}>
           <View style={styles.balanceTopRow}>
             <Text style={styles.balanceTitle}>{i18n.t('accountBalance')}</Text>
 
@@ -239,18 +254,21 @@ export default function DashboardScreen() {
 
         {/* 4 round action buttons row */}
         <View style={styles.quickRow}>
-          <ActionCircle icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
+          <ActionCircle ui={UI} icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
           <ActionCircle
+            ui={UI}
             icon="cash"
             label={i18n.t('withdraw')}
             onPress={() => router.push('/(app)/withdraw' as any)}
           />
           <ActionCircle
+            ui={UI}
             icon="download"
             label={i18n.t('deposit')}
             onPress={() => router.push('/(app)/receive' as any)}
           />
           <ActionCircle
+            ui={UI}
             icon="receipt"
             label={i18n.t('transactions')}
             onPress={() => router.push('/(app)/transactions' as any)}
@@ -258,7 +276,7 @@ export default function DashboardScreen() {
         </View>
 
         {/* Ramadan offer banner */}
-        <View style={styles.banner}>
+        <View style={[styles.banner, { backgroundColor: UI.blueBanner }]}>
           <View style={styles.bannerRow}>
             <View style={styles.bannerIcons}>
               <View style={styles.bannerIconCircle}>
@@ -277,55 +295,67 @@ export default function DashboardScreen() {
         </View>
 
         {/* Market Shop section */}
-        <View style={styles.marketLightCard}>
+        <View style={[styles.marketLightCard, { backgroundColor: UI.card, borderColor: UI.border }]}>
           <View style={styles.marketHeader}>
-            <Text style={styles.marketTitle}>{i18n.t('marketShop')}</Text>
-            <Text style={styles.marketSub}>{i18n.t('marketShopSubtitle')}</Text>
+            <Text style={[styles.marketTitle, { color: UI.text }]}>{i18n.t('marketShop')}</Text>
+            <Text style={[styles.marketSub, { color: UI.text2 }]}>{i18n.t('marketShopSubtitle')}</Text>
           </View>
 
           <View style={styles.marketMiniGrid}>
             <TouchableOpacity
-              style={styles.marketMiniItem}
+              style={[
+                styles.marketMiniItem,
+                { backgroundColor: UI.inputBg, borderColor: UI.border },
+              ]}
               onPress={() => router.push('/(app)/sim-cards' as any)}
               activeOpacity={0.85}
             >
-              <View style={styles.marketMiniIcon}>
+              <View style={[styles.marketMiniIcon, { backgroundColor: UI.greenSoft }]}>
                 <Ionicons name="card" size={22} color={UI.green} />
               </View>
-              <Text style={styles.marketMiniLabel}>{i18n.t('market.topup')}</Text>
+              <Text style={[styles.marketMiniLabel, { color: UI.text }]}>{i18n.t('market.topup')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.marketMiniItem}
+              style={[
+                styles.marketMiniItem,
+                { backgroundColor: UI.inputBg, borderColor: UI.border },
+              ]}
               onPress={() => router.push('/(app)/gift-cards' as any)}
               activeOpacity={0.85}
             >
-              <View style={styles.marketMiniIcon}>
+              <View style={[styles.marketMiniIcon, { backgroundColor: UI.greenSoft }]}>
                 <Ionicons name="gift" size={22} color={UI.green} />
               </View>
-              <Text style={styles.marketMiniLabel}>{i18n.t('market.gift')}</Text>
+              <Text style={[styles.marketMiniLabel, { color: UI.text }]}>{i18n.t('market.gift')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.marketMiniItem}
+              style={[
+                styles.marketMiniItem,
+                { backgroundColor: UI.inputBg, borderColor: UI.border },
+              ]}
               onPress={() => router.push('/(app)/mobile-shop' as any)}
               activeOpacity={0.85}
             >
-              <View style={styles.marketMiniIcon}>
+              <View style={[styles.marketMiniIcon, { backgroundColor: UI.greenSoft }]}>
                 <Ionicons name="phone-portrait" size={22} color={UI.green} />
               </View>
-              <Text style={styles.marketMiniLabel}>{i18n.t('market.mobile')}</Text>
+              <Text style={[styles.marketMiniLabel, { color: UI.text }]}>{i18n.t('market.mobile')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.marketMiniItem}
+              style={[
+                styles.marketMiniItem,
+                { backgroundColor: UI.inputBg, borderColor: UI.border },
+              ]}
               onPress={() => router.push('/(app)/travel-booking' as any)}
               activeOpacity={0.85}
             >
-              <View style={styles.marketMiniIcon}>
+              <View style={[styles.marketMiniIcon, { backgroundColor: UI.greenSoft }]}>
                 <Ionicons name="airplane" size={22} color={UI.green} />
               </View>
-              <Text style={styles.marketMiniLabel}>{i18n.t('market.travel')}</Text>
+              <Text style={[styles.marketMiniLabel, { color: UI.text }]}>{i18n.t('market.travel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -335,17 +365,18 @@ export default function DashboardScreen() {
 
       {/* Bottom nav */}
       <View style={[styles.bottomNav, { borderColor: UI.border, backgroundColor: UI.card }]}>
-        <NavItem icon="home" label={i18n.t('home')} active onPress={() => {}} />
+        <NavItem ui={UI} icon="home" label={i18n.t('home')} active onPress={() => {}} />
 
         {/* ✅ replaced Send with Cards */}
-        <NavItem icon="card" label={i18n.t('Cards')} onPress={() => router.push('/(app)/Cards' as any)} />
+        <NavItem ui={UI} icon="card" label={i18n.t('Cards')} onPress={() => router.push('/(app)/Cards' as any)} />
 
         <NavItem
+          ui={UI}
           icon="chatbox"
           label={i18n.t('consulateInfo')}
           onPress={() => router.push('/(app)/consulate' as any)}
         />
-        <NavItem icon="settings" label={i18n.t('settings')} onPress={() => router.push('/(app)/settings' as any)} />
+        <NavItem ui={UI} icon="settings" label={i18n.t('settings')} onPress={() => router.push('/(app)/settings' as any)} />
       </View>
     </View>
   );
@@ -373,22 +404,18 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: '#fff',
   },
   profileAvatarFallback: {
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: UI.greenSoft,
     borderWidth: 1,
-    borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   profileName: {
     fontSize: 16,
     fontWeight: '900',
-    color: UI.text,
   },
 
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -407,7 +434,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderRadius: 18,
     padding: 16,
-    backgroundColor: UI.green,
   },
   balanceTopRow: {
     flexDirection: 'row',
@@ -451,20 +477,19 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   quickItem: { alignItems: 'center', width: '23%' },
+
   quickIconCircle: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: UI.greenSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quickLabel: { marginTop: 8, fontSize: 13, fontWeight: '800', color: UI.text, textAlign: 'center' },
+  quickLabel: { marginTop: 8, fontSize: 13, fontWeight: '800', textAlign: 'center' },
 
   banner: {
     marginHorizontal: 16,
     marginTop: 16,
-    backgroundColor: UI.blueBanner,
     borderRadius: 16,
     padding: 16,
   },
@@ -491,23 +516,19 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
     borderRadius: 18,
-    backgroundColor: UI.card,
     padding: 16,
     borderWidth: 1,
-    borderColor: UI.border,
   },
   marketHeader: { marginBottom: 12 },
-  marketTitle: { fontSize: 19, fontWeight: '900', color: UI.text },
-  marketSub: { marginTop: 6, color: UI.text2, fontSize: 14, fontWeight: '700', lineHeight: 19 },
+  marketTitle: { fontSize: 19, fontWeight: '900' },
+  marketSub: { marginTop: 6, fontSize: 14, fontWeight: '700', lineHeight: 19 },
 
   marketMiniGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
   marketMiniItem: {
     width: '48%',
     borderRadius: 14,
     padding: 14,
-    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: UI.border,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -516,11 +537,10 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: UI.greenSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  marketMiniLabel: { color: UI.text, fontSize: 14, fontWeight: '800', flex: 1 },
+  marketMiniLabel: { fontSize: 14, fontWeight: '800', flex: 1 },
 
   errorContainer: { alignItems: 'center', paddingVertical: 20, gap: 10 },
   errorTextLight: { color: '#fff', textAlign: 'center', fontWeight: '800', fontSize: 14 },
