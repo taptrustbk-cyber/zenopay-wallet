@@ -5,6 +5,7 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
 import i18n from '@/lib/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Linking from 'expo-linking';
 
 // ✅ remove default header
 export const options = { headerShown: false };
@@ -77,20 +78,20 @@ export default function EmailVerificationScreen() {
     if (redirectedRef.current) return;
     redirectedRef.current = true;
 
+    // ✅ IMPORTANT: (auth) group is not in URL → login route is "/login" not "/auth/login"
     router.replace({
-      pathname: '/auth/login' as any,
+      pathname: '/login' as any,
       params: { created: '1' },
     } as any);
   }
 
   /**
-   * ✅ New correct behavior:
-   * Email verification happens by clicking the link → it opens /auth/confirm.
-   * Confirm screen sets the session + saves profile + redirects to login.
+   * ✅ This screen:
+   * - resend / check
+   * - if user already has session and confirmed, redirect to login
    *
-   * This screen only:
-   * - helps the user resend / check status
-   * - if user somehow already has session and confirmed, redirect to login
+   * Confirm flow:
+   * email link opens /confirm -> that screen sets session, saves profile, then redirects to /login
    */
   async function checkIfVerifiedWithSession() {
     const { data } = await supabase.auth.getSession();
@@ -112,13 +113,12 @@ export default function EmailVerificationScreen() {
         if (ok) {
           setVerified(true);
 
-          // pending profile will be saved by /auth/confirm, but if user is verified already,
-          // we can clean pending data to avoid keeping it
           await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
 
           await sleep(700);
-          await supabase.auth.signOut();
+          await supabase.auth.signOut(); // keep your old behavior
           if (!mounted) return;
+
           await sleep(200);
           await goToLoginWithSuccess();
         }
@@ -142,9 +142,11 @@ export default function EmailVerificationScreen() {
         if (session?.user?.email_confirmed_at && !verified) {
           setVerified(true);
           await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
+
           await sleep(700);
           await supabase.auth.signOut();
           if (!mounted) return;
+
           await sleep(200);
           await goToLoginWithSuccess();
         }
@@ -166,9 +168,11 @@ export default function EmailVerificationScreen() {
       if (ok) {
         setVerified(true);
         await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
+
         await sleep(700);
         await supabase.auth.signOut();
         await sleep(200);
+
         await goToLoginWithSuccess();
       } else {
         Alert.alert(i18n.t('emailNotVerifiedYet'), i18n.t('pleaseConfirmEmail'), [{ text: 'OK' }]);
@@ -192,12 +196,13 @@ export default function EmailVerificationScreen() {
         return;
       }
 
+      // ✅ IMPORTANT: confirm route is "/confirm" (group not in URL)
+      const emailRedirectTo = Linking.createURL('confirm'); // zenopay://confirm
+
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: emailToUse,
-        options: {
-          emailRedirectTo: 'zenopay://confirm',
-        },
+        options: { emailRedirectTo },
       });
 
       if (error) throw error;
@@ -243,7 +248,7 @@ export default function EmailVerificationScreen() {
               <Text style={styles.infoText}>• {i18n.t('checkEmailInbox')}</Text>
               <Text style={styles.infoText}>• {i18n.t('checkSpamFolder')}</Text>
               <Text style={styles.infoText}>• {i18n.t('autoCheckingStatus')}</Text>
-              <Text style={styles.infoText}>• {i18n.t('afterConfirmOpenApp') || 'After clicking confirm, Zenopay will open automatically.'}</Text>
+              <Text style={styles.infoText}>• {i18n.t('afterConfirmOpenApp')}</Text>
             </View>
           ) : (
             <View style={styles.successBox}>
@@ -290,7 +295,8 @@ export default function EmailVerificationScreen() {
                 style={styles.backButton}
                 onPress={async () => {
                   await supabase.auth.signOut();
-                  router.replace('/auth/login' as any);
+                  // ✅ IMPORTANT: login route is "/login" not "/auth/login"
+                  router.replace('/login' as any);
                 }}
                 activeOpacity={0.9}
               >
@@ -299,15 +305,13 @@ export default function EmailVerificationScreen() {
 
               <Text style={styles.hintText}>
                 {Platform.OS === 'ios' || Platform.OS === 'android'
-                  ? i18n.t('openEmailAppHint') || 'After clicking confirm in your email, the app will open automatically.'
-                  : i18n.t('openEmailWebHint') || 'Click the confirm link in your email, then return to the app.'}
+                  ? i18n.t('openEmailAppHint')
+                  : i18n.t('openEmailWebHint')}
               </Text>
             </>
           ) : (
             <TouchableOpacity style={styles.primaryButton} onPress={goToLoginWithSuccess} activeOpacity={0.9}>
-              <Text style={styles.primaryButtonText}>
-                {i18n.t('continueToLogin') || 'Continue to login'}
-              </Text>
+              <Text style={styles.primaryButtonText}>{i18n.t('continueToLogin') || 'Continue to login'}</Text>
             </TouchableOpacity>
           )}
         </View>
