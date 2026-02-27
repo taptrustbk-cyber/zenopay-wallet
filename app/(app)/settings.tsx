@@ -28,15 +28,12 @@ const LANGUAGES = [
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const { theme, themeMode, toggleTheme, setTheme } = useTheme(); // ✅ added setTheme (no other changes)
+  const { theme } = useTheme(); // keep for logout color (error)
   const [showLanguages, setShowLanguages] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [, forceUpdate] = useState({});
   const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
-
-  // ✅ prevent double-tap flicker
-  const [togglingTheme, setTogglingTheme] = useState(false);
 
   useEffect(() => {
     setSelectedLanguage(getCurrentLanguage());
@@ -110,24 +107,6 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('Error opening URL:', error);
       Alert.alert('Error', 'Failed to open link');
-    }
-  };
-
-  // ✅ FIX: stable theme toggle (no auto revert / flicker)
-  const handleToggleTheme = async () => {
-    if (togglingTheme) return;
-    setTogglingTheme(true);
-    try {
-      // Use explicit setTheme to avoid any race conditions in UI
-      const next = themeMode === 'dark' ? 'light' : 'dark';
-      if (typeof setTheme === 'function') {
-        await setTheme(next);
-      } else {
-        // fallback if setTheme not available for any reason
-        await toggleTheme();
-      }
-    } finally {
-      setTogglingTheme(false);
     }
   };
 
@@ -245,21 +224,7 @@ export default function SettingsScreen() {
           <Ionicons name="chevron-forward" size={20} color={UI.text2} />
         </TouchableOpacity>
 
-        {/* ✅ ONLY UPDATED THIS ITEM (Dark Mode) */}
-        <TouchableOpacity
-          style={[styles.menuItem, { backgroundColor: UI.card, borderColor: UI.border }]}
-          onPress={handleToggleTheme}
-          activeOpacity={0.9}
-          disabled={togglingTheme}
-        >
-          <View style={[styles.menuIconContainer, { backgroundColor: UI.greenSoft }]}>
-            <Ionicons name={themeMode === 'dark' ? 'moon' : 'sunny'} size={22} color={UI.green} />
-          </View>
-          <Text style={[styles.menuText, { color: UI.text }]}>
-            {themeMode === 'dark' ? i18n.t('darkMode') : i18n.t('lightMode')}
-          </Text>
-          <Ionicons name="chevron-forward" size={20} color={UI.text2} />
-        </TouchableOpacity>
+        {/* ✅ Dark Mode button removed */}
 
         <TouchableOpacity
           style={[styles.menuItem, { backgroundColor: UI.card, borderColor: UI.border }]}
