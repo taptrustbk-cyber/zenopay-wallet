@@ -11,7 +11,6 @@ import {
   Modal,
   Linking,
   Image,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,20 +29,16 @@ import {
   Home,
   X,
   ShieldCheck,
-  Users,
   Wallet,
   ArrowDownToLine,
   ArrowUpFromLine,
   PlusCircle,
   MinusCircle,
-  Package,
-  ShoppingBag,
-  BarChart3,
   ReceiptText,
   Image as ImageIcon,
   Search,
+  BarChart3,
 } from 'lucide-react-native';
-import { trpc } from '@/lib/trpc';
 
 // ✅ IMPORTANT: remove the default (dark blue) navigation header
 export const options = { headerShown: false };
@@ -75,16 +70,12 @@ const UI = {
 type TabKey =
   | 'dashboard'
   | 'account_approval'
-  | 'waiting_users'
   | 'deposits'
   | 'withdrawals'
   | 'add_balance'
   | 'withdraw_balance'
   | 'kyc_documents'
-  | 'user_documents' // ✅ NEW
-  | 'products'
-  | 'orders'
-  | 'market_analytics'
+  | 'user_documents'
   | 'transactions';
 
 type KycKind = 'id_front' | 'id_back' | 'selfie';
@@ -95,14 +86,14 @@ export default function AdminScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // ✅ default open to KYC Documents (as you requested: new users appear here)
+  // ✅ default open to KYC Documents
   const [selectedTab, setSelectedTab] = useState<TabKey>('kyc_documents');
 
   const [txEmailFilter, setTxEmailFilter] = useState('');
   const [txTypeFilter, setTxTypeFilter] = useState('all');
   const [txAmountFilter, setTxAmountFilter] = useState('all');
 
-  // ✅ NEW: search for user documents tab
+  // ✅ search for user documents tab
   const [docSearch, setDocSearch] = useState('');
 
   const [showAddBalanceModal, setShowAddBalanceModal] = useState(false);
@@ -111,10 +102,6 @@ export default function AdminScreen() {
   const [selectedUserEmail, setSelectedUserEmail] = useState<string>('');
   const [noteToAdd, setNoteToAdd] = useState('');
   const [amountToAdd, setAmountToAdd] = useState('');
-
-  const [showWaitTimeModal, setShowWaitTimeModal] = useState(false);
-  const [waitTimeUserId, setWaitTimeUserId] = useState<string>('');
-  const [waitTimeValue, setWaitTimeValue] = useState('');
   const [amountToWithdraw, setAmountToWithdraw] = useState('');
 
   // ✅ KYC preview modal
@@ -126,126 +113,117 @@ export default function AdminScreen() {
   const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
 
   // ---------- KYC helpers ----------
-  const isLikelyUrl = (v?: string | null) =>
-  !!v && (v.startsWith('http://') || v.startsWith('https://'));
+  const isLikelyUrl = (v?: string | null) => !!v && (v.startsWith('http://') || v.startsWith('https://'));
 
-const KYC_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
+  const KYC_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
 
-const trySignedUrl = async (path: string) => {
-  const { data, error } = await supabase.storage.from(KYC_BUCKET).createSignedUrl(path, 60 * 60);
-  if (error) return null;
-  return data?.signedUrl || null;
-};
+  const trySignedUrl = async (path: string) => {
+    const { data, error } = await supabase.storage.from(KYC_BUCKET).createSignedUrl(path, 60 * 60);
+    if (error) return null;
+    return data?.signedUrl || null;
+  };
 
-// ✅ NEW: smarter resolver
-const resolveKycPathSmart = async (userId: string, kind: KycKind) => {
-  // 1) try list folder (best)
-  try {
-    const { data, error } = await supabase.storage.from(KYC_BUCKET).list(userId, {
-      limit: 200,
-      offset: 0,
-      sortBy: { column: 'name', order: 'asc' },
-    });
+  // ✅ smarter resolver
+  const resolveKycPathSmart = async (userId: string, kind: KycKind) => {
+    // 1) try list folder (best)
+    try {
+      const { data, error } = await supabase.storage.from(KYC_BUCKET).list(userId, {
+        limit: 200,
+        offset: 0,
+        sortBy: { column: 'name', order: 'asc' },
+      });
 
-    if (!error && data && data.length > 0) {
-      const lower = kind.toLowerCase();
+      if (!error && data && data.length > 0) {
+        const lower = kind.toLowerCase();
 
-      const exact =
-        data.find((f) => (f.name || '').toLowerCase() === `${lower}.jpeg`) ||
-        data.find((f) => (f.name || '').toLowerCase() === `${lower}.jpg`) ||
-        data.find((f) => (f.name || '').toLowerCase() === `${lower}.png`) ||
-        data.find((f) => (f.name || '').toLowerCase() === `${lower}.webp`);
+        const exact =
+          data.find((f) => (f.name || '').toLowerCase() === `${lower}.jpeg`) ||
+          data.find((f) => (f.name || '').toLowerCase() === `${lower}.jpg`) ||
+          data.find((f) => (f.name || '').toLowerCase() === `${lower}.png`) ||
+          data.find((f) => (f.name || '').toLowerCase() === `${lower}.webp`);
 
-      const loose = data.find((f) => (f.name || '').toLowerCase().includes(lower));
-      const match = exact || loose;
+        const loose = data.find((f) => (f.name || '').toLowerCase().includes(lower));
+        const match = exact || loose;
 
-      if (match?.name) return `${userId}/${match.name}`;
+        if (match?.name) return `${userId}/${match.name}`;
+      }
+    } catch {
+      // ignore
     }
-  } catch {
-    // ignore
-  }
 
-  // 2) fallback: try common filenames without list permission
-  for (const ext of KYC_EXTS) {
-    const candidate = `${userId}/${kind}.${ext}`;
-    const signed = await trySignedUrl(candidate);
-    if (signed) return candidate; // exists
-  }
+    // 2) fallback: try common filenames without list permission
+    for (const ext of KYC_EXTS) {
+      const candidate = `${userId}/${kind}.${ext}`;
+      const signed = await trySignedUrl(candidate);
+      if (signed) return candidate; // exists
+    }
 
-  // 3) fallback: sometimes file name includes dash/space etc
-  // you can add more patterns here if needed
+    return null;
+  };
 
-  return null;
-};
+  const getKycUrl = async (pathOrUrl?: string | null) => {
+    if (!pathOrUrl) return null;
+    if (isLikelyUrl(pathOrUrl)) return pathOrUrl;
 
-const getKycUrl = async (pathOrUrl?: string | null) => {
-  if (!pathOrUrl) return null;
-  if (isLikelyUrl(pathOrUrl)) return pathOrUrl;
+    // ✅ 1) signed url first (works for private buckets)
+    const signed = await trySignedUrl(pathOrUrl);
+    if (signed) return signed;
 
-  // ✅ 1) signed url first (works for private buckets)
-  const signed = await trySignedUrl(pathOrUrl);
-  if (signed) return signed;
+    // ✅ 2) then public url (works if bucket is public)
+    const pub = supabase.storage.from(KYC_BUCKET).getPublicUrl(pathOrUrl)?.data?.publicUrl;
+    if (pub) return pub;
 
-  // ✅ 2) then public url (works if bucket is public)
-  const pub = supabase.storage.from(KYC_BUCKET).getPublicUrl(pathOrUrl)?.data?.publicUrl;
-  if (pub) return pub;
+    return null;
+  };
 
-  return null;
-};
+  const openKycPreview = async (title: string, pathOrUrl?: string | null, userId?: string, kind?: KycKind) => {
+    setKycPreviewTitle(title);
+    setKycPreviewUrl('');
+    setKycPreviewOpen(true);
+    setKycPreviewLoading(true);
 
-const openKycPreview = async (
-  title: string,
-  pathOrUrl?: string | null,
-  userId?: string,
-  kind?: KycKind
-) => {
-  setKycPreviewTitle(title);
-  setKycPreviewUrl('');
-  setKycPreviewOpen(true);
-  setKycPreviewLoading(true);
+    let finalPath = pathOrUrl || null;
 
-  let finalPath = pathOrUrl || null;
+    // ✅ if column empty, resolve from storage
+    if ((!finalPath || finalPath === 'null') && userId && kind) {
+      finalPath = await resolveKycPathSmart(userId, kind);
+    }
 
-  // ✅ if column empty, resolve from storage
-  if ((!finalPath || finalPath === 'null') && userId && kind) {
-    finalPath = await resolveKycPathSmart(userId, kind);
-  }
+    if (!finalPath) {
+      setKycPreviewLoading(false);
+      Alert.alert('No File', `${title} photo not uploaded`);
+      return;
+    }
 
-  if (!finalPath) {
+    const url = await getKycUrl(finalPath);
+    setKycPreviewUrl(url || '');
     setKycPreviewLoading(false);
-    Alert.alert('No File', `${title} photo not uploaded`);
-    return;
-  }
 
-  const url = await getKycUrl(finalPath);
-  setKycPreviewUrl(url || '');
-  setKycPreviewLoading(false);
+    if (!url) {
+      Alert.alert('Error', 'Failed to load image. Check bucket privacy/policy.');
+    }
+  };
 
-  if (!url) {
-    Alert.alert('Error', 'Failed to load image. Check bucket privacy/policy.');
-  }
-};
+  const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: KycKind) => {
+    let finalPath = pathOrUrl || null;
 
-const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: KycKind) => {
-  let finalPath = pathOrUrl || null;
+    if ((!finalPath || finalPath === 'null') && userId && kind) {
+      finalPath = await resolveKycPathSmart(userId, kind);
+    }
 
-  if ((!finalPath || finalPath === 'null') && userId && kind) {
-    finalPath = await resolveKycPathSmart(userId, kind);
-  }
+    const url = await getKycUrl(finalPath);
+    if (!url) {
+      Alert.alert('Error', 'Cannot open file');
+      return;
+    }
 
-  const url = await getKycUrl(finalPath);
-  if (!url) {
-    Alert.alert('Error', 'Cannot open file');
-    return;
-  }
-
-  const canOpen = await Linking.canOpenURL(url);
-  if (!canOpen) {
-    Alert.alert('Error', 'Cannot open this URL');
-    return;
-  }
-  await Linking.openURL(url);
-};
+    const canOpen = await Linking.canOpenURL(url);
+    if (!canOpen) {
+      Alert.alert('Error', 'Cannot open this URL');
+      return;
+    }
+    await Linking.openURL(url);
+  };
 
   // ---------- realtime subscriptions ----------
   useEffect(() => {
@@ -255,22 +233,6 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
       .channel('admin-pending-users')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
         queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
-        queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isAdmin, selectedTab, queryClient]);
-
-  useEffect(() => {
-    if (!isAdmin || selectedTab !== 'waiting_users') return;
-
-    const channel = supabase
-      .channel('admin-waiting-users')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['admin-waiting-users'] });
         queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
       })
       .subscribe();
@@ -416,13 +378,15 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
     enabled: selectedTab === 'account_approval',
   });
 
-  // ✅ KYC tab must show ALL users (approved/rejected/pending) + their docs if exist
+  // ✅ KYC tab must show ONLY users who have uploaded at least one KYC file
+  // (id_front OR id_back OR selfie not null). This avoids showing all users.
   const kycDocumentsQuery = useQuery({
     queryKey: ['admin-kyc-documents'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, email, full_name, kyc_status, status, id_front, id_back, selfie, created_at')
+        .or('id_front.not.is.null,id_back.not.is.null,selfie.not.is.null')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -431,50 +395,6 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
     },
     enabled: selectedTab === 'kyc_documents' || selectedTab === 'user_documents',
   });
-
-  const waitingUsersQuery = useQuery({
-    queryKey: ['admin-waiting-users'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(
-          'id, email, full_name, role, kyc_status, approval_pending_until, approved_at, force_active, created_at'
-        )
-        .eq('kyc_status', 'approved')
-        .order('approved_at', { ascending: true });
-
-      if (error) throw error;
-
-      return (data || []).map((d) => ({
-        ...d,
-        date_of_birth: null,
-        country: null,
-        city: null,
-        phone_number: null,
-        id_front: null,
-        id_back: null,
-        selfie: null,
-      })) as Profile[];
-    },
-    enabled: selectedTab === 'waiting_users',
-  });
-
-  const getRemainingTime = (profile: Profile) => {
-    if (profile.force_active || profile.kyc_status === 'approved') return null;
-    if (!profile.approved_at) return null;
-
-    const approvedAt = new Date(profile.approved_at).getTime();
-    const waitTimeMinutes = 120;
-    const unlockAt = approvedAt + waitTimeMinutes * 60 * 1000;
-    const diff = unlockAt - Date.now();
-
-    if (diff <= 0) return null;
-
-    const hours = Math.floor(diff / (60 * 60 * 1000));
-    const minutes = Math.ceil((diff % (60 * 60 * 1000)) / (60 * 1000));
-
-    return { hours, minutes, total: diff };
-  };
 
   const usersQuery = useQuery({
     queryKey: ['admin-users'],
@@ -501,7 +421,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
       return (data || []).map((wallet: any) => ({
         id: wallet.profiles?.id || wallet.user_id,
         email: wallet.profiles?.email || 'N/A',
-        full_name: wallet.profiles?.full_name || 'Unknown User',
+        full_name: wallet.profiles?.full_name || '',
         created_at: wallet.profiles?.created_at || new Date().toISOString(),
         wallet: [{ balance: wallet.balance || 0 }],
       }));
@@ -542,54 +462,6 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
     enabled: selectedTab === 'dashboard' || selectedTab === 'withdrawals',
   });
 
-  const ordersQuery = useQuery({
-    queryKey: ['admin-orders'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(
-          `
-          *,
-          profiles!user_id(
-            id,
-            email,
-            full_name
-          )
-        `
-        )
-        .order('created_at', { ascending: false });
-
-      if (error) throw new Error(error.message || 'Failed to fetch orders');
-      return data || [];
-    },
-    enabled: selectedTab === 'orders',
-  });
-
-  const marketAnalyticsQuery = useQuery({
-    queryKey: ['admin-market-analytics'],
-    queryFn: async () => {
-      const [salesRes, typeRes] = await Promise.all([
-        supabase.from('orders').select('price'),
-        supabase.from('orders').select('product_type, price'),
-      ]);
-
-      const totalSales = salesRes.data?.reduce((sum, order) => sum + (order.price || 0), 0) || 0;
-      const totalOrders = salesRes.data?.length || 0;
-
-      const salesByType =
-        typeRes.data?.reduce((acc: any, order) => {
-          const type = order.product_type || 'unknown';
-          if (!acc[type]) acc[type] = { count: 0, total: 0 };
-          acc[type].count += 1;
-          acc[type].total += order.price || 0;
-          return acc;
-        }, {}) || {};
-
-      return { totalSales, totalOrders, salesByType };
-    },
-    enabled: selectedTab === 'market_analytics',
-  });
-
   const transactionsQuery = useQuery({
     queryKey: ['admin-transactions'],
     queryFn: async () => {
@@ -619,11 +491,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
 
       let profilesMap: Record<string, any> = {};
       if (userIds.size > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, email, full_name')
-          .in('id', Array.from(userIds));
-
+        const { data: profiles } = await supabase.from('profiles').select('id, email, full_name').in('id', Array.from(userIds));
         if (profiles) {
           profiles.forEach((p: any) => {
             profilesMap[p.id] = p;
@@ -642,7 +510,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
     enabled: selectedTab === 'transactions',
   });
 
-  // ✅ NEW: filtered list for user_documents tab
+  // ✅ filtered list for user_documents tab
   const filteredDocUsers = useMemo(() => {
     const list = kycDocumentsQuery.data || [];
     const q = docSearch.trim().toLowerCase();
@@ -665,10 +533,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
         if (order) {
           const { data: wallet } = await supabase.from('wallets').select('*').eq('user_id', order.user_id).single();
           if (wallet) {
-            await supabase
-              .from('wallets')
-              .update({ balance: wallet.balance + order.amount })
-              .eq('user_id', order.user_id);
+            await supabase.from('wallets').update({ balance: wallet.balance + order.amount }).eq('user_id', order.user_id);
           }
         }
       }
@@ -684,10 +549,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
 
   const approveAccountMutation = useMutation({
     mutationFn: async ({ userId }: { userId: string }) => {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ status: 'approved', kyc_status: 'approved' })
-        .eq('id', userId);
+      const { error } = await supabase.from('profiles').update({ status: 'approved', kyc_status: 'approved' }).eq('id', userId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -703,10 +565,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
 
   const rejectAccountMutation = useMutation({
     mutationFn: async ({ userId }: { userId: string }) => {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ status: 'rejected', kyc_status: 'rejected' })
-        .eq('id', userId);
+      const { error } = await supabase.from('profiles').update({ status: 'rejected', kyc_status: 'rejected' }).eq('id', userId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -720,42 +579,9 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
     },
   });
 
-  const activateNowMutation = trpc.admin.activateUserNow.useMutation({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-waiting-users'] });
-      Alert.alert('Success', 'Account activated immediately! User can login now.');
-    },
-    onError: (error: any) => {
-      Alert.alert('Error', error.message);
-    },
-  });
-
-  const updateWaitTimeMutation = useMutation({
-    mutationFn: async ({ userId, minutes }: { userId: string; minutes: number }) => {
-      const { error } = await supabase.from('profiles').update({ wait_time_minutes: minutes }).eq('id', userId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-waiting-users'] });
-      setShowWaitTimeModal(false);
-      setWaitTimeValue('');
-      setWaitTimeUserId('');
-      Alert.alert('Success', 'Wait time updated successfully');
-    },
-    onError: (error: any) => {
-      Alert.alert('Error', error.message);
-    },
-  });
-
   const addBalanceMutation = useMutation({
     mutationFn: async ({ userId, amount, note }: { userId: string; amount: number; note: string }) => {
-      const { data: wallet, error: walletError } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', userId)
-        .maybeSingle();
+      const { data: wallet, error: walletError } = await supabase.from('wallets').select('balance').eq('user_id', userId).maybeSingle();
 
       if (walletError) throw new Error(walletError.message || 'Failed to fetch wallet');
       if (!wallet) throw new Error('Wallet not found for this user');
@@ -773,9 +599,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
         status: 'completed',
       });
 
-      if (txError) {
-        console.warn('⚠️ Transaction log error:', txError);
-      }
+      if (txError) console.warn('⚠️ Transaction log error:', txError);
 
       return { success: true };
     },
@@ -798,11 +622,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
 
   const withdrawBalanceMutation = useMutation({
     mutationFn: async ({ userId, amount }: { userId: string; amount: number }) => {
-      const { data: wallet, error: walletError } = await supabase
-        .from('wallets')
-        .select('balance')
-        .eq('user_id', userId)
-        .maybeSingle();
+      const { data: wallet, error: walletError } = await supabase.from('wallets').select('balance').eq('user_id', userId).maybeSingle();
 
       if (walletError) throw new Error(walletError.message || 'Failed to fetch wallet');
       if (!wallet) throw new Error('Wallet not found for this user');
@@ -823,9 +643,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
         status: 'completed',
       });
 
-      if (txError) {
-        console.warn('⚠️ Transaction log error:', txError);
-      }
+      if (txError) console.warn('⚠️ Transaction log error:', txError);
 
       return { success: true };
     },
@@ -873,20 +691,6 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
     },
   });
 
-  const updateOrderStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from('orders').update({ delivery_status: status }).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
-      Alert.alert('Success', 'Order status updated successfully');
-    },
-    onError: (error: any) => {
-      Alert.alert('Error', error.message);
-    },
-  });
-
   // ---------- deny screen ----------
   if (!isAdmin) {
     return (
@@ -902,22 +706,10 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
     );
   }
 
-  const MenuButton = ({
-    label,
-    tab,
-    icon,
-  }: {
-    label: string;
-    tab: TabKey;
-    icon: React.ReactNode;
-  }) => {
+  const MenuButton = ({ label, tab, icon }: { label: string; tab: TabKey; icon: React.ReactNode }) => {
     const active = selectedTab === tab;
     return (
-      <TouchableOpacity
-        style={[styles.menuBtn, active && styles.menuBtnActive]}
-        onPress={() => setSelectedTab(tab)}
-        activeOpacity={0.85}
-      >
+      <TouchableOpacity style={[styles.menuBtn, active && styles.menuBtnActive]} onPress={() => setSelectedTab(tab)} activeOpacity={0.85}>
         <View style={[styles.menuIconWrap, active && styles.menuIconWrapActive]}>{icon}</View>
         <Text style={[styles.menuText, active && styles.menuTextActive]} numberOfLines={1}>
           {label}
@@ -929,32 +721,17 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
   const kycBadge = (kycStatus?: string | null) => {
     const s = (kycStatus || 'pending').toLowerCase();
     if (s === 'approved') {
-      return {
-        bg: UI.greenSoft,
-        color: UI.green,
-        icon: <CheckCircle size={14} color={UI.green} />,
-        text: 'APPROVED',
-      };
+      return { bg: UI.greenSoft, color: UI.green, icon: <CheckCircle size={14} color={UI.green} />, text: 'APPROVED' };
     }
     if (s === 'rejected') {
-      return {
-        bg: UI.redSoft,
-        color: UI.red,
-        icon: <XCircle size={14} color={UI.red} />,
-        text: 'REJECTED',
-      };
+      return { bg: UI.redSoft, color: UI.red, icon: <XCircle size={14} color={UI.red} />, text: 'REJECTED' };
     }
-    return {
-      bg: UI.amberSoft,
-      color: UI.amber,
-      icon: <Clock size={14} color={UI.amber} />,
-      text: 'PENDING',
-    };
+    return { bg: UI.amberSoft, color: UI.amber, icon: <Clock size={14} color={UI.amber} />, text: 'PENDING' };
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
-      {/* ✅ single header (no dark-blue duplicate anymore) */}
+      {/* ✅ single header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerLeftBtn} onPress={() => router.push('/dashboard')} activeOpacity={0.85}>
           <Home size={18} color={UI.text} />
@@ -975,38 +752,46 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
           }}
           activeOpacity={0.9}
         >
-          <LogOut size={18} color="#fff" />
+          <LogOut size={16} color="#fff" />
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </View>
 
-      {/* menu grid (same) */}
+      {/* ✅ MENU (Removed: Waiting Users / Products / Orders / Market Analytics) */}
       <View style={styles.menuWrap}>
-        <MenuButton label="Dashboard" tab="dashboard" icon={<BarChart3 size={18} color={selectedTab === 'dashboard' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Account Approval" tab="account_approval" icon={<ShieldCheck size={18} color={selectedTab === 'account_approval' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Waiting Users" tab="waiting_users" icon={<Users size={18} color={selectedTab === 'waiting_users' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Deposits" tab="deposits" icon={<ArrowDownToLine size={18} color={selectedTab === 'deposits' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Withdrawals" tab="withdrawals" icon={<ArrowUpFromLine size={18} color={selectedTab === 'withdrawals' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Add Balance" tab="add_balance" icon={<PlusCircle size={18} color={selectedTab === 'add_balance' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Withdraw Balance" tab="withdraw_balance" icon={<MinusCircle size={18} color={selectedTab === 'withdraw_balance' ? UI.blue : UI.text2} />} />
-        <MenuButton label="KYC Document" tab="kyc_documents" icon={<FileText size={18} color={selectedTab === 'kyc_documents' ? UI.blue : UI.text2} />} />
-
-        {/* ✅ NEW BUTTON */}
+        <MenuButton label="Dashboard" tab="dashboard" icon={<BarChart3 size={16} color={selectedTab === 'dashboard' ? UI.blue : UI.text2} />} />
+        <MenuButton
+          label="Account Approval"
+          tab="account_approval"
+          icon={<ShieldCheck size={16} color={selectedTab === 'account_approval' ? UI.blue : UI.text2} />}
+        />
+        <MenuButton label="Deposits" tab="deposits" icon={<ArrowDownToLine size={16} color={selectedTab === 'deposits' ? UI.blue : UI.text2} />} />
+        <MenuButton
+          label="Withdrawals"
+          tab="withdrawals"
+          icon={<ArrowUpFromLine size={16} color={selectedTab === 'withdrawals' ? UI.blue : UI.text2} />}
+        />
+        <MenuButton label="Add Balance" tab="add_balance" icon={<PlusCircle size={16} color={selectedTab === 'add_balance' ? UI.blue : UI.text2} />} />
+        <MenuButton
+          label="Withdraw Balance"
+          tab="withdraw_balance"
+          icon={<MinusCircle size={16} color={selectedTab === 'withdraw_balance' ? UI.blue : UI.text2} />}
+        />
+        <MenuButton label="KYC Document" tab="kyc_documents" icon={<FileText size={16} color={selectedTab === 'kyc_documents' ? UI.blue : UI.text2} />} />
         <MenuButton
           label="Document Image User"
           tab="user_documents"
-          icon={<ImageIcon size={18} color={selectedTab === 'user_documents' ? UI.blue : UI.text2} />}
+          icon={<ImageIcon size={16} color={selectedTab === 'user_documents' ? UI.blue : UI.text2} />}
         />
-
-        <MenuButton label="Products" tab="products" icon={<Package size={18} color={selectedTab === 'products' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Orders" tab="orders" icon={<ShoppingBag size={18} color={selectedTab === 'orders' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Market Analytics" tab="market_analytics" icon={<BarChart3 size={18} color={selectedTab === 'market_analytics' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Transactions" tab="transactions" icon={<ReceiptText size={18} color={selectedTab === 'transactions' ? UI.blue : UI.text2} />} />
+        <MenuButton
+          label="Transactions"
+          tab="transactions"
+          icon={<ReceiptText size={16} color={selectedTab === 'transactions' ? UI.blue : UI.text2} />}
+        />
       </View>
 
-      {/* ✅ FIX #3: bigger bottom padding so nothing hides under bottom bars */}
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* ---------------- NEW: Document Image User ---------------- */}
+        {/* ---------------- Document Image User ---------------- */}
         {selectedTab === 'user_documents' && (
           <>
             <Text style={[styles.sectionTitle, { marginBottom: 10 }]}>Document Image User</Text>
@@ -1035,11 +820,12 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
             ) : filteredDocUsers.length > 0 ? (
               filteredDocUsers.map((u: any) => {
                 const badge = kycBadge(u.kyc_status);
+                const displayName = (u.full_name || '').trim(); // ✅ show full_name if exists (empty is OK)
                 return (
                   <View key={u.id} style={styles.card}>
                     <View style={styles.cardHeader}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.cardTitle}>{u.full_name || 'Unknown User'}</Text>
+                        <Text style={styles.cardTitle}>{displayName}</Text>
                         <Text style={styles.cardSubtitle}>{u.email}</Text>
                       </View>
 
@@ -1058,30 +844,18 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
                       <Text style={styles.kycBlockTitle}>Documents</Text>
 
                       <View style={styles.docGrid}>
-                        <TouchableOpacity
-                          style={styles.docBtn}
-                          onPress={() => openKycPreview('ID Front', u.id_front, u.id, 'id_front')}
-                          activeOpacity={0.85}
-                        >
-                          <FileText size={18} color={UI.green} />
+                        <TouchableOpacity style={styles.docBtn} onPress={() => openKycPreview('ID Front', u.id_front, u.id, 'id_front')} activeOpacity={0.85}>
+                          <FileText size={16} color={UI.green} />
                           <Text style={styles.docBtnText}>ID Front</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                          style={styles.docBtn}
-                          onPress={() => openKycPreview('ID Back', u.id_back, u.id, 'id_back')}
-                          activeOpacity={0.85}
-                        >
-                          <FileText size={18} color={UI.green} />
+                        <TouchableOpacity style={styles.docBtn} onPress={() => openKycPreview('ID Back', u.id_back, u.id, 'id_back')} activeOpacity={0.85}>
+                          <FileText size={16} color={UI.green} />
                           <Text style={styles.docBtnText}>ID Back</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                          style={styles.docBtn}
-                          onPress={() => openKycPreview('Selfie', u.selfie, u.id, 'selfie')}
-                          activeOpacity={0.85}
-                        >
-                          <FileText size={18} color={UI.green} />
+                        <TouchableOpacity style={styles.docBtn} onPress={() => openKycPreview('Selfie', u.selfie, u.id, 'selfie')} activeOpacity={0.85}>
+                          <FileText size={16} color={UI.green} />
                           <Text style={styles.docBtnText}>Selfie</Text>
                         </TouchableOpacity>
                       </View>
@@ -1247,7 +1021,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
                 <View key={profile.id} style={styles.card}>
                   <View style={styles.cardHeader}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{profile.full_name || 'Unknown User'}</Text>
+                      <Text style={styles.cardTitle}>{(profile.full_name || '').trim()}</Text>
                       <Text style={styles.cardSubtitle}>{profile.email}</Text>
                     </View>
 
@@ -1314,79 +1088,6 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
           </>
         )}
 
-        {/* ---------------- Waiting Users ---------------- */}
-        {selectedTab === 'waiting_users' && (
-          <>
-            <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Waiting Users</Text>
-
-            {waitingUsersQuery.isLoading ? (
-              <View style={styles.centerLoading}>
-                <ActivityIndicator color={UI.blue} size="large" />
-                <Text style={styles.emptyText}>Loading users...</Text>
-              </View>
-            ) : waitingUsersQuery.data && waitingUsersQuery.data.length > 0 ? (
-              waitingUsersQuery.data.map((profile) => {
-                const remaining = getRemainingTime(profile);
-                return (
-                  <View key={profile.id} style={styles.card}>
-                    <View style={styles.cardHeader}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.cardTitle}>{profile.full_name || 'Unknown User'}</Text>
-                        <Text style={styles.cardSubtitle}>{profile.email}</Text>
-                      </View>
-                      <View style={[styles.badge, { backgroundColor: UI.blueSoft }]}>
-                        <Clock size={14} color={UI.blue} />
-                        <Text style={[styles.badgeText, { color: UI.blue }]}>WAITING</Text>
-                      </View>
-                    </View>
-
-                    {remaining && (
-                      <View style={styles.timerCard}>
-                        <Clock size={18} color={UI.amber} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.timerTitle}>Time Remaining</Text>
-                          <Text style={styles.timerValue}>
-                            {remaining.hours}h {remaining.minutes}m
-                          </Text>
-                        </View>
-                      </View>
-                    )}
-
-                    <View style={styles.row}>
-                      <Text style={styles.rowLabel}>Approved At</Text>
-                      <Text style={styles.rowValue}>
-                        {profile.approved_at ? new Date(profile.approved_at).toLocaleString() : 'N/A'}
-                      </Text>
-                    </View>
-
-                    <TouchableOpacity
-                      style={[styles.primaryBtn, { marginTop: 12, backgroundColor: UI.amber }]}
-                      onPress={() =>
-                        Alert.alert(
-                          'Activate Account Now',
-                          `⚠️ This will bypass the ${remaining ? `${remaining.hours}h ${remaining.minutes}m` : ''} waiting period and activate ${
-                            profile.full_name || profile.email
-                          } immediately.\n\nUser can login right away.`,
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Activate Now', onPress: () => activateNowMutation.mutate({ userId: profile.id }) },
-                          ]
-                        )
-                      }
-                      disabled={activateNowMutation.isPending}
-                    >
-                      <CheckCircle size={16} color="#fff" />
-                      <Text style={styles.primaryBtnText}>Activate Account Now</Text>
-                    </TouchableOpacity>
-                  </View>
-                );
-              })
-            ) : (
-              <Text style={styles.emptyText}>No users in waiting period</Text>
-            )}
-          </>
-        )}
-
         {/* ---------------- Deposits ---------------- */}
         {selectedTab === 'deposits' && (
           <>
@@ -1402,7 +1103,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
                 <View key={order.id} style={styles.card}>
                   <View style={styles.cardHeader}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{order.profile?.full_name || 'Unknown User'}</Text>
+                      <Text style={styles.cardTitle}>{(order.profile?.full_name || '').trim()}</Text>
                       <Text style={styles.cardSubtitle}>{order.profile?.email}</Text>
                     </View>
 
@@ -1504,7 +1205,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
                 <View key={order.id} style={styles.card}>
                   <View style={styles.cardHeader}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{order.profile?.full_name || 'Unknown User'}</Text>
+                      <Text style={styles.cardTitle}>{(order.profile?.full_name || '').trim()}</Text>
                       <Text style={styles.cardSubtitle}>{order.profile?.email}</Text>
                     </View>
 
@@ -1566,9 +1267,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
                         onPress={() =>
                           Alert.alert(
                             'Approve Withdrawal',
-                            `Approve withdrawal of ${order.amount.toFixed(
-                              2
-                            )}?\n\nThis will deduct the balance from user's wallet and update the status.`,
+                            `Approve withdrawal of ${order.amount.toFixed(2)}?\n\nThis will deduct the balance from user's wallet and update the status.`,
                             [
                               { text: 'Cancel', style: 'cancel' },
                               { text: 'Approve', onPress: () => updateWithdrawalMutation.mutate({ id: order.id, status: 'approved' }) },
@@ -1637,11 +1336,9 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
                   <View key={userProfile.id} style={styles.card}>
                     <View style={styles.cardHeader}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.cardTitle}>{userProfile.full_name || 'Unknown User'}</Text>
+                        <Text style={styles.cardTitle}>{(userProfile.full_name || '').trim()}</Text>
                         <Text style={styles.cardSubtitle}>{userProfile.email}</Text>
-                        <Text style={styles.balanceText}>
-                          Balance: ${userProfile.wallet?.[0]?.balance?.toFixed(2) || '0.00'}
-                        </Text>
+                        <Text style={styles.balanceText}>Balance: ${userProfile.wallet?.[0]?.balance?.toFixed(2) || '0.00'}</Text>
                       </View>
                       <TouchableOpacity
                         style={[styles.smallBtn, { backgroundColor: UI.green }]}
@@ -1692,11 +1389,9 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
                   <View key={userProfile.id} style={styles.card}>
                     <View style={styles.cardHeader}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.cardTitle}>{userProfile.full_name || 'Unknown User'}</Text>
+                        <Text style={styles.cardTitle}>{(userProfile.full_name || '').trim()}</Text>
                         <Text style={styles.cardSubtitle}>{userProfile.email}</Text>
-                        <Text style={styles.balanceText}>
-                          Balance: ${userProfile.wallet?.[0]?.balance?.toFixed(2) || '0.00'}
-                        </Text>
+                        <Text style={styles.balanceText}>Balance: ${userProfile.wallet?.[0]?.balance?.toFixed(2) || '0.00'}</Text>
                       </View>
                       <TouchableOpacity
                         style={[styles.smallBtn, { backgroundColor: UI.red }]}
@@ -1722,7 +1417,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
           </>
         )}
 
-        {/* ---------------- KYC Documents (ALL USERS) ---------------- */}
+        {/* ---------------- KYC Documents (ONLY USERS WITH DOCS) ---------------- */}
         {selectedTab === 'kyc_documents' && (
           <>
             <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>KYC Verification Panel</Text>
@@ -1735,12 +1430,13 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
             ) : kycDocumentsQuery.data && kycDocumentsQuery.data.length > 0 ? (
               kycDocumentsQuery.data.map((userKYC: any) => {
                 const badge = kycBadge(userKYC.kyc_status);
+                const displayName = (userKYC.full_name || '').trim(); // ✅ show full_name (empty is OK)
 
                 return (
                   <View key={userKYC.id} style={styles.card}>
                     <View style={styles.cardHeader}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.cardTitle}>{userKYC.full_name || 'Unknown User'}</Text>
+                        <Text style={styles.cardTitle}>{displayName}</Text>
                         <Text style={styles.cardSubtitle}>{userKYC.email}</Text>
                       </View>
 
@@ -1769,35 +1465,23 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
                       <Text style={styles.kycBlockTitle}>KYC Documents</Text>
 
                       <View style={styles.thumbRow}>
-                        <TouchableOpacity
-                          style={styles.thumbWrap}
-                          onPress={() => openKycPreview('ID Front', userKYC.id_front, userKYC.id, 'id_front')}
-                          activeOpacity={0.85}
-                        >
+                        <TouchableOpacity style={styles.thumbWrap} onPress={() => openKycPreview('ID Front', userKYC.id_front, userKYC.id, 'id_front')} activeOpacity={0.85}>
                           <View style={styles.thumb}>
-                            <FileText size={18} color={UI.blue} />
+                            <FileText size={16} color={UI.blue} />
                             <Text style={styles.thumbText}>ID Front</Text>
                           </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                          style={styles.thumbWrap}
-                          onPress={() => openKycPreview('ID Back', userKYC.id_back, userKYC.id, 'id_back')}
-                          activeOpacity={0.85}
-                        >
+                        <TouchableOpacity style={styles.thumbWrap} onPress={() => openKycPreview('ID Back', userKYC.id_back, userKYC.id, 'id_back')} activeOpacity={0.85}>
                           <View style={styles.thumb}>
-                            <FileText size={18} color={UI.blue} />
+                            <FileText size={16} color={UI.blue} />
                             <Text style={styles.thumbText}>ID Back</Text>
                           </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                          style={styles.thumbWrap}
-                          onPress={() => openKycPreview('Selfie', userKYC.selfie, userKYC.id, 'selfie')}
-                          activeOpacity={0.85}
-                        >
+                        <TouchableOpacity style={styles.thumbWrap} onPress={() => openKycPreview('Selfie', userKYC.selfie, userKYC.id, 'selfie')} activeOpacity={0.85}>
                           <View style={styles.thumb}>
-                            <FileText size={18} color={UI.blue} />
+                            <FileText size={16} color={UI.blue} />
                             <Text style={styles.thumbText}>Selfie</Text>
                           </View>
                         </TouchableOpacity>
@@ -1864,197 +1548,6 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
           </>
         )}
 
-        {/* ---------------- Products ---------------- */}
-        {selectedTab === 'products' && (
-          <>
-            <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Product Management</Text>
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>📱 Product Management</Text>
-              <Text style={styles.cardSubtitle}>Products are managed through data files:</Text>
-              <Text style={[styles.cardSubtitle, { marginTop: 10 }]}>• data/iphoneProducts.ts</Text>
-              <Text style={styles.cardSubtitle}>• data/samsungProducts.ts</Text>
-              <Text style={styles.cardSubtitle}>• data/xiaomiProducts.ts</Text>
-              <Text style={[styles.cardSubtitle, { marginTop: 12 }]}>
-                To add/edit products: Update the product files with new items including name, storage, battery, price, and AI image prompt.
-              </Text>
-              <Text style={[styles.cardSubtitle, { marginTop: 8 }]}>Set is_active: false to disable a product.</Text>
-            </View>
-          </>
-        )}
-
-        {/* ---------------- Orders ---------------- */}
-        {selectedTab === 'orders' && (
-          <>
-            <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Order Management</Text>
-
-            {ordersQuery.isLoading ? (
-              <View style={styles.centerLoading}>
-                <ActivityIndicator color={UI.blue} size="large" />
-                <Text style={styles.emptyText}>Loading orders...</Text>
-              </View>
-            ) : ordersQuery.data && ordersQuery.data.length > 0 ? (
-              ordersQuery.data.map((order: any) => (
-                <View key={order.id} style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{order.profiles?.full_name || 'Unknown User'}</Text>
-                      <Text style={styles.cardSubtitle}>{order.profiles?.email}</Text>
-                    </View>
-
-                    <View
-                      style={[
-                        styles.badge,
-                        order.delivery_status === 'shipped' && { backgroundColor: UI.blueSoft },
-                        order.delivery_status === 'delivered' && { backgroundColor: UI.greenSoft },
-                        order.delivery_status === 'pending' && { backgroundColor: UI.amberSoft },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.badgeText,
-                          order.delivery_status === 'shipped' && { color: UI.blue },
-                          order.delivery_status === 'delivered' && { color: UI.green },
-                          order.delivery_status === 'pending' && { color: UI.amber },
-                        ]}
-                      >
-                        {order.delivery_status?.toUpperCase() || 'PENDING'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Product</Text>
-                    <Text style={styles.rowValue}>{order.product_name}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Brand</Text>
-                    <Text style={styles.rowValue}>{order.product_brand || 'N/A'}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Color</Text>
-                    <Text style={styles.rowValue}>{order.color || 'N/A'}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Price</Text>
-                    <Text style={styles.rowValue}>${order.price?.toFixed(2)}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Phone</Text>
-                    <Text style={styles.rowValue}>{order.phone_number}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Address</Text>
-                    <Text style={styles.rowValue}>
-                      {order.street_address}, {order.city}
-                    </Text>
-                  </View>
-
-                  {order.delivery_note && (
-                    <View style={styles.row}>
-                      <Text style={styles.rowLabel}>Note</Text>
-                      <Text style={styles.rowValue}>{order.delivery_note}</Text>
-                    </View>
-                  )}
-
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Date</Text>
-                    <Text style={styles.rowValue}>{new Date(order.created_at).toLocaleString()}</Text>
-                  </View>
-
-                  {order.delivery_status === 'pending' && (
-                    <View style={styles.actionButtons}>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: UI.blue }]}
-                        onPress={() =>
-                          Alert.alert('Mark as Shipped', 'Mark this order as shipped?', [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Ship', onPress: () => updateOrderStatusMutation.mutate({ id: order.id, status: 'shipped' }) },
-                          ])
-                        }
-                        disabled={updateOrderStatusMutation.isPending}
-                      >
-                        <CheckCircle size={16} color="#fff" />
-                        <Text style={styles.actionBtnText}>Mark Shipped</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {order.delivery_status === 'shipped' && (
-                    <View style={styles.actionButtons}>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: UI.green }]}
-                        onPress={() =>
-                          Alert.alert('Mark as Delivered', 'Mark this order as delivered?', [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Deliver', onPress: () => updateOrderStatusMutation.mutate({ id: order.id, status: 'delivered' }) },
-                          ])
-                        }
-                        disabled={updateOrderStatusMutation.isPending}
-                      >
-                        <CheckCircle size={16} color="#fff" />
-                        <Text style={styles.actionBtnText}>Mark Delivered</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-              ))
-            ) : (
-              <View style={{ paddingVertical: 18 }}>
-                <Text style={styles.emptyText}>No orders found</Text>
-                <TouchableOpacity style={styles.primaryBtn} onPress={() => ordersQuery.refetch()}>
-                  <Text style={styles.primaryBtnText}>Refresh</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </>
-        )}
-
-        {/* ---------------- Market Analytics ---------------- */}
-        {selectedTab === 'market_analytics' && (
-          <>
-            <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Market Analytics</Text>
-
-            {marketAnalyticsQuery.isLoading ? (
-              <View style={styles.centerLoading}>
-                <ActivityIndicator color={UI.blue} size="large" />
-                <Text style={styles.emptyText}>Loading analytics...</Text>
-              </View>
-            ) : marketAnalyticsQuery.data ? (
-              <>
-                <View style={styles.statsGrid}>
-                  <View style={styles.statCard}>
-                    <Text style={styles.statLabel}>Total Sales</Text>
-                    <Text style={[styles.statValue, { color: UI.green }]}>${marketAnalyticsQuery.data.totalSales.toFixed(2)}</Text>
-                  </View>
-
-                  <View style={styles.statCard}>
-                    <Text style={styles.statLabel}>Total Orders</Text>
-                    <Text style={styles.statValue}>{marketAnalyticsQuery.data.totalOrders}</Text>
-                  </View>
-                </View>
-
-                <Text style={[styles.sectionTitle, { marginTop: 18, marginBottom: 12 }]}>Sales by Product Type</Text>
-
-                {Object.entries(marketAnalyticsQuery.data.salesByType).map(([type, stats]: [string, any]) => (
-                  <View key={type} style={styles.card}>
-                    <Text style={styles.cardTitle}>{type.toUpperCase()}</Text>
-                    <View style={styles.row}>
-                      <Text style={styles.rowLabel}>Orders</Text>
-                      <Text style={styles.rowValue}>{stats.count}</Text>
-                    </View>
-                    <View style={styles.row}>
-                      <Text style={styles.rowLabel}>Revenue</Text>
-                      <Text style={[styles.rowValue, { color: UI.green }]}>${stats.total.toFixed(2)}</Text>
-                    </View>
-                  </View>
-                ))}
-              </>
-            ) : (
-              <Text style={styles.emptyText}>No analytics data</Text>
-            )}
-          </>
-        )}
-
         {/* ---------------- Transactions ---------------- */}
         {selectedTab === 'transactions' && (
           <>
@@ -2094,9 +1587,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
                         style={[styles.filterChip, txTypeFilter === c.key && styles.filterChipActive]}
                         onPress={() => setTxTypeFilter(c.key)}
                       >
-                        <Text style={[styles.filterChipText, txTypeFilter === c.key && styles.filterChipTextActive]}>
-                          {c.label}
-                        </Text>
+                        <Text style={[styles.filterChipText, txTypeFilter === c.key && styles.filterChipTextActive]}>{c.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
@@ -2117,9 +1608,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
                         style={[styles.filterChip, txAmountFilter === c.key && styles.filterChipActive]}
                         onPress={() => setTxAmountFilter(c.key)}
                       >
-                        <Text style={[styles.filterChipText, txAmountFilter === c.key && styles.filterChipTextActive]}>
-                          {c.label}
-                        </Text>
+                        <Text style={[styles.filterChipText, txAmountFilter === c.key && styles.filterChipTextActive]}>{c.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -2136,8 +1625,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
               (() => {
                 const filtered = transactionsQuery.data.filter((tx: any) => {
                   const userEmail = tx.receiver?.email || '';
-                  const matchesEmail =
-                    txEmailFilter === '' || userEmail.toLowerCase().includes(txEmailFilter.toLowerCase());
+                  const matchesEmail = txEmailFilter === '' || userEmail.toLowerCase().includes(txEmailFilter.toLowerCase());
                   const matchesType = txTypeFilter === 'all' || tx.type === txTypeFilter;
                   const matchesAmount =
                     txAmountFilter === 'all' ||
@@ -2170,7 +1658,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
                     <View key={tx.id} style={styles.card}>
                       <View style={styles.cardHeader}>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.cardTitle}>{tx.receiver?.full_name || tx.receiver?.email || 'Unknown User'}</Text>
+                          <Text style={styles.cardTitle}>{(tx.receiver?.full_name || '').trim()}</Text>
                           <Text style={styles.cardSubtitle}>{tx.receiver?.email}</Text>
                         </View>
                         <View style={[styles.badge, tx.amount >= 0 ? { backgroundColor: UI.greenSoft } : { backgroundColor: UI.redSoft }]}>
@@ -2291,11 +1779,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
                 }}
                 disabled={addBalanceMutation.isPending}
               >
-                {addBalanceMutation.isPending ? (
-                  <ActivityIndicator color="#FFF" size="small" />
-                ) : (
-                  <Text style={styles.modalConfirmText}>Add Balance</Text>
-                )}
+                {addBalanceMutation.isPending ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={styles.modalConfirmText}>Add Balance</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -2342,62 +1826,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
                 }}
                 disabled={withdrawBalanceMutation.isPending}
               >
-                {withdrawBalanceMutation.isPending ? (
-                  <ActivityIndicator color="#FFF" size="small" />
-                ) : (
-                  <Text style={styles.modalConfirmText}>Withdraw Balance</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ---------------- Wait Time Modal ---------------- */}
-      <Modal visible={showWaitTimeModal} transparent animationType="fade" onRequestClose={() => setShowWaitTimeModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Set Wait Time</Text>
-            <Text style={styles.modalSubtitle}>Enter wait time in minutes</Text>
-
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Minutes (e.g., 120)"
-              placeholderTextColor={UI.text2}
-              keyboardType="numeric"
-              value={waitTimeValue}
-              onChangeText={setWaitTimeValue}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalCancelBtn]}
-                onPress={() => {
-                  setShowWaitTimeModal(false);
-                  setWaitTimeValue('');
-                  setWaitTimeUserId('');
-                }}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalConfirmBtn]}
-                onPress={() => {
-                  const minutes = parseInt(waitTimeValue);
-                  if (isNaN(minutes) || minutes < 0) {
-                    Alert.alert('Error', 'Please enter a valid number of minutes');
-                    return;
-                  }
-                  updateWaitTimeMutation.mutate({ userId: waitTimeUserId, minutes });
-                }}
-                disabled={updateWaitTimeMutation.isPending}
-              >
-                {updateWaitTimeMutation.isPending ? (
-                  <ActivityIndicator color="#FFF" size="small" />
-                ) : (
-                  <Text style={styles.modalConfirmText}>Update Wait Time</Text>
-                )}
+                {withdrawBalanceMutation.isPending ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={styles.modalConfirmText}>Withdraw Balance</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -2430,11 +1859,7 @@ const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: K
               )}
             </View>
 
-            <TouchableOpacity
-  style={styles.previewOpenBtn}
-  onPress={() => kycPreviewUrl && openExternal(kycPreviewUrl)}
-  disabled={!kycPreviewUrl}
->
+            <TouchableOpacity style={styles.previewOpenBtn} onPress={() => kycPreviewUrl && openExternal(kycPreviewUrl)} disabled={!kycPreviewUrl}>
               <ExternalLink size={16} color="#fff" />
               <Text style={styles.previewOpenBtnText}>Open in Browser</Text>
             </TouchableOpacity>
@@ -2450,8 +1875,8 @@ const styles = StyleSheet.create({
 
   header: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -2460,8 +1885,8 @@ const styles = StyleSheet.create({
     borderBottomColor: UI.border,
   },
   headerLeftBtn: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     borderRadius: 12,
     backgroundColor: UI.card2,
     alignItems: 'center',
@@ -2470,49 +1895,50 @@ const styles = StyleSheet.create({
     borderColor: UI.border,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: UI.text,
   },
   headerSub: {
-    fontSize: 12,
+    fontSize: 11,
     color: UI.text2,
     marginTop: 2,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderRadius: 12,
     backgroundColor: UI.red,
   },
   logoutButtonText: {
     color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
   },
 
   menuWrap: {
     paddingHorizontal: 16,
-    paddingTop: 14,
+    paddingTop: 12,
     paddingBottom: 6,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 9,
   },
+  // ✅ smaller buttons + smaller text
   menuBtn: {
     width: '48%',
     backgroundColor: UI.card,
     borderWidth: 1,
     borderColor: UI.border,
     borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 9,
     shadowColor: UI.shadow,
     shadowOpacity: 1,
     shadowRadius: 14,
@@ -2524,9 +1950,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFF',
   },
   menuIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
+    width: 30,
+    height: 30,
+    borderRadius: 11,
     backgroundColor: UI.card2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2536,7 +1962,7 @@ const styles = StyleSheet.create({
   },
   menuText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
     color: UI.text,
   },
@@ -2551,7 +1977,7 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '900',
     color: UI.text,
     marginBottom: 10,
@@ -2749,14 +2175,14 @@ const styles = StyleSheet.create({
   },
 
   smallBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
     borderRadius: 12,
   },
   smallBtnText: {
     color: '#fff',
     fontWeight: '900',
-    fontSize: 13,
+    fontSize: 12,
   },
 
   balanceText: {
@@ -2764,30 +2190,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: UI.blue,
     fontWeight: '800',
-  },
-
-  timerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: UI.amberSoft,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    padding: 12,
-    borderRadius: 14,
-    marginTop: 10,
-    marginBottom: 6,
-  },
-  timerTitle: {
-    fontSize: 12,
-    color: UI.text2,
-    fontWeight: '700',
-  },
-  timerValue: {
-    fontSize: 16,
-    color: UI.amber,
-    fontWeight: '900',
-    marginTop: 2,
   },
 
   emptyText: {
@@ -2949,7 +2351,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
-  // ✅ NEW user document tab buttons (green background, black text)
   docGrid: {
     flexDirection: 'row',
     gap: 10,
@@ -2971,7 +2372,6 @@ const styles = StyleSheet.create({
     color: UI.text,
   },
 
-  // search card
   searchCard: {
     backgroundColor: UI.card,
     borderWidth: 1,
