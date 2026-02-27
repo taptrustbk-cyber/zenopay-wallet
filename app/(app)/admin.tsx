@@ -127,99 +127,125 @@ export default function AdminScreen() {
 
   // ---------- KYC helpers ----------
   const isLikelyUrl = (v?: string | null) =>
-    !!v && (v.startsWith('http://') || v.startsWith('https://'));
+  !!v && (v.startsWith('http://') || v.startsWith('https://'));
 
-  // ✅ NEW: If profiles columns are NULL, scan storage folder {userId}/ and find id_front/id_back/selfie
-  const resolveKycPathByListing = async (userId: string, kind: KycKind) => {
-    try {
-      const { data, error } = await supabase.storage.from(KYC_BUCKET).list(userId, {
-        limit: 200,
-        offset: 0,
-        sortBy: { column: 'name', order: 'asc' },
-      });
-      if (error) return null;
-      if (!data || data.length === 0) return null;
+const KYC_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
 
+const trySignedUrl = async (path: string) => {
+  const { data, error } = await supabase.storage.from(KYC_BUCKET).createSignedUrl(path, 60 * 60);
+  if (error) return null;
+  return data?.signedUrl || null;
+};
+
+// ✅ NEW: smarter resolver
+const resolveKycPathSmart = async (userId: string, kind: KycKind) => {
+  // 1) try list folder (best)
+  try {
+    const { data, error } = await supabase.storage.from(KYC_BUCKET).list(userId, {
+      limit: 200,
+      offset: 0,
+      sortBy: { column: 'name', order: 'asc' },
+    });
+
+    if (!error && data && data.length > 0) {
       const lower = kind.toLowerCase();
+
       const exact =
         data.find((f) => (f.name || '').toLowerCase() === `${lower}.jpeg`) ||
         data.find((f) => (f.name || '').toLowerCase() === `${lower}.jpg`) ||
-        data.find((f) => (f.name || '').toLowerCase() === `${lower}.png`);
+        data.find((f) => (f.name || '').toLowerCase() === `${lower}.png`) ||
+        data.find((f) => (f.name || '').toLowerCase() === `${lower}.webp`);
 
       const loose = data.find((f) => (f.name || '').toLowerCase().includes(lower));
-
       const match = exact || loose;
-      if (!match?.name) return null;
 
-      return `${userId}/${match.name}`;
-    } catch {
-      return null;
+      if (match?.name) return `${userId}/${match.name}`;
     }
-  };
+  } catch {
+    // ignore
+  }
 
-  const getKycUrl = async (pathOrUrl?: string | null) => {
-    if (!pathOrUrl) return null;
-    if (isLikelyUrl(pathOrUrl)) return pathOrUrl;
+  // 2) fallback: try common filenames without list permission
+  for (const ext of KYC_EXTS) {
+    const candidate = `${userId}/${kind}.${ext}`;
+    const signed = await trySignedUrl(candidate);
+    if (signed) return candidate; // exists
+  }
 
-    // If bucket is public:
-    const pub = supabase.storage.from(KYC_BUCKET).getPublicUrl(pathOrUrl)?.data?.publicUrl;
-    if (pub) return pub;
+  // 3) fallback: sometimes file name includes dash/space etc
+  // you can add more patterns here if needed
 
-    // If bucket is private:
-    try {
-      const signed = await supabase.storage.from(KYC_BUCKET).createSignedUrl(pathOrUrl, 60 * 60);
-      if (signed?.data?.signedUrl) return signed.data.signedUrl;
-    } catch {}
+  return null;
+};
 
-    return null;
-  };
+const getKycUrl = async (pathOrUrl?: string | null) => {
+  if (!pathOrUrl) return null;
+  if (isLikelyUrl(pathOrUrl)) return pathOrUrl;
 
-  const openKycPreview = async (title: string, pathOrUrl?: string | null, userId?: string, kind?: KycKind) => {
-    setKycPreviewTitle(title);
-    setKycPreviewUrl('');
-    setKycPreviewOpen(true);
-    setKycPreviewLoading(true);
+  // ✅ 1) signed url first (works for private buckets)
+  const signed = await trySignedUrl(pathOrUrl);
+  if (signed) return signed;
 
-    let finalPath = pathOrUrl || null;
+  // ✅ 2) then public url (works if bucket is public)
+  const pub = supabase.storage.from(KYC_BUCKET).getPublicUrl(pathOrUrl)?.data?.publicUrl;
+  if (pub) return pub;
 
-    if (!finalPath && userId && kind) {
-      finalPath = await resolveKycPathByListing(userId, kind);
-    }
+  return null;
+};
 
-    if (!finalPath) {
-      setKycPreviewLoading(false);
-      Alert.alert('No File', `${title} photo not uploaded`);
-      return;
-    }
+const openKycPreview = async (
+  title: string,
+  pathOrUrl?: string | null,
+  userId?: string,
+  kind?: KycKind
+) => {
+  setKycPreviewTitle(title);
+  setKycPreviewUrl('');
+  setKycPreviewOpen(true);
+  setKycPreviewLoading(true);
 
-    const url = await getKycUrl(finalPath);
-    setKycPreviewUrl(url || '');
+  let finalPath = pathOrUrl || null;
+
+  // ✅ if column empty, resolve from storage
+  if ((!finalPath || finalPath === 'null') && userId && kind) {
+    finalPath = await resolveKycPathSmart(userId, kind);
+  }
+
+  if (!finalPath) {
     setKycPreviewLoading(false);
+    Alert.alert('No File', `${title} photo not uploaded`);
+    return;
+  }
 
-    if (!url) {
-      Alert.alert('Error', 'Failed to load image. Check bucket privacy/policy.');
-    }
-  };
+  const url = await getKycUrl(finalPath);
+  setKycPreviewUrl(url || '');
+  setKycPreviewLoading(false);
 
-  const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: KycKind) => {
-    let finalPath = pathOrUrl || null;
+  if (!url) {
+    Alert.alert('Error', 'Failed to load image. Check bucket privacy/policy.');
+  }
+};
 
-    if (!finalPath && userId && kind) {
-      finalPath = await resolveKycPathByListing(userId, kind);
-    }
+const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: KycKind) => {
+  let finalPath = pathOrUrl || null;
 
-    const url = await getKycUrl(finalPath);
-    if (!url) {
-      Alert.alert('Error', 'Cannot open file');
-      return;
-    }
-    const canOpen = await Linking.canOpenURL(url);
-    if (!canOpen) {
-      Alert.alert('Error', 'Cannot open this URL');
-      return;
-    }
-    await Linking.openURL(url);
-  };
+  if ((!finalPath || finalPath === 'null') && userId && kind) {
+    finalPath = await resolveKycPathSmart(userId, kind);
+  }
+
+  const url = await getKycUrl(finalPath);
+  if (!url) {
+    Alert.alert('Error', 'Cannot open file');
+    return;
+  }
+
+  const canOpen = await Linking.canOpenURL(url);
+  if (!canOpen) {
+    Alert.alert('Error', 'Cannot open this URL');
+    return;
+  }
+  await Linking.openURL(url);
+};
 
   // ---------- realtime subscriptions ----------
   useEffect(() => {
