@@ -25,6 +25,10 @@ export default function AuthLayout() {
         <Stack.Screen name="forgot-password" />
         <Stack.Screen name="reset-password" />
         <Stack.Screen name="email-verification" />
+
+        {/* ✅ ADD THIS LINE (you have app/auth/confirm.tsx) */}
+        <Stack.Screen name="confirm" />
+
         <Stack.Screen name="waiting-review" />
         <Stack.Screen name="waiting-timer" />
         <Stack.Screen name="kyc-wait" />
