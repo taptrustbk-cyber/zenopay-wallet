@@ -35,6 +35,16 @@ function sleep(ms: number) {
   return new Promise((res) => setTimeout(res, ms));
 }
 
+type PendingProfile = {
+  email?: string;
+  full_name?: string;
+  city?: string;
+  country?: string;
+  phone?: string;
+  date_of_brith?: string; // your DB typo column
+  pending_profile_created_at?: string;
+};
+
 export default function EmailVerificationScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -48,6 +58,7 @@ export default function EmailVerificationScreen() {
 
   // prevent double redirects
   const redirectedRef = useRef(false);
+  const savingProfileRef = useRef(false);
 
   // Cooldown to avoid resend spam
   const [cooldown, setCooldown] = useState(0);
@@ -78,9 +89,14 @@ export default function EmailVerificationScreen() {
     if (redirectedRef.current) return;
     redirectedRef.current = true;
 
+    // ✅ Pass info to login screen (optional usage there)
     router.replace({
       pathname: '/login' as any,
-      params: { confirmed: '1' }, // ✅ you can read this in login page to show a toast
+      params: {
+        confirmed: '1',
+        applyPendingProfile: '1',
+        email: userEmail || emailParam || '',
+      },
     } as any);
   }
 
@@ -91,11 +107,10 @@ export default function EmailVerificationScreen() {
     return !!user?.email_confirmed_at;
   }
 
-  // ✅ NEW: Check confirmed from Supabase (server) by Edge Function
+  // ✅ Check confirmed from Supabase (server) by Edge Function
   async function checkIfVerifiedFromServer(email: string): Promise<boolean> {
     if (!email) return false;
 
-    // This calls: Supabase Edge Function name: "check-email-confirmed"
     const { data, error } = await supabase.functions.invoke('check-email-confirmed', {
       body: { email },
     });
@@ -105,22 +120,69 @@ export default function EmailVerificationScreen() {
       return false;
     }
 
-    // expected response: { confirmed: true/false }
     return !!data?.confirmed;
   }
 
-  async function handleConfirmedFlow() {
+  // ✅ NEW: try to save pending profile into "profiles" if we have a session user.id
+  async function tryUpsertPendingProfileIfSession(): Promise<boolean> {
+    if (savingProfileRef.current) return false;
+    savingProfileRef.current = true;
+
+    try {
+      const pendingRaw = await AsyncStorage.getItem(PENDING_PROFILE_KEY);
+      const pending: PendingProfile | null = pendingRaw ? JSON.parse(pendingRaw) : null;
+      if (!pending) return false;
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData?.session?.user?.id;
+
+      // If no session, we cannot write to profiles yet
+      if (!userId) return false;
+
+      const payload = {
+        id: userId,
+        full_name: pending.full_name ?? null,
+        city: pending.city ?? null,
+        country: pending.country ?? null,
+        phone: pending.phone ?? null,
+        date_of_brith: pending.date_of_brith ?? null, // your DB column name
+      };
+
+      const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
+
+      if (error) {
+        console.log('profiles upsert error:', error.message);
+        return false;
+      }
+
+      // ✅ only remove pending after successful save
+      await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
+      return true;
+    } catch (e: any) {
+      console.log('tryUpsertPendingProfileIfSession error:', e?.message);
+      return false;
+    } finally {
+      savingProfileRef.current = false;
+    }
+  }
+
+  async function handleConfirmedFlow(source: 'session' | 'server') {
     setVerified(true);
 
-    await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
+    // ✅ If app has a session, save profile now
+    await tryUpsertPendingProfileIfSession();
 
-    // If there is a session, keep your old behavior (sign out, then go login)
+    // ✅ Keep your old behavior: if session exists, sign out then go login
+    // (If confirmed came from server, session usually doesn't exist, so this does nothing.)
     const { data } = await supabase.auth.getSession();
     if (data?.session) {
       await sleep(400);
       await supabase.auth.signOut();
       await sleep(200);
     }
+
+    // ✅ If we didn't have a session, pending profile remains in storage
+    // and should be saved after first login (recommended).
 
     Alert.alert(
       i18n.t('success') || 'Success',
@@ -142,7 +204,7 @@ export default function EmailVerificationScreen() {
         const okSession = await checkIfVerifiedWithSession();
         if (!mounted) return;
         if (okSession && !verified) {
-          await handleConfirmedFlow();
+          await handleConfirmedFlow('session');
           return;
         }
 
@@ -151,7 +213,7 @@ export default function EmailVerificationScreen() {
           const okServer = await checkIfVerifiedFromServer(emailToCheck);
           if (!mounted) return;
           if (okServer && !verified) {
-            await handleConfirmedFlow();
+            await handleConfirmedFlow('server');
           }
         }
       } catch (e: any) {
@@ -172,7 +234,7 @@ export default function EmailVerificationScreen() {
 
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
         if (session?.user?.email_confirmed_at && !verified) {
-          await handleConfirmedFlow();
+          await handleConfirmedFlow('session');
         }
       }
     });
@@ -192,15 +254,15 @@ export default function EmailVerificationScreen() {
       // 1) session check
       const okSession = await checkIfVerifiedWithSession();
       if (okSession) {
-        await handleConfirmedFlow();
+        await handleConfirmedFlow('session');
         return;
       }
 
-      // 2) server check (Edge Function)
+      // 2) server check
       if (emailToCheck) {
         const okServer = await checkIfVerifiedFromServer(emailToCheck);
         if (okServer) {
-          await handleConfirmedFlow();
+          await handleConfirmedFlow('server');
           return;
         }
       }
@@ -229,7 +291,7 @@ export default function EmailVerificationScreen() {
         return;
       }
 
-      // ✅ confirm route is "/confirm" (group not in URL)
+      // ✅ still ok to use confirm link
       const emailRedirectTo = Linking.createURL('confirm'); // zenopay://confirm
 
       const { error } = await supabase.auth.resend({
