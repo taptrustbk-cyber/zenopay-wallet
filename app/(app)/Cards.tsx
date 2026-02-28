@@ -100,7 +100,7 @@ function formatExp(month: number, year: number) {
   return `${mm}/${yy}`;
 }
 
-// ✅ NEW: show only first 12 digits on the card UI
+// ✅ show only first 12 digits on the card UI
 function formatPan12ForDisplay(panMasked: string) {
   const digits = onlyDigits(panMasked);
 
@@ -152,11 +152,18 @@ export default function CardsScreen() {
     gcTime: 0,
   });
 
+  // ✅ IMPORTANT FIX: filter cards by the logged-in user
   const cardsQuery = useQuery({
     queryKey: ['cards', user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from('cards').select('*').order('created_at', { ascending: false });
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
       if (error) throw error;
       return (data || []) as CardRow[];
     },
@@ -166,7 +173,13 @@ export default function CardsScreen() {
 
   const balance = walletQuery.data?.balance ?? 0;
   const currency = walletQuery.data?.currency ?? 'USD';
-  const canBuy = balance >= CARD_PRICE && !walletQuery.isLoading && !walletQuery.isError;
+
+  const hasCard = (cardsQuery.data?.length || 0) > 0;
+  const firstCard = hasCard ? cardsQuery.data![0] : null;
+
+  // ✅ If user already has a card, we should not allow creating again
+  const canBuy =
+    !hasCard && balance >= CARD_PRICE && !walletQuery.isLoading && !walletQuery.isError;
 
   const isFormValid = useMemo(() => {
     if (!fullName.trim()) return false;
@@ -182,6 +195,17 @@ export default function CardsScreen() {
       Alert.alert(t('common.error', 'Error'), t('auth.user_not_found', 'User not found'));
       return;
     }
+
+    // ✅ hard block: only 1 virtual card allowed
+    const alreadyHasCard = (cardsQuery.data?.length || 0) > 0;
+    if (alreadyHasCard) {
+      Alert.alert(
+        t('cards.one_card_title', 'Card already created'),
+        t('cards.one_card_desc', 'You can only have one virtual card.')
+      );
+      return;
+    }
+
     if (!isFormValid) {
       Alert.alert(
         t('cards.missing_info_title', 'Missing info'),
@@ -189,12 +213,11 @@ export default function CardsScreen() {
       );
       return;
     }
+
     if (!canBuy) {
       Alert.alert(
         t('cards.insufficient_title', 'Insufficient balance'),
         t('cards.insufficient_desc', `You need at least ${CARD_PRICE} ${currency}.`)
-          .replace(String(CARD_PRICE), String(CARD_PRICE))
-          .replace('USD', currency)
       );
       return;
     }
@@ -226,6 +249,7 @@ export default function CardsScreen() {
           String(CARD_PRICE)
         )
       );
+
       await walletQuery.refetch();
       await cardsQuery.refetch();
     } catch (e: any) {
@@ -291,12 +315,11 @@ export default function CardsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: UI.bg }]}>
-      {/* ✅ removes the extra (blue/dark) header from expo-router stack */}
       <Stack.Screen options={{ headerShown: false }} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
-          {/* Header (your custom back + title) */}
+          {/* Header */}
           <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
             <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.85}>
               <Ionicons name="arrow-back" size={22} color={UI.text} />
@@ -330,23 +353,39 @@ export default function CardsScreen() {
                 )}
               </View>
 
-              <View style={styles.pricePill}>
-                <Ionicons name="pricetag" size={16} color={UI.green} />
-                <Text style={styles.priceText} numberOfLines={1}>
-                  {t('cards.create_price', 'Create')}: {CARD_PRICE}$
-                </Text>
-              </View>
+              {/* ✅ If user already has a card, hide the price pill */}
+              {!hasCard ? (
+                <View style={styles.pricePill}>
+                  <Ionicons name="pricetag" size={16} color={UI.green} />
+                  <Text style={styles.priceText} numberOfLines={1}>
+                    {t('cards.create_price', 'Create')}: {CARD_PRICE}$
+                  </Text>
+                </View>
+              ) : null}
             </View>
 
-            {!canBuy && !walletQuery.isLoading && !walletQuery.isError ? (
+            {/* ✅ inline warning only if user can’t buy and doesn’t already have a card */}
+            {!hasCard && !canBuy && !walletQuery.isLoading && !walletQuery.isError ? (
               <View style={styles.warnRow}>
                 <Ionicons name="alert-circle" size={18} color={UI.danger} />
-                <Text style={styles.warnText}>{t('cards.insufficient_inline', 'Insufficient balance to create a card.')}</Text>
+                <Text style={styles.warnText}>
+                  {t('cards.insufficient_inline', 'Insufficient balance to create a card.')}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* ✅ show one-card rule message */}
+            {hasCard ? (
+              <View style={[styles.warnRow, { marginTop: 10 }]}>
+                <Ionicons name="checkmark-circle" size={18} color={UI.green} />
+                <Text style={[styles.warnText, { color: UI.text }]}>
+                  {t('cards.one_card_inline', 'Your virtual card is active. You can only have one card.')}
+                </Text>
               </View>
             ) : null}
           </View>
 
-          {/* Existing cards list */}
+          {/* Cards area */}
           <View style={styles.listWrap}>
             <View style={styles.listHeaderRow}>
               <Text style={styles.listTitle}>{t('cards.your_cards', 'Your Cards')}</Text>
@@ -363,113 +402,112 @@ export default function CardsScreen() {
             ) : cardsQuery.isError ? (
               <View style={styles.loadingBox}>
                 <Ionicons name="alert-circle" size={20} color={UI.danger} />
-                <Text style={[styles.loadingText, { color: UI.danger }]}>{t('cards.failed_cards', 'Failed to load cards')}</Text>
+                <Text style={[styles.loadingText, { color: UI.danger }]}>
+                  {t('cards.failed_cards', 'Failed to load cards')}
+                </Text>
               </View>
-            ) : (cardsQuery.data?.length || 0) === 0 ? (
+            ) : !hasCard ? (
               <View style={styles.emptyBox}>
                 <Ionicons name="card-outline" size={26} color={UI.text2} />
                 <Text style={styles.emptyText}>{t('cards.empty', 'No cards yet. Create your first card below.')}</Text>
               </View>
             ) : (
-              <View style={{ gap: 12 }}>
-                {cardsQuery.data!.map((c) => (
-                  <CardItem key={c.id} card={c} />
-                ))}
-              </View>
+              // ✅ show only the single (latest) card
+              <CardItem card={firstCard!} />
             )}
           </View>
 
-          {/* Form */}
-          <View style={styles.formCard}>
-            <Text style={styles.formTitle}>{t('cards.create_new', 'Create New Card')}</Text>
+          {/* ✅ FORM: show only if user has NO card */}
+          {!hasCard ? (
+            <View style={styles.formCard}>
+              <Text style={styles.formTitle}>{t('cards.create_new', 'Create New Card')}</Text>
 
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>{t('cards.full_name', 'Full Name')}</Text>
-              <TextInput
-                value={fullName}
-                onChangeText={setFullName}
-                placeholder={t('cards.full_name_ph', 'Your full name')}
-                placeholderTextColor="#9CA3AF"
-                style={styles.input}
-              />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>{t('cards.phone', 'Phone')}</Text>
-              <TextInput
-                value={phone}
-                onChangeText={setPhone}
-                placeholder={t('cards.phone_ph', '07xxxxxxxx')}
-                placeholderTextColor="#9CA3AF"
-                keyboardType="phone-pad"
-                style={styles.input}
-              />
-            </View>
-
-            <View style={styles.twoCol}>
-              <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>{t('cards.country', 'Country')}</Text>
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>{t('cards.full_name', 'Full Name')}</Text>
                 <TextInput
-                  value={country}
-                  onChangeText={setCountry}
-                  placeholder={t('cards.country_ph', 'Iraq')}
+                  value={fullName}
+                  onChangeText={setFullName}
+                  placeholder={t('cards.full_name_ph', 'Your full name')}
                   placeholderTextColor="#9CA3AF"
                   style={styles.input}
                 />
               </View>
 
-              <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>{t('cards.city', 'City')}</Text>
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>{t('cards.phone', 'Phone')}</Text>
                 <TextInput
-                  value={city}
-                  onChangeText={setCity}
-                  placeholder={t('cards.city_ph', 'Erbil')}
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder={t('cards.phone_ph', '07xxxxxxxx')}
                   placeholderTextColor="#9CA3AF"
+                  keyboardType="phone-pad"
                   style={styles.input}
                 />
               </View>
+
+              <View style={styles.twoCol}>
+                <View style={[styles.field, { flex: 1 }]}>
+                  <Text style={styles.fieldLabel}>{t('cards.country', 'Country')}</Text>
+                  <TextInput
+                    value={country}
+                    onChangeText={setCountry}
+                    placeholder={t('cards.country_ph', 'Iraq')}
+                    placeholderTextColor="#9CA3AF"
+                    style={styles.input}
+                  />
+                </View>
+
+                <View style={[styles.field, { flex: 1 }]}>
+                  <Text style={styles.fieldLabel}>{t('cards.city', 'City')}</Text>
+                  <TextInput
+                    value={city}
+                    onChangeText={setCity}
+                    placeholder={t('cards.city_ph', 'Erbil')}
+                    placeholderTextColor="#9CA3AF"
+                    style={styles.input}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>{t('cards.address', 'Address')}</Text>
+                <TextInput
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholder={t('cards.address_ph', 'Street / Area')}
+                  placeholderTextColor="#9CA3AF"
+                  style={[styles.input, { height: 54 }]}
+                />
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={createCard}
+                disabled={!canBuy || !isFormValid || isCreating}
+                style={[styles.createBtn, (!canBuy || !isFormValid || isCreating) && { opacity: 0.55 }]}
+              >
+                {isCreating ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="card" size={18} color="#fff" />
+                    <Text style={styles.createBtnText}>{t('cards.create_btn', 'Create Virtual Card')}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <Text style={styles.virtualInfo}>
+                {t('cards.virtual_info', 'This is a virtual internal card for Zenopay wallet use only.')}
+              </Text>
+
+              <Text style={styles.note}>
+                {t(
+                  'cards.note',
+                  `By creating a card, ${CARD_PRICE}$ will be deducted automatically from your wallet balance.`
+                ).replace('25', String(CARD_PRICE))}
+              </Text>
             </View>
-
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>{t('cards.address', 'Address')}</Text>
-              <TextInput
-                value={address}
-                onChangeText={setAddress}
-                placeholder={t('cards.address_ph', 'Street / Area')}
-                placeholderTextColor="#9CA3AF"
-                style={[styles.input, { height: 54 }]}
-              />
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={createCard}
-              disabled={!canBuy || !isFormValid || isCreating}
-              style={[styles.createBtn, (!canBuy || !isFormValid || isCreating) && { opacity: 0.55 }]}
-            >
-              {isCreating ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="card" size={18} color="#fff" />
-                  {/* ✅ Button renamed */}
-                  <Text style={styles.createBtnText}>{t('cards.create_btn', 'Create Virtual Card')}</Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            {/* ✅ NEW TEXT under button */}
-            <Text style={styles.virtualInfo}>
-              {t('cards.virtual_info', 'This is a virtual internal card for Zenopay wallet use only.')}
-            </Text>
-
-            <Text style={styles.note}>
-              {t('cards.note', `By creating a card, ${CARD_PRICE}$ will be deducted automatically from your wallet balance.`).replace(
-                '25',
-                String(CARD_PRICE)
-              )}
-            </Text>
-          </View>
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -660,7 +698,6 @@ const styles = StyleSheet.create({
   },
   createBtnText: { color: '#fff', fontWeight: '900', fontSize: 15 },
 
-  // ✅ NEW style for the new info text
   virtualInfo: {
     marginTop: 10,
     color: UI.text,
