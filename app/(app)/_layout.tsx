@@ -2,7 +2,6 @@ import { Stack } from 'expo-router';
 import { ErrorBoundary } from 'react-error-boundary';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { Clock, Shield } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import i18n from '@/lib/i18n';
 
@@ -20,35 +19,29 @@ function ErrorFallback({ error, resetErrorBoundary }: any) {
 
 function KycPendingScreen() {
   const { signOut } = useAuth();
-  
+
   return (
     <View style={styles.kycContainer}>
       <View style={styles.kycContent}>
         <View style={styles.kycIconContainer}>
-          <Shield size={64} color="#F59E0B" strokeWidth={1.5} />
+          <Ionicons name="shield-checkmark-outline" size={64} color="#F59E0B" />
         </View>
-        
+
         <Text style={styles.kycTitle}>{i18n.t('kycVerificationRequired')}</Text>
-        <Text style={styles.kycSubtitle}>
-          {i18n.t('kycPendingMessage')}
-        </Text>
-        
+        <Text style={styles.kycSubtitle}>{i18n.t('kycPendingMessage')}</Text>
+
         <View style={styles.kycInfoBox}>
-          <Clock size={20} color="#94A3B8" style={styles.kycInfoIcon} />
+          <Ionicons name="time-outline" size={20} color="#94A3B8" style={styles.kycInfoIcon} />
           <View style={styles.kycInfoContent}>
             <Text style={styles.kycInfoTitle}>{i18n.t('whatsNext')}</Text>
-            <Text style={styles.kycInfoText}>
-              {i18n.t('kycNextSteps')}
-            </Text>
+            <Text style={styles.kycInfoText}>{i18n.t('kycNextSteps')}</Text>
           </View>
         </View>
-        
+
         <View style={styles.kycSecurityNote}>
-          <Text style={styles.kycSecurityText}>
-            {i18n.t('documentsSecure')}
-          </Text>
+          <Text style={styles.kycSecurityText}>{i18n.t('documentsSecure')}</Text>
         </View>
-        
+
         <TouchableOpacity style={styles.kycSignOutButton} onPress={signOut}>
           <Text style={styles.kycSignOutText}>{i18n.t('signOut')}</Text>
         </TouchableOpacity>
@@ -59,7 +52,7 @@ function KycPendingScreen() {
 
 export default function AppLayout() {
   const { profile, loading } = useAuth();
-  
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -67,11 +60,11 @@ export default function AppLayout() {
       </View>
     );
   }
-  
+
   if (profile && profile.kyc_status !== 'approved') {
     return <KycPendingScreen />;
   }
-  
+
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <Stack
@@ -95,149 +88,162 @@ export default function AppLayout() {
         <Stack.Screen name="dashboard" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ title: 'Profile' }} />
         <Stack.Screen name="kyc" options={{ title: 'KYC Verification' }} />
-        <Stack.Screen 
-          name="send" 
+
+        <Stack.Screen
+          name="send"
           options={({ navigation }) => ({
             title: i18n.t('sendMoney'),
             headerLeft: () => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => navigation.navigate('dashboard')}
                 style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
               >
                 <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
-                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>
+                  {i18n.t('back')}
+                </Text>
               </TouchableOpacity>
             ),
           })}
         />
-        <Stack.Screen 
-          name="receive" 
+
+        <Stack.Screen
+          name="receive"
           options={({ navigation }) => ({
             title: i18n.t('deposit'),
             headerLeft: () => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => navigation.navigate('dashboard')}
                 style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
               >
                 <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
-                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>
+                  {i18n.t('back')}
+                </Text>
               </TouchableOpacity>
             ),
           })}
         />
+
         <Stack.Screen name="transactions" options={{ title: 'Transactions' }} />
-        <Stack.Screen 
-          name="withdraw" 
+
+        <Stack.Screen
+          name="withdraw"
           options={({ navigation }) => ({
             title: i18n.t('withdraw'),
             headerLeft: () => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => navigation.navigate('dashboard')}
                 style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
               >
                 <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
-                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>
+                  {i18n.t('back')}
+                </Text>
               </TouchableOpacity>
             ),
           })}
         />
-        <Stack.Screen 
-          name="consulate" 
+
+        <Stack.Screen
+          name="consulate"
           options={({ navigation }) => ({
             title: i18n.t('consulateInfo'),
             headerLeft: () => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => navigation.navigate('dashboard')}
                 style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
               >
                 <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
-                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>
+                  {i18n.t('back')}
+                </Text>
               </TouchableOpacity>
             ),
           })}
         />
+
         <Stack.Screen name="settings" options={{ headerShown: false }} />
         <Stack.Screen name="admin" options={{ title: 'Admin Panel' }} />
         <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
         <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
         <Stack.Screen name="security" options={{ headerShown: false }} />
-        <Stack.Screen name="portfolio" options={{ headerShown: false }} />
-        <Stack.Screen 
-          name="crypto" 
-          options={({ navigation }) => ({
-            title: i18n.t('cryptoTrade'),
-            headerShown: true,
-            headerLeft: () => (
-              <TouchableOpacity 
-                onPress={() => navigation.navigate('dashboard')}
-                style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
-              >
-                <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
-                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
-              </TouchableOpacity>
-            ),
-          })}
-        />
-        <Stack.Screen 
-          name="sim-cards" 
+
+        {/* ✅ REMOVED: portfolio + crypto (they don't exist in routes) */}
+        {/* <Stack.Screen name="portfolio" options={{ headerShown: false }} /> */}
+        {/* <Stack.Screen name="crypto" options={{ ... }} /> */}
+
+        <Stack.Screen
+          name="sim-cards"
           options={({ navigation }) => ({
             title: i18n.t('simCards'),
             headerShown: true,
             headerLeft: () => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => navigation.navigate('dashboard')}
                 style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
               >
                 <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
-                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>
+                  {i18n.t('back')}
+                </Text>
               </TouchableOpacity>
             ),
           })}
         />
-        <Stack.Screen 
-          name="gift-cards" 
+
+        <Stack.Screen
+          name="gift-cards"
           options={({ navigation }) => ({
             title: i18n.t('giftCards'),
             headerShown: true,
             headerLeft: () => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => navigation.navigate('dashboard')}
                 style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
               >
                 <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
-                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>
+                  {i18n.t('back')}
+                </Text>
               </TouchableOpacity>
             ),
           })}
         />
-        <Stack.Screen 
-          name="mobile-shop" 
+
+        <Stack.Screen
+          name="mobile-shop"
           options={({ navigation }) => ({
             title: i18n.t('mobileShop'),
             headerShown: true,
             headerLeft: () => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => navigation.navigate('dashboard')}
                 style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
               >
                 <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
-                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>
+                  {i18n.t('back')}
+                </Text>
               </TouchableOpacity>
             ),
           })}
         />
-        <Stack.Screen 
-          name="travel-booking" 
+
+        <Stack.Screen
+          name="travel-booking"
           options={({ navigation }) => ({
             title: i18n.t('travelBooking'),
             headerShown: true,
             headerLeft: () => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => navigation.navigate('dashboard')}
                 style={{ flexDirection: 'row', alignItems: 'center', marginLeft: -8 }}
               >
                 <Ionicons name="arrow-back" size={24} color="#E2E8F0" style={{ marginRight: 4 }} />
-                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>{i18n.t('back')}</Text>
+                <Text style={{ color: '#E2E8F0', fontSize: 16, fontWeight: '600' }}>
+                  {i18n.t('back')}
+                </Text>
               </TouchableOpacity>
             ),
           })}
