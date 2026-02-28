@@ -347,7 +347,7 @@
 
   "accountUnderReview": "الحساب قيد المراجعة",
   "pendingAdminReview": "في انتظار مراجعة المسؤول",
-  "reviewTakes1To6Hours": "تستغرق المراجعة من 1-6 ساعات",
+  "reviewTakes1To6Hours": "تستغرق المراجعة من 1-12 ساعات",
   "waitForApproval2": "انتظر الموافقة",
   "readyWait": "يرجى الانتظار",
   "securityWaitInfo": "للأمان، نراجع جميع الحسابات الجديدة",
