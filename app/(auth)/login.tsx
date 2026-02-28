@@ -18,6 +18,19 @@ import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import i18n, { setLanguage, getCurrentLanguage } from '@/lib/i18n';
 import { Eye, EyeOff, Mail, Lock, Globe, HelpCircle } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v1';
+
+type PendingProfile = {
+  email?: string;
+  full_name?: string;
+  city?: string;
+  country?: string;
+  phone?: string;
+  date_of_brith?: string; // ✅ your DB column name (typo)
+  pending_profile_created_at?: string;
+};
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -26,6 +39,44 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [, forceUpdate] = useState(0);
+
+  async function applyPendingProfileIfExists(userId: string) {
+    try {
+      const pendingRaw = await AsyncStorage.getItem(PENDING_PROFILE_KEY);
+      if (!pendingRaw) return;
+
+      const pending: PendingProfile | null = JSON.parse(pendingRaw);
+      if (!pending) return;
+
+      // Optional safety: ensure pending belongs to this email (if available)
+      const cleanLoginEmail = (email || '').trim().toLowerCase();
+      const pendingEmail = (pending.email || '').trim().toLowerCase();
+      if (pendingEmail && cleanLoginEmail && pendingEmail !== cleanLoginEmail) {
+        return;
+      }
+
+      const { error } = await supabase.from('profiles').upsert(
+        {
+          id: userId,
+          full_name: pending.full_name ?? null,
+          city: pending.city ?? null,
+          country: pending.country ?? null,
+          phone: pending.phone ?? null,
+          date_of_brith: pending.date_of_brith ?? null,
+        },
+        { onConflict: 'id' }
+      );
+
+      if (error) {
+        console.log('applyPendingProfile upsert error:', error.message);
+        return;
+      }
+
+      await AsyncStorage.removeItem(PENDING_PROFILE_KEY);
+    } catch (e: any) {
+      console.log('applyPendingProfileIfExists error:', e?.message);
+    }
+  }
 
   const loginMutation = useMutation({
     mutationFn: async () => {
@@ -57,6 +108,9 @@ export default function LoginScreen() {
       if (!data.user) {
         throw new Error('Login failed');
       }
+
+      // ✅ NEW: after login success, save pending signup details to profiles (if pending exists)
+      await applyPendingProfileIfExists(data.user.id);
 
       console.log('Login successful, AuthContext will handle profile loading and navigation');
       return { success: true };
@@ -236,7 +290,11 @@ export default function LoginScreen() {
               disabled={loginMutation.isPending}
               activeOpacity={0.9}
             >
-              {loginMutation.isPending ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginButtonText}>{i18n.t('login')}</Text>}
+              {loginMutation.isPending ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.loginButtonText}>{i18n.t('login')}</Text>
+              )}
             </TouchableOpacity>
 
             {/* Create New Account */}
