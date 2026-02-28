@@ -154,7 +154,7 @@
   "deliveryNote": "تێبینی گەیاندن",
   "optional": "دڵخواز",
   "enterDeliveryNote": "هەر ڕێنماییەکی گەیاندن زیاد بکە",
-  "deliveryEstimate": "گەیاندنی بەخشکراو: 3-7 ڕۆژی کار",
+  "deliveryEstimate": "گەیاندنی بەخشکراو: 1-3 ڕۆژی کار",
   "placeOrder": "داواکاری دابنێ",
   "orderPlaced": "داواکاری دانرا!",
   "orderPlacedMessage": "داواکاریەکەت بە سەرکەوتوویی دانرا.",
@@ -329,7 +329,7 @@
 
   "accountUnderReview": "هەژمار لە ژێر پێداچوونەوەیە",
   "pendingAdminReview": "چاوەڕوانی پێداچوونەوەی بەڕێوەبەر",
-  "reviewTakes1To6Hours": "پێداچوونەوە 1-6 کاتژمێر دەخایەنێت",
+  "reviewTakes1To6Hours": "پێداچوونەوە 1-12 کاتژمێر دەخایەنێت",
   "waitForApproval2": "چاوەڕێی پەسەندکردن بە",
   "readyWait": "تکایە چاوەڕێبە",
   "securityWaitInfo": "بۆ ئاسایش، هەموو هەژمارە نوێیەکان پێداچوونەوە دەکەین",
