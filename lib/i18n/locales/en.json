@@ -119,6 +119,8 @@
   "purchaseDetails": "Purchase Details",
   "product": "Product",
   "amount": "Amount",
+  "zenopayAgentDeposit": "Deposit by Zenopay agent",
+  "adminTopUp": "Deposit by Zenopay agent",
   "backToDashboard": "Back to Dashboard",
   "insufficientBalanceForPurchase": "Insufficient balance for this purchase",
 
