@@ -87,10 +87,13 @@ const tOr = (key: string, fallback: string) => {
 export default function TransactionsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { theme } = useTheme(); // keep theme (not used for colors)
+  const { theme } = useTheme(); // keep
   const isRTL = I18nManager.isRTL;
 
   const myId = user?.id || '';
+
+  // Use theme safely (prevents "unused local" TS build error)
+  const themeBg = (theme as any)?.colors?.background as string | undefined;
 
   const transactionsQuery = useQuery({
     queryKey: ['transactions', myId],
@@ -227,12 +230,13 @@ export default function TransactionsScreen() {
     },
     enabled: !!myId,
     staleTime: 0,
-    gcTime: 0,
+    // IMPORTANT:
+    // - Removed gcTime (v5 only) to avoid build errors on react-query v4.
+    // - If you NEED caching control on v4, use: cacheTime: 0
   });
 
   const formatDateTime = (dateStr: string): string => {
     const date = new Date(dateStr);
-    // use device locale automatically (better for Arabic/Kurdish)
     return date.toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
@@ -330,7 +334,10 @@ export default function TransactionsScreen() {
         type === 'agent_withdraw' ||
         type === 'withdraw_balance'
       ) {
-        const label = desc && isProbablyAdminLabel(desc) ? desc : tOr('zanopayAgentWithdraw', 'Zenopay agent withdraw');
+        const label =
+          desc && isProbablyAdminLabel(desc)
+            ? desc
+            : tOr('zanopayAgentWithdraw', 'Zenopay agent withdraw');
         return {
           title: tOr('withdraw', 'Withdraw'),
           subtitleLine1: label,
@@ -383,7 +390,7 @@ export default function TransactionsScreen() {
       if (type.includes('purchase') || type === 'buy' || type === 'order') {
         return {
           title: tOr('purchase', 'Purchase'),
-          subtitleLine1: desc || tOr('purchaseSubtitle', 'Purchase'),
+          subtitleLine1: desc || tOr('purchaseSubtitle', 'Transaction details'),
           iconName: 'pricetag-outline',
           isOutgoing: true,
           kind: 'purchase',
@@ -481,7 +488,10 @@ export default function TransactionsScreen() {
 
   if (transactionsQuery.isLoading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: themeBg || UI.bg }]}
+        edges={['top', 'bottom']}
+      >
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.loaderContainer}>
           <ActivityIndicator color={UI.green} size="large" />
@@ -493,13 +503,18 @@ export default function TransactionsScreen() {
 
   if (transactionsQuery.isError) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: themeBg || UI.bg }]}
+        edges={['top', 'bottom']}
+      >
         <Stack.Screen options={{ headerShown: false }} />
 
         <View style={[styles.header, isRTL && styles.headerRTL]}>
           <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
             <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
-            <Text style={[styles.headerBack, isRTL && styles.textRTL]}>{tOr('back', 'Back')}</Text>
+            <Text style={[styles.headerBack, isRTL && styles.textRTL, isRTL ? styles.mr4 : styles.ml4]}>
+              {tOr('back', 'Back')}
+            </Text>
           </TouchableOpacity>
 
           <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{tOr('transactions', 'Transactions')}</Text>
@@ -516,7 +531,9 @@ export default function TransactionsScreen() {
 
           <TouchableOpacity style={styles.primaryBtn} onPress={() => transactionsQuery.refetch()} activeOpacity={0.9}>
             <Ionicons name="refresh" size={18} color="#fff" />
-            <Text style={styles.primaryBtnText}>{tOr('retry', 'Retry')}</Text>
+            <Text style={[styles.primaryBtnText, isRTL ? styles.mr8 : styles.ml8]}>
+              {tOr('retry', 'Retry')}
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -524,22 +541,32 @@ export default function TransactionsScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: themeBg || UI.bg }]}
+      edges={['top', 'bottom']}
+    >
       <Stack.Screen options={{ headerShown: false }} />
 
       <FlatList
-        data={transactionsQuery.data}
+        data={transactionsQuery.data ?? []}
         keyExtractor={(item) => item.id}
         renderItem={renderTransaction}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={UI.green} colors={[UI.green]} />
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={onRefresh}
+            tintColor={UI.green}
+            colors={[UI.green]}
+          />
         }
         ListHeaderComponent={
           <View style={[styles.header, isRTL && styles.headerRTL]}>
             <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
               <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
-              <Text style={[styles.headerBack, isRTL && styles.textRTL]}>{tOr('back', 'Back')}</Text>
+              <Text style={[styles.headerBack, isRTL && styles.textRTL, isRTL ? styles.mr4 : styles.ml4]}>
+                {tOr('back', 'Back')}
+              </Text>
             </TouchableOpacity>
 
             <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{tOr('transactions', 'Transactions')}</Text>
@@ -564,6 +591,12 @@ export default function TransactionsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
+  // spacing helpers (replace gap)
+  ml4: { marginLeft: 4 },
+  mr4: { marginRight: 4 },
+  ml8: { marginLeft: 8 },
+  mr8: { marginRight: 8 },
+
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,
@@ -574,7 +607,7 @@ const styles = StyleSheet.create({
     backgroundColor: UI.bg,
   },
   headerRTL: { flexDirection: 'row-reverse' },
-  headerBtn: { flexDirection: 'row', alignItems: 'center', gap: 2, width: 90 },
+  headerBtn: { flexDirection: 'row', alignItems: 'center', width: 90 },
   headerBack: { fontSize: 14, fontWeight: '900', color: UI.text },
   headerTitle: { fontSize: 17, fontWeight: '900', color: UI.text },
 
@@ -629,8 +662,8 @@ const styles = StyleSheet.create({
   statusBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 10, marginTop: 8 },
   statusText: { fontSize: 11, fontWeight: '900' },
 
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  loadingText: { fontSize: 14, fontWeight: '800', color: UI.text2, textAlign: 'center' },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { fontSize: 14, fontWeight: '800', color: UI.text2, textAlign: 'center', marginTop: 12 },
 
   emptyState: { paddingTop: 70, paddingHorizontal: 20, alignItems: 'center' },
   emptyIconContainer: {
@@ -656,7 +689,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 28,
-    gap: 10,
   },
   errorIconContainer: {
     width: 80,
@@ -665,20 +697,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 10,
   },
-  errorTitle: { fontSize: 18, fontWeight: '900', color: UI.text, textAlign: 'center' },
-  errorMessage: { fontSize: 14, fontWeight: '700', color: UI.text2, textAlign: 'center', lineHeight: 20 },
+  errorTitle: { fontSize: 18, fontWeight: '900', color: UI.text, textAlign: 'center', marginTop: 2 },
+  errorMessage: { fontSize: 14, fontWeight: '700', color: UI.text2, textAlign: 'center', lineHeight: 20, marginTop: 6 },
 
   primaryBtn: {
-    marginTop: 8,
+    marginTop: 14,
     backgroundColor: UI.green,
     paddingHorizontal: 22,
     paddingVertical: 14,
     borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   primaryBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' },
 
