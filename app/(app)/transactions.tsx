@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -97,9 +97,11 @@ export default function TransactionsScreen() {
     queryFn: async () => {
       if (!myId) throw new Error('User ID not found');
 
-      // ✅ IMPORTANT FIX:
-      // show ALL tx where I am involved (user_id OR sender_id OR receiver_id)
-      const { data, error } = await supabase
+      // Try OR query first (fast, correct)
+      let data: any[] | null = null;
+      let error: any = null;
+
+      const q1 = await supabase
         .from('transactions')
         .select(
           `
@@ -117,6 +119,35 @@ export default function TransactionsScreen() {
         )
         .or(`user_id.eq.${myId},sender_id.eq.${myId},receiver_id.eq.${myId}`)
         .order('created_at', { ascending: false });
+
+      data = q1.data;
+      error = q1.error;
+
+      // If OR query fails for any reason, fallback (rare)
+      if (error) {
+        console.log('Transaction fetch OR error:', JSON.stringify(error));
+        const q2 = await supabase
+          .from('transactions')
+          .select(
+            `
+            id,
+            user_id,
+            type,
+            status,
+            amount,
+            description,
+            created_at,
+            sender_id,
+            receiver_id,
+            balance_after
+          `
+          )
+          .in('user_id', [myId])
+          .order('created_at', { ascending: false });
+
+        data = q2.data;
+        error = q2.error;
+      }
 
       if (error) {
         console.log('Transaction fetch error:', JSON.stringify(error));
@@ -201,20 +232,20 @@ export default function TransactionsScreen() {
 
   const formatDateTime = (dateStr: string): string => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
+    // use device locale automatically (better for Arabic/Kurdish)
+    return date.toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true,
     });
   };
 
   const statusLabel = useCallback((raw: string) => {
     const s = String(raw || 'completed').toLowerCase();
-    if (s === 'completed' || s === 'success' || s === 'paid') return i18n.t('txStatusCompleted');
-    if (s === 'pending' || s === 'processing') return i18n.t('txStatusPending');
-    if (s === 'failed' || s === 'rejected' || s === 'canceled') return i18n.t('txStatusFailed');
+    if (s === 'completed' || s === 'success' || s === 'paid') return tOr('txStatusCompleted', 'Completed');
+    if (s === 'pending' || s === 'processing') return tOr('txStatusPending', 'Pending');
+    if (s === 'failed' || s === 'rejected' || s === 'canceled') return tOr('txStatusFailed', 'Failed');
     return s.charAt(0).toUpperCase() + s.slice(1);
   }, []);
 
@@ -223,15 +254,14 @@ export default function TransactionsScreen() {
       const type = String(tx.type || '').toLowerCase();
       const desc = safe(tx.description);
 
-      const senderName = safe(tx.sender_name) || i18n.t('unknownUser');
-      const receiverName = safe(tx.receiver_name) || i18n.t('unknownUser');
+      const senderName = safe(tx.sender_name) || tOr('unknownUser', 'Unknown user');
+      const receiverName = safe(tx.receiver_name) || tOr('unknownUser', 'Unknown user');
       const senderEmail = safe(tx.sender_email);
       const receiverEmail = safe(tx.receiver_email);
 
       const isOutgoingBySender = tx.sender_id === myId;
       const isOutgoingByAmount = Number(tx.amount || 0) < 0;
 
-      // helpers
       const descLower = (desc || '').toLowerCase();
 
       const isVirtualCard =
@@ -244,23 +274,22 @@ export default function TransactionsScreen() {
 
       if (isVirtualCard) {
         return {
-          title: i18n.t('virtualCardCreated'),
-          subtitleLine1: i18n.t('virtualCardCreation'),
-          subtitleLine2: i18n.t('virtualCardInternalNotice'),
+          title: tOr('virtualCardCreated', 'Virtual card created'),
+          subtitleLine1: tOr('virtualCardCreation', 'Virtual card creation'),
+          subtitleLine2: tOr('virtualCardInternalNotice', 'You can only have one virtual card'),
           iconName: 'card-outline',
           isOutgoing: true,
           kind: 'virtual_card',
         };
       }
 
-      // send/receive (transfer)
       if (type === 'send' || type === 'receive' || type === 'transfer' || type === 'p2p') {
         const isOutgoing = isOutgoingBySender || isOutgoingByAmount;
 
         if (isOutgoing) {
           return {
-            title: i18n.t('sent'),
-            subtitleLine1: `${i18n.t('to')}: ${receiverName}`,
+            title: tOr('sent', 'Sent'),
+            subtitleLine1: `${tOr('to', 'To')}: ${receiverName}`,
             subtitleLine2: receiverEmail ? receiverEmail : undefined,
             iconName: 'arrow-up-outline',
             isOutgoing: true,
@@ -269,8 +298,8 @@ export default function TransactionsScreen() {
         }
 
         return {
-          title: i18n.t('received'),
-          subtitleLine1: `${i18n.t('from')}: ${senderName}`,
+          title: tOr('received', 'Received'),
+          subtitleLine1: `${tOr('from', 'From')}: ${senderName}`,
           subtitleLine2: senderEmail ? senderEmail : undefined,
           iconName: 'arrow-down-outline',
           isOutgoing: false,
@@ -278,7 +307,6 @@ export default function TransactionsScreen() {
         };
       }
 
-      // deposits / admin add / agent add
       if (
         type === 'deposit' ||
         type === 'admin_add' ||
@@ -288,7 +316,7 @@ export default function TransactionsScreen() {
         type === 'add_balance'
       ) {
         return {
-          title: i18n.t('deposit'),
+          title: tOr('deposit', 'Deposit'),
           subtitleLine1: desc || tOr('zenopayAgentDeposit', 'Deposit by Zenopay agent'),
           iconName: 'download-outline',
           isOutgoing: false,
@@ -296,16 +324,15 @@ export default function TransactionsScreen() {
         };
       }
 
-      // withdraw
       if (
         type === 'withdraw' ||
         type === 'admin_withdraw' ||
         type === 'agent_withdraw' ||
         type === 'withdraw_balance'
       ) {
-        const label = desc && isProbablyAdminLabel(desc) ? desc : i18n.t('zanopayAgentWithdraw');
+        const label = desc && isProbablyAdminLabel(desc) ? desc : tOr('zanopayAgentWithdraw', 'Zenopay agent withdraw');
         return {
-          title: i18n.t('withdraw'),
+          title: tOr('withdraw', 'Withdraw'),
           subtitleLine1: label,
           iconName: 'cash-outline',
           isOutgoing: true,
@@ -313,66 +340,60 @@ export default function TransactionsScreen() {
         };
       }
 
-      // TOPUP purchase
       if (type.includes('topup_purchase') || type === 'card_topup' || type === 'topup_purchase') {
         return {
-          title: i18n.t('cardTopupPurchase'),
-          subtitleLine1: desc || i18n.t('cardTopupPurchaseSubtitle'),
+          title: tOr('cardTopupPurchase', 'Topup purchase'),
+          subtitleLine1: desc || tOr('cardTopupPurchaseSubtitle', 'Card topup purchase'),
           iconName: 'flash-outline',
           isOutgoing: true,
           kind: 'topup',
         };
       }
 
-      // Gift card purchase
       if (type.includes('gift') || type === 'gift_card_purchase' || type === 'purchase_giftcard') {
         return {
-          title: i18n.t('giftCardPurchase'),
-          subtitleLine1: desc || i18n.t('giftCardPurchaseSubtitle'),
+          title: tOr('giftCardPurchase', 'Gift card purchase'),
+          subtitleLine1: desc || tOr('giftCardPurchaseSubtitle', 'Gift card purchase'),
           iconName: 'gift-outline',
           isOutgoing: true,
           kind: 'giftcard',
         };
       }
 
-      // Mobile shop purchase
       if (type.includes('mobile') || type === 'purchase_mobile' || type === 'mobile_shop_purchase') {
         return {
-          title: i18n.t('mobilePurchase'),
-          subtitleLine1: desc || i18n.t('mobileShop'),
+          title: tOr('mobilePurchase', 'Mobile purchase'),
+          subtitleLine1: desc || tOr('mobileShop', 'Mobile shop'),
           iconName: 'phone-portrait-outline',
           isOutgoing: true,
           kind: 'mobile',
         };
       }
 
-      // SIM card purchase
       if (type.includes('sim') || type === 'sim_card_purchase' || type === 'purchase_sim') {
         return {
-          title: i18n.t('simCardPurchase'),
-          subtitleLine1: desc || i18n.t('simCardPurchaseSubtitle'),
+          title: tOr('simCardPurchase', 'SIM card purchase'),
+          subtitleLine1: desc || tOr('simCardPurchaseSubtitle', 'SIM card purchase'),
           iconName: 'cellular-outline',
           isOutgoing: true,
           kind: 'sim',
         };
       }
 
-      // generic purchases
       if (type.includes('purchase') || type === 'buy' || type === 'order') {
         return {
-          title: i18n.t('purchase'),
-          subtitleLine1: desc || i18n.t('purchaseSubtitle'),
+          title: tOr('purchase', 'Purchase'),
+          subtitleLine1: desc || tOr('purchaseSubtitle', 'Purchase'),
           iconName: 'pricetag-outline',
           isOutgoing: true,
           kind: 'purchase',
         };
       }
 
-      // fallback
       const isOutgoing = isOutgoingBySender || isOutgoingByAmount;
       return {
-        title: i18n.t('transaction'),
-        subtitleLine1: desc || i18n.t('transactionSubtitle'),
+        title: tOr('transaction', 'Transaction'),
+        subtitleLine1: desc || tOr('transactionSubtitle', 'Transaction details'),
         iconName: isOutgoing ? 'arrow-up-outline' : 'arrow-down-outline',
         isOutgoing,
         kind: 'other',
@@ -391,7 +412,9 @@ export default function TransactionsScreen() {
     const ui = getTxUi(item);
 
     const statusRaw = String(item.status || 'completed').toLowerCase();
-    const abs = Math.abs(Number(item.amount || 0));
+
+    const rawAmount = Number(item.amount || 0);
+    const abs = Math.abs(rawAmount);
 
     const statusBg =
       statusRaw === 'completed' || statusRaw === 'success' || statusRaw === 'paid'
@@ -439,9 +462,7 @@ export default function TransactionsScreen() {
               </Text>
             )}
 
-            <Text style={[styles.cardDate, isRTL && styles.textRTL]}>
-              {formatDateTime(item.created_at)}
-            </Text>
+            <Text style={[styles.cardDate, isRTL && styles.textRTL]}>{formatDateTime(item.created_at)}</Text>
           </View>
         </View>
 
@@ -464,7 +485,7 @@ export default function TransactionsScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.loaderContainer}>
           <ActivityIndicator color={UI.green} size="large" />
-          <Text style={styles.loadingText}>{i18n.t('loadingTransactions')}</Text>
+          <Text style={styles.loadingText}>{tOr('loadingTransactions', 'Loading transactions...')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -478,10 +499,10 @@ export default function TransactionsScreen() {
         <View style={[styles.header, isRTL && styles.headerRTL]}>
           <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
             <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
-            <Text style={[styles.headerBack, isRTL && styles.textRTL]}>{i18n.t('back')}</Text>
+            <Text style={[styles.headerBack, isRTL && styles.textRTL]}>{tOr('back', 'Back')}</Text>
           </TouchableOpacity>
 
-          <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{i18n.t('transactions')}</Text>
+          <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{tOr('transactions', 'Transactions')}</Text>
           <View style={{ width: 70 }} />
         </View>
 
@@ -490,12 +511,12 @@ export default function TransactionsScreen() {
             <Ionicons name="alert-circle" size={46} color={UI.red} />
           </View>
 
-          <Text style={styles.errorTitle}>{i18n.t('failedToLoad')}</Text>
-          <Text style={styles.errorMessage}>{i18n.t('errorLoadingTransactions')}</Text>
+          <Text style={styles.errorTitle}>{tOr('failedToLoad', 'Failed to load')}</Text>
+          <Text style={styles.errorMessage}>{tOr('errorLoadingTransactions', 'Could not load transactions')}</Text>
 
           <TouchableOpacity style={styles.primaryBtn} onPress={() => transactionsQuery.refetch()} activeOpacity={0.9}>
             <Ionicons name="refresh" size={18} color="#fff" />
-            <Text style={styles.primaryBtnText}>{i18n.t('retry')}</Text>
+            <Text style={styles.primaryBtnText}>{tOr('retry', 'Retry')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -512,21 +533,16 @@ export default function TransactionsScreen() {
         renderItem={renderTransaction}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={onRefresh}
-            tintColor={UI.green}
-            colors={[UI.green]}
-          />
+          <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={UI.green} colors={[UI.green]} />
         }
         ListHeaderComponent={
           <View style={[styles.header, isRTL && styles.headerRTL]}>
             <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
               <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
-              <Text style={[styles.headerBack, isRTL && styles.textRTL]}>{i18n.t('back')}</Text>
+              <Text style={[styles.headerBack, isRTL && styles.textRTL]}>{tOr('back', 'Back')}</Text>
             </TouchableOpacity>
 
-            <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{i18n.t('transactions')}</Text>
+            <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{tOr('transactions', 'Transactions')}</Text>
             <View style={{ width: 70 }} />
           </View>
         }
@@ -535,8 +551,8 @@ export default function TransactionsScreen() {
             <View style={styles.emptyIconContainer}>
               <Ionicons name="receipt-outline" size={44} color={UI.text2} />
             </View>
-            <Text style={styles.emptyTitle}>{i18n.t('noTransactions')}</Text>
-            <Text style={styles.emptySubtitle}>{i18n.t('transactionsWillAppear')}</Text>
+            <Text style={styles.emptyTitle}>{tOr('noTransactions', 'No transactions')}</Text>
+            <Text style={styles.emptySubtitle}>{tOr('transactionsWillAppear', 'Your transactions will appear here.')}</Text>
           </View>
         }
         showsVerticalScrollIndicator={false}
