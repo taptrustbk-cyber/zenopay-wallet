@@ -179,6 +179,7 @@
   "failedToLoad": "Failed to load",
   "portfolioSyncInfo": "Portfolio syncs with wallet",
   "value": "Value",
+  "one_card_inline": "Your virtual card is active. You can only have one card.",
   "updateFailed": "Update failed",
   "invalidValue": "Invalid value",
   "noPortfolioItems": "No portfolio items",
