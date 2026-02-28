@@ -12,13 +12,14 @@ import {
   ScrollView,
   ActivityIndicator,
   Pressable,
+  I18nManager,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import i18n, { setLanguage, getCurrentLanguage } from '@/lib/i18n';
-import { Eye, EyeOff, Mail, Lock, Globe, HelpCircle } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 
 const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v1';
 
@@ -34,6 +35,8 @@ type PendingProfile = {
 
 export default function LoginScreen() {
   const router = useRouter();
+  const isRTL = I18nManager.isRTL;
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -55,17 +58,19 @@ export default function LoginScreen() {
         return;
       }
 
-      const { error } = await supabase.from('profiles').upsert(
-        {
-          id: userId,
-          full_name: pending.full_name ?? null,
-          city: pending.city ?? null,
-          country: pending.country ?? null,
-          phone: pending.phone ?? null,
-          date_of_brith: pending.date_of_brith ?? null,
-        },
-        { onConflict: 'id' }
-      );
+      const { error } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            id: userId,
+            full_name: pending.full_name ?? null,
+            city: pending.city ?? null,
+            country: pending.country ?? null,
+            phone: pending.phone ?? null,
+            date_of_brith: pending.date_of_brith ?? null,
+          },
+          { onConflict: 'id' }
+        );
 
       if (error) {
         console.log('applyPendingProfile upsert error:', error.message);
@@ -109,14 +114,14 @@ export default function LoginScreen() {
         throw new Error('Login failed');
       }
 
-      // ✅ NEW: after login success, save pending signup details to profiles (if pending exists)
+      // ✅ after login success, save pending signup details to profiles (if pending exists)
       await applyPendingProfileIfExists(data.user.id);
 
       console.log('Login successful, AuthContext will handle profile loading and navigation');
       return { success: true };
     },
     onSuccess: (data) => {
-      if (data?.redirectHandled) return;
+      if ((data as any)?.redirectHandled) return;
     },
     onError: (error: any) => {
       console.error('Login error:', error);
@@ -162,6 +167,10 @@ export default function LoginScreen() {
     },
   });
 
+  // ✅ works with react-query v4 or v5
+  const isSubmitting =
+    (loginMutation as any).isPending ?? (loginMutation as any).isLoading ?? false;
+
   const toggleLanguage = async () => {
     const currentLang = getCurrentLanguage();
     let newLang = 'en';
@@ -189,7 +198,10 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <LinearGradient
         colors={['#FFFFFF', '#FFFFFF']}
         start={{ x: 0, y: 0 }}
@@ -200,8 +212,10 @@ export default function LoginScreen() {
           {/* Language button top-right */}
           <View style={styles.languageButtonContainer}>
             <TouchableOpacity style={styles.langButton} onPress={toggleLanguage} activeOpacity={0.85}>
-              <Globe size={18} color="#111827" />
-              <Text style={styles.langText}>{getLanguageDisplayText()}</Text>
+              <Ionicons name="globe-outline" size={18} color="#111827" />
+              <Text style={[styles.langText, isRTL ? styles.mr8 : styles.ml8]}>
+                {getLanguageDisplayText()}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -219,7 +233,6 @@ export default function LoginScreen() {
             </View>
 
             <Text style={styles.appName}>ZenoPay</Text>
-
             <Text style={styles.welcomeBack}>Welcome Back!</Text>
 
             {/* ✅ translated line (selected in your image) */}
@@ -230,7 +243,7 @@ export default function LoginScreen() {
           <View style={styles.card}>
             {/* Email */}
             <View style={styles.inputContainer}>
-              <Mail size={20} color="#111827" style={styles.inputIcon} />
+              <Ionicons name="mail-outline" size={20} color="#111827" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder={i18n.t('email')}
@@ -244,7 +257,7 @@ export default function LoginScreen() {
 
             {/* Password */}
             <View style={styles.inputContainer}>
-              <Lock size={20} color="#111827" style={styles.inputIcon} />
+              <Ionicons name="lock-closed-outline" size={20} color="#111827" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder={i18n.t('password')}
@@ -259,7 +272,11 @@ export default function LoginScreen() {
                 style={styles.eyeIcon}
                 activeOpacity={0.8}
               >
-                {showPassword ? <Eye size={20} color="#111827" /> : <EyeOff size={20} color="#111827" />}
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color="#111827"
+                />
               </TouchableOpacity>
             </View>
 
@@ -270,8 +287,10 @@ export default function LoginScreen() {
                   {rememberMe ? <Text style={styles.checkMark}>✓</Text> : null}
                 </View>
 
-                {/* ✅ translated (selected in your image) */}
-                <Text style={styles.rememberText}>{i18n.t('rememberMe')}</Text>
+                {/* ✅ translated */}
+                <Text style={[styles.rememberText, isRTL ? styles.mr10 : styles.ml10]}>
+                  {i18n.t('rememberMe')}
+                </Text>
               </Pressable>
 
               <TouchableOpacity
@@ -286,11 +305,11 @@ export default function LoginScreen() {
             {/* Sign In */}
             <TouchableOpacity
               style={styles.loginButton}
-              onPress={() => loginMutation.mutate()}
-              disabled={loginMutation.isPending}
+              onPress={() => (loginMutation as any).mutate()}
+              disabled={isSubmitting}
               activeOpacity={0.9}
             >
-              {loginMutation.isPending ? (
+              {isSubmitting ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
                 <Text style={styles.loginButtonText}>{i18n.t('login')}</Text>
@@ -303,29 +322,25 @@ export default function LoginScreen() {
               style={styles.createAccountButton}
               activeOpacity={0.9}
             >
-              {/* ✅ translated (selected in your image) */}
               <Text style={styles.createAccountText}>{i18n.t('createNewAccount')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Need help */}
           <View style={styles.helpCard}>
-            <View style={styles.helpIconWrap}>
+            <View style={styles.helpIconCircle}>
               <LinearGradient
                 colors={['#22C55E', '#16A34A']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.helpIconCircle}
+                style={styles.helpIconCircleInner}
               >
-                <HelpCircle size={22} color="#FFFFFF" />
+                <Ionicons name="help-circle-outline" size={22} color="#FFFFFF" />
               </LinearGradient>
             </View>
 
-            <View style={{ flex: 1 }}>
-              {/* ✅ translated (selected in your image) */}
+            <View style={styles.helpTextWrap}>
               <Text style={styles.helpTitle}>{i18n.t('needHelp')}</Text>
-
-              {/* ✅ translated "Contact us at" part */}
               <Text style={styles.helpText}>
                 {i18n.t('contactUsAt')}{' '}
                 <Text style={styles.helpEmail}>info@zenopay.bond</Text>
@@ -343,6 +358,12 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   gradient: { flex: 1 },
+
+  // spacing helpers (replace gap)
+  ml8: { marginLeft: 8 },
+  mr8: { marginRight: 8 },
+  ml10: { marginLeft: 10 },
+  mr10: { marginRight: 10 },
 
   scrollContent: {
     flexGrow: 1,
@@ -362,7 +383,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 22,
-    gap: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
@@ -449,7 +469,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  rememberRow: { flexDirection: 'row', alignItems: 'center' },
   checkbox: {
     width: 22,
     height: 22,
@@ -512,16 +532,20 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
-  helpIconWrap: {},
   helpIconCircle: {
     width: 44,
     height: 44,
     borderRadius: 14,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  helpIconCircleInner: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  helpTextWrap: { flex: 1 },
   helpTitle: {
     fontSize: 16,
     fontWeight: '900' as const,
