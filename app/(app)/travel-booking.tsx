@@ -90,7 +90,8 @@ export default function TravelBookingScreen() {
       {/* ✅ REMOVE Expo Router default dark header (fix double back/title) */}
       <Stack.Screen options={{ headerShown: false }} />
 
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      {/* ✅ FIX: include top safe area so header/back/title are not too high */}
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* Header (single header only) */}
           <View style={styles.header}>
@@ -158,7 +159,7 @@ const styles = StyleSheet.create({
 
   content: {
     padding: 16,
-    paddingTop: 10,
+    paddingTop: 16, // ✅ a bit more space so header is clearly visible & clickable
   },
 
   header: {
@@ -166,7 +167,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 14,
-    paddingTop: 4,
+    paddingTop: 2, // ✅ keep small (SafeArea now handles top)
   },
   backButton: {
     flexDirection: 'row',
