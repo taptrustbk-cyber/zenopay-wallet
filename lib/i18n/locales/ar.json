@@ -1,6 +1,10 @@
 {
   "home": "الرئيسية",
   "one_card_inline": "بطاقتك الافتراضية فعالة. يمكنك امتلاك بطاقة واحدة فقط.",
+  "fullNamePlaceholder": "أدخل اسمك الكامل",
+  "dateOfBirthPlaceholder": "اختر تاريخ الميلاد",
+  "phoneNumberPlaceholder": "أدخل رقم الهاتف",
+  "countryPlaceholder": "اختر الدولة",
   "to": "الي",
   "create_btn": "إنشاء بطاقة افتراضية",
   "virtual_info": "هذه بطاقة افتراضية داخلية لاستخدام محفظة زينوباي فقط.",
