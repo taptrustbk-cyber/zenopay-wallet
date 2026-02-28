@@ -38,6 +38,9 @@ import {
   Image as ImageIcon,
   Search,
   BarChart3,
+  Users,
+  MapPin,
+  Mail,
 } from 'lucide-react-native';
 
 // ✅ IMPORTANT: remove the default (dark blue) navigation header
@@ -47,6 +50,10 @@ const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 
 // ✅ Your real bucket name
 const KYC_BUCKET = 'kyc-documents';
+
+// (optional) if your avatar_url is a storage path (not full URL), set this to your avatars bucket name.
+// If your avatar_url is already a full https URL, it will work automatically.
+const AVATAR_BUCKET = 'avatars';
 
 // 🎨 Modern light admin UI
 const UI = {
@@ -69,13 +76,13 @@ const UI = {
 
 type TabKey =
   | 'dashboard'
+  | 'manage_all_users'
   | 'account_approval'
   | 'deposits'
   | 'withdrawals'
   | 'add_balance'
   | 'withdraw_balance'
   | 'kyc_documents'
-  | 'user_documents'
   | 'transactions';
 
 type KycKind = 'id_front' | 'id_back' | 'selfie';
@@ -95,8 +102,8 @@ export default function AdminScreen() {
   const [txTypeFilter, setTxTypeFilter] = useState('all');
   const [txAmountFilter, setTxAmountFilter] = useState('all');
 
-  // ✅ search for user documents tab
-  const [docSearch, setDocSearch] = useState('');
+  // ✅ search for manage all users
+  const [userSearch, setUserSearch] = useState('');
 
   const [showAddBalanceModal, setShowAddBalanceModal] = useState(false);
   const [showWithdrawBalanceModal, setShowWithdrawBalanceModal] = useState(false);
@@ -121,8 +128,53 @@ export default function AdminScreen() {
 
   const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
 
-  // ---------- KYC helpers ----------
+  // ---------- TIME (Iraq) helpers ----------
+  const formatIraqTime = (value?: string | null) => {
+    if (!value) return 'N/A';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return 'N/A';
+
+    try {
+      return d.toLocaleString(undefined, {
+        timeZone: 'Asia/Baghdad',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    } catch {
+      // fallback (if Intl timeZone not available on some devices)
+      return d.toLocaleString();
+    }
+  };
+
+  // ---------- Avatar helpers ----------
   const isLikelyUrl = (v?: string | null) => !!v && (v.startsWith('http://') || v.startsWith('https://'));
+  const getAvatarUrl = (avatarUrl?: string | null) => {
+    if (!avatarUrl) return null;
+    if (isLikelyUrl(avatarUrl)) return avatarUrl;
+
+    // if it is a storage path, try to build public url (works only if bucket is public).
+    try {
+      const pub = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(avatarUrl)?.data?.publicUrl;
+      return pub || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const initialsFromName = (name?: string | null) => {
+    const n = (name || '').trim();
+    if (!n) return '?';
+    const parts = n.split(' ').filter(Boolean);
+    const a = parts[0]?.[0] || '';
+    const b = parts.length > 1 ? parts[parts.length - 1]?.[0] : '';
+    return (a + b).toUpperCase() || '?';
+  };
+
+  // ---------- KYC helpers ----------
   const KYC_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
 
   const trySignedUrl = async (path: string) => {
@@ -156,7 +208,9 @@ export default function AdminScreen() {
 
   const folderHasAnyKyc = (files: StorageFile[]) => {
     const names = (files || []).map((f) => (f.name || '').toLowerCase());
-    return names.some((n) => n.includes('id_front') || n.includes('id-back') || n.includes('id_back') || n.includes('selfie'));
+    return names.some(
+      (n) => n.includes('id_front') || n.includes('id-back') || n.includes('id_back') || n.includes('selfie')
+    );
   };
 
   // ✅ smarter resolver (now uses cache)
@@ -261,6 +315,7 @@ export default function AdminScreen() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
         queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
         queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-all-users'] });
       })
       .subscribe();
 
@@ -304,13 +359,30 @@ export default function AdminScreen() {
 
   // ✅ realtime for KYC documents so new users appear automatically
   useEffect(() => {
-    if (!isAdmin || (selectedTab !== 'kyc_documents' && selectedTab !== 'user_documents')) return;
+    if (!isAdmin || selectedTab !== 'kyc_documents') return;
 
     const channel = supabase
       .channel('admin-kyc-documents')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
         queryClient.invalidateQueries({ queryKey: ['admin-kyc-documents'] });
         queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-all-users'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAdmin, selectedTab, queryClient]);
+
+  // ✅ realtime manage all users
+  useEffect(() => {
+    if (!isAdmin || selectedTab !== 'manage_all_users') return;
+
+    const channel = supabase
+      .channel('admin-all-users')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-all-users'] });
       })
       .subscribe();
 
@@ -338,7 +410,10 @@ export default function AdminScreen() {
           profiles!user_id(
             id,
             email,
-            full_name
+            full_name,
+            city,
+            country,
+            avatar_url
           )
         `
         )
@@ -349,7 +424,7 @@ export default function AdminScreen() {
       return (data || []).map((d: any) => ({
         ...d,
         profile: d.profiles,
-      })) as (DepositOrder & { profile: Profile })[];
+      })) as (DepositOrder & { profile: Profile & { city?: string | null; country?: string | null; avatar_url?: string | null } })[];
     },
     enabled: selectedTab === 'deposits',
   });
@@ -372,7 +447,10 @@ export default function AdminScreen() {
           profiles!user_id(
             id,
             full_name,
-            email
+            email,
+            city,
+            country,
+            avatar_url
           )
         `
         )
@@ -385,7 +463,7 @@ export default function AdminScreen() {
           ...withdrawal,
           profile: withdrawal.profiles,
         })) || []
-      ) as (WithdrawOrder & { profile: Profile })[];
+      ) as (WithdrawOrder & { profile: Profile & { city?: string | null; country?: string | null; avatar_url?: string | null } })[];
     },
     enabled: selectedTab === 'withdrawals',
   });
@@ -395,7 +473,7 @@ export default function AdminScreen() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, created_at, kyc_status, status')
+        .select('id, email, full_name, city, country, avatar_url, created_at, kyc_status, status')
         .eq('status', 'pending')
         .order('created_at', { ascending: true });
 
@@ -405,23 +483,37 @@ export default function AdminScreen() {
     enabled: selectedTab === 'account_approval',
   });
 
-  // ✅ IMPORTANT FIX:
-  // Before: you filtered only users where id_front/id_back/selfie NOT NULL
-  // Many users have columns NULL but files exist in bucket -> they were NOT shown (only 1 user appeared)
-  // Now: fetch all KYC-related users, then we detect who has files in storage.
+  // ✅ KYC users list (show everyone with docs in bucket or columns)
   const kycDocumentsQuery = useQuery({
     queryKey: ['admin-kyc-documents'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, kyc_status, status, id_front, id_back, selfie, created_at')
+        .select(
+          'id, email, full_name, city, country, avatar_url, kyc_status, status, id_front, id_back, selfie, created_at'
+        )
         .in('status', ['pending', 'approved', 'rejected'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data || [];
     },
-    enabled: selectedTab === 'kyc_documents' || selectedTab === 'user_documents',
+    enabled: selectedTab === 'kyc_documents',
+  });
+
+  // ✅ Manage all users (ALL profiles)
+  const allUsersQuery = useQuery({
+    queryKey: ['admin-all-users'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, city, country, avatar_url, kyc_status, status, created_at')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: selectedTab === 'manage_all_users',
   });
 
   const usersQuery = useQuery({
@@ -438,6 +530,9 @@ export default function AdminScreen() {
             id,
             email,
             full_name,
+            city,
+            country,
+            avatar_url,
             created_at
           )
         `
@@ -450,6 +545,9 @@ export default function AdminScreen() {
         id: wallet.profiles?.id || wallet.user_id,
         email: wallet.profiles?.email || 'N/A',
         full_name: wallet.profiles?.full_name || '',
+        city: wallet.profiles?.city || '',
+        country: wallet.profiles?.country || '',
+        avatar_url: wallet.profiles?.avatar_url || null,
         created_at: wallet.profiles?.created_at || new Date().toISOString(),
         wallet: [{ balance: wallet.balance || 0 }],
       }));
@@ -519,7 +617,11 @@ export default function AdminScreen() {
 
       let profilesMap: Record<string, any> = {};
       if (userIds.size > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('id, email, full_name').in('id', Array.from(userIds));
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, city, country, avatar_url')
+          .in('id', Array.from(userIds));
+
         if (profiles) {
           profiles.forEach((p: any) => {
             profilesMap[p.id] = p;
@@ -540,7 +642,7 @@ export default function AdminScreen() {
 
   // ✅ Scan storage folders for ALL loaded users to know who has docs
   useEffect(() => {
-    const shouldScan = selectedTab === 'kyc_documents' || selectedTab === 'user_documents';
+    const shouldScan = selectedTab === 'kyc_documents';
     if (!shouldScan) return;
     if (kycDocumentsQuery.isLoading) return;
 
@@ -621,17 +723,18 @@ export default function AdminScreen() {
     });
   }, [kycDocumentsQuery.data, kycHasDocs]);
 
-  // ✅ filtered list for user_documents tab
-  const filteredDocUsers = useMemo(() => {
-    const list = kycUsersWithDocs || [];
-    const q = docSearch.trim().toLowerCase();
+  const filteredAllUsers = useMemo(() => {
+    const list = (allUsersQuery.data || []) as any[];
+    const q = userSearch.trim().toLowerCase();
     if (!q) return list;
     return list.filter((u: any) => {
       const name = (u.full_name || '').toLowerCase();
       const email = (u.email || '').toLowerCase();
-      return name.includes(q) || email.includes(q);
+      const city = (u.city || '').toLowerCase();
+      const country = (u.country || '').toLowerCase();
+      return name.includes(q) || email.includes(q) || city.includes(q) || country.includes(q);
     });
-  }, [kycUsersWithDocs, docSearch]);
+  }, [allUsersQuery.data, userSearch]);
 
   // ---------- mutations ----------
   const updateDepositMutation = useMutation({
@@ -640,7 +743,7 @@ export default function AdminScreen() {
       if (error) throw error;
 
       if (status === 'approved') {
-        const order = depositsQuery.data?.find((d) => d.id === id);
+        const order = depositsQuery.data?.find((d: any) => d.id === id);
         if (order) {
           const { data: wallet } = await supabase.from('wallets').select('*').eq('user_id', order.user_id).single();
           if (wallet) {
@@ -667,6 +770,7 @@ export default function AdminScreen() {
       queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
       queryClient.invalidateQueries({ queryKey: ['admin-kyc-documents'] });
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-all-users'] });
       Alert.alert('Success', 'Account approved successfully!');
     },
     onError: (error: any) => {
@@ -683,6 +787,7 @@ export default function AdminScreen() {
       queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
       queryClient.invalidateQueries({ queryKey: ['admin-kyc-documents'] });
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-all-users'] });
       Alert.alert('Success', 'Account rejected.');
     },
     onError: (error: any) => {
@@ -871,58 +976,92 @@ export default function AdminScreen() {
       {/* ✅ MENU (3 buttons per row) */}
       <View style={styles.menuWrap}>
         <MenuButton label="Dashboard" tab="dashboard" icon={<BarChart3 size={16} color={selectedTab === 'dashboard' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Account Approval" tab="account_approval" icon={<ShieldCheck size={16} color={selectedTab === 'account_approval' ? UI.blue : UI.text2} />} />
+
+        {/* ✅ RENAMED: Document Image User -> Manage All User */}
+        <MenuButton
+          label="Manage All User"
+          tab="manage_all_users"
+          icon={<Users size={16} color={selectedTab === 'manage_all_users' ? UI.blue : UI.text2} />}
+        />
+
+        <MenuButton
+          label="Account Approval"
+          tab="account_approval"
+          icon={<ShieldCheck size={16} color={selectedTab === 'account_approval' ? UI.blue : UI.text2} />}
+        />
         <MenuButton label="Deposits" tab="deposits" icon={<ArrowDownToLine size={16} color={selectedTab === 'deposits' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Withdrawals" tab="withdrawals" icon={<ArrowUpFromLine size={16} color={selectedTab === 'withdrawals' ? UI.blue : UI.text2} />} />
+        <MenuButton
+          label="Withdrawals"
+          tab="withdrawals"
+          icon={<ArrowUpFromLine size={16} color={selectedTab === 'withdrawals' ? UI.blue : UI.text2} />}
+        />
         <MenuButton label="Add Balance" tab="add_balance" icon={<PlusCircle size={16} color={selectedTab === 'add_balance' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Withdraw Balance" tab="withdraw_balance" icon={<MinusCircle size={16} color={selectedTab === 'withdraw_balance' ? UI.blue : UI.text2} />} />
+        <MenuButton
+          label="Withdraw Balance"
+          tab="withdraw_balance"
+          icon={<MinusCircle size={16} color={selectedTab === 'withdraw_balance' ? UI.blue : UI.text2} />}
+        />
         <MenuButton label="KYC Document" tab="kyc_documents" icon={<FileText size={16} color={selectedTab === 'kyc_documents' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Document Image User" tab="user_documents" icon={<ImageIcon size={16} color={selectedTab === 'user_documents' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Transactions" tab="transactions" icon={<ReceiptText size={16} color={selectedTab === 'transactions' ? UI.blue : UI.text2} />} />
+        <MenuButton
+          label="Transactions"
+          tab="transactions"
+          icon={<ReceiptText size={16} color={selectedTab === 'transactions' ? UI.blue : UI.text2} />}
+        />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* ---------------- Document Image User ---------------- */}
-        {selectedTab === 'user_documents' && (
+        {/* ---------------- Manage All User ---------------- */}
+        {selectedTab === 'manage_all_users' && (
           <>
-            <Text style={[styles.sectionTitle, { marginBottom: 10 }]}>Document Image User</Text>
+            <Text style={[styles.sectionTitle, { marginBottom: 10 }]}>Manage All User</Text>
 
             <View style={styles.searchCard}>
               <View style={styles.searchLeft}>
                 <Search size={16} color={UI.text2} />
                 <TextInput
-                  value={docSearch}
-                  onChangeText={setDocSearch}
-                  placeholder="Search by email or full name..."
+                  value={userSearch}
+                  onChangeText={setUserSearch}
+                  placeholder="Search by name, email, city, country..."
                   placeholderTextColor={UI.text2}
                   style={styles.searchInput}
                 />
               </View>
-              <TouchableOpacity style={styles.searchClearBtn} onPress={() => setDocSearch('')} activeOpacity={0.85}>
+              <TouchableOpacity style={styles.searchClearBtn} onPress={() => setUserSearch('')} activeOpacity={0.85}>
                 <Text style={styles.searchClearText}>Clear</Text>
               </TouchableOpacity>
             </View>
 
-            {kycDocumentsQuery.isLoading || kycScanLoading ? (
+            {allUsersQuery.isLoading ? (
               <View style={styles.centerLoading}>
                 <ActivityIndicator color={UI.blue} size="large" />
                 <Text style={styles.emptyText}>Loading users...</Text>
               </View>
-            ) : filteredDocUsers.length > 0 ? (
-              filteredDocUsers.map((u: any) => {
-                const badge = kycBadge(u.kyc_status);
+            ) : filteredAllUsers.length > 0 ? (
+              filteredAllUsers.map((u: any) => {
                 const displayName = (u.full_name || '').trim() || 'Unknown Name';
+                const avatar = getAvatarUrl(u.avatar_url);
+
                 return (
                   <View key={u.id} style={styles.card}>
-                    <View style={styles.cardHeader}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.cardTitle}>{displayName}</Text>
-                        <Text style={styles.cardSubtitle}>{u.email}</Text>
+                    <View style={styles.userHeader}>
+                      <View style={styles.avatarWrap}>
+                        {avatar ? (
+                          <Image source={{ uri: avatar }} style={styles.avatarImg} />
+                        ) : (
+                          <View style={styles.avatarFallback}>
+                            <Text style={styles.avatarFallbackText}>{initialsFromName(displayName)}</Text>
+                          </View>
+                        )}
                       </View>
 
-                      <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                        {badge.icon}
-                        <Text style={[styles.badgeText, { color: badge.color }]}>{badge.text}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cardTitle}>{displayName}</Text>
+                        <Text style={styles.cardSubtitle}>{u.email || 'N/A'}</Text>
+                      </View>
+
+                      <View style={[styles.badge, { backgroundColor: UI.blueSoft }]}>
+                        <Users size={14} color={UI.blue} />
+                        <Text style={[styles.badgeText, { color: UI.blue }]}>USER</Text>
                       </View>
                     </View>
 
@@ -937,46 +1076,28 @@ export default function AdminScreen() {
                     </View>
 
                     <View style={styles.row}>
-                      <Text style={styles.rowLabel}>Upload / Registered Time</Text>
-                      <Text style={styles.rowValue}>{new Date(u.created_at).toLocaleString()}</Text>
+                      <Text style={styles.rowLabel}>City</Text>
+                      <Text style={styles.rowValue}>{u.city || 'N/A'}</Text>
                     </View>
 
-                    <View style={styles.kycBlock}>
-                      <Text style={styles.kycBlockTitle}>Documents</Text>
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Country</Text>
+                      <Text style={styles.rowValue}>{u.country || 'N/A'}</Text>
+                    </View>
 
-                      <View style={styles.docGrid}>
-                        <TouchableOpacity style={styles.docBtn} onPress={() => openKycPreview('ID Front', u.id_front, u.id, 'id_front')} activeOpacity={0.85}>
-                          <FileText size={16} color={UI.green} />
-                          <Text style={styles.docBtnText}>ID Front</Text>
-                        </TouchableOpacity>
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Registered (Iraq)</Text>
+                      <Text style={styles.rowValue}>{formatIraqTime(u.created_at)}</Text>
+                    </View>
 
-                        <TouchableOpacity style={styles.docBtn} onPress={() => openKycPreview('ID Back', u.id_back, u.id, 'id_back')} activeOpacity={0.85}>
-                          <FileText size={16} color={UI.green} />
-                          <Text style={styles.docBtnText}>ID Back</Text>
-                        </TouchableOpacity>
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>KYC Status</Text>
+                      <Text style={styles.rowValue}>{u.kyc_status || 'N/A'}</Text>
+                    </View>
 
-                        <TouchableOpacity style={styles.docBtn} onPress={() => openKycPreview('Selfie', u.selfie, u.id, 'selfie')} activeOpacity={0.85}>
-                          <FileText size={16} color={UI.green} />
-                          <Text style={styles.docBtnText}>Selfie</Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      <View style={{ marginTop: 10, gap: 10 }}>
-                        <TouchableOpacity style={styles.docLinkButton} onPress={() => openExternal(u.id_front, u.id, 'id_front')}>
-                          <ExternalLink size={16} color={UI.blue} />
-                          <Text style={styles.docLinkText}>Open ID Front</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.docLinkButton} onPress={() => openExternal(u.id_back, u.id, 'id_back')}>
-                          <ExternalLink size={16} color={UI.blue} />
-                          <Text style={styles.docLinkText}>Open ID Back</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.docLinkButton} onPress={() => openExternal(u.selfie, u.id, 'selfie')}>
-                          <ExternalLink size={16} color={UI.blue} />
-                          <Text style={styles.docLinkText}>Open Selfie</Text>
-                        </TouchableOpacity>
-                      </View>
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Status</Text>
+                      <Text style={styles.rowValue}>{u.status || 'N/A'}</Text>
                     </View>
                   </View>
                 );
@@ -984,7 +1105,7 @@ export default function AdminScreen() {
             ) : (
               <View style={{ paddingVertical: 18 }}>
                 <Text style={styles.emptyText}>No users found</Text>
-                <TouchableOpacity style={styles.primaryBtn} onPress={() => kycDocumentsQuery.refetch()}>
+                <TouchableOpacity style={styles.primaryBtn} onPress={() => allUsersQuery.refetch()}>
                   <Text style={styles.primaryBtnText}>Refresh</Text>
                 </TouchableOpacity>
               </View>
@@ -1026,7 +1147,9 @@ export default function AdminScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.totalBalanceLabel}>Total System Balance</Text>
-                  <Text style={styles.totalBalanceValue}>${statsQuery.isLoading ? '...' : (statsQuery.data?.totalSystemBalance || 0).toFixed(2)}</Text>
+                  <Text style={styles.totalBalanceValue}>
+                    ${statsQuery.isLoading ? '...' : (statsQuery.data?.totalSystemBalance || 0).toFixed(2)}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -1114,66 +1237,89 @@ export default function AdminScreen() {
                 <Text style={styles.emptyText}>Loading pending accounts...</Text>
               </View>
             ) : pendingAccountsQuery.data && pendingAccountsQuery.data.length > 0 ? (
-              pendingAccountsQuery.data.map((profile: any) => (
-                <View key={profile.id} style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{(profile.full_name || '').trim() || 'Unknown Name'}</Text>
-                      <Text style={styles.cardSubtitle}>{profile.email}</Text>
+              pendingAccountsQuery.data.map((profile: any) => {
+                const avatar = getAvatarUrl(profile.avatar_url);
+                return (
+                  <View key={profile.id} style={styles.card}>
+                    <View style={styles.userHeader}>
+                      <View style={styles.avatarWrap}>
+                        {avatar ? (
+                          <Image source={{ uri: avatar }} style={styles.avatarImg} />
+                        ) : (
+                          <View style={styles.avatarFallback}>
+                            <Text style={styles.avatarFallbackText}>{initialsFromName(profile.full_name)}</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cardTitle}>{(profile.full_name || '').trim() || 'Unknown Name'}</Text>
+                        <Text style={styles.cardSubtitle}>{profile.email}</Text>
+                      </View>
+
+                      <View style={[styles.badge, { backgroundColor: UI.amberSoft }]}>
+                        <Clock size={14} color={UI.amber} />
+                        <Text style={[styles.badgeText, { color: UI.amber }]}>{profile.status?.toUpperCase() || 'PENDING'}</Text>
+                      </View>
                     </View>
 
-                    <View style={[styles.badge, { backgroundColor: UI.amberSoft }]}>
-                      <Clock size={14} color={UI.amber} />
-                      <Text style={[styles.badgeText, { color: UI.amber }]}>{profile.status?.toUpperCase() || 'PENDING'}</Text>
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>City</Text>
+                      <Text style={styles.rowValue}>{profile.city || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Country</Text>
+                      <Text style={styles.rowValue}>{profile.country || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>KYC Status</Text>
+                      <Text style={styles.rowValue}>{profile.kyc_status || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Status</Text>
+                      <Text style={styles.rowValue}>{profile.status || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Registered (Iraq)</Text>
+                      <Text style={styles.rowValue}>{formatIraqTime(profile.created_at)}</Text>
+                    </View>
+
+                    <View style={styles.actionButtons}>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, { backgroundColor: UI.green }]}
+                        onPress={() =>
+                          Alert.alert('Approve Account', `Approve ${profile.full_name || profile.email}?`, [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Approve', onPress: () => approveAccountMutation.mutate({ userId: profile.id }) },
+                          ])
+                        }
+                        disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
+                      >
+                        <CheckCircle size={16} color="#fff" />
+                        <Text style={styles.actionBtnText}>Approve</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.actionBtn, { backgroundColor: UI.red }]}
+                        onPress={() =>
+                          Alert.alert('Reject Account', `Reject ${profile.full_name || profile.email}?`, [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Reject', style: 'destructive', onPress: () => rejectAccountMutation.mutate({ userId: profile.id }) },
+                          ])
+                        }
+                        disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
+                      >
+                        <XCircle size={16} color="#fff" />
+                        <Text style={styles.actionBtnText}>Reject</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
-
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>KYC Status</Text>
-                    <Text style={styles.rowValue}>{profile.kyc_status || 'N/A'}</Text>
-                  </View>
-
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Status</Text>
-                    <Text style={styles.rowValue}>{profile.status || 'N/A'}</Text>
-                  </View>
-
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Registered</Text>
-                    <Text style={styles.rowValue}>{new Date(profile.created_at).toLocaleString()}</Text>
-                  </View>
-
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: UI.green }]}
-                      onPress={() =>
-                        Alert.alert('Approve Account', `Approve ${profile.full_name || profile.email}?`, [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Approve', onPress: () => approveAccountMutation.mutate({ userId: profile.id }) },
-                        ])
-                      }
-                      disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
-                    >
-                      <CheckCircle size={16} color="#fff" />
-                      <Text style={styles.actionBtnText}>Approve</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: UI.red }]}
-                      onPress={() =>
-                        Alert.alert('Reject Account', `Reject ${profile.full_name || profile.email}?`, [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Reject', style: 'destructive', onPress: () => rejectAccountMutation.mutate({ userId: profile.id }) },
-                        ])
-                      }
-                      disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
-                    >
-                      <XCircle size={16} color="#fff" />
-                      <Text style={styles.actionBtnText}>Reject</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))
+                );
+              })
             ) : (
               <View style={{ paddingVertical: 18 }}>
                 <Text style={styles.emptyText}>No pending accounts</Text>
@@ -1196,83 +1342,109 @@ export default function AdminScreen() {
                 <Text style={styles.emptyText}>Loading deposits...</Text>
               </View>
             ) : depositsQuery.data && depositsQuery.data.length > 0 ? (
-              depositsQuery.data.map((order) => (
-                <View key={order.id} style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{(order.profile?.full_name || '').trim() || 'Unknown Name'}</Text>
-                      <Text style={styles.cardSubtitle}>{order.profile?.email}</Text>
-                    </View>
+              depositsQuery.data.map((order: any) => {
+                const p = order.profile || {};
+                const displayName = (p.full_name || '').trim() || 'Unknown Name';
+                const avatar = getAvatarUrl(p.avatar_url);
 
-                    <View
-                      style={[
-                        styles.badge,
-                        order.status === 'pending' && { backgroundColor: UI.amberSoft },
-                        order.status === 'approved' && { backgroundColor: UI.greenSoft },
-                        order.status === 'rejected' && { backgroundColor: UI.redSoft },
-                      ]}
-                    >
-                      {order.status === 'pending' && <Clock size={14} color={UI.amber} />}
-                      {order.status === 'approved' && <CheckCircle size={14} color={UI.green} />}
-                      {order.status === 'rejected' && <XCircle size={14} color={UI.red} />}
-                      <Text
+                return (
+                  <View key={order.id} style={styles.card}>
+                    <View style={styles.userHeader}>
+                      <View style={styles.avatarWrap}>
+                        {avatar ? (
+                          <Image source={{ uri: avatar }} style={styles.avatarImg} />
+                        ) : (
+                          <View style={styles.avatarFallback}>
+                            <Text style={styles.avatarFallbackText}>{initialsFromName(displayName)}</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cardTitle}>{displayName}</Text>
+                        <Text style={styles.cardSubtitle}>{p.email || 'N/A'}</Text>
+                      </View>
+
+                      <View
                         style={[
-                          styles.badgeText,
-                          order.status === 'pending' && { color: UI.amber },
-                          order.status === 'approved' && { color: UI.green },
-                          order.status === 'rejected' && { color: UI.red },
+                          styles.badge,
+                          order.status === 'pending' && { backgroundColor: UI.amberSoft },
+                          order.status === 'approved' && { backgroundColor: UI.greenSoft },
+                          order.status === 'rejected' && { backgroundColor: UI.redSoft },
                         ]}
                       >
-                        {order.status.toUpperCase()}
+                        {order.status === 'pending' && <Clock size={14} color={UI.amber} />}
+                        {order.status === 'approved' && <CheckCircle size={14} color={UI.green} />}
+                        {order.status === 'rejected' && <XCircle size={14} color={UI.red} />}
+                        <Text
+                          style={[
+                            styles.badgeText,
+                            order.status === 'pending' && { color: UI.amber },
+                            order.status === 'approved' && { color: UI.green },
+                            order.status === 'rejected' && { color: UI.red },
+                          ]}
+                        >
+                          {(order.status || 'pending').toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>City</Text>
+                      <Text style={styles.rowValue}>{p.city || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Country</Text>
+                      <Text style={styles.rowValue}>{p.country || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Amount</Text>
+                      <Text style={styles.rowValue}>${Number(order.amount || 0).toFixed(2)}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Crypto</Text>
+                      <Text style={styles.rowValue}>{(order.crypto_type || '').replace('_', ' ')}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Transaction ID</Text>
+                      <Text style={styles.rowValueSmall} numberOfLines={1}>
+                        {order.transaction_id || 'N/A'}
                       </Text>
                     </View>
-                  </View>
 
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Amount</Text>
-                    <Text style={styles.rowValue}>${order.amount.toFixed(2)}</Text>
-                  </View>
-
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Crypto</Text>
-                    <Text style={styles.rowValue}>{order.crypto_type.replace('_', ' ')}</Text>
-                  </View>
-
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Transaction ID</Text>
-                    <Text style={styles.rowValueSmall} numberOfLines={1}>
-                      {order.transaction_id}
-                    </Text>
-                  </View>
-
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Date</Text>
-                    <Text style={styles.rowValue}>{new Date(order.created_at).toLocaleString()}</Text>
-                  </View>
-
-                  {order.status === 'pending' && (
-                    <View style={styles.actionButtons}>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: UI.green }]}
-                        onPress={() => updateDepositMutation.mutate({ id: order.id, status: 'approved' })}
-                        disabled={updateDepositMutation.isPending}
-                      >
-                        <CheckCircle size={16} color="#fff" />
-                        <Text style={styles.actionBtnText}>Approve</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: UI.red }]}
-                        onPress={() => updateDepositMutation.mutate({ id: order.id, status: 'rejected' })}
-                        disabled={updateDepositMutation.isPending}
-                      >
-                        <XCircle size={16} color="#fff" />
-                        <Text style={styles.actionBtnText}>Reject</Text>
-                      </TouchableOpacity>
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Date (Iraq)</Text>
+                      <Text style={styles.rowValue}>{formatIraqTime(order.created_at)}</Text>
                     </View>
-                  )}
-                </View>
-              ))
+
+                    {order.status === 'pending' && (
+                      <View style={styles.actionButtons}>
+                        <TouchableOpacity
+                          style={[styles.actionBtn, { backgroundColor: UI.green }]}
+                          onPress={() => updateDepositMutation.mutate({ id: order.id, status: 'approved' })}
+                          disabled={updateDepositMutation.isPending}
+                        >
+                          <CheckCircle size={16} color="#fff" />
+                          <Text style={styles.actionBtnText}>Approve</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.actionBtn, { backgroundColor: UI.red }]}
+                          onPress={() => updateDepositMutation.mutate({ id: order.id, status: 'rejected' })}
+                          disabled={updateDepositMutation.isPending}
+                        >
+                          <XCircle size={16} color="#fff" />
+                          <Text style={styles.actionBtnText}>Reject</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                );
+              })
             ) : (
               <Text style={styles.emptyText}>No deposit orders found</Text>
             )}
@@ -1298,106 +1470,134 @@ export default function AdminScreen() {
                 </TouchableOpacity>
               </View>
             ) : withdrawalsQuery.data && withdrawalsQuery.data.length > 0 ? (
-              withdrawalsQuery.data.map((order) => (
-                <View key={order.id} style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{(order.profile?.full_name || '').trim() || 'Unknown Name'}</Text>
-                      <Text style={styles.cardSubtitle}>{order.profile?.email}</Text>
-                    </View>
+              withdrawalsQuery.data.map((order: any) => {
+                const p = order.profile || {};
+                const displayName = (p.full_name || '').trim() || 'Unknown Name';
+                const avatar = getAvatarUrl(p.avatar_url);
 
-                    <View
-                      style={[
-                        styles.badge,
-                        order.status === 'pending' && { backgroundColor: UI.amberSoft },
-                        order.status === 'approved' && { backgroundColor: UI.greenSoft },
-                        order.status === 'rejected' && { backgroundColor: UI.redSoft },
-                      ]}
-                    >
-                      {order.status === 'pending' && <Clock size={14} color={UI.amber} />}
-                      {order.status === 'approved' && <CheckCircle size={14} color={UI.green} />}
-                      {order.status === 'rejected' && <XCircle size={14} color={UI.red} />}
-                      <Text
+                return (
+                  <View key={order.id} style={styles.card}>
+                    <View style={styles.userHeader}>
+                      <View style={styles.avatarWrap}>
+                        {avatar ? (
+                          <Image source={{ uri: avatar }} style={styles.avatarImg} />
+                        ) : (
+                          <View style={styles.avatarFallback}>
+                            <Text style={styles.avatarFallbackText}>{initialsFromName(displayName)}</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cardTitle}>{displayName}</Text>
+                        <Text style={styles.cardSubtitle}>{p.email || 'N/A'}</Text>
+                      </View>
+
+                      <View
                         style={[
-                          styles.badgeText,
-                          order.status === 'pending' && { color: UI.amber },
-                          order.status === 'approved' && { color: UI.green },
-                          order.status === 'rejected' && { color: UI.red },
+                          styles.badge,
+                          order.status === 'pending' && { backgroundColor: UI.amberSoft },
+                          order.status === 'approved' && { backgroundColor: UI.greenSoft },
+                          order.status === 'rejected' && { backgroundColor: UI.redSoft },
                         ]}
                       >
-                        {order.status.toUpperCase()}
+                        {order.status === 'pending' && <Clock size={14} color={UI.amber} />}
+                        {order.status === 'approved' && <CheckCircle size={14} color={UI.green} />}
+                        {order.status === 'rejected' && <XCircle size={14} color={UI.red} />}
+                        <Text
+                          style={[
+                            styles.badgeText,
+                            order.status === 'pending' && { color: UI.amber },
+                            order.status === 'approved' && { color: UI.green },
+                            order.status === 'rejected' && { color: UI.red },
+                          ]}
+                        >
+                          {(order.status || 'pending').toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>City</Text>
+                      <Text style={styles.rowValue}>{p.city || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Country</Text>
+                      <Text style={styles.rowValue}>{p.country || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Amount</Text>
+                      <Text style={styles.rowValue}>${Number(order.amount || 0).toFixed(2)}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Currency</Text>
+                      <Text style={styles.rowValue}>{order.currency || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Crypto</Text>
+                      <Text style={styles.rowValue}>{order.crypto || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Destination</Text>
+                      <Text style={styles.rowValueSmall} numberOfLines={1}>
+                        {order.destination || 'N/A'}
                       </Text>
                     </View>
-                  </View>
 
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Amount</Text>
-                    <Text style={styles.rowValue}>${order.amount.toFixed(2)}</Text>
-                  </View>
-
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Currency</Text>
-                    <Text style={styles.rowValue}>{(order as any).currency || 'N/A'}</Text>
-                  </View>
-
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Crypto</Text>
-                    <Text style={styles.rowValue}>{order.crypto || 'N/A'}</Text>
-                  </View>
-
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Destination</Text>
-                    <Text style={styles.rowValueSmall} numberOfLines={1}>
-                      {order.destination || 'N/A'}
-                    </Text>
-                  </View>
-
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Date</Text>
-                    <Text style={styles.rowValue}>{new Date(order.created_at).toLocaleString()}</Text>
-                  </View>
-
-                  {order.status === 'pending' && (
-                    <View style={styles.actionButtons}>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: UI.green }]}
-                        onPress={() =>
-                          Alert.alert(
-                            'Approve Withdrawal',
-                            `Approve withdrawal of ${order.amount.toFixed(2)}?\n\nThis will deduct the balance from user's wallet and update the status.`,
-                            [
-                              { text: 'Cancel', style: 'cancel' },
-                              { text: 'Approve', onPress: () => updateWithdrawalMutation.mutate({ id: order.id, status: 'approved' }) },
-                            ]
-                          )
-                        }
-                        disabled={updateWithdrawalMutation.isPending}
-                      >
-                        <CheckCircle size={16} color="#fff" />
-                        <Text style={styles.actionBtnText}>Approve</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: UI.red }]}
-                        onPress={() =>
-                          Alert.alert('Reject Withdrawal', `Reject this withdrawal? The amount will be refunded to user's wallet.`, [
-                            { text: 'Cancel', style: 'cancel' },
-                            {
-                              text: 'Reject & Refund',
-                              style: 'destructive',
-                              onPress: () => updateWithdrawalMutation.mutate({ id: order.id, status: 'rejected' }),
-                            },
-                          ])
-                        }
-                        disabled={updateWithdrawalMutation.isPending}
-                      >
-                        <XCircle size={16} color="#fff" />
-                        <Text style={styles.actionBtnText}>Reject & Refund</Text>
-                      </TouchableOpacity>
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Date (Iraq)</Text>
+                      <Text style={styles.rowValue}>{formatIraqTime(order.created_at)}</Text>
                     </View>
-                  )}
-                </View>
-              ))
+
+                    {order.status === 'pending' && (
+                      <View style={styles.actionButtons}>
+                        <TouchableOpacity
+                          style={[styles.actionBtn, { backgroundColor: UI.green }]}
+                          onPress={() =>
+                            Alert.alert(
+                              'Approve Withdrawal',
+                              `Approve withdrawal of ${Number(order.amount || 0).toFixed(
+                                2
+                              )}?\n\nThis will deduct the balance from user's wallet and update the status.`,
+                              [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Approve', onPress: () => updateWithdrawalMutation.mutate({ id: order.id, status: 'approved' }) },
+                              ]
+                            )
+                          }
+                          disabled={updateWithdrawalMutation.isPending}
+                        >
+                          <CheckCircle size={16} color="#fff" />
+                          <Text style={styles.actionBtnText}>Approve</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.actionBtn, { backgroundColor: UI.red }]}
+                          onPress={() =>
+                            Alert.alert('Reject Withdrawal', `Reject this withdrawal? The amount will be refunded to user's wallet.`, [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Reject & Refund',
+                                style: 'destructive',
+                                onPress: () => updateWithdrawalMutation.mutate({ id: order.id, status: 'rejected' }),
+                              },
+                            ])
+                          }
+                          disabled={updateWithdrawalMutation.isPending}
+                        >
+                          <XCircle size={16} color="#fff" />
+                          <Text style={styles.actionBtnText}>Reject & Refund</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                );
+              })
             ) : (
               <View style={{ paddingVertical: 18 }}>
                 <Text style={styles.emptyText}>No withdrawal requests found</Text>
@@ -1429,27 +1629,51 @@ export default function AdminScreen() {
               </View>
             ) : usersQuery.data && usersQuery.data.length > 0 ? (
               <>
-                {usersQuery.data.map((userProfile: any) => (
-                  <View key={userProfile.id} style={styles.card}>
-                    <View style={styles.cardHeader}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.cardTitle}>{(userProfile.full_name || '').trim() || 'Unknown Name'}</Text>
-                        <Text style={styles.cardSubtitle}>{userProfile.email}</Text>
-                        <Text style={styles.balanceText}>Balance: ${userProfile.wallet?.[0]?.balance?.toFixed(2) || '0.00'}</Text>
+                {usersQuery.data.map((userProfile: any) => {
+                  const avatar = getAvatarUrl(userProfile.avatar_url);
+                  const displayName = (userProfile.full_name || '').trim() || 'Unknown Name';
+
+                  return (
+                    <View key={userProfile.id} style={styles.card}>
+                      <View style={styles.userHeader}>
+                        <View style={styles.avatarWrap}>
+                          {avatar ? (
+                            <Image source={{ uri: avatar }} style={styles.avatarImg} />
+                          ) : (
+                            <View style={styles.avatarFallback}>
+                              <Text style={styles.avatarFallbackText}>{initialsFromName(displayName)}</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.cardTitle}>{displayName}</Text>
+                          <Text style={styles.cardSubtitle}>{userProfile.email}</Text>
+                          <Text style={styles.balanceText}>Balance: ${userProfile.wallet?.[0]?.balance?.toFixed(2) || '0.00'}</Text>
+                          <Text style={styles.smallMeta}>
+                            {userProfile.city || 'N/A'} • {userProfile.country || 'N/A'}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          style={[styles.smallBtn, { backgroundColor: UI.green }]}
+                          onPress={() => {
+                            setSelectedUserId(userProfile.id);
+                            setSelectedUserEmail(userProfile.email);
+                            setShowAddBalanceModal(true);
+                          }}
+                        >
+                          <Text style={styles.smallBtnText}>+ Add</Text>
+                        </TouchableOpacity>
                       </View>
-                      <TouchableOpacity
-                        style={[styles.smallBtn, { backgroundColor: UI.green }]}
-                        onPress={() => {
-                          setSelectedUserId(userProfile.id);
-                          setSelectedUserEmail(userProfile.email);
-                          setShowAddBalanceModal(true);
-                        }}
-                      >
-                        <Text style={styles.smallBtnText}>+ Add</Text>
-                      </TouchableOpacity>
+
+                      <View style={styles.row}>
+                        <Text style={styles.rowLabel}>Registered (Iraq)</Text>
+                        <Text style={styles.rowValue}>{formatIraqTime(userProfile.created_at)}</Text>
+                      </View>
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
               </>
             ) : (
               <View style={{ paddingVertical: 18 }}>
@@ -1482,26 +1706,50 @@ export default function AdminScreen() {
               </View>
             ) : usersQuery.data && usersQuery.data.length > 0 ? (
               <>
-                {usersQuery.data.map((userProfile: any) => (
-                  <View key={userProfile.id} style={styles.card}>
-                    <View style={styles.cardHeader}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.cardTitle}>{(userProfile.full_name || '').trim() || 'Unknown Name'}</Text>
-                        <Text style={styles.cardSubtitle}>{userProfile.email}</Text>
-                        <Text style={styles.balanceText}>Balance: ${userProfile.wallet?.[0]?.balance?.toFixed(2) || '0.00'}</Text>
+                {usersQuery.data.map((userProfile: any) => {
+                  const avatar = getAvatarUrl(userProfile.avatar_url);
+                  const displayName = (userProfile.full_name || '').trim() || 'Unknown Name';
+
+                  return (
+                    <View key={userProfile.id} style={styles.card}>
+                      <View style={styles.userHeader}>
+                        <View style={styles.avatarWrap}>
+                          {avatar ? (
+                            <Image source={{ uri: avatar }} style={styles.avatarImg} />
+                          ) : (
+                            <View style={styles.avatarFallback}>
+                              <Text style={styles.avatarFallbackText}>{initialsFromName(displayName)}</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.cardTitle}>{displayName}</Text>
+                          <Text style={styles.cardSubtitle}>{userProfile.email}</Text>
+                          <Text style={styles.balanceText}>Balance: ${userProfile.wallet?.[0]?.balance?.toFixed(2) || '0.00'}</Text>
+                          <Text style={styles.smallMeta}>
+                            {userProfile.city || 'N/A'} • {userProfile.country || 'N/A'}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          style={[styles.smallBtn, { backgroundColor: UI.red }]}
+                          onPress={() => {
+                            setSelectedUserId(userProfile.id);
+                            setShowWithdrawBalanceModal(true);
+                          }}
+                        >
+                          <Text style={styles.smallBtnText}>- Withdraw</Text>
+                        </TouchableOpacity>
                       </View>
-                      <TouchableOpacity
-                        style={[styles.smallBtn, { backgroundColor: UI.red }]}
-                        onPress={() => {
-                          setSelectedUserId(userProfile.id);
-                          setShowWithdrawBalanceModal(true);
-                        }}
-                      >
-                        <Text style={styles.smallBtnText}>- Withdraw</Text>
-                      </TouchableOpacity>
+
+                      <View style={styles.row}>
+                        <Text style={styles.rowLabel}>Registered (Iraq)</Text>
+                        <Text style={styles.rowValue}>{formatIraqTime(userProfile.created_at)}</Text>
+                      </View>
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
               </>
             ) : (
               <View style={{ paddingVertical: 18 }}>
@@ -1528,10 +1776,21 @@ export default function AdminScreen() {
               kycUsersWithDocs.map((userKYC: any) => {
                 const badge = kycBadge(userKYC.kyc_status);
                 const displayName = (userKYC.full_name || '').trim() || 'Unknown Name';
+                const avatar = getAvatarUrl(userKYC.avatar_url);
 
                 return (
                   <View key={userKYC.id} style={styles.card}>
-                    <View style={styles.cardHeader}>
+                    <View style={styles.userHeader}>
+                      <View style={styles.avatarWrap}>
+                        {avatar ? (
+                          <Image source={{ uri: avatar }} style={styles.avatarImg} />
+                        ) : (
+                          <View style={styles.avatarFallback}>
+                            <Text style={styles.avatarFallbackText}>{initialsFromName(displayName)}</Text>
+                          </View>
+                        )}
+                      </View>
+
                       <View style={{ flex: 1 }}>
                         <Text style={styles.cardTitle}>{displayName}</Text>
                         <Text style={styles.cardSubtitle}>{userKYC.email}</Text>
@@ -1541,6 +1800,16 @@ export default function AdminScreen() {
                         {badge.icon}
                         <Text style={[styles.badgeText, { color: badge.color }]}>{badge.text}</Text>
                       </View>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>City</Text>
+                      <Text style={styles.rowValue}>{userKYC.city || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Country</Text>
+                      <Text style={styles.rowValue}>{userKYC.country || 'N/A'}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -1564,8 +1833,8 @@ export default function AdminScreen() {
                     </View>
 
                     <View style={styles.row}>
-                      <Text style={styles.rowLabel}>Registered</Text>
-                      <Text style={styles.rowValue}>{new Date(userKYC.created_at).toLocaleString()}</Text>
+                      <Text style={styles.rowLabel}>Registered (Iraq)</Text>
+                      <Text style={styles.rowValue}>{formatIraqTime(userKYC.created_at)}</Text>
                     </View>
 
                     <View style={styles.kycBlock}>
@@ -1763,43 +2032,59 @@ export default function AdminScreen() {
                 };
 
                 return filtered.length > 0 ? (
-                  filtered.map((tx: any) => (
-                    <View key={tx.id} style={styles.card}>
-                      <View style={styles.cardHeader}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.cardTitle}>{(tx.receiver?.full_name || '').trim() || 'Unknown Name'}</Text>
-                          <Text style={styles.cardSubtitle}>{tx.receiver?.email}</Text>
+                  filtered.map((tx: any) => {
+                    const displayName = (tx.receiver?.full_name || '').trim() || 'Unknown Name';
+                    const avatar = getAvatarUrl(tx.receiver?.avatar_url);
+
+                    return (
+                      <View key={tx.id} style={styles.card}>
+                        <View style={styles.userHeader}>
+                          <View style={styles.avatarWrap}>
+                            {avatar ? (
+                              <Image source={{ uri: avatar }} style={styles.avatarImg} />
+                            ) : (
+                              <View style={styles.avatarFallback}>
+                                <Text style={styles.avatarFallbackText}>{initialsFromName(displayName)}</Text>
+                              </View>
+                            )}
+                          </View>
+
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.cardTitle}>{displayName}</Text>
+                            <Text style={styles.cardSubtitle}>{tx.receiver?.email || 'N/A'}</Text>
+                          </View>
+
+                          <View style={[styles.badge, tx.amount >= 0 ? { backgroundColor: UI.greenSoft } : { backgroundColor: UI.redSoft }]}>
+                            <Text style={[styles.badgeText, tx.amount >= 0 ? { color: UI.green } : { color: UI.red }]}>
+                              {tx.amount >= 0 ? '+' : ''}${Number(tx.amount || 0).toFixed(2)}
+                            </Text>
+                          </View>
                         </View>
-                        <View style={[styles.badge, tx.amount >= 0 ? { backgroundColor: UI.greenSoft } : { backgroundColor: UI.redSoft }]}>
-                          <Text style={[styles.badgeText, tx.amount >= 0 ? { color: UI.green } : { color: UI.red }]}>
-                            {tx.amount >= 0 ? '+' : ''}${tx.amount.toFixed(2)}
-                          </Text>
-                        </View>
-                      </View>
 
-                      <View style={styles.row}>
-                        <Text style={styles.rowLabel}>Type</Text>
-                        <Text style={styles.rowValue}>{getTransactionTitle(tx)}</Text>
-                      </View>
-
-                      <View style={styles.row}>
-                        <Text style={styles.rowLabel}>Balance After</Text>
-                        <Text style={[styles.rowValue, { color: UI.blue }]}>${(tx.balance_after || 0).toFixed(2)}</Text>
-                      </View>
-
-                      {tx.description && (
                         <View style={styles.row}>
-                          <Text style={styles.rowLabel}>Description</Text>
-                          <Text style={styles.rowValue}>{tx.description}</Text>
+                          <Text style={styles.rowLabel}>Type</Text>
+                          <Text style={styles.rowValue}>{getTransactionTitle(tx)}</Text>
                         </View>
-                      )}
 
-                      <View style={styles.row}>
-                        <Text style={styles.rowLabel}>Time</Text>
-                        <Text style={styles.rowValue}>{new Date(tx.created_at).toLocaleString()}</Text>
+                        <View style={styles.row}>
+                          <Text style={styles.rowLabel}>Balance After</Text>
+                          <Text style={[styles.rowValue, { color: UI.blue }]}>${Number(tx.balance_after || 0).toFixed(2)}</Text>
+                        </View>
+
+                        {tx.description && (
+                          <View style={styles.row}>
+                            <Text style={styles.rowLabel}>Description</Text>
+                            <Text style={styles.rowValue}>{tx.description}</Text>
+                          </View>
+                        )}
+
+                        <View style={styles.row}>
+                          <Text style={styles.rowLabel}>Time (Iraq)</Text>
+                          <Text style={styles.rowValue}>{formatIraqTime(tx.created_at)}</Text>
+                        </View>
                       </View>
-                    </View>
-                  ))
+                    );
+                  })
                 ) : (
                   <View style={{ paddingVertical: 18 }}>
                     <Text style={styles.emptyText}>No transactions match your filters</Text>
@@ -1835,7 +2120,14 @@ export default function AdminScreen() {
             <Text style={styles.modalTitle}>Add Balance</Text>
             <Text style={styles.modalSubtitle}>Enter amount and note</Text>
 
-            <TextInput style={styles.modalInput} placeholder="User Email" placeholderTextColor={UI.text2} keyboardType="email-address" value={selectedUserEmail} editable={false} />
+            <TextInput
+              style={styles.modalInput}
+              placeholder="User Email"
+              placeholderTextColor={UI.text2}
+              keyboardType="email-address"
+              value={selectedUserEmail}
+              editable={false}
+            />
 
             <TextInput
               style={styles.modalInput}
@@ -2175,13 +2467,37 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 2,
   },
-  cardHeader: {
+
+  userHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 10,
+    alignItems: 'center',
+    gap: 12,
     marginBottom: 12,
   },
+  avatarWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: UI.border,
+    backgroundColor: UI.card2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarImg: { width: '100%', height: '100%' },
+  avatarFallback: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: UI.blueSoft,
+  },
+  avatarFallbackText: {
+    fontWeight: '900',
+    color: UI.blue,
+  },
+
   cardTitle: {
     fontSize: 16,
     fontWeight: '900',
@@ -2287,6 +2603,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: UI.blue,
     fontWeight: '800',
+  },
+  smallMeta: {
+    marginTop: 6,
+    fontSize: 12,
+    color: UI.text2,
+    fontWeight: '700',
   },
 
   emptyText: {
@@ -2446,27 +2768,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: UI.blue,
     fontWeight: '800',
-  },
-
-  docGrid: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  docBtn: {
-    flex: 1,
-    borderRadius: 14,
-    backgroundColor: UI.greenSoft,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  docBtnText: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: UI.text,
   },
 
   searchCard: {
