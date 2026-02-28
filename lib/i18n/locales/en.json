@@ -304,7 +304,7 @@
   "waitingActivation": "Waiting for activation",
   "accountUnderReview": "Account Under Review",
   "pendingAdminReview": "Pending admin review",
-  "reviewTakes1To6Hours": "Review takes 1-6 hours",
+  "reviewTakes1To6Hours": "Review takes 1-12 hours",
   "waitForApproval2": "Wait for approval",
   "readyWait": "Please wait",
   "securityWaitInfo": "For security, we review all new accounts",
