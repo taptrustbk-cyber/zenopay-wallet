@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -65,6 +65,13 @@ const isProbablyAdminLabel = (text?: string | null) => {
   return t.includes('admin') || t.includes('agent') || t.includes('zanopay');
 };
 
+// ✅ i18n helper: if key missing, use fallback
+const tOr = (key: string, fallback: string) => {
+  const v = i18n.t(key) as unknown as string;
+  if (!v) return fallback;
+  return v === key ? fallback : v;
+};
+
 export default function TransactionsScreen() {
   // ✅ hide default header (removes dark-blue top bar)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -106,7 +113,46 @@ export default function TransactionsScreen() {
         throw new Error('Failed to fetch transactions');
       }
 
-      const txs = (data || []) as TransactionData[];
+      let txs = (data || []) as TransactionData[];
+
+      /**
+       * ✅ FIX:
+       * If user has balance (example $10) but NO transactions in table,
+       * show 1 synthetic "deposit by Zenopay agent" item.
+       */
+      if (txs.length === 0) {
+        // try wallets table first (most common)
+        const { data: wData, error: wErr } = await supabase
+          .from('wallets')
+          .select('balance, updated_at, created_at')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!wErr) {
+          const bal = Number((wData as any)?.balance ?? 0);
+          if (bal > 0) {
+            const when =
+              (wData as any)?.updated_at ||
+              (wData as any)?.created_at ||
+              new Date().toISOString();
+
+            const synthetic: TransactionData = {
+              id: `initial_deposit_${user.id}`,
+              user_id: user.id,
+              type: 'deposit',
+              status: 'completed',
+              amount: bal,
+              description: tOr('zenopayAgentDeposit', 'Deposit by Zenopay agent'),
+              created_at: when,
+              sender_id: null,
+              receiver_id: null,
+              balance_after: bal,
+            };
+
+            return [synthetic];
+          }
+        }
+      }
 
       // 2) collect profile ids (sender/receiver)
       const ids = Array.from(
@@ -173,8 +219,6 @@ export default function TransactionsScreen() {
     (tx: TransactionData): TxUi => {
       const myId = user?.id || '';
       const isOutgoingBySender = tx.sender_id === myId;
-      const absAmount = Math.abs(Number(tx.amount || 0));
-
       const type = String(tx.type || '').toLowerCase();
       const desc = safe(tx.description);
 
@@ -183,8 +227,7 @@ export default function TransactionsScreen() {
       const senderEmail = safe(tx.sender_email);
       const receiverEmail = safe(tx.receiver_email);
 
-      // ✅ virtual card created (when user buys/creates $25 card)
-      // Accept multiple possible types so it works with your DB without breaking:
+      // ✅ virtual card created
       const isVirtualCard =
         type === 'virtual_card_create' ||
         type === 'create_virtual_card' ||
@@ -210,7 +253,6 @@ export default function TransactionsScreen() {
         const isOutgoing = isOutgoingBySender || tx.amount < 0;
 
         if (isOutgoing) {
-          // Sent -> show who you sent to
           return {
             title: i18n.t('sent'),
             subtitleLine1: `${i18n.t('to')}: ${receiverName}`,
@@ -221,7 +263,6 @@ export default function TransactionsScreen() {
           };
         }
 
-        // Received -> show who you received from
         return {
           title: i18n.t('received'),
           subtitleLine1: `${i18n.t('from')}: ${senderName}`,
@@ -232,11 +273,11 @@ export default function TransactionsScreen() {
         };
       }
 
-      // ✅ admin top-up / deposit
+      // ✅ admin top-up / deposit (also covers synthetic deposit)
       if (type === 'deposit' || type === 'admin_add' || type === 'topup' || type === 'top_up') {
         return {
           title: i18n.t('deposit'),
-          subtitleLine1: desc || i18n.t('adminTopUp'),
+          subtitleLine1: desc || tOr('zenopayAgentDeposit', 'Deposit by Zenopay agent'),
           subtitleLine2: undefined,
           iconName: 'download-outline',
           isOutgoing: false,
@@ -257,7 +298,7 @@ export default function TransactionsScreen() {
         };
       }
 
-      // ✅ card / giftcard / mobile purchase
+      // ✅ purchases
       if (type === 'purchase_mobile') {
         return {
           title: i18n.t('mobilePurchase'),
@@ -345,7 +386,9 @@ export default function TransactionsScreen() {
               </Text>
             )}
 
-            <Text style={[styles.cardDate, isRTL && styles.textRTL]}>{formatDateTime(item.created_at)}</Text>
+            <Text style={[styles.cardDate, isRTL && styles.textRTL]}>
+              {formatDateTime(item.created_at)}
+            </Text>
           </View>
         </View>
 
@@ -387,7 +430,6 @@ export default function TransactionsScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
         <Stack.Screen options={{ headerShown: false }} />
 
-        {/* Custom header */}
         <View style={[styles.header, isRTL && styles.headerRTL]}>
           <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
             <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
@@ -424,7 +466,14 @@ export default function TransactionsScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderTransaction}
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={UI.green} colors={[UI.green]} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={onRefresh}
+            tintColor={UI.green}
+            colors={[UI.green]}
+          />
+        }
         ListHeaderComponent={
           <View style={[styles.header, isRTL && styles.headerRTL]}>
             <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
@@ -455,7 +504,6 @@ export default function TransactionsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // Header
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,
@@ -489,7 +537,6 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
 
-  // Card
   card: {
     marginHorizontal: 16,
     marginBottom: 12,
@@ -501,8 +548,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-
-    // subtle depth
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -582,7 +627,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  // Loading
   loaderContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -596,7 +640,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Empty
   emptyState: {
     paddingTop: 70,
     paddingHorizontal: 20,
@@ -625,7 +668,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // Error
   errorStateContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -656,7 +698,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // Green button
   primaryBtn: {
     marginTop: 8,
     backgroundColor: UI.green,
@@ -673,7 +714,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  // RTL helpers
   textRTL: {
     textAlign: 'right',
   },
