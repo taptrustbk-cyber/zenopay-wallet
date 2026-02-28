@@ -78,49 +78,81 @@ export default function EmailVerificationScreen() {
     if (redirectedRef.current) return;
     redirectedRef.current = true;
 
-    // ✅ IMPORTANT: (auth) group is not in URL → login route is "/login" not "/auth/login"
     router.replace({
       pathname: '/login' as any,
-      params: { created: '1' },
+      params: { confirmed: '1' }, // ✅ you can read this in login page to show a toast
     } as any);
   }
 
-  /**
-   * ✅ This screen:
-   * - resend / check
-   * - if user already has session and confirmed, redirect to login
-   *
-   * Confirm flow:
-   * email link opens /confirm -> that screen sets session, saves profile, then redirects to /login
-   */
-  async function checkIfVerifiedWithSession() {
+  // ✅ Check confirmed if session exists (user opened confirm link in app)
+  async function checkIfVerifiedWithSession(): Promise<boolean> {
     const { data } = await supabase.auth.getSession();
     const user = data?.session?.user;
-    if (user?.email_confirmed_at) return true;
-    return false;
+    return !!user?.email_confirmed_at;
   }
 
-  // ✅ Auto check (if session exists and email confirmed)
+  // ✅ NEW: Check confirmed from Supabase (server) by Edge Function
+  async function checkIfVerifiedFromServer(email: string): Promise<boolean> {
+    if (!email) return false;
+
+    // This calls: Supabase Edge Function name: "check-email-confirmed"
+    const { data, error } = await supabase.functions.invoke('check-email-confirmed', {
+      body: { email },
+    });
+
+    if (error) {
+      console.log('Edge function error:', error.message);
+      return false;
+    }
+
+    // expected response: { confirmed: true/false }
+    return !!data?.confirmed;
+  }
+
+  async function handleConfirmedFlow() {
+    setVerified(true);
+
+    await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
+
+    // If there is a session, keep your old behavior (sign out, then go login)
+    const { data } = await supabase.auth.getSession();
+    if (data?.session) {
+      await sleep(400);
+      await supabase.auth.signOut();
+      await sleep(200);
+    }
+
+    Alert.alert(
+      i18n.t('success') || 'Success',
+      i18n.t('accountSuccessfullyConfirmed') || 'Your account successfully confirmed.',
+      [{ text: 'OK', onPress: goToLoginWithSuccess }]
+    );
+  }
+
+  // ✅ Auto check polling (session first, then server)
   useEffect(() => {
     let mounted = true;
     let pollingInterval: ReturnType<typeof setInterval> | undefined;
 
     const tick = async () => {
       try {
-        const ok = await checkIfVerifiedWithSession();
+        const emailToCheck = userEmail || emailParam;
+
+        // 1) session check
+        const okSession = await checkIfVerifiedWithSession();
         if (!mounted) return;
+        if (okSession && !verified) {
+          await handleConfirmedFlow();
+          return;
+        }
 
-        if (ok) {
-          setVerified(true);
-
-          await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
-
-          await sleep(700);
-          await supabase.auth.signOut(); // keep your old behavior
+        // 2) server check (works even if app didn’t open confirm link)
+        if (emailToCheck) {
+          const okServer = await checkIfVerifiedFromServer(emailToCheck);
           if (!mounted) return;
-
-          await sleep(200);
-          await goToLoginWithSuccess();
+          if (okServer && !verified) {
+            await handleConfirmedFlow();
+          }
         }
       } catch (e: any) {
         console.log('verification tick error:', e?.message);
@@ -131,7 +163,7 @@ export default function EmailVerificationScreen() {
 
     pollingInterval = setInterval(() => {
       if (!verified) tick();
-    }, 4000);
+    }, 6000);
 
     const {
       data: { subscription },
@@ -140,15 +172,7 @@ export default function EmailVerificationScreen() {
 
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
         if (session?.user?.email_confirmed_at && !verified) {
-          setVerified(true);
-          await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
-
-          await sleep(700);
-          await supabase.auth.signOut();
-          if (!mounted) return;
-
-          await sleep(200);
-          await goToLoginWithSuccess();
+          await handleConfirmedFlow();
         }
       }
     });
@@ -158,27 +182,36 @@ export default function EmailVerificationScreen() {
       if (pollingInterval) clearInterval(pollingInterval);
       subscription.unsubscribe();
     };
-  }, [verified, router]);
+  }, [verified, router, userEmail, emailParam]);
 
   const checkStatus = async () => {
     setChecking(true);
     try {
-      const ok = await checkIfVerifiedWithSession();
+      const emailToCheck = userEmail || emailParam;
 
-      if (ok) {
-        setVerified(true);
-        await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
-
-        await sleep(700);
-        await supabase.auth.signOut();
-        await sleep(200);
-
-        await goToLoginWithSuccess();
-      } else {
-        Alert.alert(i18n.t('emailNotVerifiedYet'), i18n.t('pleaseConfirmEmail'), [{ text: 'OK' }]);
+      // 1) session check
+      const okSession = await checkIfVerifiedWithSession();
+      if (okSession) {
+        await handleConfirmedFlow();
+        return;
       }
+
+      // 2) server check (Edge Function)
+      if (emailToCheck) {
+        const okServer = await checkIfVerifiedFromServer(emailToCheck);
+        if (okServer) {
+          await handleConfirmedFlow();
+          return;
+        }
+      }
+
+      Alert.alert(
+        i18n.t('emailNotVerifiedYet') || 'Not verified',
+        i18n.t('stillNotConfirmedPleaseCheckEmail') || 'Still not confirmed. Please confirm in your email app.',
+        [{ text: 'OK' }]
+      );
     } catch (error: any) {
-      Alert.alert(i18n.t('error'), error?.message || 'Failed to check status');
+      Alert.alert(i18n.t('error') || 'Error', error?.message || 'Failed to check status');
     } finally {
       setChecking(false);
     }
@@ -192,11 +225,11 @@ export default function EmailVerificationScreen() {
       const emailToUse = userEmail || emailParam;
 
       if (!emailToUse) {
-        Alert.alert(i18n.t('error'), i18n.t('noEmailFound') || 'No email address found');
+        Alert.alert(i18n.t('error') || 'Error', i18n.t('noEmailFound') || 'No email address found');
         return;
       }
 
-      // ✅ IMPORTANT: confirm route is "/confirm" (group not in URL)
+      // ✅ confirm route is "/confirm" (group not in URL)
       const emailRedirectTo = Linking.createURL('confirm'); // zenopay://confirm
 
       const { error } = await supabase.auth.resend({
@@ -208,9 +241,9 @@ export default function EmailVerificationScreen() {
       if (error) throw error;
 
       setCooldown(30);
-      Alert.alert(i18n.t('success'), i18n.t('verificationEmailResent'));
+      Alert.alert(i18n.t('success') || 'Success', i18n.t('verificationEmailResent') || 'Verification email resent.');
     } catch (error: any) {
-      Alert.alert(i18n.t('error'), error?.message || 'Failed to resend email');
+      Alert.alert(i18n.t('error') || 'Error', error?.message || 'Failed to resend email');
     } finally {
       setResending(false);
     }
@@ -238,7 +271,7 @@ export default function EmailVerificationScreen() {
           <Text style={styles.title}>{verified ? i18n.t('emailVerified') : i18n.t('verifyYourEmail')}</Text>
 
           <Text style={styles.subtitle}>
-            {verified ? i18n.t('redirectingToLogin') : i18n.t('verificationEmailSent')}
+            {verified ? (i18n.t('redirectingToLogin') || 'Redirecting to login...') : i18n.t('verificationEmailSent')}
           </Text>
 
           {!!userEmail && !verified ? <Text style={styles.emailText}>{userEmail}</Text> : null}
@@ -253,7 +286,7 @@ export default function EmailVerificationScreen() {
           ) : (
             <View style={styles.successBox}>
               <Text style={styles.successText}>
-                {i18n.t('accountCreatedSuccessfully') || 'Account created successfully'}
+                {i18n.t('accountSuccessfullyConfirmed') || 'Your account successfully confirmed.'}
               </Text>
             </View>
           )}
@@ -294,8 +327,7 @@ export default function EmailVerificationScreen() {
               <TouchableOpacity
                 style={styles.backButton}
                 onPress={async () => {
-                  await supabase.auth.signOut();
-                  // ✅ IMPORTANT: login route is "/login" not "/auth/login"
+                  await supabase.auth.signOut().catch(() => null);
                   router.replace('/login' as any);
                 }}
                 activeOpacity={0.9}
