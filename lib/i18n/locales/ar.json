@@ -1,6 +1,8 @@
 {
   "home": "الرئيسية",
   "one_card_inline": "بطاقتك الافتراضية فعالة. يمكنك امتلاك بطاقة واحدة فقط.",
+  "zenopayAgentDeposit": "إيداع بواسطة وكيل زينوباي",
+  "adminTopUp": "إيداع بواسطة وكيل زينوباي",
   "fullNamePlaceholder": "أدخل اسمك الكامل",
   "dateOfBirthPlaceholder": "اختر تاريخ الميلاد",
   "phoneNumberPlaceholder": "أدخل رقم الهاتف",
