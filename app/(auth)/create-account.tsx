@@ -147,7 +147,7 @@ export default function CreateAccount() {
       const dobISO = toISODateOnly(dob);
 
       // ✅ Save pending profile locally so /confirm can insert into profiles after email confirm
-      // IMPORTANT: column name in your DB is date_of_brith (typo), so we store that key.
+      // IMPORTANT: your column name is date_of_brith (typo)
       await AsyncStorage.setItem(
         PENDING_PROFILE_KEY,
         JSON.stringify({
@@ -157,13 +157,12 @@ export default function CreateAccount() {
           country: cleanCountry,
           phone: phoneE164,
           date_of_brith: dobISO,
+          pending_profile_created_at: new Date().toISOString(), // ✅ added
         })
       );
 
-      // ✅ expo-router group (auth) is NOT part of the URL.
-      // app/(auth)/confirm.tsx => route is "/confirm"
-      // build deep link safely:
-      const emailRedirectTo = Linking.createURL('confirm'); // => zenopay://confirm (when scheme=zenopay)
+      // ✅ deep link to confirm page
+      const emailRedirectTo = Linking.createURL('confirm'); // zenopay://confirm
 
       // ✅ Sign up
       const { data, error } = await supabase.auth.signUp({
@@ -171,7 +170,7 @@ export default function CreateAccount() {
         password: cleanPassword,
         options: {
           emailRedirectTo,
-          data: {}, // keep empty
+          data: {},
         },
       });
 
@@ -181,7 +180,7 @@ export default function CreateAccount() {
         return;
       }
 
-      // ✅ If email confirmation is OFF (session exists), we can write profile now
+      // ✅ If email confirmation is OFF (session exists), write profile now
       const userId = data?.user?.id;
       const hasSession = !!data?.session;
 
@@ -193,17 +192,19 @@ export default function CreateAccount() {
             city: cleanCity,
             country: cleanCountry,
             phone: phoneE164,
-            date_of_brith: dobISO, // ✅ matches your column
+            date_of_brith: dobISO,
           },
           { onConflict: 'id' }
         );
 
         if (profileError) {
           console.log('Profile upsert error:', profileError.message);
+        } else {
+          // ✅ clean pending storage (not needed if profile saved already)
+          await AsyncStorage.removeItem(PENDING_PROFILE_KEY);
         }
       }
 
-      // ✅ app/(auth)/email-verification.tsx => route is "/email-verification" (NOT "/auth/email-verification")
       router.replace({
         pathname: '/email-verification' as any,
         params: { email: cleanEmail },
@@ -453,11 +454,7 @@ export default function CreateAccount() {
             disabled={isCreating || !!dobError || !dob}
             activeOpacity={0.9}
           >
-            {isCreating ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>
-            )}
+            {isCreating ? <ActivityIndicator color="#fff" /> : <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.9}>
