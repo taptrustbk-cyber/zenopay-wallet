@@ -379,8 +379,8 @@ export default function CardsScreen() {
               <View style={[styles.warnRow, { marginTop: 10 }]}>
                 <Ionicons name="checkmark-circle" size={18} color={UI.green} />
                 <Text style={[styles.warnText, { color: UI.text }]}>
-                  {t('cards.one_card_inline', 'Your virtual card is active. You can only have one card.')}
-                </Text>
+                 {t('cards.one_card_inline', 'Your virtual card is active. You can only have one card.')}
+              </Text>
               </View>
             ) : null}
           </View>
