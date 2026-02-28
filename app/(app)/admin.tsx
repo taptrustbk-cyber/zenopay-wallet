@@ -80,6 +80,8 @@ type TabKey =
 
 type KycKind = 'id_front' | 'id_back' | 'selfie';
 
+type StorageFile = { name?: string | null };
+
 export default function AdminScreen() {
   const { user, signOut } = useAuth();
   const { theme } = useTheme(); // kept (not removed) to avoid breaking your app
@@ -110,11 +112,17 @@ export default function AdminScreen() {
   const [kycPreviewUrl, setKycPreviewUrl] = useState('');
   const [kycPreviewLoading, setKycPreviewLoading] = useState(false);
 
+  // ✅ cache bucket folder listing so we can:
+  // - show ALL users with docs (even when profiles columns are NULL)
+  // - resolve exact filenames fast
+  const [kycFolderCache, setKycFolderCache] = useState<Record<string, StorageFile[]>>({});
+  const [kycHasDocs, setKycHasDocs] = useState<Record<string, boolean>>({});
+  const [kycScanLoading, setKycScanLoading] = useState(false);
+
   const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
 
   // ---------- KYC helpers ----------
   const isLikelyUrl = (v?: string | null) => !!v && (v.startsWith('http://') || v.startsWith('https://'));
-
   const KYC_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
 
   const trySignedUrl = async (path: string) => {
@@ -123,9 +131,10 @@ export default function AdminScreen() {
     return data?.signedUrl || null;
   };
 
-  // ✅ smarter resolver
-  const resolveKycPathSmart = async (userId: string, kind: KycKind) => {
-    // 1) try list folder (best)
+  const getFolderFiles = async (userId: string): Promise<StorageFile[]> => {
+    if (!userId) return [];
+    if (kycFolderCache[userId]) return kycFolderCache[userId];
+
     try {
       const { data, error } = await supabase.storage.from(KYC_BUCKET).list(userId, {
         limit: 200,
@@ -133,22 +142,40 @@ export default function AdminScreen() {
         sortBy: { column: 'name', order: 'asc' },
       });
 
-      if (!error && data && data.length > 0) {
-        const lower = kind.toLowerCase();
-
-        const exact =
-          data.find((f) => (f.name || '').toLowerCase() === `${lower}.jpeg`) ||
-          data.find((f) => (f.name || '').toLowerCase() === `${lower}.jpg`) ||
-          data.find((f) => (f.name || '').toLowerCase() === `${lower}.png`) ||
-          data.find((f) => (f.name || '').toLowerCase() === `${lower}.webp`);
-
-        const loose = data.find((f) => (f.name || '').toLowerCase().includes(lower));
-        const match = exact || loose;
-
-        if (match?.name) return `${userId}/${match.name}`;
+      if (!error && Array.isArray(data)) {
+        setKycFolderCache((prev) => ({ ...prev, [userId]: data as any }));
+        return data as any;
       }
     } catch {
       // ignore
+    }
+
+    setKycFolderCache((prev) => ({ ...prev, [userId]: [] }));
+    return [];
+  };
+
+  const folderHasAnyKyc = (files: StorageFile[]) => {
+    const names = (files || []).map((f) => (f.name || '').toLowerCase());
+    return names.some((n) => n.includes('id_front') || n.includes('id-back') || n.includes('id_back') || n.includes('selfie'));
+  };
+
+  // ✅ smarter resolver (now uses cache)
+  const resolveKycPathSmart = async (userId: string, kind: KycKind) => {
+    // 1) use cached list if exists, else list
+    const data = await getFolderFiles(userId);
+    if (data && data.length > 0) {
+      const lower = kind.toLowerCase();
+
+      const exact =
+        data.find((f) => (f.name || '').toLowerCase() === `${lower}.jpeg`) ||
+        data.find((f) => (f.name || '').toLowerCase() === `${lower}.jpg`) ||
+        data.find((f) => (f.name || '').toLowerCase() === `${lower}.png`) ||
+        data.find((f) => (f.name || '').toLowerCase() === `${lower}.webp`);
+
+      const loose = data.find((f) => (f.name || '').toLowerCase().includes(lower));
+      const match = exact || loose;
+
+      if (match?.name) return `${userId}/${match.name}`;
     }
 
     // 2) fallback: try common filenames without list permission
@@ -378,19 +405,20 @@ export default function AdminScreen() {
     enabled: selectedTab === 'account_approval',
   });
 
-  // ✅ KYC tab must show ONLY users who have uploaded at least one KYC file
-  // (id_front OR id_back OR selfie not null). This avoids showing all users.
+  // ✅ IMPORTANT FIX:
+  // Before: you filtered only users where id_front/id_back/selfie NOT NULL
+  // Many users have columns NULL but files exist in bucket -> they were NOT shown (only 1 user appeared)
+  // Now: fetch all KYC-related users, then we detect who has files in storage.
   const kycDocumentsQuery = useQuery({
     queryKey: ['admin-kyc-documents'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, email, full_name, kyc_status, status, id_front, id_back, selfie, created_at')
-        .or('id_front.not.is.null,id_back.not.is.null,selfie.not.is.null')
+        .in('status', ['pending', 'approved', 'rejected'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
       return data || [];
     },
     enabled: selectedTab === 'kyc_documents' || selectedTab === 'user_documents',
@@ -510,9 +538,92 @@ export default function AdminScreen() {
     enabled: selectedTab === 'transactions',
   });
 
+  // ✅ Scan storage folders for ALL loaded users to know who has docs
+  useEffect(() => {
+    const shouldScan = selectedTab === 'kyc_documents' || selectedTab === 'user_documents';
+    if (!shouldScan) return;
+    if (kycDocumentsQuery.isLoading) return;
+
+    const users = (kycDocumentsQuery.data || []) as any[];
+    if (!users.length) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      setKycScanLoading(true);
+
+      const updates: Record<string, boolean> = {};
+      const cacheUpdates: Record<string, StorageFile[]> = {};
+
+      // ✅ limit parallel requests to avoid overload
+      const batchSize = 10;
+      for (let i = 0; i < users.length; i += batchSize) {
+        const slice = users.slice(i, i + batchSize);
+
+        const results = await Promise.all(
+          slice.map(async (u: any) => {
+            const userId = u.id;
+
+            // if already cached, compute quickly
+            if (kycFolderCache[userId]) {
+              return { userId, files: kycFolderCache[userId] };
+            }
+
+            try {
+              const { data, error } = await supabase.storage.from(KYC_BUCKET).list(userId, {
+                limit: 200,
+                offset: 0,
+                sortBy: { column: 'name', order: 'asc' },
+              });
+
+              if (!error && Array.isArray(data)) {
+                return { userId, files: data as any };
+              }
+            } catch {
+              // ignore
+            }
+            return { userId, files: [] as StorageFile[] };
+          })
+        );
+
+        results.forEach(({ userId, files }) => {
+          cacheUpdates[userId] = files;
+          updates[userId] = folderHasAnyKyc(files);
+        });
+
+        if (cancelled) return;
+      }
+
+      if (cancelled) return;
+
+      setKycFolderCache((prev) => ({ ...prev, ...cacheUpdates }));
+      setKycHasDocs((prev) => ({ ...prev, ...updates }));
+      setKycScanLoading(false);
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTab, kycDocumentsQuery.isLoading, kycDocumentsQuery.data]);
+
+  // ✅ only show users that truly have docs:
+  // - columns have value OR storage folder contains any KYC file
+  const kycUsersWithDocs = useMemo(() => {
+    const list = (kycDocumentsQuery.data || []) as any[];
+
+    return list.filter((u) => {
+      const hasCols = !!u.id_front || !!u.id_back || !!u.selfie;
+      const hasStorage = kycHasDocs[u.id] === true;
+      return hasCols || hasStorage;
+    });
+  }, [kycDocumentsQuery.data, kycHasDocs]);
+
   // ✅ filtered list for user_documents tab
   const filteredDocUsers = useMemo(() => {
-    const list = kycDocumentsQuery.data || [];
+    const list = kycUsersWithDocs || [];
     const q = docSearch.trim().toLowerCase();
     if (!q) return list;
     return list.filter((u: any) => {
@@ -520,7 +631,7 @@ export default function AdminScreen() {
       const email = (u.email || '').toLowerCase();
       return name.includes(q) || email.includes(q);
     });
-  }, [kycDocumentsQuery.data, docSearch]);
+  }, [kycUsersWithDocs, docSearch]);
 
   // ---------- mutations ----------
   const updateDepositMutation = useMutation({
@@ -711,7 +822,7 @@ export default function AdminScreen() {
     return (
       <TouchableOpacity style={[styles.menuBtn, active && styles.menuBtnActive]} onPress={() => setSelectedTab(tab)} activeOpacity={0.85}>
         <View style={[styles.menuIconWrap, active && styles.menuIconWrapActive]}>{icon}</View>
-        <Text style={[styles.menuText, active && styles.menuTextActive]} numberOfLines={1}>
+        <Text style={[styles.menuText, active && styles.menuTextActive]} numberOfLines={2}>
           {label}
         </Text>
       </TouchableOpacity>
@@ -757,37 +868,17 @@ export default function AdminScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ✅ MENU (Removed: Waiting Users / Products / Orders / Market Analytics) */}
+      {/* ✅ MENU (3 buttons per row) */}
       <View style={styles.menuWrap}>
         <MenuButton label="Dashboard" tab="dashboard" icon={<BarChart3 size={16} color={selectedTab === 'dashboard' ? UI.blue : UI.text2} />} />
-        <MenuButton
-          label="Account Approval"
-          tab="account_approval"
-          icon={<ShieldCheck size={16} color={selectedTab === 'account_approval' ? UI.blue : UI.text2} />}
-        />
+        <MenuButton label="Account Approval" tab="account_approval" icon={<ShieldCheck size={16} color={selectedTab === 'account_approval' ? UI.blue : UI.text2} />} />
         <MenuButton label="Deposits" tab="deposits" icon={<ArrowDownToLine size={16} color={selectedTab === 'deposits' ? UI.blue : UI.text2} />} />
-        <MenuButton
-          label="Withdrawals"
-          tab="withdrawals"
-          icon={<ArrowUpFromLine size={16} color={selectedTab === 'withdrawals' ? UI.blue : UI.text2} />}
-        />
+        <MenuButton label="Withdrawals" tab="withdrawals" icon={<ArrowUpFromLine size={16} color={selectedTab === 'withdrawals' ? UI.blue : UI.text2} />} />
         <MenuButton label="Add Balance" tab="add_balance" icon={<PlusCircle size={16} color={selectedTab === 'add_balance' ? UI.blue : UI.text2} />} />
-        <MenuButton
-          label="Withdraw Balance"
-          tab="withdraw_balance"
-          icon={<MinusCircle size={16} color={selectedTab === 'withdraw_balance' ? UI.blue : UI.text2} />}
-        />
+        <MenuButton label="Withdraw Balance" tab="withdraw_balance" icon={<MinusCircle size={16} color={selectedTab === 'withdraw_balance' ? UI.blue : UI.text2} />} />
         <MenuButton label="KYC Document" tab="kyc_documents" icon={<FileText size={16} color={selectedTab === 'kyc_documents' ? UI.blue : UI.text2} />} />
-        <MenuButton
-          label="Document Image User"
-          tab="user_documents"
-          icon={<ImageIcon size={16} color={selectedTab === 'user_documents' ? UI.blue : UI.text2} />}
-        />
-        <MenuButton
-          label="Transactions"
-          tab="transactions"
-          icon={<ReceiptText size={16} color={selectedTab === 'transactions' ? UI.blue : UI.text2} />}
-        />
+        <MenuButton label="Document Image User" tab="user_documents" icon={<ImageIcon size={16} color={selectedTab === 'user_documents' ? UI.blue : UI.text2} />} />
+        <MenuButton label="Transactions" tab="transactions" icon={<ReceiptText size={16} color={selectedTab === 'transactions' ? UI.blue : UI.text2} />} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -812,7 +903,7 @@ export default function AdminScreen() {
               </TouchableOpacity>
             </View>
 
-            {kycDocumentsQuery.isLoading ? (
+            {kycDocumentsQuery.isLoading || kycScanLoading ? (
               <View style={styles.centerLoading}>
                 <ActivityIndicator color={UI.blue} size="large" />
                 <Text style={styles.emptyText}>Loading users...</Text>
@@ -820,7 +911,7 @@ export default function AdminScreen() {
             ) : filteredDocUsers.length > 0 ? (
               filteredDocUsers.map((u: any) => {
                 const badge = kycBadge(u.kyc_status);
-                const displayName = (u.full_name || '').trim(); // ✅ show full_name if exists (empty is OK)
+                const displayName = (u.full_name || '').trim() || 'Unknown Name';
                 return (
                   <View key={u.id} style={styles.card}>
                     <View style={styles.cardHeader}>
@@ -833,6 +924,16 @@ export default function AdminScreen() {
                         {badge.icon}
                         <Text style={[styles.badgeText, { color: badge.color }]}>{badge.text}</Text>
                       </View>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Full Name</Text>
+                      <Text style={styles.rowValue}>{displayName}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Email</Text>
+                      <Text style={styles.rowValue}>{u.email || 'N/A'}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -925,9 +1026,7 @@ export default function AdminScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.totalBalanceLabel}>Total System Balance</Text>
-                  <Text style={styles.totalBalanceValue}>
-                    ${statsQuery.isLoading ? '...' : (statsQuery.data?.totalSystemBalance || 0).toFixed(2)}
-                  </Text>
+                  <Text style={styles.totalBalanceValue}>${statsQuery.isLoading ? '...' : (statsQuery.data?.totalSystemBalance || 0).toFixed(2)}</Text>
                 </View>
               </View>
             </View>
@@ -964,9 +1063,7 @@ export default function AdminScreen() {
 
                   <View style={styles.statCard}>
                     <Text style={styles.statLabel}>Pending Amount</Text>
-                    <Text style={[styles.statValue, { color: UI.amber }]}>
-                      ${parseFloat(withdrawStatsQuery.data.pending_amount || 0).toFixed(2)}
-                    </Text>
+                    <Text style={[styles.statValue, { color: UI.amber }]}>${parseFloat(withdrawStatsQuery.data.pending_amount || 0).toFixed(2)}</Text>
                   </View>
                 </View>
               </>
@@ -1021,7 +1118,7 @@ export default function AdminScreen() {
                 <View key={profile.id} style={styles.card}>
                   <View style={styles.cardHeader}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{(profile.full_name || '').trim()}</Text>
+                      <Text style={styles.cardTitle}>{(profile.full_name || '').trim() || 'Unknown Name'}</Text>
                       <Text style={styles.cardSubtitle}>{profile.email}</Text>
                     </View>
 
@@ -1103,7 +1200,7 @@ export default function AdminScreen() {
                 <View key={order.id} style={styles.card}>
                   <View style={styles.cardHeader}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{(order.profile?.full_name || '').trim()}</Text>
+                      <Text style={styles.cardTitle}>{(order.profile?.full_name || '').trim() || 'Unknown Name'}</Text>
                       <Text style={styles.cardSubtitle}>{order.profile?.email}</Text>
                     </View>
 
@@ -1205,7 +1302,7 @@ export default function AdminScreen() {
                 <View key={order.id} style={styles.card}>
                   <View style={styles.cardHeader}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{(order.profile?.full_name || '').trim()}</Text>
+                      <Text style={styles.cardTitle}>{(order.profile?.full_name || '').trim() || 'Unknown Name'}</Text>
                       <Text style={styles.cardSubtitle}>{order.profile?.email}</Text>
                     </View>
 
@@ -1336,7 +1433,7 @@ export default function AdminScreen() {
                   <View key={userProfile.id} style={styles.card}>
                     <View style={styles.cardHeader}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.cardTitle}>{(userProfile.full_name || '').trim()}</Text>
+                        <Text style={styles.cardTitle}>{(userProfile.full_name || '').trim() || 'Unknown Name'}</Text>
                         <Text style={styles.cardSubtitle}>{userProfile.email}</Text>
                         <Text style={styles.balanceText}>Balance: ${userProfile.wallet?.[0]?.balance?.toFixed(2) || '0.00'}</Text>
                       </View>
@@ -1389,7 +1486,7 @@ export default function AdminScreen() {
                   <View key={userProfile.id} style={styles.card}>
                     <View style={styles.cardHeader}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.cardTitle}>{(userProfile.full_name || '').trim()}</Text>
+                        <Text style={styles.cardTitle}>{(userProfile.full_name || '').trim() || 'Unknown Name'}</Text>
                         <Text style={styles.cardSubtitle}>{userProfile.email}</Text>
                         <Text style={styles.balanceText}>Balance: ${userProfile.wallet?.[0]?.balance?.toFixed(2) || '0.00'}</Text>
                       </View>
@@ -1417,20 +1514,20 @@ export default function AdminScreen() {
           </>
         )}
 
-        {/* ---------------- KYC Documents (ONLY USERS WITH DOCS) ---------------- */}
+        {/* ---------------- KYC Documents (ALL USERS WITH DOCS) ---------------- */}
         {selectedTab === 'kyc_documents' && (
           <>
             <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>KYC Verification Panel</Text>
 
-            {kycDocumentsQuery.isLoading ? (
+            {kycDocumentsQuery.isLoading || kycScanLoading ? (
               <View style={styles.centerLoading}>
                 <ActivityIndicator color={UI.blue} size="large" />
                 <Text style={styles.emptyText}>Loading users...</Text>
               </View>
-            ) : kycDocumentsQuery.data && kycDocumentsQuery.data.length > 0 ? (
-              kycDocumentsQuery.data.map((userKYC: any) => {
+            ) : kycUsersWithDocs.length > 0 ? (
+              kycUsersWithDocs.map((userKYC: any) => {
                 const badge = kycBadge(userKYC.kyc_status);
-                const displayName = (userKYC.full_name || '').trim(); // ✅ show full_name (empty is OK)
+                const displayName = (userKYC.full_name || '').trim() || 'Unknown Name';
 
                 return (
                   <View key={userKYC.id} style={styles.card}>
@@ -1444,6 +1541,16 @@ export default function AdminScreen() {
                         {badge.icon}
                         <Text style={[styles.badgeText, { color: badge.color }]}>{badge.text}</Text>
                       </View>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Full Name</Text>
+                      <Text style={styles.rowValue}>{displayName}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Email</Text>
+                      <Text style={styles.rowValue}>{userKYC.email || 'N/A'}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -1465,21 +1572,33 @@ export default function AdminScreen() {
                       <Text style={styles.kycBlockTitle}>KYC Documents</Text>
 
                       <View style={styles.thumbRow}>
-                        <TouchableOpacity style={styles.thumbWrap} onPress={() => openKycPreview('ID Front', userKYC.id_front, userKYC.id, 'id_front')} activeOpacity={0.85}>
+                        <TouchableOpacity
+                          style={styles.thumbWrap}
+                          onPress={() => openKycPreview('ID Front', userKYC.id_front, userKYC.id, 'id_front')}
+                          activeOpacity={0.85}
+                        >
                           <View style={styles.thumb}>
                             <FileText size={16} color={UI.blue} />
                             <Text style={styles.thumbText}>ID Front</Text>
                           </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.thumbWrap} onPress={() => openKycPreview('ID Back', userKYC.id_back, userKYC.id, 'id_back')} activeOpacity={0.85}>
+                        <TouchableOpacity
+                          style={styles.thumbWrap}
+                          onPress={() => openKycPreview('ID Back', userKYC.id_back, userKYC.id, 'id_back')}
+                          activeOpacity={0.85}
+                        >
                           <View style={styles.thumb}>
                             <FileText size={16} color={UI.blue} />
                             <Text style={styles.thumbText}>ID Back</Text>
                           </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.thumbWrap} onPress={() => openKycPreview('Selfie', userKYC.selfie, userKYC.id, 'selfie')} activeOpacity={0.85}>
+                        <TouchableOpacity
+                          style={styles.thumbWrap}
+                          onPress={() => openKycPreview('Selfie', userKYC.selfie, userKYC.id, 'selfie')}
+                          activeOpacity={0.85}
+                        >
                           <View style={styles.thumb}>
                             <FileText size={16} color={UI.blue} />
                             <Text style={styles.thumbText}>Selfie</Text>
@@ -1582,11 +1701,7 @@ export default function AdminScreen() {
                       { key: 'purchase_giftcard', label: 'Gift Card' },
                       { key: 'admin_add', label: 'Admin Add' },
                     ].map((c) => (
-                      <TouchableOpacity
-                        key={c.key}
-                        style={[styles.filterChip, txTypeFilter === c.key && styles.filterChipActive]}
-                        onPress={() => setTxTypeFilter(c.key)}
-                      >
+                      <TouchableOpacity key={c.key} style={[styles.filterChip, txTypeFilter === c.key && styles.filterChipActive]} onPress={() => setTxTypeFilter(c.key)}>
                         <Text style={[styles.filterChipText, txTypeFilter === c.key && styles.filterChipTextActive]}>{c.label}</Text>
                       </TouchableOpacity>
                     ))}
@@ -1603,11 +1718,7 @@ export default function AdminScreen() {
                       { key: 'positive', label: '+ Positive' },
                       { key: 'negative', label: '− Negative' },
                     ].map((c) => (
-                      <TouchableOpacity
-                        key={c.key}
-                        style={[styles.filterChip, txAmountFilter === c.key && styles.filterChipActive]}
-                        onPress={() => setTxAmountFilter(c.key)}
-                      >
+                      <TouchableOpacity key={c.key} style={[styles.filterChip, txAmountFilter === c.key && styles.filterChipActive]} onPress={() => setTxAmountFilter(c.key)}>
                         <Text style={[styles.filterChipText, txAmountFilter === c.key && styles.filterChipTextActive]}>{c.label}</Text>
                       </TouchableOpacity>
                     ))}
@@ -1628,9 +1739,7 @@ export default function AdminScreen() {
                   const matchesEmail = txEmailFilter === '' || userEmail.toLowerCase().includes(txEmailFilter.toLowerCase());
                   const matchesType = txTypeFilter === 'all' || tx.type === txTypeFilter;
                   const matchesAmount =
-                    txAmountFilter === 'all' ||
-                    (txAmountFilter === 'positive' && tx.amount >= 0) ||
-                    (txAmountFilter === 'negative' && tx.amount < 0);
+                    txAmountFilter === 'all' || (txAmountFilter === 'positive' && tx.amount >= 0) || (txAmountFilter === 'negative' && tx.amount < 0);
                   return matchesEmail && matchesType && matchesAmount;
                 });
 
@@ -1658,7 +1767,7 @@ export default function AdminScreen() {
                     <View key={tx.id} style={styles.card}>
                       <View style={styles.cardHeader}>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.cardTitle}>{(tx.receiver?.full_name || '').trim()}</Text>
+                          <Text style={styles.cardTitle}>{(tx.receiver?.full_name || '').trim() || 'Unknown Name'}</Text>
                           <Text style={styles.cardSubtitle}>{tx.receiver?.email}</Text>
                         </View>
                         <View style={[styles.badge, tx.amount >= 0 ? { backgroundColor: UI.greenSoft } : { backgroundColor: UI.redSoft }]}>
@@ -1726,15 +1835,7 @@ export default function AdminScreen() {
             <Text style={styles.modalTitle}>Add Balance</Text>
             <Text style={styles.modalSubtitle}>Enter amount and note</Text>
 
-            <TextInput
-              style={styles.modalInput}
-              placeholder="User Email"
-              placeholderTextColor={UI.text2}
-              keyboardType="email-address"
-              value={selectedUserEmail}
-              onChangeText={setSelectedUserEmail}
-              editable={false}
-            />
+            <TextInput style={styles.modalInput} placeholder="User Email" placeholderTextColor={UI.text2} keyboardType="email-address" value={selectedUserEmail} editable={false} />
 
             <TextInput
               style={styles.modalInput}
@@ -1745,13 +1846,7 @@ export default function AdminScreen() {
               onChangeText={setAmountToAdd}
             />
 
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Note (optional)"
-              placeholderTextColor={UI.text2}
-              value={noteToAdd}
-              onChangeText={setNoteToAdd}
-            />
+            <TextInput style={styles.modalInput} placeholder="Note (optional)" placeholderTextColor={UI.text2} value={noteToAdd} onChangeText={setNoteToAdd} />
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -1919,26 +2014,27 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
+  // ✅ 3 buttons per row
   menuWrap: {
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 6,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 9,
+    justifyContent: 'space-between',
+    rowGap: 10,
   },
-  // ✅ smaller buttons + smaller text
   menuBtn: {
-    width: '48%',
+    width: '31.5%',
     backgroundColor: UI.card,
     borderWidth: 1,
     borderColor: UI.border,
     borderRadius: 16,
     paddingVertical: 10,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
+    paddingHorizontal: 8,
     alignItems: 'center',
-    gap: 9,
+    justifyContent: 'center',
+    gap: 7,
     shadowColor: UI.shadow,
     shadowOpacity: 1,
     shadowRadius: 14,
@@ -1961,10 +2057,11 @@ const styles = StyleSheet.create({
     backgroundColor: UI.blueSoft,
   },
   menuText: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '800',
+    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '900',
     color: UI.text,
+    lineHeight: 13,
   },
   menuTextActive: {
     color: UI.blue,
