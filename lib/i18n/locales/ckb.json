@@ -336,6 +336,7 @@
   "updateProfile": "نوێکردنەوەی پڕۆفایل",
   "profileUpdated": "پڕۆفایل بە سەرکەوتوویی نوێکرایەوە",
   "currentPassword": "وشەی نهێنی ئێستا",
+  "unknownUser": "بەکارهێنەری نەناسراو",
   "newPassword": "وشەی نهێنی نوێ",
   "confirmNewPassword": "پشتڕاستکردنەوەی وشەی نهێنی نوێ",
   "create_btn": "دروستکردنی کارتێکی ڤێرچووڵ",
