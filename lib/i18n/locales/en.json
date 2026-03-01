@@ -168,7 +168,7 @@
   "losers": "Losers",
   "txStatusCompleted": "Completed",
   "from": "From",
-  
+
   "loadingPrices": "Loading prices...",
   "failedToLoadPrices": "Failed to load prices",
   "buy": "Buy",
@@ -395,9 +395,7 @@
   "ppPersonalInfo": "Personal Information",
   "ppPersonalInfoDesc": "When you create an account or use our services, we may collect:",
   "ppPersonalInfoItem1": "Name, email address, phone number",
-  "ppPersonalInfoItem2": "Date of birth and government-issued ID",
   "ppPersonalInfoItem3": "Address and country of residence",
-  "ppPersonalInfoItem4": "Selfie or photo for identity verification",
   "ppPersonalInfoItem5": "Transaction history and wallet information",
 
   "ppUsageInfo": "Usage Information",
@@ -410,7 +408,6 @@
   "ppNewSection2Title": "2. How We Use Your Information",
   "ppNewSection2Desc": "We use your information to:",
   "ppNewSection2Item1": "Provide and maintain our services",
-  "ppNewSection2Item2": "Process transactions and verify your identity (KYC)",
   "ppNewSection2Item3": "Detect and prevent fraud",
   "ppNewSection2Item4": "Send you notifications and updates",
   "ppNewSection2Item5": "Improve our app and develop new features",
@@ -431,7 +428,6 @@
   "ppNewSection6Desc": "We retain your information for as long as your account is active or as needed to provide services. After account deletion, we may retain certain information to comply with legal obligations.",
   "ppNewSection6Desc2": "Retained data includes:",
   "ppNewSection6Item1": "Transaction records (for regulatory compliance)",
-  "ppNewSection6Item2": "KYC documents (as required by law)",
   "ppNewSection6Item3": "Fraud prevention data",
 
   "ppNewSection7Title": "7. Children's Privacy",
@@ -451,12 +447,8 @@
   "ppNewSection10Title": "10. Changes to This Policy",
   "ppNewSection10Desc": "We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page.",
 
-  "ppNewSection11Title": "11. Contact Us",
-  "ppNewSection11Desc": "If you have questions about this Privacy Policy, please contact us:",
-  "ppNewSection11Desc2": "Email: info@zenopay.bond",
-
-  "ppNewSection12Title": "12. Consent",
-  "ppNewSection12Desc": "By using ZenoPay Wallet, you consent to this Privacy Policy and agree to its terms.",
+  "ppNewSection12Title": "12. Contact Us",
+  "ppNewSection12Desc": "If you have questions about this Privacy Policy, please contact us.",
 
   "tcNewLastUpdated": "Last updated: January 2025",
   "tcNewIntro": "Welcome to ZenoPay Wallet. By accessing or using our mobile application and services, you agree to be bound by these Terms and Conditions. Please read them carefully.",
