@@ -176,6 +176,8 @@
   "streetAddress": "عنوان الشارع",
   "enterStreetAddress": "أدخل عنوان الشارع",
   "email": "البريد الإلكتروني",
+  "txStatusCompleted": "مكتمل",
+  "from": "من",
   "enterEmail": "أدخل البريد الإلكتروني",
   "deliveryNote": "ملاحظة التوصيل",
   "afterConfirmOpenApp": "بعد الضغط على رابط التأكيد في بريدك، سيتم فتح Zenopay تلقائياً.",
