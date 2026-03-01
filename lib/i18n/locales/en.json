@@ -164,6 +164,9 @@
   "hot": "Hot",
   "gainers": "Gainers",
   "losers": "Losers",
+  "txStatusCompleted": "Completed",
+  "from": "From",
+  
   "loadingPrices": "Loading prices...",
   "failedToLoadPrices": "Failed to load prices",
   "buy": "Buy",
