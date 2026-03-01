@@ -55,9 +55,19 @@ export default function PrivacyPolicyScreen() {
 
           <View style={styles.bulletList}>
             <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppPersonalInfoItem1')}</Text>
-            <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppPersonalInfoItem2')}</Text>
+
+            {/* ✅ REMOVED (KYC):
+                • Date of birth and government-issued ID
+            */}
+            {/* <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppPersonalInfoItem2')}</Text> */}
+
             <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppPersonalInfoItem3')}</Text>
-            <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppPersonalInfoItem4')}</Text>
+
+            {/* ✅ REMOVED (KYC):
+                • Selfie or photo for identity verification
+            */}
+            {/* <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppPersonalInfoItem4')}</Text> */}
+
             <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppPersonalInfoItem5')}</Text>
           </View>
 
@@ -84,10 +94,10 @@ export default function PrivacyPolicyScreen() {
           <View style={styles.bulletList}>
             <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection2Item1')}</Text>
 
-            {/* ✅ REMOVED ONLY THIS LINE:
+            {/* ✅ REMOVED (KYC):
                 • Process transactions and verify your identity (KYC)
-                <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection2Item2')}</Text>
             */}
+            {/* <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection2Item2')}</Text> */}
 
             <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection2Item3')}</Text>
             <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection2Item4')}</Text>
@@ -120,7 +130,12 @@ export default function PrivacyPolicyScreen() {
 
           <View style={styles.bulletList}>
             <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection6Item1')}</Text>
-            <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection6Item2')}</Text>
+
+            {/* ✅ REMOVED (KYC):
+                • KYC documents (as required by law)
+            */}
+            {/* <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection6Item2')}</Text> */}
+
             <Text style={[styles.bulletItem, { color: COLORS.textSecondary }]}>• {i18n.t('ppNewSection6Item3')}</Text>
           </View>
         </View>
@@ -154,12 +169,15 @@ export default function PrivacyPolicyScreen() {
           <Text style={[styles.sectionText, { color: COLORS.textSecondary }]}>{i18n.t('ppNewSection10Desc')}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: COLORS.green }]}>{i18n.t('ppNewSection11Title')}</Text>
-          <Text style={[styles.sectionText, { color: COLORS.textSecondary }]}>{i18n.t('ppNewSection11Desc')}</Text>
-          <Text style={[styles.sectionText, { color: COLORS.textSecondary, marginTop: 8 }]}>{i18n.t('ppNewSection11Desc2')}</Text>
-        </View>
+        {/* ✅ REMOVED WHOLE SECTION 11 (so numbering becomes 12 for last section)
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: COLORS.green }]}>{i18n.t('ppNewSection11Title')}</Text>
+              <Text style={[styles.sectionText, { color: COLORS.textSecondary }]}>{i18n.t('ppNewSection11Desc')}</Text>
+              <Text style={[styles.sectionText, { color: COLORS.textSecondary, marginTop: 8 }]}>{i18n.t('ppNewSection11Desc2')}</Text>
+            </View>
+        */}
 
+        {/* ✅ LAST SECTION (should be 12 in i18n title) + keep only ONE email box */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: COLORS.green }]}>{i18n.t('ppNewSection12Title')}</Text>
           <Text style={[styles.sectionText, { color: COLORS.textSecondary }]}>{i18n.t('ppNewSection12Desc')}</Text>
