@@ -7,9 +7,6 @@ import i18n from '@/lib/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 
-// ✅ remove default header
-export const options = { headerShown: false };
-
 // 🎨 white + green + black
 const COLORS = {
   bg: '#FFFFFF',
@@ -173,16 +170,12 @@ export default function EmailVerificationScreen() {
     await tryUpsertPendingProfileIfSession();
 
     // ✅ Keep your old behavior: if session exists, sign out then go login
-    // (If confirmed came from server, session usually doesn't exist, so this does nothing.)
     const { data } = await supabase.auth.getSession();
     if (data?.session) {
       await sleep(400);
       await supabase.auth.signOut();
       await sleep(200);
     }
-
-    // ✅ If we didn't have a session, pending profile remains in storage
-    // and should be saved after first login (recommended).
 
     Alert.alert(
       i18n.t('success') || 'Success',
@@ -340,9 +333,9 @@ export default function EmailVerificationScreen() {
 
           {!verified ? (
             <View style={styles.infoBox}>
-              <Text style={styles.infoText}>• {i18n.t('checkEmailInbox')}</Text>
-              <Text style={styles.infoText}>• {i18n.t('checkSpamFolder')}</Text>
-              <Text style={styles.infoText}>• {i18n.t('autoCheckingStatus')}</Text>
+              <Text style={[styles.infoText, styles.infoRow]}>• {i18n.t('checkEmailInbox')}</Text>
+              <Text style={[styles.infoText, styles.infoRow]}>• {i18n.t('checkSpamFolder')}</Text>
+              <Text style={[styles.infoText, styles.infoRow]}>• {i18n.t('autoCheckingStatus')}</Text>
               <Text style={styles.infoText}>• {i18n.t('afterConfirmOpenApp')}</Text>
             </View>
           ) : (
@@ -365,7 +358,7 @@ export default function EmailVerificationScreen() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <RefreshCw size={18} color="#fff" />
+                    <RefreshCw size={18} color="#fff" style={styles.primaryButtonIcon} />
                     <Text style={styles.primaryButtonText}>{i18n.t('checkStatus')}</Text>
                   </>
                 )}
@@ -491,12 +484,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: 14,
-    gap: 8,
   },
   infoText: {
     fontSize: 13,
     fontWeight: '700' as const,
     color: COLORS.textSecondary,
+  },
+  infoRow: {
+    marginBottom: 8,
   },
 
   successBox: {
@@ -516,7 +511,6 @@ const styles = StyleSheet.create({
 
   primaryButton: {
     flexDirection: 'row',
-    gap: 8,
     backgroundColor: COLORS.green,
     borderRadius: 14,
     paddingVertical: 14,
@@ -524,6 +518,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 6,
+  },
+  primaryButtonIcon: {
+    marginRight: 8,
   },
   primaryButtonDisabled: { opacity: 0.55 },
   primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' as const },
