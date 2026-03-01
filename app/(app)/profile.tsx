@@ -22,6 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const COLORS = {
   bg: '#FFFFFF',
@@ -69,7 +70,6 @@ export default function ProfileScreen() {
 
   // -----------------------------
   // ✅ Refresh profile whenever screen is focused
-  // (Fixes avatar/text not persisting on refresh / back navigation)
   // -----------------------------
   useFocusEffect(
     useCallback(() => {
@@ -98,25 +98,51 @@ export default function ProfileScreen() {
   ]);
 
   // -----------------------------
-  // ✅ Avatar cache-bust (prevents showing old cached image)
+  // ✅ Avatar "stable cache-bust" (NO reload on refresh)
+  // - We keep a stable ?v= value in AsyncStorage
+  // - Only change v when avatar is changed (upload) or url changed
   // -----------------------------
-  const lastAvatarUrlRef = useRef<string | null>(null);
-  const [avatarCacheBust, setAvatarCacheBust] = useState<number>(Date.now());
+  const AVATAR_VERSION_KEY = user?.id ? `avatar_version_${user.id}` : 'avatar_version_guest';
+  const [avatarVersion, setAvatarVersion] = useState<string>(''); // stable
+  const lastUrlRef = useRef<string | null>(null);
 
+  // load saved version once
   useEffect(() => {
-    const url = (profile as any)?.avatar_url ?? avatarUrl ?? null;
-    if (url && url !== lastAvatarUrlRef.current) {
-      lastAvatarUrlRef.current = url;
-      setAvatarCacheBust(Date.now());
+    let mounted = true;
+    (async () => {
+      try {
+        if (!user?.id) return;
+        const v = await AsyncStorage.getItem(AVATAR_VERSION_KEY);
+        if (mounted && v) setAvatarVersion(v);
+      } catch {}
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id, AVATAR_VERSION_KEY]);
+
+  // if avatar_url itself changes (from another device, etc), bump version once
+  useEffect(() => {
+    const currentUrl = (profile as any)?.avatar_url ?? avatarUrl ?? null;
+    if (!user?.id) return;
+
+    if (currentUrl && lastUrlRef.current && currentUrl !== lastUrlRef.current) {
+      const newV = String(Date.now());
+      setAvatarVersion(newV);
+      AsyncStorage.setItem(AVATAR_VERSION_KEY, newV).catch(() => {});
     }
-  }, [(profile as any)?.avatar_url, avatarUrl]);
+
+    lastUrlRef.current = currentUrl;
+  }, [user?.id, (profile as any)?.avatar_url, avatarUrl, AVATAR_VERSION_KEY]);
 
   const avatarPreview = useMemo(() => {
     const url = (profile as any)?.avatar_url ?? avatarUrl ?? null;
     if (!url) return null;
+    // ✅ stable URL on refresh (same v), so it will NOT reload
+    // ✅ only changes when avatarVersion changes (when avatar changed)
     const sep = url.includes('?') ? '&' : '?';
-    return `${url}${sep}t=${avatarCacheBust}`;
-  }, [(profile as any)?.avatar_url, avatarUrl, avatarCacheBust]);
+    return avatarVersion ? `${url}${sep}v=${encodeURIComponent(avatarVersion)}` : url;
+  }, [(profile as any)?.avatar_url, avatarUrl, avatarVersion]);
 
   // -----------------------------
   // ✅ Auto-save (debounced) when user edits inputs
@@ -252,9 +278,14 @@ export default function ProfileScreen() {
       const { error: dbError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
       if (dbError) throw dbError;
 
-      // ✅ update UI + cache-bust + refresh
+      // ✅ update UI
       setAvatarUrl(publicUrl);
-      setAvatarCacheBust(Date.now());
+
+      // ✅ IMPORTANT: bump stable version ONLY when avatar changed
+      const newV = String(Date.now());
+      setAvatarVersion(newV);
+      await AsyncStorage.setItem(AVATAR_VERSION_KEY, newV);
+
       await refreshProfile?.();
 
       Alert.alert(i18n.t('success') || 'Success', i18n.t('profileUpdated') || 'Profile updated');
@@ -367,52 +398,53 @@ export default function ProfileScreen() {
             </View>
 
             {/* Full Name */}
-<Text style={styles.label}>{i18n.t('fullName')}</Text>
-<TextInput
-  style={styles.input}
-  placeholder={i18n.t('fullNamePlaceholder')}
-  placeholderTextColor={COLORS.textSecondary}
-  value={fullName}
-  onChangeText={setFullName}
-  autoCapitalize="words"
-/>
+            <Text style={styles.label}>{i18n.t('fullName')}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={i18n.t('fullNamePlaceholder')}
+              placeholderTextColor={COLORS.textSecondary}
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+            />
 
-{/* Date Of Birth */}
-<Text style={styles.label}>{i18n.t('dateOfBirth')}</Text>
-<TextInput
-  style={styles.input}
-  placeholder={i18n.t('dateOfBirthPlaceholder')}
-  placeholderTextColor={COLORS.textSecondary}
-  value={dob}
-  onChangeText={setDob}
-/>
+            {/* Date Of Birth */}
+            <Text style={styles.label}>{i18n.t('dateOfBirth')}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={i18n.t('dateOfBirthPlaceholder')}
+              placeholderTextColor={COLORS.textSecondary}
+              value={dob}
+              onChangeText={setDob}
+            />
 
-{/* Phone Number */}
-<Text style={styles.label}>{i18n.t('phoneNumber')}</Text>
-<TextInput
-  style={styles.input}
-  placeholder={i18n.t('phoneNumberPlaceholder')}
-  placeholderTextColor={COLORS.textSecondary}
-  value={phone}
-  onChangeText={setPhone}
-  keyboardType="phone-pad"
-/>
+            {/* Phone Number */}
+            <Text style={styles.label}>{i18n.t('phoneNumber')}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={i18n.t('phoneNumberPlaceholder')}
+              placeholderTextColor={COLORS.textSecondary}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
 
-{/* Email (readonly) */}
-<Text style={styles.label}>{i18n.t('email')}</Text>
-<View style={styles.infoBox}>
-  <Text style={styles.infoText}>{user?.email || email}</Text>
-</View>
+            {/* Email (readonly) */}
+            <Text style={styles.label}>{i18n.t('email')}</Text>
+            <View style={styles.infoBox}>
+              <Text style={styles.infoText}>{user?.email || email}</Text>
+            </View>
 
-{/* Country */}
-<Text style={styles.label}>{i18n.t('country')}</Text>
-<TextInput
-  style={styles.input}
-  placeholder={i18n.t('countryPlaceholder')}
-  placeholderTextColor={COLORS.textSecondary}
-  value={country}
-  onChangeText={setCountry}
-/>
+            {/* Country */}
+            <Text style={styles.label}>{i18n.t('country')}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={i18n.t('countryPlaceholder')}
+              placeholderTextColor={COLORS.textSecondary}
+              value={country}
+              onChangeText={setCountry}
+            />
+
             {/* Account status */}
             <Text style={styles.label}>{accountActiveText}</Text>
             <View style={styles.statusBox}>
