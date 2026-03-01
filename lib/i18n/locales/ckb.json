@@ -397,6 +397,8 @@
   "withdrawHistory": "مێژووی دەرهێنان",
   "noWithdrawalsYet": "هێشتا هیچ دەرهێنانێک نییە",
   "withdrawalAmount": "بڕی دەرهێنان",
+  "txStatusCompleted": "تەواو بوو",
+  "from": "لە",
   "withdrawSuccessMessage": "داواکاری دەرهێنان نێردرا",
 
   "orderSubmitted": "داواکاری نێردرا",
