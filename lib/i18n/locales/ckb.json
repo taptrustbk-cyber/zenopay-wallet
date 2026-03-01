@@ -6,7 +6,7 @@
   "remove": "لابردن",
   "one_card_inline": "کارتی ڤێرتووالەکەت چالاکە. تەنها دەتوانی یەک کارت هەبیت.",
   "to": "بو",
-   "fullNamePlaceholder": "ناوی تەواوت بنووسە",
+  "fullNamePlaceholder": "ناوی تەواوت بنووسە",
   "dateOfBirthPlaceholder": "بەرواری لەدایکبوون هەڵبژێرە",
   "accountSuccessfullyConfirmed": "هەژمارت بە سەرکەوتوویی پشتڕاستکرایەوە.",
   "phoneNumberPlaceholder": "ژمارەی مۆبایل بنووسە",
@@ -14,6 +14,7 @@
   "Cards": "کارتەکان",
   "mobileCards": "کارتەکانی موبایل",
   "sendMoney": "پارە بنێرە",
+
   "cards": {
     "title": "کاردەکان",
     "available_balance": "باڵانسی بەردەست",
@@ -49,6 +50,7 @@
     "create_failed": "ناتوانرێت کارد دروست بکرێت.",
     "created_success": "کارد دروستکرا. 25$ لە باڵانسەکەت کەم کرایەوە."
   },
+
   "common": {
     "error": "هەڵە",
     "failed": "سەرکەوتوو نەبوو",
@@ -56,9 +58,11 @@
     "failed_to_load": "بارکردن سەرکەوتوو نەبوو",
     "something_wrong": "هەڵەیەک ڕوویدا."
   },
+
   "auth": {
     "user_not_found": "بەکارهێنەر نەدۆزرایەوە"
   },
+
   "deposit": "دانان",
   "depositMoney": "پارە دابنێ",
   "withdraw": "دەرهێنان",
@@ -68,18 +72,19 @@
   "needHelp": "یارمەتی دەتەوێت؟",
   "retry": "دووبارە هەوڵبدەرەوە",
   "back": "گەڕانەوە",
+
   "tapToChangePhoto": "کرتە بکە بۆ گۆڕینی وێنە",
   "profilePhoto": "وێنەی پرۆفایل",
   "selectExistingPhoto": "هەڵبژاردن لە گەلەری",
+  "takeNewPhoto": "وێنەی نوێ بکێشە",
   "welcomeBack": "بەخێربێیتەوە!",
   "pleaseLoginToYourAccount": "تکایە بچۆ ژوورەوە بۆ هەژمارەکەت",
   "rememberMe": "بیرم بهێنەوە؟",
   "createNewAccount": "دروستکردنی هەژماری نوێ",
-  "needHelp": "یارمەتی دەوێت؟",
   "contactUsAt": "پەیوەندی بکە لە",
-  "takeNewPhoto": "وێنەی نوێ بکێشە",
   "save": "پاشەکەوتکردن",
   "settings": "ڕێکخستنەکان",
+
   "success": "سەرکەوتوو",
   "logout": "دەرچوون",
   "done": "تەواو",
@@ -171,6 +176,7 @@
   "buyCrypto": "کڕین",
   "sellCrypto": "فرۆشتن",
   "searchCrypto": "گەڕان بۆ کریپتۆ...",
+
   "tcPlatformNoticeTitle": "تێبینی پلاتفۆرم",
   "tcPlatformNoticeIntro": "Zenopay پلاتفۆرمی جزدانی پارەی دیجیتاڵە. ئێمە بانک نین و کارتی Visa یان Mastercard دەرناخەین.",
   "tcPlatformNotice2Title": "2. کارتێکی ناوخۆیی ـی ڤێرتواڵ",
@@ -184,6 +190,7 @@
   "tcPlatformNotice5Item2": "بەکارهێنەر دەبێت دڵنیابێت لە دروستی زانیارییەکانی.",
   "tcPlatformNotice6Title": "6. ڕاگرتنی ئەکاونت",
   "tcPlatformNotice6Desc": "Zenopay ماف دەگرێت ئەکاونتەکان ڕابگرێت ئەگەر چالاکییەکی گومان لێکراو هەبوو.",
+
   "selectCrypto": "کریپتۆ هەڵبژێرە",
   "all": "هەموو",
   "hot": "گەرم",
@@ -207,7 +214,6 @@
   "updateFailed": "نوێکردنەوە شکستی هێنا",
   "invalidValue": "بەهایەکی نادروست",
   "noPortfolioItems": "هیچ بڕگەیەکی پۆرتفۆلیۆ نییە",
-  "needHelp": "پێویستت بە یارمەتییە؟",
 
   "cannotOpenLink": "ناتوانێ ئەم لینکە بکاتەوە",
   "failedToOpenLink": "شکستی هێنا لە کردنەوەی لینکەکە",
@@ -227,15 +233,10 @@
   "governmentIDBack": "ناسنامەی حکومی (پشتەوە)",
   "selfieWithID": "وێنەی خۆت لەگەڵ ناسنامە",
   "uploadScreenshot": "وێنەی شاشە باربکە",
-  "tapToUpload": "دەست بدە بۆ بارکردن",
+  "tapToUpload": "کرتە بکە بۆ بارکردن",
   "uploadIDFront": "ناسنامەی پێشەوە باربکە",
   "uploadIDBack": "ناسنامەی پشتەوە باربکە",
   "uploadSelfie": "وێنەی خۆت باربکە",
-  "loginSubWelcome": "تکایە بچۆ ژوورەوە بۆ هەژمارەکەت",
-  "rememberMe": "لەبیرم بکە؟",
-  "createNewAccount": "هەژماری نوێ دروست بکە",
-  "needHelp": "یارمەتی پێویستە؟",
-  "contactUsAt": "پەیوەندی بکە لە",
   "idFrontSelected": "ناسنامەی پێشەوە هەڵبژێردرا",
   "idBackSelected": "ناسنامەی پشتەوە هەڵبژێردرا",
   "selfieSelected": "وێنەی خۆت هەڵبژێردرا",
@@ -278,11 +279,11 @@
   "backToLogin": "گەڕانەوە بۆ چوونە ژوورەوە",
   "backToLogin2": "بڕۆ بۆ چوونە ژوورەوە",
   "userNotFound": "بەکارهێنەر نەدۆزرایەوە",
+
   "permissionRequired": "ڕێگەپێدان پێویستە",
   "photoPermissionDenied": "تکایە ڕێگە بدە بە وێنەکان بۆ بارکردنی بەڵگەکان.",
   "failedPickImage": "هەڵە لە هەڵبژاردنی وێنە. تکایە دووبارە بکەوە.",
   "kycSubmitFailed": "نەتوانرا بەڵگەکانی KYC بنێردرێت. تکایە دووبارە هەوڵبدە.",
-  "tapToUpload": "کرتە بکە بۆ بارکردن",
   "uploadHint": "وێنەی ڕوون، بەبێ کڕۆپ",
   "change": "گۆڕین",
   "approvalTimeNote": "تکایە چاوەڕێ بکە لە ١ کاتژمێر تا ١٢ کاتژمێر بۆ پەسەندکردنی هەژمارەکەت.",
@@ -341,8 +342,8 @@
   "unknownUser": "بەکارهێنەری نەناسراو",
   "newPassword": "وشەی نهێنی نوێ",
   "confirmNewPassword": "پشتڕاستکردنەوەی وشەی نهێنی نوێ",
-  "create_btn": "دروستکردنی کارتێکی ڤێرچووڵ",
-  "virtual_info": "ئەمە کارتێکی ڤێرچووڵی ناوخۆییە بۆ تەنها بەکارهێنانی کیفپۆچی زینۆپەی.",
+  "create_btn": "دروستکردنی کارتێکی ڤێرتووال",
+  "virtual_info": "ئەمە کارتێکی ڤێرتووالی ناوخۆییە بۆ تەنها بەکارهێنانی کیفپۆچی زینۆپەی.",
   "enterCurrentPassword": "وشەی نهێنی ئێستا بنووسە",
   "enterNewPassword": "وشەی نهێنی نوێ بنووسە",
   "passwordsDoNotMatch": "وشەکانی نهێنی یەکناگرنەوە",
