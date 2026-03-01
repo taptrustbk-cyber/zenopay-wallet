@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import {
   StyleSheet,
@@ -29,6 +29,13 @@ const UI = {
   blueBanner: '#1E66D0',
   iconGray: '#6B7280',
 };
+
+/**
+ * ✅ Avatar stable cache-busting (ONLY when avatar_url changes)
+ * - Prevents reload on refresh / navigation
+ * - Updates only when user changes the profile photo and profile.avatar_url changes
+ */
+const __avatarVersionByUser: Record<string, number> = {};
 
 const ActionCircle = ({
   icon,
@@ -74,9 +81,7 @@ export default function DashboardScreen() {
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
     queryFn: async () => {
-      if (!user?.id) {
-        throw new Error('User ID not found');
-      }
+      if (!user?.id) throw new Error('User ID not found');
 
       const { data, error } = await supabase
         .from('wallets')
@@ -119,7 +124,8 @@ export default function DashboardScreen() {
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await hardRefresh(); // refresh profile
+      // ✅ you still refresh profile/balance when user pulls to refresh
+      await hardRefresh();
       await walletQuery.refetch();
     } finally {
       setIsRefreshing(false);
@@ -146,10 +152,50 @@ export default function DashboardScreen() {
   const avatarUrl = (profile as any)?.avatar_url as string | undefined;
   const fullName = (profile as any)?.full_name as string | undefined;
 
-  // cache-bust so avatar updates immediately after upload
-  const avatarPreview = avatarUrl
-    ? `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
-    : null;
+  /**
+   * ✅ Avatar preview that does NOT change when you come back to dashboard.
+   * It changes only if avatarUrl changes (meaning user updated their photo).
+   */
+  useEffect(() => {
+    if (!user?.id) return;
+    if (!avatarUrl) return;
+
+    // create version only once, then only change when avatarUrl changes
+    const currentV = __avatarVersionByUser[user.id];
+    if (!currentV) {
+      __avatarVersionByUser[user.id] = 1; // stable first version
+      return;
+    }
+
+    // If avatarUrl string changes => user changed photo => update version
+    // We store lastUrl on the version object using another map:
+  }, [avatarUrl, user?.id]);
+
+  const avatarPreview = useMemo(() => {
+    if (!avatarUrl || !user?.id) return null;
+
+    // store last url and version in module scope (stable across screen unmount/mount)
+    const key = user.id;
+    const holder = (__avatarVersionByUser as any);
+
+    if (!holder.__lastUrl) holder.__lastUrl = {};
+    if (!holder.__ver) holder.__ver = {};
+
+    const lastUrl: Record<string, string> = holder.__lastUrl;
+    const ver: Record<string, number> = holder.__ver;
+
+    if (!ver[key]) ver[key] = 1;
+
+    if (lastUrl[key] && lastUrl[key] !== avatarUrl) {
+      // ✅ only when url changed (profile photo updated)
+      ver[key] = Date.now();
+    }
+
+    lastUrl[key] = avatarUrl;
+
+    const v = ver[key];
+    return `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}v=${v}`;
+  }, [avatarUrl, user?.id]);
 
   return (
     <View style={[styles.container, { backgroundColor: UI.bg }]}>
@@ -173,7 +219,10 @@ export default function DashboardScreen() {
             onPress={() => router.push('/(app)/profile' as any)}
           >
             {avatarPreview ? (
-              <Image source={{ uri: avatarPreview }} style={styles.profileAvatar} />
+              <Image
+                source={{ uri: avatarPreview }}
+                style={styles.profileAvatar}
+              />
             ) : (
               <View style={styles.profileAvatarFallback}>
                 <Ionicons name="person" size={20} color={UI.green} />
@@ -185,7 +234,7 @@ export default function DashboardScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* RIGHT: ❌ removed Support/Chat icon */}
+          {/* RIGHT */}
           <View style={styles.headerRight} />
         </View>
 
@@ -240,21 +289,9 @@ export default function DashboardScreen() {
         {/* 4 round action buttons row */}
         <View style={styles.quickRow}>
           <ActionCircle icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
-          <ActionCircle
-            icon="cash"
-            label={i18n.t('withdraw')}
-            onPress={() => router.push('/(app)/withdraw' as any)}
-          />
-          <ActionCircle
-            icon="download"
-            label={i18n.t('deposit')}
-            onPress={() => router.push('/(app)/receive' as any)}
-          />
-          <ActionCircle
-            icon="receipt"
-            label={i18n.t('transactions')}
-            onPress={() => router.push('/(app)/transactions' as any)}
-          />
+          <ActionCircle icon="cash" label={i18n.t('withdraw')} onPress={() => router.push('/(app)/withdraw' as any)} />
+          <ActionCircle icon="download" label={i18n.t('deposit')} onPress={() => router.push('/(app)/receive' as any)} />
+          <ActionCircle icon="receipt" label={i18n.t('transactions')} onPress={() => router.push('/(app)/transactions' as any)} />
         </View>
 
         {/* Ramadan offer banner */}
@@ -336,15 +373,8 @@ export default function DashboardScreen() {
       {/* Bottom nav */}
       <View style={[styles.bottomNav, { borderColor: UI.border, backgroundColor: UI.card }]}>
         <NavItem icon="home" label={i18n.t('home')} active onPress={() => {}} />
-
-        {/* ✅ replaced Send with Cards */}
         <NavItem icon="card" label={i18n.t('Cards')} onPress={() => router.push('/(app)/Cards' as any)} />
-
-        <NavItem
-          icon="chatbox"
-          label={i18n.t('consulateInfo')}
-          onPress={() => router.push('/(app)/consulate' as any)}
-        />
+        <NavItem icon="chatbox" label={i18n.t('consulateInfo')} onPress={() => router.push('/(app)/consulate' as any)} />
         <NavItem icon="settings" label={i18n.t('settings')} onPress={() => router.push('/(app)/settings' as any)} />
       </View>
     </View>
@@ -392,15 +422,6 @@ const styles = StyleSheet.create({
   },
 
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-
-  headerIconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#EEF2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
   balanceCard: {
     marginHorizontal: 16,
