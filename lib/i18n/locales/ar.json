@@ -162,10 +162,6 @@
   "amount": "المبلغ",
   "backToDashboard": "العودة إلى لوحة التحكم",
   "loginSubWelcome": "يرجى تسجيل الدخول إلى حسابك",
-  "rememberMe": "تذكرني؟",
-  "createNewAccount": "إنشاء حساب جديد",
-  "needHelp": "تحتاج مساعدة؟",
-  "contactUsAt": "تواصل معنا على",
   "insufficientBalanceForPurchase": "رصيد غير كافٍ لهذا الشراء",
 
   "checkout": "الدفع",
@@ -254,7 +250,6 @@
   "governmentIDBack": "الهوية الحكومية (الخلف)",
   "selfieWithID": "صورة شخصية مع الهوية",
   "uploadScreenshot": "رفع لقطة الشاشة",
-  "tapToUpload": "اضغط للرفع",
   "uploadIDFront": "رفع الهوية الأمامية",
   "uploadIDBack": "رفع الهوية الخلفية",
   "uploadSelfie": "رفع الصورة الشخصية",
@@ -321,11 +316,9 @@
   "emailNotVerifiedYet": "البريد الإلكتروني لم يتم التحقق منه بعد",
   "pleaseWait": "يرجى الانتظار",
 
-  "afterConfirmOpenApp": "بعد الضغط على تأكيد داخل البريد الإلكتروني، سيتم فتح Zenopay تلقائياً.",
   "accountCreatedSuccessfully": "تم إنشاء الحساب بنجاح",
   "noEmailFound": "لم يتم العثور على بريد إلكتروني",
   "openEmailAppHint": "بعد الضغط على تأكيد داخل بريدك الإلكتروني، سيتم فتح التطبيق تلقائياً.",
-  "openEmailWebHint": "اضغط على رابط التأكيد في بريدك الإلكتروني، ثم ارجع إلى التطبيق.",
   "continueToLogin": "متابعة لتسجيل الدخول",
 
   "dateOfBirth": "تاريخ الميلاد",
