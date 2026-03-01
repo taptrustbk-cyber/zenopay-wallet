@@ -51,7 +51,6 @@
     "expo-web-browser": "~15.0.10",
     "hono": "^4.11.3",
     "i18n-js": "^4.5.1",
-    "lucide-react-native": "^0.475.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-error-boundary": "^6.0.0",
