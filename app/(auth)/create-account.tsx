@@ -11,7 +11,7 @@ import {
   Platform,
   Pressable,
 } from 'react-native';
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { supabase } from '@/lib/supabase';
 import { useRouter, Stack } from 'expo-router';
@@ -216,6 +216,10 @@ export default function CreateAccount() {
     }
   }
 
+  const webDateValue = tempDob.toISOString().split('T')[0];
+  const webMin = minDate.toISOString().split('T')[0];
+  const webMax = maxDate.toISOString().split('T')[0];
+
   return (
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -308,16 +312,23 @@ export default function CreateAccount() {
                   <Text style={styles.dobModalTitle}>{i18n.t('dateOfBirth')}</Text>
 
                   <View style={styles.webDatePickerContainer}>
-                    <input
-                      type="date"
-                      value={tempDob.toISOString().split('T')[0]}
-                      min={minDate.toISOString().split('T')[0]}
-                      max={maxDate.toISOString().split('T')[0]}
-                      onChange={(e) => {
-                        const newDate = new Date(e.target.value + 'T00:00:00');
+                    {/*
+                      ✅ IMPORTANT BUILD FIX:
+                      use React.createElement('input') instead of <input />
+                      so native builds don't fail parsing DOM JSX.
+                    */}
+                    {React.createElement('input', {
+                      type: 'date',
+                      value: webDateValue,
+                      min: webMin,
+                      max: webMax,
+                      onChange: (e: any) => {
+                        const v = e?.target?.value;
+                        if (!v) return;
+                        const newDate = new Date(`${v}T00:00:00`);
                         if (!isNaN(newDate.getTime())) setTempDob(newDate);
-                      }}
-                      style={{
+                      },
+                      style: {
                         width: '100%',
                         padding: 16,
                         fontSize: 18,
@@ -331,8 +342,8 @@ export default function CreateAccount() {
                         cursor: 'pointer',
                         minHeight: 48,
                         boxSizing: 'border-box',
-                      }}
-                    />
+                      },
+                    })}
                   </View>
 
                   <View style={styles.dobModalActions}>
@@ -340,7 +351,7 @@ export default function CreateAccount() {
                       testID="dob-cancel"
                       onPress={() => setOpenDob(false)}
                       activeOpacity={0.85}
-                      style={styles.dobActionSecondary}
+                      style={[styles.dobActionSecondary, styles.dobActionLeft]}
                     >
                       <Text style={styles.dobActionSecondaryText}>{i18n.t('cancel')}</Text>
                     </TouchableOpacity>
@@ -385,7 +396,7 @@ export default function CreateAccount() {
                       testID="dob-cancel"
                       onPress={() => setOpenDob(false)}
                       activeOpacity={0.85}
-                      style={styles.dobActionSecondary}
+                      style={[styles.dobActionSecondary, styles.dobActionLeft]}
                     >
                       <Text style={styles.dobActionSecondaryText}>{i18n.t('cancel')}</Text>
                     </TouchableOpacity>
@@ -454,7 +465,11 @@ export default function CreateAccount() {
             disabled={isCreating || !!dobError || !dob}
             activeOpacity={0.9}
           >
-            {isCreating ? <ActivityIndicator color="#fff" /> : <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>}
+            {isCreating ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.9}>
@@ -593,7 +608,10 @@ const styles = StyleSheet.create({
   iosPickerContainer: { backgroundColor: COLORS.white, borderRadius: 12, overflow: 'hidden' },
   webDatePickerContainer: { backgroundColor: COLORS.white, borderRadius: 12, overflow: 'visible', marginBottom: 8 },
 
-  dobModalActions: { flexDirection: 'row', gap: 12, marginTop: 14 },
+  // ✅ BUILD FIX: removed gap
+  dobModalActions: { flexDirection: 'row', marginTop: 14 },
+  dobActionLeft: { marginRight: 12 },
+
   dobActionSecondary: {
     flex: 1,
     borderRadius: 12,
