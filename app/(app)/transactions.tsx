@@ -27,12 +27,11 @@ const UI = {
   green: '#16A34A',
   greenSoft: '#EAF7F1',
   red: '#EF4444',
-  amber: '#F59E0B',
 };
 
 interface TransactionData {
   id: string;
-  user_id?: string | null;
+  user_id?: string;
   type: string;
   status: string;
   amount: number;
@@ -42,7 +41,7 @@ interface TransactionData {
   receiver_id: string | null;
   balance_after: number | null;
 
-  // enriched
+  // ✅ enriched fields (from profiles)
   sender_name?: string | null;
   sender_email?: string | null;
   receiver_name?: string | null;
@@ -55,18 +54,7 @@ type TxUi = {
   subtitleLine2?: string;
   iconName: keyof typeof Ionicons.glyphMap;
   isOutgoing: boolean;
-  kind:
-    | 'send'
-    | 'receive'
-    | 'deposit'
-    | 'withdraw'
-    | 'purchase'
-    | 'virtual_card'
-    | 'topup'
-    | 'giftcard'
-    | 'mobile'
-    | 'sim'
-    | 'other';
+  kind: 'send' | 'receive' | 'deposit' | 'withdraw' | 'purchase' | 'virtual_card' | 'other';
 };
 
 const safe = (v?: string | null) => (v && String(v).trim().length ? String(v).trim() : null);
@@ -74,10 +62,10 @@ const safe = (v?: string | null) => (v && String(v).trim().length ? String(v).tr
 const isProbablyAdminLabel = (text?: string | null) => {
   if (!text) return false;
   const t = text.toLowerCase();
-  return t.includes('admin') || t.includes('agent') || t.includes('zanopay') || t.includes('zenopay');
+  return t.includes('admin') || t.includes('agent') || t.includes('zanopay');
 };
 
-// i18n helper: if key missing, use fallback
+// ✅ i18n helper: if key missing, use fallback
 const tOr = (key: string, fallback: string) => {
   const v = i18n.t(key) as unknown as string;
   if (!v) return fallback;
@@ -87,24 +75,16 @@ const tOr = (key: string, fallback: string) => {
 export default function TransactionsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { theme } = useTheme(); // keep
+  const { theme } = useTheme(); // keep theme (not used for colors)
   const isRTL = I18nManager.isRTL;
 
-  const myId = user?.id || '';
-
-  // Use theme safely (prevents "unused local" TS build error)
-  const themeBg = (theme as any)?.colors?.background as string | undefined;
-
   const transactionsQuery = useQuery({
-    queryKey: ['transactions', myId],
+    queryKey: ['transactions', user?.id],
     queryFn: async () => {
-      if (!myId) throw new Error('User ID not found');
+      if (!user?.id) throw new Error('User ID not found');
 
-      // Try OR query first (fast, correct)
-      let data: any[] | null = null;
-      let error: any = null;
-
-      const q1 = await supabase
+      // 1) fetch transactions
+      const { data, error } = await supabase
         .from('transactions')
         .select(
           `
@@ -120,37 +100,8 @@ export default function TransactionsScreen() {
           balance_after
         `
         )
-        .or(`user_id.eq.${myId},sender_id.eq.${myId},receiver_id.eq.${myId}`)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-
-      data = q1.data;
-      error = q1.error;
-
-      // If OR query fails for any reason, fallback (rare)
-      if (error) {
-        console.log('Transaction fetch OR error:', JSON.stringify(error));
-        const q2 = await supabase
-          .from('transactions')
-          .select(
-            `
-            id,
-            user_id,
-            type,
-            status,
-            amount,
-            description,
-            created_at,
-            sender_id,
-            receiver_id,
-            balance_after
-          `
-          )
-          .in('user_id', [myId])
-          .order('created_at', { ascending: false });
-
-        data = q2.data;
-        error = q2.error;
-      }
 
       if (error) {
         console.log('Transaction fetch error:', JSON.stringify(error));
@@ -159,12 +110,16 @@ export default function TransactionsScreen() {
 
       let txs = (data || []) as TransactionData[];
 
-      // optional: synthetic initial deposit if user has balance but no tx
+      /**
+       * ✅ FIX:
+       * If user has balance but NO transactions in table,
+       * show 1 synthetic "deposit by Zenopay agent" item.
+       */
       if (txs.length === 0) {
         const { data: wData, error: wErr } = await supabase
           .from('wallets')
           .select('balance, updated_at, created_at')
-          .eq('user_id', myId)
+          .eq('user_id', user.id)
           .maybeSingle();
 
         if (!wErr) {
@@ -174,8 +129,8 @@ export default function TransactionsScreen() {
               (wData as any)?.updated_at || (wData as any)?.created_at || new Date().toISOString();
 
             const synthetic: TransactionData = {
-              id: `initial_deposit_${myId}`,
-              user_id: myId,
+              id: `initial_deposit_${user.id}`,
+              user_id: user.id,
               type: 'deposit',
               status: 'completed',
               amount: bal,
@@ -185,12 +140,13 @@ export default function TransactionsScreen() {
               receiver_id: null,
               balance_after: bal,
             };
+
             return [synthetic];
           }
         }
       }
 
-      // enrich sender/receiver names/emails
+      // 2) collect profile ids (sender/receiver)
       const ids = Array.from(
         new Set(
           txs
@@ -201,6 +157,7 @@ export default function TransactionsScreen() {
 
       if (!ids.length) return txs;
 
+      // 3) fetch profiles once (id, full_name, email)
       const { data: profiles, error: pErr } = await supabase
         .from('profiles')
         .select('id, full_name, email')
@@ -213,9 +170,13 @@ export default function TransactionsScreen() {
 
       const map = new Map<string, { full_name: string | null; email: string | null }>();
       (profiles || []).forEach((p: any) => {
-        map.set(String(p.id), { full_name: safe(p.full_name), email: safe(p.email) });
+        map.set(String(p.id), {
+          full_name: safe(p.full_name),
+          email: safe(p.email),
+        });
       });
 
+      // 4) enrich each tx
       return txs.map((t) => {
         const s = t.sender_id ? map.get(t.sender_id) : null;
         const r = t.receiver_id ? map.get(t.receiver_id) : null;
@@ -228,72 +189,65 @@ export default function TransactionsScreen() {
         };
       });
     },
-    enabled: !!myId,
+    enabled: !!user?.id,
     staleTime: 0,
-    // IMPORTANT:
-    // - Removed gcTime (v5 only) to avoid build errors on react-query v4.
-    // - If you NEED caching control on v4, use: cacheTime: 0
+    gcTime: 0,
   });
 
   const formatDateTime = (dateStr: string): string => {
     const date = new Date(dateStr);
-    return date.toLocaleString(undefined, {
+    return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: true,
     });
   };
 
-  const statusLabel = useCallback((raw: string) => {
-    const s = String(raw || 'completed').toLowerCase();
-    if (s === 'completed' || s === 'success' || s === 'paid') return tOr('txStatusCompleted', 'Completed');
-    if (s === 'pending' || s === 'processing') return tOr('txStatusPending', 'Pending');
-    if (s === 'failed' || s === 'rejected' || s === 'canceled') return tOr('txStatusFailed', 'Failed');
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  }, []);
-
   const getTxUi = useCallback(
     (tx: TransactionData): TxUi => {
+      const myId = user?.id || '';
+      const isOutgoingBySender = tx.sender_id === myId;
+
       const type = String(tx.type || '').toLowerCase();
       const desc = safe(tx.description);
 
-      const senderName = safe(tx.sender_name) || tOr('unknownUser', 'Unknown user');
-      const receiverName = safe(tx.receiver_name) || tOr('unknownUser', 'Unknown user');
+      const senderName = safe(tx.sender_name) || (i18n.t('unknownUser') as any);
+      const receiverName = safe(tx.receiver_name) || (i18n.t('unknownUser') as any);
       const senderEmail = safe(tx.sender_email);
       const receiverEmail = safe(tx.receiver_email);
 
-      const isOutgoingBySender = tx.sender_id === myId;
-      const isOutgoingByAmount = Number(tx.amount || 0) < 0;
-
+      // ✅ virtual card created
       const descLower = (desc || '').toLowerCase();
-
       const isVirtualCard =
-        type.includes('virtual') ||
         type === 'virtual_card_create' ||
         type === 'create_virtual_card' ||
+        type === 'virtual_card' ||
         type === 'purchase_virtual_card' ||
+        (type === 'purchase_card' && descLower.includes('virtual')) ||
         descLower.includes('virtual card') ||
         descLower.includes('card create');
 
       if (isVirtualCard) {
         return {
-          title: tOr('virtualCardCreated', 'Virtual card created'),
-          subtitleLine1: tOr('virtualCardCreation', 'Virtual card creation'),
-          subtitleLine2: tOr('virtualCardInternalNotice', 'You can only have one virtual card'),
+          title: i18n.t('virtualCardCreated') as any,
+          subtitleLine1: i18n.t('virtualCardCreation') as any,
+          subtitleLine2: i18n.t('virtualCardInternalNotice') as any,
           iconName: 'card-outline',
           isOutgoing: true,
           kind: 'virtual_card',
         };
       }
 
-      if (type === 'send' || type === 'receive' || type === 'transfer' || type === 'p2p') {
-        const isOutgoing = isOutgoingBySender || isOutgoingByAmount;
+      // ✅ send/receive money
+      if (type === 'send' || type === 'receive' || type === 'transfer') {
+        const isOutgoing = isOutgoingBySender || tx.amount < 0;
 
         if (isOutgoing) {
           return {
-            title: tOr('sent', 'Sent'),
-            subtitleLine1: `${tOr('to', 'To')}: ${receiverName}`,
+            title: i18n.t('sent') as any,
+            subtitleLine1: `${i18n.t('to')}: ${receiverName}`,
             subtitleLine2: receiverEmail ? receiverEmail : undefined,
             iconName: 'arrow-up-outline',
             isOutgoing: true,
@@ -302,8 +256,8 @@ export default function TransactionsScreen() {
         }
 
         return {
-          title: tOr('received', 'Received'),
-          subtitleLine1: `${tOr('from', 'From')}: ${senderName}`,
+          title: i18n.t('received') as any,
+          subtitleLine1: `${i18n.t('from')}: ${senderName}`,
           subtitleLine2: senderEmail ? senderEmail : undefined,
           iconName: 'arrow-down-outline',
           isOutgoing: false,
@@ -311,16 +265,10 @@ export default function TransactionsScreen() {
         };
       }
 
-      if (
-        type === 'deposit' ||
-        type === 'admin_add' ||
-        type === 'agent_add' ||
-        type === 'topup' ||
-        type === 'top_up' ||
-        type === 'add_balance'
-      ) {
+      // ✅ deposit
+      if (type === 'deposit' || type === 'admin_add' || type === 'topup' || type === 'top_up') {
         return {
-          title: tOr('deposit', 'Deposit'),
+          title: i18n.t('deposit') as any,
           subtitleLine1: desc || tOr('zenopayAgentDeposit', 'Deposit by Zenopay agent'),
           iconName: 'download-outline',
           isOutgoing: false,
@@ -328,18 +276,11 @@ export default function TransactionsScreen() {
         };
       }
 
-      if (
-        type === 'withdraw' ||
-        type === 'admin_withdraw' ||
-        type === 'agent_withdraw' ||
-        type === 'withdraw_balance'
-      ) {
-        const label =
-          desc && isProbablyAdminLabel(desc)
-            ? desc
-            : tOr('zanopayAgentWithdraw', 'Zenopay agent withdraw');
+      // ✅ withdraw
+      if (type === 'withdraw' || type === 'admin_withdraw' || type === 'agent_withdraw') {
+        const label = desc && isProbablyAdminLabel(desc) ? desc : (i18n.t('zanopayAgentWithdraw') as any);
         return {
-          title: tOr('withdraw', 'Withdraw'),
+          title: i18n.t('withdraw') as any,
           subtitleLine1: label,
           iconName: 'cash-outline',
           isOutgoing: true,
@@ -347,66 +288,38 @@ export default function TransactionsScreen() {
         };
       }
 
-      if (type.includes('topup_purchase') || type === 'card_topup' || type === 'topup_purchase') {
+      // ✅ purchases
+      if (type === 'purchase_mobile') {
         return {
-          title: tOr('cardTopupPurchase', 'Topup purchase'),
-          subtitleLine1: desc || tOr('cardTopupPurchaseSubtitle', 'Card topup purchase'),
-          iconName: 'flash-outline',
-          isOutgoing: true,
-          kind: 'topup',
-        };
-      }
-
-      if (type.includes('gift') || type === 'gift_card_purchase' || type === 'purchase_giftcard') {
-        return {
-          title: tOr('giftCardPurchase', 'Gift card purchase'),
-          subtitleLine1: desc || tOr('giftCardPurchaseSubtitle', 'Gift card purchase'),
-          iconName: 'gift-outline',
-          isOutgoing: true,
-          kind: 'giftcard',
-        };
-      }
-
-      if (type.includes('mobile') || type === 'purchase_mobile' || type === 'mobile_shop_purchase') {
-        return {
-          title: tOr('mobilePurchase', 'Mobile purchase'),
-          subtitleLine1: desc || tOr('mobileShop', 'Mobile shop'),
+          title: i18n.t('mobilePurchase') as any,
+          subtitleLine1: desc || (i18n.t('mobileShop') as any),
           iconName: 'phone-portrait-outline',
           isOutgoing: true,
-          kind: 'mobile',
+          kind: 'purchase',
         };
       }
 
-      if (type.includes('sim') || type === 'sim_card_purchase' || type === 'purchase_sim') {
+      if (type === 'purchase_card' || type === 'purchase_giftcard') {
         return {
-          title: tOr('simCardPurchase', 'SIM card purchase'),
-          subtitleLine1: desc || tOr('simCardPurchaseSubtitle', 'SIM card purchase'),
-          iconName: 'cellular-outline',
-          isOutgoing: true,
-          kind: 'sim',
-        };
-      }
-
-      if (type.includes('purchase') || type === 'buy' || type === 'order') {
-        return {
-          title: tOr('purchase', 'Purchase'),
-          subtitleLine1: desc || tOr('purchaseSubtitle', 'Transaction details'),
+          title: i18n.t('cardPurchase') as any,
+          subtitleLine1: desc || (i18n.t('cardPurchaseSubtitle') as any),
           iconName: 'pricetag-outline',
           isOutgoing: true,
           kind: 'purchase',
         };
       }
 
-      const isOutgoing = isOutgoingBySender || isOutgoingByAmount;
+      // fallback
+      const rawType = String(tx.type || '');
       return {
-        title: tOr('transaction', 'Transaction'),
-        subtitleLine1: desc || tOr('transactionSubtitle', 'Transaction details'),
-        iconName: isOutgoing ? 'arrow-up-outline' : 'arrow-down-outline',
-        isOutgoing,
+        title: rawType.charAt(0).toUpperCase() + rawType.slice(1),
+        subtitleLine1: desc || (i18n.t('transaction') as any),
+        iconName: tx.amount < 0 ? 'arrow-up-outline' : 'arrow-down-outline',
+        isOutgoing: tx.amount < 0,
         kind: 'other',
       };
     },
-    [myId]
+    [user?.id]
   );
 
   const { refetch, isRefetching } = transactionsQuery;
@@ -418,24 +331,12 @@ export default function TransactionsScreen() {
   const renderTransaction = ({ item }: { item: TransactionData }) => {
     const ui = getTxUi(item);
 
-    const statusRaw = String(item.status || 'completed').toLowerCase();
-
-    const rawAmount = Number(item.amount || 0);
-    const abs = Math.abs(rawAmount);
+    const status = String(item.status || 'completed').toLowerCase();
+    const abs = Math.abs(Number(item.amount || 0));
 
     const statusBg =
-      statusRaw === 'completed' || statusRaw === 'success' || statusRaw === 'paid'
-        ? 'rgba(22,163,74,0.12)'
-        : statusRaw === 'pending' || statusRaw === 'processing'
-        ? '#FEF3C7'
-        : '#FEE2E2';
-
-    const statusColor =
-      statusRaw === 'completed' || statusRaw === 'success' || statusRaw === 'paid'
-        ? UI.green
-        : statusRaw === 'pending' || statusRaw === 'processing'
-        ? UI.amber
-        : UI.red;
+      status === 'completed' ? 'rgba(22,163,74,0.12)' : status === 'pending' ? '#FEF3C7' : '#FEE2E2';
+    const statusColor = status === 'completed' ? UI.green : status === 'pending' ? '#F59E0B' : UI.red;
 
     const amountColor = ui.isOutgoing ? UI.red : UI.green;
     const sign = ui.isOutgoing ? '-' : '+';
@@ -447,7 +348,6 @@ export default function TransactionsScreen() {
           <View
             style={[
               styles.iconContainer,
-              isRTL ? styles.iconContainerRTL : styles.iconContainerLTR,
               { backgroundColor: ui.isOutgoing ? '#FEE2E2' : 'rgba(22,163,74,0.14)' },
             ]}
           >
@@ -479,7 +379,9 @@ export default function TransactionsScreen() {
           </Text>
 
           <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
-            <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel(statusRaw)}</Text>
+            <Text style={[styles.statusText, { color: statusColor }]}>
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </Text>
           </View>
         </View>
       </View>
@@ -488,14 +390,11 @@ export default function TransactionsScreen() {
 
   if (transactionsQuery.isLoading) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: themeBg || UI.bg }]}
-        edges={['top', 'bottom']}
-      >
+      <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.loaderContainer}>
           <ActivityIndicator color={UI.green} size="large" />
-          <Text style={styles.loadingText}>{tOr('loadingTransactions', 'Loading transactions...')}</Text>
+          <Text style={styles.loadingText}>{i18n.t('loadingTransactions') as any}</Text>
         </View>
       </SafeAreaView>
     );
@@ -503,21 +402,16 @@ export default function TransactionsScreen() {
 
   if (transactionsQuery.isError) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: themeBg || UI.bg }]}
-        edges={['top', 'bottom']}
-      >
+      <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
         <Stack.Screen options={{ headerShown: false }} />
 
         <View style={[styles.header, isRTL && styles.headerRTL]}>
           <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
             <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
-            <Text style={[styles.headerBack, isRTL && styles.textRTL, isRTL ? styles.mr4 : styles.ml4]}>
-              {tOr('back', 'Back')}
-            </Text>
+            <Text style={[styles.headerBack, isRTL && styles.textRTL]}>{i18n.t('back') as any}</Text>
           </TouchableOpacity>
 
-          <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{tOr('transactions', 'Transactions')}</Text>
+          <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{i18n.t('transactions') as any}</Text>
           <View style={{ width: 70 }} />
         </View>
 
@@ -526,14 +420,12 @@ export default function TransactionsScreen() {
             <Ionicons name="alert-circle" size={46} color={UI.red} />
           </View>
 
-          <Text style={styles.errorTitle}>{tOr('failedToLoad', 'Failed to load')}</Text>
-          <Text style={styles.errorMessage}>{tOr('errorLoadingTransactions', 'Could not load transactions')}</Text>
+          <Text style={styles.errorTitle}>{i18n.t('failedToLoad') as any}</Text>
+          <Text style={styles.errorMessage}>{i18n.t('errorLoadingTransactions') as any}</Text>
 
           <TouchableOpacity style={styles.primaryBtn} onPress={() => transactionsQuery.refetch()} activeOpacity={0.9}>
             <Ionicons name="refresh" size={18} color="#fff" />
-            <Text style={[styles.primaryBtnText, isRTL ? styles.mr8 : styles.ml8]}>
-              {tOr('retry', 'Retry')}
-            </Text>
+            <Text style={styles.primaryBtnText}>{i18n.t('retry') as any}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -541,14 +433,11 @@ export default function TransactionsScreen() {
   }
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: themeBg || UI.bg }]}
-      edges={['top', 'bottom']}
-    >
+    <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <FlatList
-        data={transactionsQuery.data ?? []}
+        data={transactionsQuery.data}
         keyExtractor={(item) => item.id}
         renderItem={renderTransaction}
         contentContainerStyle={styles.listContent}
@@ -564,12 +453,10 @@ export default function TransactionsScreen() {
           <View style={[styles.header, isRTL && styles.headerRTL]}>
             <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
               <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
-              <Text style={[styles.headerBack, isRTL && styles.textRTL, isRTL ? styles.mr4 : styles.ml4]}>
-                {tOr('back', 'Back')}
-              </Text>
+              <Text style={[styles.headerBack, isRTL && styles.textRTL]}>{i18n.t('back') as any}</Text>
             </TouchableOpacity>
 
-            <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{tOr('transactions', 'Transactions')}</Text>
+            <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>{i18n.t('transactions') as any}</Text>
             <View style={{ width: 70 }} />
           </View>
         }
@@ -578,8 +465,8 @@ export default function TransactionsScreen() {
             <View style={styles.emptyIconContainer}>
               <Ionicons name="receipt-outline" size={44} color={UI.text2} />
             </View>
-            <Text style={styles.emptyTitle}>{tOr('noTransactions', 'No transactions')}</Text>
-            <Text style={styles.emptySubtitle}>{tOr('transactionsWillAppear', 'Your transactions will appear here.')}</Text>
+            <Text style={styles.emptyTitle}>{i18n.t('noTransactions') as any}</Text>
+            <Text style={styles.emptySubtitle}>{i18n.t('transactionsWillAppear') as any}</Text>
           </View>
         }
         showsVerticalScrollIndicator={false}
@@ -591,12 +478,6 @@ export default function TransactionsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // spacing helpers (replace gap)
-  ml4: { marginLeft: 4 },
-  mr4: { marginRight: 4 },
-  ml8: { marginLeft: 8 },
-  mr8: { marginRight: 8 },
-
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,
@@ -607,7 +488,13 @@ const styles = StyleSheet.create({
     backgroundColor: UI.bg,
   },
   headerRTL: { flexDirection: 'row-reverse' },
-  headerBtn: { flexDirection: 'row', alignItems: 'center', width: 90 },
+
+  headerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2, // keeping as you had
+    width: 90,
+  },
   headerBack: { fontSize: 14, fontWeight: '900', color: UI.text },
   headerTitle: { fontSize: 17, fontWeight: '900', color: UI.text },
 
@@ -641,9 +528,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
-  iconContainerLTR: { marginRight: 12 },
-  iconContainerRTL: { marginLeft: 12 },
 
   cardDetails: { flex: 1 },
   cardDetailsRTL: { alignItems: 'flex-end' },
@@ -662,8 +548,8 @@ const styles = StyleSheet.create({
   statusBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 10, marginTop: 8 },
   statusText: { fontSize: 11, fontWeight: '900' },
 
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { fontSize: 14, fontWeight: '800', color: UI.text2, textAlign: 'center', marginTop: 12 },
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 }, // keeping as you had
+  loadingText: { fontSize: 14, fontWeight: '800', color: UI.text2, textAlign: 'center' },
 
   emptyState: { paddingTop: 70, paddingHorizontal: 20, alignItems: 'center' },
   emptyIconContainer: {
@@ -689,6 +575,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 28,
+    gap: 10, // keeping as you had
   },
   errorIconContainer: {
     width: 80,
@@ -697,19 +584,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 6,
   },
-  errorTitle: { fontSize: 18, fontWeight: '900', color: UI.text, textAlign: 'center', marginTop: 2 },
-  errorMessage: { fontSize: 14, fontWeight: '700', color: UI.text2, textAlign: 'center', lineHeight: 20, marginTop: 6 },
+  errorTitle: { fontSize: 18, fontWeight: '900', color: UI.text, textAlign: 'center' },
+  errorMessage: { fontSize: 14, fontWeight: '700', color: UI.text2, textAlign: 'center', lineHeight: 20 },
 
   primaryBtn: {
-    marginTop: 14,
+    marginTop: 8,
     backgroundColor: UI.green,
     paddingHorizontal: 22,
     paddingVertical: 14,
     borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8, // keeping as you had
   },
   primaryBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' },
 
