@@ -5,7 +5,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +12,7 @@ import {
   View,
   Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
@@ -340,7 +340,7 @@ export default function AiChatScreen() {
               </View>
             ) : (
               <FlatList
-                ref={(r) => (listRef.current = r)}
+                ref={(r) => { listRef.current = r; }}
                 data={messages}
                 keyExtractor={(it) => it.id}
                 renderItem={renderItem}

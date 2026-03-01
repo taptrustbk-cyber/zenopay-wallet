@@ -156,11 +156,11 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           return;
         }
 
-        console.log('[AuthContext] Profile loaded successfully:', data.email);
+        console.log('[AuthContext] Profile loaded successfully:', (data as any)?.email);
 
         // ✅ Normalize:
         const normalized: any = {
-          ...data,
+          ...(data as any),
 
           // Your UI uses phone; keep both if your type has both
           phone: (data as any).phone ?? (data as any).phone_number ?? null,
