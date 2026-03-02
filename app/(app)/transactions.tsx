@@ -198,20 +198,52 @@ export default function TransactionsScreen() {
 
       if (!ids.length) return txs;
 
-      const { data: profiles, error: pErr } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('id', ids);
-
-      if (pErr) {
-        console.log('Profiles fetch error:', JSON.stringify(pErr));
-        return txs;
-      }
+      // ✅ Some projects store profiles primary key as `id = auth.user.id`
+      // ✅ Others store `user_id = auth.user.id` (and id is different)
+      // So we fetch by id first, then fallback by user_id for missing ids.
 
       const map = new Map<string, { full_name: string | null; email: string | null }>();
-      (profiles || []).forEach((p: any) => {
-        map.set(String(p.id), { full_name: safe(p.full_name), email: safe(p.email) });
-      });
+
+      // 1) Try profiles.id in ids
+      const { data: p1, error: pErr1 } = await supabase
+        .from('profiles')
+        .select('id, user_id, full_name, email')
+        .in('id', ids);
+
+      if (pErr1) {
+        console.log('Profiles fetch (id) error:', JSON.stringify(pErr1));
+      } else {
+        (p1 || []).forEach((p: any) => {
+          const key1 = safe(p.id);
+          const key2 = safe(p.user_id);
+          const val = { full_name: safe(p.full_name), email: safe(p.email) };
+          if (key1) map.set(String(key1), val);
+          if (key2) map.set(String(key2), val);
+        });
+      }
+
+      // find missing ids after first pass
+      const missing = ids.filter((id) => !map.has(id));
+
+      // 2) Fallback: profiles.user_id in missing ids
+      if (missing.length) {
+        const { data: p2, error: pErr2 } = await supabase
+          .from('profiles')
+          .select('id, user_id, full_name, email')
+          .in('user_id', missing);
+
+        if (pErr2) {
+          console.log('Profiles fetch (user_id) error:', JSON.stringify(pErr2));
+        } else {
+          (p2 || []).forEach((p: any) => {
+            const key1 = safe(p.id);
+            const key2 = safe(p.user_id);
+            const val = { full_name: safe(p.full_name), email: safe(p.email) };
+            if (key1) map.set(String(key1), val);
+            if (key2) map.set(String(key2), val);
+          });
+        }
+      }
 
       return txs.map((t) => {
         const s = t.sender_id ? map.get(t.sender_id) : null;
@@ -243,7 +275,8 @@ export default function TransactionsScreen() {
 
   const statusLabel = useCallback((raw: string) => {
     const s = String(raw || 'completed').toLowerCase();
-    if (s === 'completed' || s === 'success' || s === 'paid') return tOr('txStatusCompleted', 'Completed');
+    if (s === 'completed' || s === 'success' || s === 'paid')
+      return tOr('txStatusCompleted', 'Completed');
     if (s === 'pending' || s === 'processing') return tOr('txStatusPending', 'Pending');
     if (s === 'failed' || s === 'rejected' || s === 'canceled') return tOr('txStatusFailed', 'Failed');
     return s.charAt(0).toUpperCase() + s.slice(1);
@@ -254,10 +287,14 @@ export default function TransactionsScreen() {
       const type = String(tx.type || '').toLowerCase();
       const desc = safe(tx.description);
 
-      const senderName = safe(tx.sender_name) || tOr('unknownUser', 'Unknown user');
-      const receiverName = safe(tx.receiver_name) || tOr('unknownUser', 'Unknown user');
+      const senderNameRaw = safe(tx.sender_name);
+      const receiverNameRaw = safe(tx.receiver_name);
       const senderEmail = safe(tx.sender_email);
       const receiverEmail = safe(tx.receiver_email);
+
+      // ✅ Prefer full_name, fallback to email, then Unknown user
+      const senderLabel = senderNameRaw || senderEmail || tOr('unknownUser', 'Unknown user');
+      const receiverLabel = receiverNameRaw || receiverEmail || tOr('unknownUser', 'Unknown user');
 
       const isOutgoingBySender = tx.sender_id === myId;
       const isOutgoingByAmount = Number(tx.amount || 0) < 0;
@@ -287,20 +324,28 @@ export default function TransactionsScreen() {
         const isOutgoing = isOutgoingBySender || isOutgoingByAmount;
 
         if (isOutgoing) {
+          // ✅ show To: full_name (or email), and line2 = email if exists and not same as line1
+          const line1 = `${tOr('to', 'To')}: ${receiverLabel}`;
+          const line2 = receiverEmail && receiverEmail !== receiverLabel ? receiverEmail : undefined;
+
           return {
             title: tOr('sent', 'Sent'),
-            subtitleLine1: `${tOr('to', 'To')}: ${receiverName}`,
-            subtitleLine2: receiverEmail ? receiverEmail : undefined,
+            subtitleLine1: line1,
+            subtitleLine2: line2,
             iconName: 'arrow-up-outline',
             isOutgoing: true,
             kind: 'send',
           };
         }
 
+        // ✅ Received: From: full_name (or email), and line2 = email if exists and not same as line1
+        const line1 = `${tOr('from', 'From')}: ${senderLabel}`;
+        const line2 = senderEmail && senderEmail !== senderLabel ? senderEmail : undefined;
+
         return {
           title: tOr('received', 'Received'),
-          subtitleLine1: `${tOr('from', 'From')}: ${senderName}`,
-          subtitleLine2: senderEmail ? senderEmail : undefined,
+          subtitleLine1: line1,
+          subtitleLine2: line2,
           iconName: 'arrow-down-outline',
           isOutgoing: false,
           kind: 'receive',
@@ -330,7 +375,8 @@ export default function TransactionsScreen() {
         type === 'agent_withdraw' ||
         type === 'withdraw_balance'
       ) {
-        const label = desc && isProbablyAdminLabel(desc) ? desc : tOr('zanopayAgentWithdraw', 'Zenopay agent withdraw');
+        const label =
+          desc && isProbablyAdminLabel(desc) ? desc : tOr('zanopayAgentWithdraw', 'Zenopay agent withdraw');
         return {
           title: tOr('withdraw', 'Withdraw'),
           subtitleLine1: label,
@@ -462,7 +508,9 @@ export default function TransactionsScreen() {
               </Text>
             )}
 
-            <Text style={[styles.cardDate, isRTL && styles.textRTL]}>{formatDateTime(item.created_at)}</Text>
+            <Text style={[styles.cardDate, isRTL && styles.textRTL]}>
+              {formatDateTime(item.created_at)}
+            </Text>
           </View>
         </View>
 
