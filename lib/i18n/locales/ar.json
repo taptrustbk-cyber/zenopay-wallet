@@ -4,6 +4,7 @@
   "unknownUser": "مستخدم غير معروف",
   "accountSuccessfullyConfirmed": "تم تأكيد حسابك بنجاح.",
   "remove": "يزيل",
+  "stillNotConfirmedPleaseCheckEmail": "لم يتم تأكيد بريدك الإلكتروني بعد. يُرجى التحقق من بريدك الإلكتروني.",
   "zenopayAgentDeposit": "إيداع بواسطة وكيل زينوباي",
   "adminTopUp": "إيداع بواسطة وكيل زينوباي",
   "fullNamePlaceholder": "أدخل اسمك الكامل",
