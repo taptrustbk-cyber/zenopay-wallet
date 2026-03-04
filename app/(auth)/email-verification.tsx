@@ -1,8 +1,17 @@
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  AppState,
+} from 'react-native';
 import { Mail, RefreshCw, CheckCircle2 } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import i18n from '@/lib/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
@@ -56,6 +65,7 @@ export default function EmailVerificationScreen() {
   // prevent double redirects
   const redirectedRef = useRef(false);
   const savingProfileRef = useRef(false);
+  const mountedRef = useRef(true);
 
   // Cooldown to avoid resend spam
   const [cooldown, setCooldown] = useState(0);
@@ -82,29 +92,41 @@ export default function EmailVerificationScreen() {
     loadEmail();
   }, [emailParam]);
 
-  async function goToLoginWithSuccess() {
+  const goToLoginWithSuccess = useCallback(() => {
     if (redirectedRef.current) return;
     redirectedRef.current = true;
 
-    // ✅ Pass info to login screen (optional usage there)
+    // ✅ MUST go to /(auth)/login.tsx
     router.replace({
-      pathname: '/login' as any,
+      pathname: '/(auth)/login' as any,
       params: {
         confirmed: '1',
         applyPendingProfile: '1',
         email: userEmail || emailParam || '',
       },
     } as any);
+  }, [router, userEmail, emailParam]);
+
+  // ✅ unified: user confirmed?
+  function isUserConfirmed(user: any): boolean {
+    return Boolean(user?.email_confirmed_at || user?.confirmed_at);
   }
 
-  // ✅ Check confirmed if session exists (user opened confirm link in app)
+  // ✅ session check (fast if confirm link opened inside app)
   async function checkIfVerifiedWithSession(): Promise<boolean> {
-    const { data } = await supabase.auth.getSession();
-    const user = data?.session?.user;
-    return !!user?.email_confirmed_at;
+    try {
+      // refresh helps a lot after returning from email app
+      await supabase.auth.refreshSession().catch(() => null);
+
+      const { data } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+      return isUserConfirmed(user);
+    } catch {
+      return false;
+    }
   }
 
-  // ✅ Check confirmed from Supabase (server) by Edge Function
+  // ✅ server check (your edge function)
   async function checkIfVerifiedFromServer(email: string): Promise<boolean> {
     if (!email) return false;
 
@@ -120,7 +142,7 @@ export default function EmailVerificationScreen() {
     return !!data?.confirmed;
   }
 
-  // ✅ NEW: try to save pending profile into "profiles" if we have a session user.id
+  // ✅ try to save pending profile into "profiles" if we have a session user.id
   async function tryUpsertPendingProfileIfSession(): Promise<boolean> {
     if (savingProfileRef.current) return false;
     savingProfileRef.current = true;
@@ -164,88 +186,33 @@ export default function EmailVerificationScreen() {
   }
 
   async function handleConfirmedFlow(source: 'session' | 'server') {
+    if (verified) return;
+
     setVerified(true);
 
     // ✅ If app has a session, save profile now
     await tryUpsertPendingProfileIfSession();
 
-    // ✅ Keep your old behavior: if session exists, sign out then go login
+    // ✅ If session exists, sign out then go login (keep your old behavior)
     const { data } = await supabase.auth.getSession();
     if (data?.session) {
-      await sleep(400);
+      await sleep(250);
       await supabase.auth.signOut();
-      await sleep(200);
+      await sleep(150);
     }
 
-    Alert.alert(
-      i18n.t('success') || 'Success',
-      i18n.t('accountSuccessfullyConfirmed') || 'Your account successfully confirmed.',
-      [{ text: 'OK', onPress: goToLoginWithSuccess }]
-    );
+    // ✅ IMPORTANT: instant redirect (no waiting for OK)
+    goToLoginWithSuccess();
   }
 
-  // ✅ Auto check polling (session first, then server)
-  useEffect(() => {
-    let mounted = true;
-    let pollingInterval: ReturnType<typeof setInterval> | undefined;
-
-    const tick = async () => {
-      try {
-        const emailToCheck = userEmail || emailParam;
-
-        // 1) session check
-        const okSession = await checkIfVerifiedWithSession();
-        if (!mounted) return;
-        if (okSession && !verified) {
-          await handleConfirmedFlow('session');
-          return;
-        }
-
-        // 2) server check (works even if app didn’t open confirm link)
-        if (emailToCheck) {
-          const okServer = await checkIfVerifiedFromServer(emailToCheck);
-          if (!mounted) return;
-          if (okServer && !verified) {
-            await handleConfirmedFlow('server');
-          }
-        }
-      } catch (e: any) {
-        console.log('verification tick error:', e?.message);
-      }
-    };
-
-    tick();
-
-    pollingInterval = setInterval(() => {
-      if (!verified) tick();
-    }, 6000);
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-
-      if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
-        if (session?.user?.email_confirmed_at && !verified) {
-          await handleConfirmedFlow('session');
-        }
-      }
-    });
-
-    return () => {
-      mounted = false;
-      if (pollingInterval) clearInterval(pollingInterval);
-      subscription.unsubscribe();
-    };
-  }, [verified, router, userEmail, emailParam]);
-
-  const checkStatus = async () => {
-    setChecking(true);
-    try {
+  // ✅ The ONE function used by auto-check + button check
+  const runCheck = useCallback(
+    async (showNotConfirmedAlert: boolean) => {
       const emailToCheck = userEmail || emailParam;
 
       // 1) session check
       const okSession = await checkIfVerifiedWithSession();
+      if (!mountedRef.current) return;
       if (okSession) {
         await handleConfirmedFlow('session');
         return;
@@ -254,17 +221,73 @@ export default function EmailVerificationScreen() {
       // 2) server check
       if (emailToCheck) {
         const okServer = await checkIfVerifiedFromServer(emailToCheck);
+        if (!mountedRef.current) return;
         if (okServer) {
           await handleConfirmedFlow('server');
           return;
         }
       }
 
-      Alert.alert(
-        i18n.t('emailNotVerifiedYet') || 'Not verified',
-        i18n.t('stillNotConfirmedPleaseCheckEmail') || 'Still not confirmed. Please confirm in your email app.',
-        [{ text: 'OK' }]
-      );
+      if (showNotConfirmedAlert) {
+        Alert.alert(
+          i18n.t('emailNotVerifiedYet') || 'Not verified',
+          i18n.t('stillNotConfirmedPleaseCheckEmail') ||
+            'Still not confirmed. Please confirm in your email app.',
+          [{ text: 'OK' }]
+        );
+      }
+    },
+    [userEmail, emailParam, verified, goToLoginWithSuccess]
+  );
+
+  // ✅ Auto check: on mount + polling + when app becomes active (return from email app)
+  useEffect(() => {
+    mountedRef.current = true;
+
+    let pollingInterval: ReturnType<typeof setInterval> | undefined;
+
+    // first check immediately (silent)
+    runCheck(false);
+
+    // polling (silent)
+    pollingInterval = setInterval(() => {
+      if (!verified) runCheck(false);
+    }, 6000);
+
+    // when user returns from email app, check instantly (silent)
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && !verified) {
+        runCheck(false);
+      }
+    });
+
+    // auth events (extra safety)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mountedRef.current) return;
+      if (
+        (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') &&
+        session?.user &&
+        isUserConfirmed(session.user) &&
+        !verified
+      ) {
+        await handleConfirmedFlow('session');
+      }
+    });
+
+    return () => {
+      mountedRef.current = false;
+      if (pollingInterval) clearInterval(pollingInterval);
+      appStateSub.remove();
+      subscription.unsubscribe();
+    };
+  }, [runCheck, verified]);
+
+  const checkStatus = async () => {
+    setChecking(true);
+    try {
+      await runCheck(true); // show alert only for button
     } catch (error: any) {
       Alert.alert(i18n.t('error') || 'Error', error?.message || 'Failed to check status');
     } finally {
@@ -383,7 +406,7 @@ export default function EmailVerificationScreen() {
                 style={styles.backButton}
                 onPress={async () => {
                   await supabase.auth.signOut().catch(() => null);
-                  router.replace('/login' as any);
+                  router.replace('/(auth)/login' as any);
                 }}
                 activeOpacity={0.9}
               >
