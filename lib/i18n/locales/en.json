@@ -1,6 +1,7 @@
 {
   "home": "Home",
   "send": "Send",
+"stillNotConfirmedPleaseCheckEmail": "Your email is still not confirmed. Please check your email.",
   "to": "to",
   "purchase": "Purchase",
   "loginSubWelcome": "Sign in to continue to your account",
