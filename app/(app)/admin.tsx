@@ -35,12 +35,9 @@ import {
   PlusCircle,
   MinusCircle,
   ReceiptText,
-  Image as ImageIcon,
   Search,
   BarChart3,
   Users,
-  MapPin,
-  Mail,
 } from 'lucide-react-native';
 
 // ✅ IMPORTANT: remove the default (dark blue) navigation header
@@ -125,6 +122,9 @@ export default function AdminScreen() {
   const [kycFolderCache, setKycFolderCache] = useState<Record<string, StorageFile[]>>({});
   const [kycHasDocs, setKycHasDocs] = useState<Record<string, boolean>>({});
   const [kycScanLoading, setKycScanLoading] = useState(false);
+
+  // ✅ FIX: per-user approve/reject loading (prevents double click + shows correct disable)
+  const [accountActionBusy, setAccountActionBusy] = useState<Record<string, 'approve' | 'reject' | null>>({});
 
   const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
 
@@ -424,7 +424,9 @@ export default function AdminScreen() {
       return (data || []).map((d: any) => ({
         ...d,
         profile: d.profiles,
-      })) as (DepositOrder & { profile: Profile & { city?: string | null; country?: string | null; avatar_url?: string | null } })[];
+      })) as (DepositOrder & {
+        profile: Profile & { city?: string | null; country?: string | null; avatar_url?: string | null };
+      })[];
     },
     enabled: selectedTab === 'deposits',
   });
@@ -463,7 +465,9 @@ export default function AdminScreen() {
           ...withdrawal,
           profile: withdrawal.profiles,
         })) || []
-      ) as (WithdrawOrder & { profile: Profile & { city?: string | null; country?: string | null; avatar_url?: string | null } })[];
+      ) as (WithdrawOrder & {
+        profile: Profile & { city?: string | null; country?: string | null; avatar_url?: string | null };
+      })[];
     },
     enabled: selectedTab === 'withdrawals',
   });
@@ -489,9 +493,7 @@ export default function AdminScreen() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select(
-          'id, email, full_name, city, country, avatar_url, kyc_status, status, id_front, id_back, selfie, created_at'
-        )
+        .select('id, email, full_name, city, country, avatar_url, kyc_status, status, id_front, id_back, selfie, created_at')
         .in('status', ['pending', 'approved', 'rejected'])
         .order('created_at', { ascending: false });
 
@@ -736,6 +738,31 @@ export default function AdminScreen() {
     });
   }, [allUsersQuery.data, userSearch]);
 
+  // ---------- FIX HELPERS (Approve/Reject) ----------
+  const isMissingFnError = (err: any) => {
+    const msg = String(err?.message || err?.hint || err?.details || '').toLowerCase();
+    return msg.includes('could not find the function') || msg.includes('does not exist') || msg.includes('function') && msg.includes('not found');
+  };
+
+  const tryRpcAny = async (names: string[], args: Record<string, any>) => {
+    let lastErr: any = null;
+
+    for (const fnName of names) {
+      const { error } = await supabase.rpc(fnName, args as any);
+      if (!error) return { used: fnName };
+      lastErr = error;
+
+      // if function missing, continue trying other names
+      if (isMissingFnError(error)) continue;
+
+      // other errors should stop immediately (permission/rls/etc)
+      throw error;
+    }
+
+    // all missing
+    throw lastErr || new Error('RPC function not found');
+  };
+
   // ---------- mutations ----------
   const updateDepositMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: 'approved' | 'rejected' }) => {
@@ -761,9 +788,47 @@ export default function AdminScreen() {
     },
   });
 
+  // ✅ FIXED: Approve Account uses RPC if exists (bypass RLS) + fallback update (if your RLS allows)
   const approveAccountMutation = useMutation({
     mutationFn: async ({ userId }: { userId: string }) => {
-      const { error } = await supabase.from('profiles').update({ status: 'approved', kyc_status: 'approved' }).eq('id', userId);
+      // show per-user loading
+      setAccountActionBusy((prev) => ({ ...prev, [userId]: 'approve' }));
+
+      // 1) Try common RPC names (SECURITY DEFINER) — best fix when client update is blocked by RLS
+      const rpcNames = [
+        'admin_approve_account',
+        'admin_approve_user',
+        'admin_approve_profile',
+        'approve_account',
+        'approve_user',
+      ];
+
+      // Try with common argument names
+      try {
+        await tryRpcAny(rpcNames, { p_user_id: userId });
+        return;
+      } catch (e1: any) {
+        if (!isMissingFnError(e1)) {
+          // not "missing function" -> real error
+          throw e1;
+        }
+      }
+
+      try {
+        await tryRpcAny(rpcNames, { user_id: userId });
+        return;
+      } catch (e2: any) {
+        if (!isMissingFnError(e2)) {
+          throw e2;
+        }
+      }
+
+      // 2) Fallback: direct update (only works if your RLS policy allows admin user)
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status: 'approved', kyc_status: 'approved' })
+        .eq('id', userId);
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -774,13 +839,48 @@ export default function AdminScreen() {
       Alert.alert('Success', 'Account approved successfully!');
     },
     onError: (error: any) => {
-      Alert.alert('Error', error.message || 'Failed to approve account');
+      const msg =
+        error?.message ||
+        'Failed to approve account. If this is RLS, create a SECURITY DEFINER RPC (server-side) and call it from here.';
+      Alert.alert('Error', msg);
+    },
+    onSettled: (_d, _e, vars) => {
+      if (vars?.userId) setAccountActionBusy((prev) => ({ ...prev, [vars.userId]: null }));
     },
   });
 
+  // ✅ FIXED: Reject Account uses RPC if exists (bypass RLS) + fallback update (if your RLS allows)
   const rejectAccountMutation = useMutation({
     mutationFn: async ({ userId }: { userId: string }) => {
-      const { error } = await supabase.from('profiles').update({ status: 'rejected', kyc_status: 'rejected' }).eq('id', userId);
+      setAccountActionBusy((prev) => ({ ...prev, [userId]: 'reject' }));
+
+      const rpcNames = [
+        'admin_reject_account',
+        'admin_reject_user',
+        'admin_reject_profile',
+        'reject_account',
+        'reject_user',
+      ];
+
+      try {
+        await tryRpcAny(rpcNames, { p_user_id: userId, p_reason: 'Rejected by admin' });
+        return;
+      } catch (e1: any) {
+        if (!isMissingFnError(e1)) throw e1;
+      }
+
+      try {
+        await tryRpcAny(rpcNames, { user_id: userId, reason: 'Rejected by admin' });
+        return;
+      } catch (e2: any) {
+        if (!isMissingFnError(e2)) throw e2;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status: 'rejected', kyc_status: 'rejected' })
+        .eq('id', userId);
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -791,7 +891,13 @@ export default function AdminScreen() {
       Alert.alert('Success', 'Account rejected.');
     },
     onError: (error: any) => {
-      Alert.alert('Error', error.message || 'Failed to reject account');
+      const msg =
+        error?.message ||
+        'Failed to reject account. If this is RLS, create a SECURITY DEFINER RPC (server-side) and call it from here.';
+      Alert.alert('Error', msg);
+    },
+    onSettled: (_d, _e, vars) => {
+      if (vars?.userId) setAccountActionBusy((prev) => ({ ...prev, [vars.userId]: null }));
     },
   });
 
@@ -990,11 +1096,7 @@ export default function AdminScreen() {
           icon={<ShieldCheck size={16} color={selectedTab === 'account_approval' ? UI.blue : UI.text2} />}
         />
         <MenuButton label="Deposits" tab="deposits" icon={<ArrowDownToLine size={16} color={selectedTab === 'deposits' ? UI.blue : UI.text2} />} />
-        <MenuButton
-          label="Withdrawals"
-          tab="withdrawals"
-          icon={<ArrowUpFromLine size={16} color={selectedTab === 'withdrawals' ? UI.blue : UI.text2} />}
-        />
+        <MenuButton label="Withdrawals" tab="withdrawals" icon={<ArrowUpFromLine size={16} color={selectedTab === 'withdrawals' ? UI.blue : UI.text2} />} />
         <MenuButton label="Add Balance" tab="add_balance" icon={<PlusCircle size={16} color={selectedTab === 'add_balance' ? UI.blue : UI.text2} />} />
         <MenuButton
           label="Withdraw Balance"
@@ -1002,11 +1104,7 @@ export default function AdminScreen() {
           icon={<MinusCircle size={16} color={selectedTab === 'withdraw_balance' ? UI.blue : UI.text2} />}
         />
         <MenuButton label="KYC Document" tab="kyc_documents" icon={<FileText size={16} color={selectedTab === 'kyc_documents' ? UI.blue : UI.text2} />} />
-        <MenuButton
-          label="Transactions"
-          tab="transactions"
-          icon={<ReceiptText size={16} color={selectedTab === 'transactions' ? UI.blue : UI.text2} />}
-        />
+        <MenuButton label="Transactions" tab="transactions" icon={<ReceiptText size={16} color={selectedTab === 'transactions' ? UI.blue : UI.text2} />} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -1239,6 +1337,9 @@ export default function AdminScreen() {
             ) : pendingAccountsQuery.data && pendingAccountsQuery.data.length > 0 ? (
               pendingAccountsQuery.data.map((profile: any) => {
                 const avatar = getAvatarUrl(profile.avatar_url);
+                const busy = accountActionBusy[profile.id];
+                const disableBtns = !!busy || approveAccountMutation.isPending || rejectAccountMutation.isPending;
+
                 return (
                   <View key={profile.id} style={styles.card}>
                     <View style={styles.userHeader}>
@@ -1290,30 +1391,30 @@ export default function AdminScreen() {
 
                     <View style={styles.actionButtons}>
                       <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: UI.green }]}
+                        style={[styles.actionBtn, { backgroundColor: UI.green, opacity: disableBtns && busy !== 'approve' ? 0.7 : 1 }]}
                         onPress={() =>
                           Alert.alert('Approve Account', `Approve ${profile.full_name || profile.email}?`, [
                             { text: 'Cancel', style: 'cancel' },
                             { text: 'Approve', onPress: () => approveAccountMutation.mutate({ userId: profile.id }) },
                           ])
                         }
-                        disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
+                        disabled={disableBtns}
                       >
-                        <CheckCircle size={16} color="#fff" />
+                        {busy === 'approve' ? <ActivityIndicator color="#fff" /> : <CheckCircle size={16} color="#fff" />}
                         <Text style={styles.actionBtnText}>Approve</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: UI.red }]}
+                        style={[styles.actionBtn, { backgroundColor: UI.red, opacity: disableBtns && busy !== 'reject' ? 0.7 : 1 }]}
                         onPress={() =>
                           Alert.alert('Reject Account', `Reject ${profile.full_name || profile.email}?`, [
                             { text: 'Cancel', style: 'cancel' },
                             { text: 'Reject', style: 'destructive', onPress: () => rejectAccountMutation.mutate({ userId: profile.id }) },
                           ])
                         }
-                        disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
+                        disabled={disableBtns}
                       >
-                        <XCircle size={16} color="#fff" />
+                        {busy === 'reject' ? <ActivityIndicator color="#fff" /> : <XCircle size={16} color="#fff" />}
                         <Text style={styles.actionBtnText}>Reject</Text>
                       </TouchableOpacity>
                     </View>
@@ -1777,6 +1878,8 @@ export default function AdminScreen() {
                 const badge = kycBadge(userKYC.kyc_status);
                 const displayName = (userKYC.full_name || '').trim() || 'Unknown Name';
                 const avatar = getAvatarUrl(userKYC.avatar_url);
+                const busy = accountActionBusy[userKYC.id];
+                const disableBtns = !!busy || approveAccountMutation.isPending || rejectAccountMutation.isPending;
 
                 return (
                   <View key={userKYC.id} style={styles.card}>
@@ -1895,30 +1998,30 @@ export default function AdminScreen() {
 
                     <View style={styles.actionButtons}>
                       <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: UI.green }]}
+                        style={[styles.actionBtn, { backgroundColor: UI.green, opacity: disableBtns && busy !== 'approve' ? 0.7 : 1 }]}
                         onPress={() =>
                           Alert.alert('Approve KYC', `Approve KYC for ${userKYC.full_name || userKYC.email}?`, [
                             { text: 'Cancel', style: 'cancel' },
                             { text: 'Approve', onPress: () => approveAccountMutation.mutate({ userId: userKYC.id }) },
                           ])
                         }
-                        disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
+                        disabled={disableBtns}
                       >
-                        <CheckCircle size={16} color="#fff" />
+                        {busy === 'approve' ? <ActivityIndicator color="#fff" /> : <CheckCircle size={16} color="#fff" />}
                         <Text style={styles.actionBtnText}>Approve</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: UI.red }]}
+                        style={[styles.actionBtn, { backgroundColor: UI.red, opacity: disableBtns && busy !== 'reject' ? 0.7 : 1 }]}
                         onPress={() =>
                           Alert.alert('Reject KYC', `Reject KYC for ${userKYC.full_name || userKYC.email}?`, [
                             { text: 'Cancel', style: 'cancel' },
                             { text: 'Reject', style: 'destructive', onPress: () => rejectAccountMutation.mutate({ userId: userKYC.id }) },
                           ])
                         }
-                        disabled={approveAccountMutation.isPending || rejectAccountMutation.isPending}
+                        disabled={disableBtns}
                       >
-                        <XCircle size={16} color="#fff" />
+                        {busy === 'reject' ? <ActivityIndicator color="#fff" /> : <XCircle size={16} color="#fff" />}
                         <Text style={styles.actionBtnText}>Reject</Text>
                       </TouchableOpacity>
                     </View>
@@ -2259,7 +2362,6 @@ export default function AdminScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-
   header: {
     paddingHorizontal: 16,
     paddingTop: 10,
