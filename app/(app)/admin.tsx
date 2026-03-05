@@ -791,9 +791,9 @@ const setProfileStatusBoth = async (userId: string, next: 'approved' | 'pending'
   // ✅ We ONLY call ONE safe RPC name to avoid old RPCs that call net.http_post
   // RPC should be: admin_set_profile_status(p_user_id uuid, p_status text, p_kyc_status text)
   const call1 = await supabase.rpc('admin_set_profile_status', {
-    p_user_id: userId,
-    p_status: next,
-    p_kyc_status: next,
+    user_id: userId,
+    status: next,
+    kyc_status: next,
   });
 
   if (!call1.error) return;
