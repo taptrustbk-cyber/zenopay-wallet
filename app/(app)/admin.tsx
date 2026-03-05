@@ -815,6 +815,22 @@ export default function AdminScreen() {
 
   if (error3) throw error3;
 };
+  const patchUserInLists = (userId: string, next: 'approved' | 'pending') => {
+  const patch = (arr: any[] | undefined) =>
+    (arr || []).map((u: any) =>
+      u?.id === userId
+        ? {
+            ...u,
+            status: next,
+            kyc_status: next,
+          }
+        : u
+    );
+
+  queryClient.setQueryData(['admin-pending-accounts'], (old: any) => patch(old));
+  queryClient.setQueryData(['admin-kyc-documents'], (old: any) => patch(old));
+  queryClient.setQueryData(['admin-all-users'], (old: any) => patch(old));
+};
 
   /**
    * ✅ FIX: Fetch emails from Supabase Auth (auth.users) using RPC (server-side),
