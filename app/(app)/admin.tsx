@@ -787,35 +787,39 @@ export default function AdminScreen() {
    *
    * It tries RPC first (best for RLS), then falls back to direct update.
    */
-  const setProfileStatusBoth = async (userId: string, next: 'approved' | 'pending') => {
-  // ✅ Always update BOTH columns together using ONE RPC
-  // This prevents the bug "only status changes OR only kyc_status changes"
-  const { error } = await supabase.rpc('admin_set_profile_status', {
+const setProfileStatusBoth = async (userId: string, next: 'approved' | 'pending') => {
+  // ✅ We ONLY call ONE safe RPC name to avoid old RPCs that call net.http_post
+  // RPC should be: admin_set_profile_status(p_user_id uuid, p_status text, p_kyc_status text)
+  const call1 = await supabase.rpc('admin_set_profile_status', {
     p_user_id: userId,
     p_status: next,
     p_kyc_status: next,
   });
 
-  if (!error) return;
+  if (!call1.error) return;
 
-  // ✅ fallback: some people name params differently
-  const { error: error2 } = await supabase.rpc('admin_set_profile_status', {
+  // ✅ fallback: if you created the same function but with different arg names
+  const call2 = await supabase.rpc('admin_set_profile_status', {
     user_id: userId,
     status: next,
     kyc_status: next,
   } as any);
 
-  if (!error2) return;
+  if (!call2.error) return;
 
-  // ✅ final fallback: direct update (only works if RLS allows admin update)
+  // ✅ final fallback: direct update (works only if RLS allows your admin user)
   const { error: error3 } = await supabase
     .from('profiles')
     .update({ status: next, kyc_status: next })
     .eq('id', userId);
 
-  if (error3) throw error3;
+  if (error3) {
+    // throw the most useful error (RPC error usually explains permission/function problems)
+    throw call2.error || call1.error || error3;
+  }
 };
-  const patchUserInLists = (userId: string, next: 'approved' | 'pending') => {
+
+const patchUserInLists = (userId: string, next: 'approved' | 'pending') => {
   const patch = (arr: any[] | undefined) =>
     (arr || []).map((u: any) =>
       u?.id === userId
@@ -831,7 +835,6 @@ export default function AdminScreen() {
   queryClient.setQueryData(['admin-kyc-documents'], (old: any) => patch(old));
   queryClient.setQueryData(['admin-all-users'], (old: any) => patch(old));
 };
-
   /**
    * ✅ FIX: Fetch emails from Supabase Auth (auth.users) using RPC (server-side),
    * because the client cannot read auth.users directly.
