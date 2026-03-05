@@ -83,6 +83,7 @@ type TabKey =
   | 'transactions';
 
 type KycKind = 'id_front' | 'id_back' | 'selfie';
+
 type StorageFile = { name?: string | null };
 
 export default function AdminScreen() {
@@ -122,8 +123,11 @@ export default function AdminScreen() {
   const [kycHasDocs, setKycHasDocs] = useState<Record<string, boolean>>({});
   const [kycScanLoading, setKycScanLoading] = useState(false);
 
-  // ✅ per-user approve/reject loading
+  // ✅ FIX: per-user approve/reject loading (prevents double click + shows correct disable)
   const [accountActionBusy, setAccountActionBusy] = useState<Record<string, 'approve' | 'reject' | null>>({});
+
+  // ✅ FIX: keep a map of user_id -> email (when profiles.email is null/N/A)
+  const [adminEmailMap, setAdminEmailMap] = useState<Record<string, string>>({});
 
   const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
 
@@ -144,6 +148,7 @@ export default function AdminScreen() {
         second: '2-digit',
       });
     } catch {
+      // fallback (if Intl timeZone not available on some devices)
       return d.toLocaleString();
     }
   };
@@ -154,6 +159,7 @@ export default function AdminScreen() {
     if (!avatarUrl) return null;
     if (isLikelyUrl(avatarUrl)) return avatarUrl;
 
+    // if it is a storage path, try to build public url (works only if bucket is public).
     try {
       const pub = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(avatarUrl)?.data?.publicUrl;
       return pub || null;
@@ -169,6 +175,13 @@ export default function AdminScreen() {
     const a = parts[0]?.[0] || '';
     const b = parts.length > 1 ? parts[parts.length - 1]?.[0] : '';
     return (a + b).toUpperCase() || '?';
+  };
+
+  const displayEmailForUser = (userId?: string | null, email?: string | null) => {
+    const e = (email || '').trim();
+    if (e && e.toLowerCase() !== 'n/a') return e;
+    if (userId && adminEmailMap[userId]) return adminEmailMap[userId];
+    return 'N/A';
   };
 
   // ---------- KYC helpers ----------
@@ -212,8 +225,8 @@ export default function AdminScreen() {
 
   // ✅ smarter resolver (now uses cache)
   const resolveKycPathSmart = async (userId: string, kind: KycKind) => {
+    // 1) use cached list if exists, else list
     const data = await getFolderFiles(userId);
-
     if (data && data.length > 0) {
       const lower = kind.toLowerCase();
 
@@ -229,11 +242,11 @@ export default function AdminScreen() {
       if (match?.name) return `${userId}/${match.name}`;
     }
 
-    // fallback: try common filenames
+    // 2) fallback: try common filenames without list permission
     for (const ext of KYC_EXTS) {
       const candidate = `${userId}/${kind}.${ext}`;
       const signed = await trySignedUrl(candidate);
-      if (signed) return candidate;
+      if (signed) return candidate; // exists
     }
 
     return null;
@@ -243,9 +256,11 @@ export default function AdminScreen() {
     if (!pathOrUrl) return null;
     if (isLikelyUrl(pathOrUrl)) return pathOrUrl;
 
+    // ✅ 1) signed url first (works for private buckets)
     const signed = await trySignedUrl(pathOrUrl);
     if (signed) return signed;
 
+    // ✅ 2) then public url (works if bucket is public)
     const pub = supabase.storage.from(KYC_BUCKET).getPublicUrl(pathOrUrl)?.data?.publicUrl;
     if (pub) return pub;
 
@@ -260,6 +275,7 @@ export default function AdminScreen() {
 
     let finalPath = pathOrUrl || null;
 
+    // ✅ if column empty, resolve from storage
     if ((!finalPath || finalPath === 'null') && userId && kind) {
       finalPath = await resolveKycPathSmart(userId, kind);
     }
@@ -274,7 +290,9 @@ export default function AdminScreen() {
     setKycPreviewUrl(url || '');
     setKycPreviewLoading(false);
 
-    if (!url) Alert.alert('Error', 'Failed to load image. Check bucket privacy/policy.');
+    if (!url) {
+      Alert.alert('Error', 'Failed to load image. Check bucket privacy/policy.');
+    }
   };
 
   const openExternal = async (pathOrUrl?: string | null, userId?: string, kind?: KycKind) => {
@@ -350,6 +368,7 @@ export default function AdminScreen() {
     };
   }, [isAdmin, selectedTab, queryClient]);
 
+  // ✅ realtime for KYC documents so new users appear automatically
   useEffect(() => {
     if (!isAdmin || selectedTab !== 'kyc_documents') return;
 
@@ -367,6 +386,7 @@ export default function AdminScreen() {
     };
   }, [isAdmin, selectedTab, queryClient]);
 
+  // ✅ realtime manage all users
   useEffect(() => {
     if (!isAdmin || selectedTab !== 'manage_all_users') return;
 
@@ -484,7 +504,9 @@ export default function AdminScreen() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, city, country, avatar_url, kyc_status, status, id_front, id_back, selfie, created_at')
+        .select(
+          'id, email, full_name, city, country, avatar_url, kyc_status, status, id_front, id_back, selfie, created_at'
+        )
         .in('status', ['pending', 'approved', 'rejected'])
         .order('created_at', { ascending: false });
 
@@ -494,6 +516,7 @@ export default function AdminScreen() {
     enabled: selectedTab === 'kyc_documents',
   });
 
+  // ✅ Manage all users (ALL profiles)
   const allUsersQuery = useQuery({
     queryKey: ['admin-all-users'],
     queryFn: async () => {
@@ -649,6 +672,7 @@ export default function AdminScreen() {
       const updates: Record<string, boolean> = {};
       const cacheUpdates: Record<string, StorageFile[]> = {};
 
+      // ✅ limit parallel requests to avoid overload
       const batchSize = 10;
       for (let i = 0; i < users.length; i += batchSize) {
         const slice = users.slice(i, i + batchSize);
@@ -657,6 +681,7 @@ export default function AdminScreen() {
           slice.map(async (u: any) => {
             const userId = u.id;
 
+            // if already cached, compute quickly
             if (kycFolderCache[userId]) {
               return { userId, files: kycFolderCache[userId] };
             }
@@ -701,6 +726,8 @@ export default function AdminScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTab, kycDocumentsQuery.isLoading, kycDocumentsQuery.data]);
 
+  // ✅ only show users that truly have docs:
+  // - columns have value OR storage folder contains any KYC file
   const kycUsersWithDocs = useMemo(() => {
     const list = (kycDocumentsQuery.data || []) as any[];
 
@@ -724,37 +751,183 @@ export default function AdminScreen() {
     });
   }, [allUsersQuery.data, userSearch]);
 
-  // ---------- FIX HELPERS (RPC) ----------
+  // ---------- FIX HELPERS (Approve/Reject + Emails) ----------
   const isMissingFnError = (err: any) => {
     const msg = String(err?.message || err?.hint || err?.details || '').toLowerCase();
-    return msg.includes('could not find the function') || msg.includes('does not exist') || (msg.includes('function') && msg.includes('not found'));
+    return (
+      msg.includes('could not find the function') ||
+      msg.includes('does not exist') ||
+      (msg.includes('function') && msg.includes('not found'))
+    );
   };
 
   const tryRpcAny = async (names: string[], args: Record<string, any>) => {
     let lastErr: any = null;
 
     for (const fnName of names) {
-      const { error } = await supabase.rpc(fnName, args as any);
-      if (!error) return { used: fnName };
+      const { data, error } = await supabase.rpc(fnName, args as any);
+      if (!error) return { used: fnName, data };
       lastErr = error;
 
+      // if function missing, continue trying other names
       if (isMissingFnError(error)) continue;
+
+      // other errors should stop immediately (permission/rls/etc)
       throw error;
     }
 
+    // all missing
     throw lastErr || new Error('RPC function not found');
   };
 
   /**
-   * ✅ IMPORTANT FIX:
-   * Some RPC functions only update ONE column (status OR kyc_status).
-   * So after RPC success, we force-update BOTH columns with .update().
-   * If RLS blocks this update, you must update your RPC to set both columns.
+   * ✅ FIX: Ensure BOTH profiles.status and profiles.kyc_status always change together.
+   * - Approve => approved/approved
+   * - Reject  => pending/pending  (as you requested)
+   *
+   * It tries RPC first (best for RLS), then falls back to direct update.
    */
-  const forceUpdateBothColumns = async (userId: string, status: 'pending' | 'approved' | 'rejected', kyc_status: 'pending' | 'approved' | 'rejected') => {
-    const { error } = await supabase.from('profiles').update({ status, kyc_status }).eq('id', userId);
+  const setProfileStatusBoth = async (userId: string, next: 'approved' | 'pending') => {
+    // Try common RPC names (SECURITY DEFINER)
+    const rpcNames = [
+      'admin_set_kyc_status',
+      'admin_set_profile_status',
+      'admin_update_kyc_status',
+      'admin_update_profile_status',
+      'admin_change_status',
+      'set_kyc_status',
+      'set_profile_status',
+    ];
+
+    // try (p_user_id, p_status, p_kyc_status)
+    try {
+      await tryRpcAny(rpcNames, { p_user_id: userId, p_status: next, p_kyc_status: next });
+      return;
+    } catch (e1: any) {
+      if (!isMissingFnError(e1)) throw e1;
+    }
+
+    // try (user_id, status, kyc_status)
+    try {
+      await tryRpcAny(rpcNames, { user_id: userId, status: next, kyc_status: next });
+      return;
+    } catch (e2: any) {
+      if (!isMissingFnError(e2)) throw e2;
+    }
+
+    // Fallback: direct update (works only if your RLS policy allows admin user)
+    const { error } = await supabase.from('profiles').update({ status: next, kyc_status: next }).eq('id', userId);
     if (error) throw error;
   };
+
+  /**
+   * ✅ FIX: Fetch emails from Supabase Auth (auth.users) using RPC (server-side),
+   * because the client cannot read auth.users directly.
+   *
+   * This function will silently do nothing if you did not create the RPC.
+   *
+   * Expected RPC return formats supported:
+   * - [{ id: 'uuid', email: 'a@b.com' }, ...]
+   * - [{ user_id: 'uuid', email: 'a@b.com' }, ...]
+   * - { [id]: email }
+   */
+  const fetchAuthEmailsByIds = async (ids: string[]) => {
+    const unique = Array.from(new Set(ids.filter(Boolean)));
+    if (!unique.length) return;
+
+    // Don't re-fetch already known
+    const missing = unique.filter((id) => !adminEmailMap[id]);
+    if (!missing.length) return;
+
+    const rpcNames = ['admin_get_user_emails', 'admin_get_auth_emails', 'get_user_emails', 'get_auth_emails'];
+
+    // try: { p_user_ids: uuid[] }
+    try {
+      const res = await tryRpcAny(rpcNames, { p_user_ids: missing });
+      const data = res?.data;
+
+      const nextMap: Record<string, string> = {};
+
+      if (Array.isArray(data)) {
+        data.forEach((row: any) => {
+          const id = row?.id || row?.user_id;
+          const email = row?.email;
+          if (id && email) nextMap[id] = String(email);
+        });
+      } else if (data && typeof data === 'object') {
+        Object.keys(data).forEach((k) => {
+          const v = (data as any)[k];
+          if (v) nextMap[k] = String(v);
+        });
+      }
+
+      if (Object.keys(nextMap).length) {
+        setAdminEmailMap((prev) => ({ ...prev, ...nextMap }));
+      }
+      return;
+    } catch (e1: any) {
+      if (!isMissingFnError(e1)) {
+        // real error (permissions etc) -> show once, but don't break screen
+        console.warn('Email RPC error:', e1?.message || e1);
+        return;
+      }
+    }
+
+    // try: { user_ids: uuid[] }
+    try {
+      const res = await tryRpcAny(rpcNames, { user_ids: missing });
+      const data = res?.data;
+
+      const nextMap: Record<string, string> = {};
+
+      if (Array.isArray(data)) {
+        data.forEach((row: any) => {
+          const id = row?.id || row?.user_id;
+          const email = row?.email;
+          if (id && email) nextMap[id] = String(email);
+        });
+      } else if (data && typeof data === 'object') {
+        Object.keys(data).forEach((k) => {
+          const v = (data as any)[k];
+          if (v) nextMap[k] = String(v);
+        });
+      }
+
+      if (Object.keys(nextMap).length) {
+        setAdminEmailMap((prev) => ({ ...prev, ...nextMap }));
+      }
+    } catch (e2: any) {
+      // if RPC does not exist, silently ignore
+      if (!isMissingFnError(e2)) console.warn('Email RPC error:', e2?.message || e2);
+    }
+  };
+
+  // ✅ auto-fetch missing emails when lists load
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const ids: string[] = [];
+    if (selectedTab === 'kyc_documents') {
+      (kycUsersWithDocs || []).forEach((u: any) => {
+        const hasEmail = (u.email || '').trim() && (u.email || '').trim().toLowerCase() !== 'n/a';
+        if (!hasEmail) ids.push(u.id);
+      });
+    } else if (selectedTab === 'account_approval') {
+      (pendingAccountsQuery.data || []).forEach((u: any) => {
+        const hasEmail = (u.email || '').trim() && (u.email || '').trim().toLowerCase() !== 'n/a';
+        if (!hasEmail) ids.push(u.id);
+      });
+    } else if (selectedTab === 'manage_all_users') {
+      (allUsersQuery.data || []).slice(0, 60).forEach((u: any) => {
+        // limit, so we don't spam RPC for thousands users
+        const hasEmail = (u.email || '').trim() && (u.email || '').trim().toLowerCase() !== 'n/a';
+        if (!hasEmail) ids.push(u.id);
+      });
+    }
+
+    if (ids.length) fetchAuthEmailsByIds(ids);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTab, isAdmin, kycUsersWithDocs, pendingAccountsQuery.data, allUsersQuery.data]);
 
   // ---------- mutations ----------
   const updateDepositMutation = useMutation({
@@ -767,7 +940,10 @@ export default function AdminScreen() {
         if (order) {
           const { data: wallet } = await supabase.from('wallets').select('*').eq('user_id', order.user_id).single();
           if (wallet) {
-            await supabase.from('wallets').update({ balance: wallet.balance + order.amount }).eq('user_id', order.user_id);
+            await supabase
+              .from('wallets')
+              .update({ balance: wallet.balance + order.amount })
+              .eq('user_id', order.user_id);
           }
         }
       }
@@ -781,48 +957,26 @@ export default function AdminScreen() {
     },
   });
 
-  // ✅ Account Approval: Approve -> approved/approved
+  /**
+   * ✅ FIXED: Approve KYC/Account
+   * - MUST set BOTH columns: profiles.status + profiles.kyc_status => 'approved'
+   */
   const approveAccountMutation = useMutation({
     mutationFn: async ({ userId }: { userId: string }) => {
       setAccountActionBusy((prev) => ({ ...prev, [userId]: 'approve' }));
-
-      const rpcNames = [
-        'admin_approve_account',
-        'admin_approve_user',
-        'admin_approve_profile',
-        'approve_account',
-        'approve_user',
-      ];
-
-      // try RPC (some projects have it)
-      try {
-        await tryRpcAny(rpcNames, { p_user_id: userId });
-      } catch (e1: any) {
-        if (!isMissingFnError(e1)) throw e1;
-        try {
-          await tryRpcAny(rpcNames, { user_id: userId });
-        } catch (e2: any) {
-          if (!isMissingFnError(e2)) throw e2;
-          // fallback direct update
-          await forceUpdateBothColumns(userId, 'approved', 'approved');
-          return;
-        }
-      }
-
-      // ✅ FORCE both columns even if RPC only changed one column
-      await forceUpdateBothColumns(userId, 'approved', 'approved');
+      await setProfileStatusBoth(userId, 'approved');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
       queryClient.invalidateQueries({ queryKey: ['admin-kyc-documents'] });
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
       queryClient.invalidateQueries({ queryKey: ['admin-all-users'] });
-      Alert.alert('Success', 'Account approved successfully!');
+      Alert.alert('Success', 'Approved: status + kyc_status updated.');
     },
     onError: (error: any) => {
       const msg =
         error?.message ||
-        'Failed to approve account. If this is RLS, create a SECURITY DEFINER RPC (server-side) and set both columns there.';
+        'Failed to approve. If this is RLS, create a SECURITY DEFINER RPC to update profiles.status and profiles.kyc_status.';
       Alert.alert('Error', msg);
     },
     onSettled: (_d, _e, vars) => {
@@ -830,136 +984,27 @@ export default function AdminScreen() {
     },
   });
 
-  // ✅ Account Approval: Reject -> rejected/rejected (kept as you had it)
+  /**
+   * ✅ FIXED: Reject KYC/Account
+   * - As you requested: set BOTH columns back to 'pending' (NOT rejected)
+   */
   const rejectAccountMutation = useMutation({
     mutationFn: async ({ userId }: { userId: string }) => {
       setAccountActionBusy((prev) => ({ ...prev, [userId]: 'reject' }));
-
-      const rpcNames = [
-        'admin_reject_account',
-        'admin_reject_user',
-        'admin_reject_profile',
-        'reject_account',
-        'reject_user',
-      ];
-
-      try {
-        await tryRpcAny(rpcNames, { p_user_id: userId, p_reason: 'Rejected by admin' });
-      } catch (e1: any) {
-        if (!isMissingFnError(e1)) throw e1;
-        try {
-          await tryRpcAny(rpcNames, { user_id: userId, reason: 'Rejected by admin' });
-        } catch (e2: any) {
-          if (!isMissingFnError(e2)) throw e2;
-          await forceUpdateBothColumns(userId, 'rejected', 'rejected');
-          return;
-        }
-      }
-
-      // ✅ FORCE both columns even if RPC only changed one column
-      await forceUpdateBothColumns(userId, 'rejected', 'rejected');
+      await setProfileStatusBoth(userId, 'pending');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
       queryClient.invalidateQueries({ queryKey: ['admin-kyc-documents'] });
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
       queryClient.invalidateQueries({ queryKey: ['admin-all-users'] });
-      Alert.alert('Success', 'Account rejected.');
+      Alert.alert('Success', 'Set back to pending: status + kyc_status updated.');
     },
     onError: (error: any) => {
       const msg =
         error?.message ||
-        'Failed to reject account. If this is RLS, create a SECURITY DEFINER RPC (server-side) and set both columns there.';
+        'Failed to reject. If this is RLS, create a SECURITY DEFINER RPC to update profiles.status and profiles.kyc_status.';
       Alert.alert('Error', msg);
-    },
-    onSettled: (_d, _e, vars) => {
-      if (vars?.userId) setAccountActionBusy((prev) => ({ ...prev, [vars.userId]: null }));
-    },
-  });
-
-  // ✅ NEW: KYC Documents screen actions:
-  // Approve -> approved/approved
-  const approveKycMutation = useMutation({
-    mutationFn: async ({ userId }: { userId: string }) => {
-      setAccountActionBusy((prev) => ({ ...prev, [userId]: 'approve' }));
-
-      const rpcNames = [
-        'admin_approve_kyc',
-        'admin_approve_account',
-        'admin_approve_user',
-        'admin_approve_profile',
-        'approve_kyc',
-        'approve_account',
-        'approve_user',
-      ];
-
-      try {
-        await tryRpcAny(rpcNames, { p_user_id: userId });
-      } catch (e1: any) {
-        if (!isMissingFnError(e1)) throw e1;
-        try {
-          await tryRpcAny(rpcNames, { user_id: userId });
-        } catch (e2: any) {
-          if (!isMissingFnError(e2)) throw e2;
-          await forceUpdateBothColumns(userId, 'approved', 'approved');
-          return;
-        }
-      }
-
-      await forceUpdateBothColumns(userId, 'approved', 'approved');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-kyc-documents'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-all-users'] });
-      Alert.alert('Success', 'KYC approved (status + kyc_status updated).');
-    },
-    onError: (error: any) => {
-      Alert.alert('Error', error?.message || 'Failed to approve KYC');
-    },
-    onSettled: (_d, _e, vars) => {
-      if (vars?.userId) setAccountActionBusy((prev) => ({ ...prev, [vars.userId]: null }));
-    },
-  });
-
-  // Reject -> BOTH back to pending (as you requested)
-  const resetKycToPendingMutation = useMutation({
-    mutationFn: async ({ userId }: { userId: string }) => {
-      setAccountActionBusy((prev) => ({ ...prev, [userId]: 'reject' }));
-
-      const rpcNames = [
-        'admin_reset_kyc_pending',
-        'admin_reject_kyc', // sometimes projects call it reject but you want pending
-        'reset_kyc_pending',
-        'reject_kyc',
-      ];
-
-      // try rpc, but ALWAYS force-update both columns after
-      try {
-        await tryRpcAny(rpcNames, { p_user_id: userId });
-      } catch (e1: any) {
-        if (!isMissingFnError(e1)) throw e1;
-        try {
-          await tryRpcAny(rpcNames, { user_id: userId });
-        } catch (e2: any) {
-          if (!isMissingFnError(e2)) throw e2;
-          await forceUpdateBothColumns(userId, 'pending', 'pending');
-          return;
-        }
-      }
-
-      await forceUpdateBothColumns(userId, 'pending', 'pending');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-kyc-documents'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-pending-accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-all-users'] });
-      Alert.alert('Success', 'KYC returned to pending (status + kyc_status updated).');
-    },
-    onError: (error: any) => {
-      Alert.alert('Error', error?.message || 'Failed to reset KYC');
     },
     onSettled: (_d, _e, vars) => {
       if (vars?.userId) setAccountActionBusy((prev) => ({ ...prev, [vars.userId]: null }));
@@ -968,7 +1013,11 @@ export default function AdminScreen() {
 
   const addBalanceMutation = useMutation({
     mutationFn: async ({ userId, amount, note }: { userId: string; amount: number; note: string }) => {
-      const { data: wallet, error: walletError } = await supabase.from('wallets').select('balance').eq('user_id', userId).maybeSingle();
+      const { data: wallet, error: walletError } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', userId)
+        .maybeSingle();
 
       if (walletError) throw new Error(walletError.message || 'Failed to fetch wallet');
       if (!wallet) throw new Error('Wallet not found for this user');
@@ -1009,7 +1058,11 @@ export default function AdminScreen() {
 
   const withdrawBalanceMutation = useMutation({
     mutationFn: async ({ userId, amount }: { userId: string; amount: number }) => {
-      const { data: wallet, error: walletError } = await supabase.from('wallets').select('balance').eq('user_id', userId).maybeSingle();
+      const { data: wallet, error: walletError } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', userId)
+        .maybeSingle();
 
       if (walletError) throw new Error(walletError.message || 'Failed to fetch wallet');
       if (!wallet) throw new Error('Wallet not found for this user');
@@ -1096,7 +1149,11 @@ export default function AdminScreen() {
   const MenuButton = ({ label, tab, icon }: { label: string; tab: TabKey; icon: React.ReactNode }) => {
     const active = selectedTab === tab;
     return (
-      <TouchableOpacity style={[styles.menuBtn, active && styles.menuBtnActive]} onPress={() => setSelectedTab(tab)} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={[styles.menuBtn, active && styles.menuBtnActive]}
+        onPress={() => setSelectedTab(tab)}
+        activeOpacity={0.85}
+      >
         <View style={[styles.menuIconWrap, active && styles.menuIconWrapActive]}>{icon}</View>
         <Text style={[styles.menuText, active && styles.menuTextActive]} numberOfLines={2}>
           {label}
@@ -1146,27 +1203,54 @@ export default function AdminScreen() {
 
       {/* ✅ MENU (3 buttons per row) */}
       <View style={styles.menuWrap}>
-        <MenuButton label="Dashboard" tab="dashboard" icon={<BarChart3 size={16} color={selectedTab === 'dashboard' ? UI.blue : UI.text2} />} />
+        <MenuButton
+          label="Dashboard"
+          tab="dashboard"
+          icon={<BarChart3 size={16} color={selectedTab === 'dashboard' ? UI.blue : UI.text2} />}
+        />
+
+        {/* ✅ RENAMED: Document Image User -> Manage All User */}
         <MenuButton
           label="Manage All User"
           tab="manage_all_users"
           icon={<Users size={16} color={selectedTab === 'manage_all_users' ? UI.blue : UI.text2} />}
         />
+
         <MenuButton
           label="Account Approval"
           tab="account_approval"
           icon={<ShieldCheck size={16} color={selectedTab === 'account_approval' ? UI.blue : UI.text2} />}
         />
-        <MenuButton label="Deposits" tab="deposits" icon={<ArrowDownToLine size={16} color={selectedTab === 'deposits' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Withdrawals" tab="withdrawals" icon={<ArrowUpFromLine size={16} color={selectedTab === 'withdrawals' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Add Balance" tab="add_balance" icon={<PlusCircle size={16} color={selectedTab === 'add_balance' ? UI.blue : UI.text2} />} />
+        <MenuButton
+          label="Deposits"
+          tab="deposits"
+          icon={<ArrowDownToLine size={16} color={selectedTab === 'deposits' ? UI.blue : UI.text2} />}
+        />
+        <MenuButton
+          label="Withdrawals"
+          tab="withdrawals"
+          icon={<ArrowUpFromLine size={16} color={selectedTab === 'withdrawals' ? UI.blue : UI.text2} />}
+        />
+        <MenuButton
+          label="Add Balance"
+          tab="add_balance"
+          icon={<PlusCircle size={16} color={selectedTab === 'add_balance' ? UI.blue : UI.text2} />}
+        />
         <MenuButton
           label="Withdraw Balance"
           tab="withdraw_balance"
           icon={<MinusCircle size={16} color={selectedTab === 'withdraw_balance' ? UI.blue : UI.text2} />}
         />
-        <MenuButton label="KYC Document" tab="kyc_documents" icon={<FileText size={16} color={selectedTab === 'kyc_documents' ? UI.blue : UI.text2} />} />
-        <MenuButton label="Transactions" tab="transactions" icon={<ReceiptText size={16} color={selectedTab === 'transactions' ? UI.blue : UI.text2} />} />
+        <MenuButton
+          label="KYC Document"
+          tab="kyc_documents"
+          icon={<FileText size={16} color={selectedTab === 'kyc_documents' ? UI.blue : UI.text2} />}
+        />
+        <MenuButton
+          label="Transactions"
+          tab="transactions"
+          icon={<ReceiptText size={16} color={selectedTab === 'transactions' ? UI.blue : UI.text2} />}
+        />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -1216,7 +1300,7 @@ export default function AdminScreen() {
 
                       <View style={{ flex: 1 }}>
                         <Text style={styles.cardTitle}>{displayName}</Text>
-                        <Text style={styles.cardSubtitle}>{u.email || 'N/A'}</Text>
+                        <Text style={styles.cardSubtitle}>{displayEmailForUser(u.id, u.email)}</Text>
                       </View>
 
                       <View style={[styles.badge, { backgroundColor: UI.blueSoft }]}>
@@ -1232,7 +1316,7 @@ export default function AdminScreen() {
 
                     <View style={styles.row}>
                       <Text style={styles.rowLabel}>Email</Text>
-                      <Text style={styles.rowValue}>{u.email || 'N/A'}</Text>
+                      <Text style={styles.rowValue}>{displayEmailForUser(u.id, u.email)}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -1417,7 +1501,7 @@ export default function AdminScreen() {
 
                       <View style={{ flex: 1 }}>
                         <Text style={styles.cardTitle}>{(profile.full_name || '').trim() || 'Unknown Name'}</Text>
-                        <Text style={styles.cardSubtitle}>{profile.email || 'N/A'}</Text>
+                        <Text style={styles.cardSubtitle}>{displayEmailForUser(profile.id, profile.email)}</Text>
                       </View>
 
                       <View style={[styles.badge, { backgroundColor: UI.amberSoft }]}>
@@ -1438,12 +1522,12 @@ export default function AdminScreen() {
 
                     <View style={styles.row}>
                       <Text style={styles.rowLabel}>KYC Status</Text>
-                      <Text style={styles.rowValue}>{profile.kyc_status || 'N/A'}</Text>
+                      <Text style={styles.rowValue}>{profile.kyc_status || 'pending'}</Text>
                     </View>
 
                     <View style={styles.row}>
                       <Text style={styles.rowLabel}>Status</Text>
-                      <Text style={styles.rowValue}>{profile.status || 'N/A'}</Text>
+                      <Text style={styles.rowValue}>{profile.status || 'pending'}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -1455,7 +1539,7 @@ export default function AdminScreen() {
                       <TouchableOpacity
                         style={[styles.actionBtn, { backgroundColor: UI.green, opacity: disableBtns && busy !== 'approve' ? 0.7 : 1 }]}
                         onPress={() =>
-                          Alert.alert('Approve Account', `Approve ${profile.full_name || profile.email}?`, [
+                          Alert.alert('Approve Account', `Approve ${profile.full_name || displayEmailForUser(profile.id, profile.email)}?`, [
                             { text: 'Cancel', style: 'cancel' },
                             { text: 'Approve', onPress: () => approveAccountMutation.mutate({ userId: profile.id }) },
                           ])
@@ -1469,7 +1553,7 @@ export default function AdminScreen() {
                       <TouchableOpacity
                         style={[styles.actionBtn, { backgroundColor: UI.red, opacity: disableBtns && busy !== 'reject' ? 0.7 : 1 }]}
                         onPress={() =>
-                          Alert.alert('Reject Account', `Reject ${profile.full_name || profile.email}?`, [
+                          Alert.alert('Reject Account', `Set back to pending for ${profile.full_name || displayEmailForUser(profile.id, profile.email)}?`, [
                             { text: 'Cancel', style: 'cancel' },
                             { text: 'Reject', style: 'destructive', onPress: () => rejectAccountMutation.mutate({ userId: profile.id }) },
                           ])
@@ -1525,7 +1609,7 @@ export default function AdminScreen() {
 
                       <View style={{ flex: 1 }}>
                         <Text style={styles.cardTitle}>{displayName}</Text>
-                        <Text style={styles.cardSubtitle}>{p.email || 'N/A'}</Text>
+                        <Text style={styles.cardSubtitle}>{displayEmailForUser(p.id, p.email)}</Text>
                       </View>
 
                       <View
@@ -1653,7 +1737,7 @@ export default function AdminScreen() {
 
                       <View style={{ flex: 1 }}>
                         <Text style={styles.cardTitle}>{displayName}</Text>
-                        <Text style={styles.cardSubtitle}>{p.email || 'N/A'}</Text>
+                        <Text style={styles.cardSubtitle}>{displayEmailForUser(p.id, p.email)}</Text>
                       </View>
 
                       <View
@@ -1811,7 +1895,7 @@ export default function AdminScreen() {
 
                         <View style={{ flex: 1 }}>
                           <Text style={styles.cardTitle}>{displayName}</Text>
-                          <Text style={styles.cardSubtitle}>{userProfile.email}</Text>
+                          <Text style={styles.cardSubtitle}>{displayEmailForUser(userProfile.id, userProfile.email)}</Text>
                           <Text style={styles.balanceText}>Balance: ${userProfile.wallet?.[0]?.balance?.toFixed(2) || '0.00'}</Text>
                           <Text style={styles.smallMeta}>
                             {userProfile.city || 'N/A'} • {userProfile.country || 'N/A'}
@@ -1822,7 +1906,7 @@ export default function AdminScreen() {
                           style={[styles.smallBtn, { backgroundColor: UI.green }]}
                           onPress={() => {
                             setSelectedUserId(userProfile.id);
-                            setSelectedUserEmail(userProfile.email);
+                            setSelectedUserEmail(displayEmailForUser(userProfile.id, userProfile.email));
                             setShowAddBalanceModal(true);
                           }}
                         >
@@ -1888,7 +1972,7 @@ export default function AdminScreen() {
 
                         <View style={{ flex: 1 }}>
                           <Text style={styles.cardTitle}>{displayName}</Text>
-                          <Text style={styles.cardSubtitle}>{userProfile.email}</Text>
+                          <Text style={styles.cardSubtitle}>{displayEmailForUser(userProfile.id, userProfile.email)}</Text>
                           <Text style={styles.balanceText}>Balance: ${userProfile.wallet?.[0]?.balance?.toFixed(2) || '0.00'}</Text>
                           <Text style={styles.smallMeta}>
                             {userProfile.city || 'N/A'} • {userProfile.country || 'N/A'}
@@ -1925,7 +2009,7 @@ export default function AdminScreen() {
           </>
         )}
 
-        {/* ---------------- KYC Documents ---------------- */}
+        {/* ---------------- KYC Documents (ALL USERS WITH DOCS) ---------------- */}
         {selectedTab === 'kyc_documents' && (
           <>
             <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>KYC Verification Panel</Text>
@@ -1940,17 +2024,10 @@ export default function AdminScreen() {
                 const badge = kycBadge(userKYC.kyc_status);
                 const displayName = (userKYC.full_name || '').trim() || 'Unknown Name';
                 const avatar = getAvatarUrl(userKYC.avatar_url);
-
-                // email can only be displayed if stored in profiles.email
-                const displayEmail = userKYC.email || 'N/A';
-
                 const busy = accountActionBusy[userKYC.id];
-                const disableBtns =
-                  !!busy ||
-                  approveKycMutation.isPending ||
-                  resetKycToPendingMutation.isPending ||
-                  approveAccountMutation.isPending ||
-                  rejectAccountMutation.isPending;
+                const disableBtns = !!busy || approveAccountMutation.isPending || rejectAccountMutation.isPending;
+
+                const showEmail = displayEmailForUser(userKYC.id, userKYC.email);
 
                 return (
                   <View key={userKYC.id} style={styles.card}>
@@ -1967,7 +2044,7 @@ export default function AdminScreen() {
 
                       <View style={{ flex: 1 }}>
                         <Text style={styles.cardTitle}>{displayName}</Text>
-                        <Text style={styles.cardSubtitle}>{displayEmail}</Text>
+                        <Text style={styles.cardSubtitle}>{showEmail}</Text>
                       </View>
 
                       <View style={[styles.badge, { backgroundColor: badge.bg }]}>
@@ -1993,7 +2070,7 @@ export default function AdminScreen() {
 
                     <View style={styles.row}>
                       <Text style={styles.rowLabel}>Email</Text>
-                      <Text style={styles.rowValue}>{displayEmail}</Text>
+                      <Text style={styles.rowValue}>{showEmail}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -2003,7 +2080,7 @@ export default function AdminScreen() {
 
                     <View style={styles.row}>
                       <Text style={styles.rowLabel}>Status</Text>
-                      <Text style={styles.rowValue}>{userKYC.status || 'N/A'}</Text>
+                      <Text style={styles.rowValue}>{userKYC.status || 'pending'}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -2071,9 +2148,9 @@ export default function AdminScreen() {
                       <TouchableOpacity
                         style={[styles.actionBtn, { backgroundColor: UI.green, opacity: disableBtns && busy !== 'approve' ? 0.7 : 1 }]}
                         onPress={() =>
-                          Alert.alert('Approve KYC', `Approve KYC for ${userKYC.full_name || userKYC.email}?`, [
+                          Alert.alert('Approve KYC', `Approve KYC for ${userKYC.full_name || showEmail}?`, [
                             { text: 'Cancel', style: 'cancel' },
-                            { text: 'Approve', onPress: () => approveKycMutation.mutate({ userId: userKYC.id }) },
+                            { text: 'Approve', onPress: () => approveAccountMutation.mutate({ userId: userKYC.id }) },
                           ])
                         }
                         disabled={disableBtns}
@@ -2085,9 +2162,9 @@ export default function AdminScreen() {
                       <TouchableOpacity
                         style={[styles.actionBtn, { backgroundColor: UI.red, opacity: disableBtns && busy !== 'reject' ? 0.7 : 1 }]}
                         onPress={() =>
-                          Alert.alert('Reject KYC', `Return KYC to pending for ${userKYC.full_name || userKYC.email}?`, [
+                          Alert.alert('Reject KYC', `Set back to pending for ${userKYC.full_name || showEmail}?`, [
                             { text: 'Cancel', style: 'cancel' },
-                            { text: 'Reject', style: 'destructive', onPress: () => resetKycToPendingMutation.mutate({ userId: userKYC.id }) },
+                            { text: 'Reject', style: 'destructive', onPress: () => rejectAccountMutation.mutate({ userId: userKYC.id }) },
                           ])
                         }
                         disabled={disableBtns}
@@ -2144,7 +2221,11 @@ export default function AdminScreen() {
                       { key: 'purchase_giftcard', label: 'Gift Card' },
                       { key: 'admin_add', label: 'Admin Add' },
                     ].map((c) => (
-                      <TouchableOpacity key={c.key} style={[styles.filterChip, txTypeFilter === c.key && styles.filterChipActive]} onPress={() => setTxTypeFilter(c.key)}>
+                      <TouchableOpacity
+                        key={c.key}
+                        style={[styles.filterChip, txTypeFilter === c.key && styles.filterChipActive]}
+                        onPress={() => setTxTypeFilter(c.key)}
+                      >
                         <Text style={[styles.filterChipText, txTypeFilter === c.key && styles.filterChipTextActive]}>{c.label}</Text>
                       </TouchableOpacity>
                     ))}
@@ -2161,7 +2242,11 @@ export default function AdminScreen() {
                       { key: 'positive', label: '+ Positive' },
                       { key: 'negative', label: '− Negative' },
                     ].map((c) => (
-                      <TouchableOpacity key={c.key} style={[styles.filterChip, txAmountFilter === c.key && styles.filterChipActive]} onPress={() => setTxAmountFilter(c.key)}>
+                      <TouchableOpacity
+                        key={c.key}
+                        style={[styles.filterChip, txAmountFilter === c.key && styles.filterChipActive]}
+                        onPress={() => setTxAmountFilter(c.key)}
+                      >
                         <Text style={[styles.filterChipText, txAmountFilter === c.key && styles.filterChipTextActive]}>{c.label}</Text>
                       </TouchableOpacity>
                     ))}
@@ -2479,6 +2564,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
+  // ✅ 3 buttons per row
   menuWrap: {
     paddingHorizontal: 16,
     paddingTop: 12,
