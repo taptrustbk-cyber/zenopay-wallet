@@ -788,37 +788,33 @@ export default function AdminScreen() {
    * It tries RPC first (best for RLS), then falls back to direct update.
    */
   const setProfileStatusBoth = async (userId: string, next: 'approved' | 'pending') => {
-    // Try common RPC names (SECURITY DEFINER)
-    const rpcNames = [
-      'admin_set_kyc_status',
-      'admin_set_profile_status',
-      'admin_update_kyc_status',
-      'admin_update_profile_status',
-      'admin_change_status',
-      'set_kyc_status',
-      'set_profile_status',
-    ];
+  // ✅ Always update BOTH columns together using ONE RPC
+  // This prevents the bug "only status changes OR only kyc_status changes"
+  const { error } = await supabase.rpc('admin_set_profile_status', {
+    p_user_id: userId,
+    p_status: next,
+    p_kyc_status: next,
+  });
 
-    // try (p_user_id, p_status, p_kyc_status)
-    try {
-      await tryRpcAny(rpcNames, { p_user_id: userId, p_status: next, p_kyc_status: next });
-      return;
-    } catch (e1: any) {
-      if (!isMissingFnError(e1)) throw e1;
-    }
+  if (!error) return;
 
-    // try (user_id, status, kyc_status)
-    try {
-      await tryRpcAny(rpcNames, { user_id: userId, status: next, kyc_status: next });
-      return;
-    } catch (e2: any) {
-      if (!isMissingFnError(e2)) throw e2;
-    }
+  // ✅ fallback: some people name params differently
+  const { error: error2 } = await supabase.rpc('admin_set_profile_status', {
+    user_id: userId,
+    status: next,
+    kyc_status: next,
+  } as any);
 
-    // Fallback: direct update (works only if your RLS policy allows admin user)
-    const { error } = await supabase.from('profiles').update({ status: next, kyc_status: next }).eq('id', userId);
-    if (error) throw error;
-  };
+  if (!error2) return;
+
+  // ✅ final fallback: direct update (only works if RLS allows admin update)
+  const { error: error3 } = await supabase
+    .from('profiles')
+    .update({ status: next, kyc_status: next })
+    .eq('id', userId);
+
+  if (error3) throw error3;
+};
 
   /**
    * ✅ FIX: Fetch emails from Supabase Auth (auth.users) using RPC (server-side),
