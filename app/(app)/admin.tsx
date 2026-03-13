@@ -1233,11 +1233,18 @@ const patchUserInLists = (userId: string, next: 'approved' | 'pending') => {
 
 
         {/* ✅ RENAMED: Document Image User -> Manage All User */}
-        <MenuButton
-          label="Manage All User"
-          tab="manage_all_users"
-          icon={<Users size={16} color={selectedTab === 'manage_all_users' ? UI.blue : UI.text2} />}
-        />
+        <TouchableOpacity
+  style={styles.menuBtn}
+  onPress={() => router.push('/mobileproductsadmin')}
+  activeOpacity={0.85}
+>
+  <View style={styles.menuIconWrap}>
+    <Smartphone size={16} color={UI.text2} />
+  </View>
+  <Text style={styles.menuText} numberOfLines={2}>
+    Mobile Products
+  </Text>
+</TouchableOpacity>
 
         <MenuButton
           label="Account Approval"
