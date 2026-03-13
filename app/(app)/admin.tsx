@@ -1218,11 +1218,19 @@ const patchUserInLists = (userId: string, next: 'approved' | 'pending') => {
 
       {/* ✅ MENU (3 buttons per row) */}
       <View style={styles.menuWrap}>
-        <MenuButton
-          label="Dashboard"
-          tab="dashboard"
-          icon={<BarChart3 size={16} color={selectedTab === 'dashboard' ? UI.blue : UI.text2} />}
-        />
+        <TouchableOpacity
+  style={styles.menuBtn}
+  onPress={() => router.push('/dashboardadmin')}
+  activeOpacity={0.85}
+>
+  <View style={styles.menuIconWrap}>
+    <BarChart3 size={16} color={UI.text2} />
+  </View>
+  <Text style={styles.menuText} numberOfLines={2}>
+    Dashboard
+  </Text>
+</TouchableOpacity>
+
 
         {/* ✅ RENAMED: Document Image User -> Manage All User */}
         <MenuButton
