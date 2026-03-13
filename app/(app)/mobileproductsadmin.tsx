@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,11 +9,12 @@ import {
   ActivityIndicator,
   Image,
   RefreshControl,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import {
@@ -23,11 +24,14 @@ import {
   ShoppingBag,
   Smartphone,
   RefreshCw,
-  User,
-  MapPin,
-  CalendarDays,
-  BadgeDollarSign,
+  Plus,
+  Pencil,
+  Trash2,
+  Power,
+  X,
+  Save,
   Boxes,
+  Image as ImageIcon,
 } from 'lucide-react-native';
 
 export const options = { headerShown: false };
@@ -37,7 +41,7 @@ const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 const UI = {
   bg: '#F6F8FB',
   card: '#FFFFFF',
-  card2: '#F1F5F9',
+  card2: '#F8FAFC',
   text: '#0F172A',
   text2: '#475569',
   border: '#E2E8F0',
@@ -52,11 +56,54 @@ const UI = {
   purple: '#7C3AED',
   purpleSoft: '#EDE9FE',
   shadow: 'rgba(15, 23, 42, 0.08)',
+  black: '#0F172A',
 };
 
-const formatMoney = (value: any) => {
+type BrandKey = 'apple' | 'samsung' | 'xiaomi' | 'infinix' | 'tecno' | 'other';
+
+type ProductForm = {
+  id?: string | null;
+  name: string;
+  brand: BrandKey;
+  image_url: string;
+  description: string;
+  price_iqd: string;
+  monthly_price_iqd: string;
+  months_count: string;
+  storage: string;
+  ram: string;
+  color: string;
+  color_hex: string;
+  stock: string;
+  badge: string;
+  sort_order: string;
+  is_new: boolean;
+  is_active: boolean;
+};
+
+const emptyForm = (): ProductForm => ({
+  id: null,
+  name: '',
+  brand: 'apple',
+  image_url: '',
+  description: '',
+  price_iqd: '',
+  monthly_price_iqd: '',
+  months_count: '1',
+  storage: '',
+  ram: '',
+  color: '',
+  color_hex: '#D1D5DB',
+  stock: '1',
+  badge: 'new',
+  sort_order: '0',
+  is_new: true,
+  is_active: true,
+});
+
+const formatIQD = (value: any) => {
   const n = Number(value || 0);
-  return `$${n.toFixed(2)}`;
+  return `${new Intl.NumberFormat('en-US').format(n)} د.ع`;
 };
 
 const formatIraqTime = (value?: string | null) => {
@@ -79,7 +126,8 @@ const formatIraqTime = (value?: string | null) => {
   }
 };
 
-const isLikelyUrl = (v?: string | null) => !!v && (v.startsWith('http://') || v.startsWith('https://'));
+const isLikelyUrl = (v?: string | null) =>
+  !!v && (v.startsWith('http://') || v.startsWith('https://'));
 
 const initialsFromName = (name?: string | null) => {
   const n = (name || '').trim();
@@ -90,74 +138,62 @@ const initialsFromName = (name?: string | null) => {
   return (a + b).toUpperCase() || '?';
 };
 
-const productImageFromRow = (row: any) => {
-  return (
-    row?.image_url ||
-    row?.image ||
-    row?.photo_url ||
-    row?.thumbnail ||
-    row?.product_image ||
-    null
-  );
-};
+const productImageFromRow = (row: any) =>
+  row?.image_url || row?.image || row?.photo_url || row?.thumbnail || row?.product_image || null;
 
-const productNameFromRow = (row: any) => {
-  return (
-    row?.name ||
-    row?.title ||
-    row?.product_name ||
-    row?.mobile_name ||
-    row?.model ||
-    'Unnamed Product'
-  );
-};
+const productNameFromRow = (row: any) =>
+  row?.name || row?.title || row?.product_name || row?.mobile_name || row?.model || 'Unnamed Product';
 
-const productBrandFromRow = (row: any) => {
-  return row?.brand || row?.company || row?.manufacturer || 'N/A';
-};
+const productBrandFromRow = (row: any) =>
+  row?.brand || row?.company || row?.manufacturer || 'other';
 
-const productPriceFromRow = (row: any) => {
-  return (
-    row?.price ??
-    row?.sale_price ??
-    row?.amount ??
-    row?.product_price ??
-    0
-  );
-};
+const productPriceFromRow = (row: any) =>
+  row?.price_iqd ?? row?.price ?? row?.sale_price ?? row?.amount ?? row?.product_price ?? 0;
 
-const productStockFromRow = (row: any) => {
-  return row?.stock ?? row?.qty ?? row?.quantity ?? row?.inventory ?? 0;
-};
+const productMonthlyFromRow = (row: any) =>
+  row?.monthly_price_iqd ?? row?.monthly_price ?? row?.installment_price ?? 0;
+
+const productStockFromRow = (row: any) =>
+  row?.stock ?? row?.qty ?? row?.quantity ?? row?.inventory ?? 0;
 
 const productStatusFromRow = (row: any) => {
-  return (row?.status || row?.is_active === false ? 'inactive' : 'active')?.toString().toLowerCase();
+  if (row?.is_active === false) return 'inactive';
+  return (row?.status || 'active').toString().toLowerCase();
 };
 
 const orderUserId = (row: any) => row?.user_id || row?.customer_id || null;
 const orderProductId = (row: any) => row?.product_id || row?.shop_product_id || null;
 const orderQty = (row: any) => row?.quantity ?? row?.qty ?? 1;
-const orderTotal = (row: any) => row?.total_price ?? row?.total ?? row?.amount ?? row?.price ?? 0;
-const orderStatus = (row: any) => (row?.status || 'pending').toString().toLowerCase();
-const orderPhone = (row: any) => row?.phone || row?.customer_phone || row?.mobile || 'N/A';
-const orderAddress = (row: any) => row?.address || row?.delivery_address || row?.location || 'N/A';
-const orderNotes = (row: any) => row?.notes || row?.note || row?.description || '';
+const orderTotal = (row: any) => row?.total_price_iqd ?? row?.total_price ?? row?.total ?? row?.amount ?? row?.price ?? 0;
+const orderStatus = (row: any) => (row?.status || row?.payment_status || 'pending').toString().toLowerCase();
+const orderPhone = (row: any) => row?.customer_phone || row?.phone || row?.mobile || 'N/A';
+const orderAddress = (row: any) =>
+  row?.customer_street || row?.address || row?.delivery_address || row?.location || 'N/A';
+const orderCity = (row: any) => row?.customer_city || row?.city || 'N/A';
+const orderNotes = (row: any) => row?.note || row?.notes || row?.description || '';
 const orderCreatedAt = (row: any) => row?.created_at || row?.ordered_at || row?.date || null;
+const orderProductName = (row: any) => row?.product_name || row?.mobile_name || row?.name || 'Unknown Product';
+const orderType = (row: any) => (row?.order_type || '').toString().toLowerCase();
 
 export default function MobileProductsAdminScreen() {
   const { user, signOut } = useAuth();
-  const { theme } = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
+  const isAdmin = !!user && ADMIN_EMAILS.includes(user.email || '');
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [savingMode, setSavingMode] = useState<'create' | 'edit'>('create');
+  const [form, setForm] = useState<ProductForm>(emptyForm());
 
   const productsQuery = useQuery({
-    queryKey: ['admin-shop-products'],
+    queryKey: ['admin-mobile-shop-products'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('shop_products')
         .select('*')
+        .eq('category', 'mobile')
+        .order('sort_order', { ascending: true })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -166,11 +202,12 @@ export default function MobileProductsAdminScreen() {
   });
 
   const ordersQuery = useQuery({
-    queryKey: ['admin-shop-orders'],
+    queryKey: ['admin-mobile-shop-orders'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('shop_orders')
         .select('*')
+        .eq('order_type', 'mobile')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -179,18 +216,15 @@ export default function MobileProductsAdminScreen() {
   });
 
   const profilesQuery = useQuery({
-    queryKey: ['admin-shop-order-profiles', ordersQuery.data],
+    queryKey: ['admin-mobile-order-profiles', ordersQuery.data],
     enabled: !!ordersQuery.data,
     queryFn: async () => {
-      const ids = Array.from(
-        new Set((ordersQuery.data || []).map((o: any) => orderUserId(o)).filter(Boolean))
-      );
-
+      const ids = Array.from(new Set((ordersQuery.data || []).map((o: any) => orderUserId(o)).filter(Boolean)));
       if (!ids.length) return [];
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, city, country, avatar_url')
+        .select('id, email, full_name, city, country, avatar_url, phone')
         .in('id', ids);
 
       if (error) throw error;
@@ -236,7 +270,7 @@ export default function MobileProductsAdminScreen() {
     return {
       totalOrders: list.length,
       pendingOrders: list.filter((o: any) => orderStatus(o) === 'pending').length,
-      approvedOrders: list.filter((o: any) => orderStatus(o) === 'approved').length,
+      paidOrders: list.filter((o: any) => orderStatus(o) === 'paid').length,
       totalSales: list.reduce((sum: number, o: any) => sum + Number(orderTotal(o) || 0), 0),
     };
   }, [ordersQuery.data]);
@@ -257,31 +291,149 @@ export default function MobileProductsAdminScreen() {
   const isLoading = productsQuery.isLoading || ordersQuery.isLoading || profilesQuery.isLoading;
   const hasError = productsQuery.error || ordersQuery.error || profilesQuery.error;
 
-  const onRefresh = async () => {
+  const refreshAll = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['admin-shop-products'] }),
-      queryClient.invalidateQueries({ queryKey: ['admin-shop-orders'] }),
-      queryClient.invalidateQueries({ queryKey: ['admin-shop-order-profiles'] }),
+      queryClient.invalidateQueries({ queryKey: ['admin-mobile-shop-products'] }),
+      queryClient.invalidateQueries({ queryKey: ['admin-mobile-shop-orders'] }),
+      queryClient.invalidateQueries({ queryKey: ['admin-mobile-order-profiles'] }),
     ]);
+  };
+
+  const resetForm = () => {
+    setForm(emptyForm());
+    setSavingMode('create');
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setSavingMode('create');
+    setModalOpen(true);
+  };
+
+  const openEditModal = (product: any) => {
+    setForm({
+      id: product.id,
+      name: product?.name || '',
+      brand: (product?.brand || 'apple') as BrandKey,
+      image_url: product?.image_url || '',
+      description: product?.description || '',
+      price_iqd: String(product?.price_iqd ?? ''),
+      monthly_price_iqd: String(product?.monthly_price_iqd ?? ''),
+      months_count: String(product?.months_count ?? '1'),
+      storage: product?.storage || '',
+      ram: product?.ram || '',
+      color: product?.color || '',
+      color_hex: product?.color_hex || '#D1D5DB',
+      stock: String(product?.stock ?? '1'),
+      badge: product?.badge || 'new',
+      sort_order: String(product?.sort_order ?? '0'),
+      is_new: !!product?.is_new,
+      is_active: product?.is_active !== false,
+    });
+    setSavingMode('edit');
+    setModalOpen(true);
+  };
+
+  const saveProductMutation = useMutation({
+    mutationFn: async () => {
+      if (!form.name.trim()) throw new Error('Product name is required');
+      if (!form.brand.trim()) throw new Error('Brand is required');
+
+      const payload = {
+        category: 'mobile',
+        name: form.name.trim(),
+        brand: form.brand,
+        image_url: form.image_url.trim() || null,
+        description: form.description.trim() || null,
+        price_iqd: Number(form.price_iqd || 0),
+        monthly_price_iqd: Number(form.monthly_price_iqd || 0),
+        months_count: Number(form.months_count || 1),
+        storage: form.storage.trim() || null,
+        ram: form.ram.trim() || null,
+        color: form.color.trim() || null,
+        color_hex: form.color_hex.trim() || '#D1D5DB',
+        stock: Number(form.stock || 0),
+        badge: form.badge.trim() || null,
+        is_new: !!form.is_new,
+        is_active: !!form.is_active,
+        sort_order: Number(form.sort_order || 0),
+      };
+
+      if (savingMode === 'edit' && form.id) {
+        const { error } = await supabase.from('shop_products').update(payload).eq('id', form.id);
+        if (error) throw error;
+        return;
+      }
+
+      const { error } = await supabase.from('shop_products').insert(payload);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin-mobile-shop-products'] });
+      setModalOpen(false);
+      resetForm();
+      Alert.alert('Success', savingMode === 'edit' ? 'Mobile updated successfully' : 'Mobile added successfully');
+    },
+    onError: (error: any) => {
+      Alert.alert('Error', error?.message || 'Failed to save product');
+    },
+  });
+
+  const deleteProductMutation = useMutation({
+    mutationFn: async (productId: string) => {
+      const { error } = await supabase.from('shop_products').delete().eq('id', productId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin-mobile-shop-products'] });
+      Alert.alert('Success', 'Product deleted successfully');
+    },
+    onError: (error: any) => {
+      Alert.alert('Error', error?.message || 'Failed to delete product');
+    },
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, next }: { id: string; next: boolean }) => {
+      const { error } = await supabase.from('shop_products').update({ is_active: next }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin-mobile-shop-products'] });
+    },
+    onError: (error: any) => {
+      Alert.alert('Error', error?.message || 'Failed to update status');
+    },
+  });
+
+  const confirmDelete = (product: any) => {
+    Alert.alert(
+      'Delete Product',
+      `Are you sure you want to delete "${productNameFromRow(product)}" ?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => deleteProductMutation.mutate(product.id),
+        },
+      ]
+    );
   };
 
   const statusBadge = (status?: string | null) => {
     const s = (status || 'pending').toLowerCase();
 
-    if (s === 'approved' || s === 'completed' || s === 'delivered' || s === 'success') {
+    if (s === 'approved' || s === 'completed' || s === 'delivered' || s === 'success' || s === 'paid') {
       return { bg: UI.greenSoft, color: UI.green, text: s.toUpperCase() };
     }
 
-    if (s === 'rejected' || s === 'cancelled' || s === 'failed') {
+    if (s === 'rejected' || s === 'cancelled' || s === 'failed' || s === 'inactive') {
       return { bg: UI.redSoft, color: UI.red, text: s.toUpperCase() };
     }
 
     if (s === 'active') {
       return { bg: UI.blueSoft, color: UI.blue, text: 'ACTIVE' };
-    }
-
-    if (s === 'inactive') {
-      return { bg: UI.redSoft, color: UI.red, text: 'INACTIVE' };
     }
 
     return { bg: UI.amberSoft, color: UI.amber, text: s.toUpperCase() };
@@ -310,7 +462,7 @@ export default function MobileProductsAdminScreen() {
 
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={styles.headerTitle}>Mobile Products Admin</Text>
-          <Text style={styles.headerSub}>Products, orders and customer details</Text>
+          <Text style={styles.headerSub}>Add, edit, manage products and view mobile orders</Text>
         </View>
 
         <TouchableOpacity
@@ -331,18 +483,27 @@ export default function MobileProductsAdminScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refreshAll} />}
       >
         <View style={styles.topTitleRow}>
           <View style={styles.topTitleIcon}>
             <Smartphone size={18} color={UI.blue} />
           </View>
+
           <View style={{ flex: 1 }}>
             <Text style={styles.sectionTitle}>Mobile Shop Dashboard</Text>
-            <Text style={styles.sectionSub}>All products and all user orders in one page</Text>
+            <Text style={styles.sectionSub}>All mobile products and all user mobile orders</Text>
           </View>
-          <TouchableOpacity style={styles.refreshBtn} onPress={onRefresh} activeOpacity={0.85}>
+
+          <TouchableOpacity style={styles.refreshBtn} onPress={refreshAll} activeOpacity={0.85}>
             <RefreshCw size={16} color={UI.blue} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.addBtn} onPress={openCreateModal} activeOpacity={0.9}>
+            <Plus size={18} color="#fff" />
+            <Text style={styles.addBtnText}>Add New Mobile</Text>
           </TouchableOpacity>
         </View>
 
@@ -362,7 +523,7 @@ export default function MobileProductsAdminScreen() {
                   'Unknown error'
               )}
             </Text>
-            <TouchableOpacity style={styles.primaryBtn} onPress={onRefresh}>
+            <TouchableOpacity style={styles.primaryBtn} onPress={refreshAll}>
               <Text style={styles.primaryBtnText}>Retry</Text>
             </TouchableOpacity>
           </View>
@@ -388,7 +549,7 @@ export default function MobileProductsAdminScreen() {
 
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>Stock Value</Text>
-                <Text style={[styles.statValue, { fontSize: 18 }]}>{formatMoney(productStats.totalProductsValue)}</Text>
+                <Text style={[styles.statValue, { fontSize: 18 }]}>{formatIQD(productStats.totalProductsValue)}</Text>
               </View>
             </View>
 
@@ -406,13 +567,13 @@ export default function MobileProductsAdminScreen() {
               </View>
 
               <View style={styles.statCard}>
-                <Text style={styles.statLabel}>Approved Orders</Text>
-                <Text style={[styles.statValue, { color: UI.green }]}>{orderStats.approvedOrders}</Text>
+                <Text style={styles.statLabel}>Paid Orders</Text>
+                <Text style={[styles.statValue, { color: UI.green }]}>{orderStats.paidOrders}</Text>
               </View>
 
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>Total Sales</Text>
-                <Text style={[styles.statValue, { fontSize: 18, color: UI.purple }]}>{formatMoney(orderStats.totalSales)}</Text>
+                <Text style={[styles.statValue, { fontSize: 18, color: UI.purple }]}>{formatIQD(orderStats.totalSales)}</Text>
               </View>
             </View>
 
@@ -425,6 +586,7 @@ export default function MobileProductsAdminScreen() {
                 const name = productNameFromRow(product);
                 const brand = productBrandFromRow(product);
                 const price = productPriceFromRow(product);
+                const monthly = productMonthlyFromRow(product);
                 const stock = productStockFromRow(product);
                 const soldCount = (ordersQuery.data || []).filter((o: any) => orderProductId(o) === product.id).length;
 
@@ -436,14 +598,14 @@ export default function MobileProductsAdminScreen() {
                           <Image source={{ uri: image }} style={styles.productImage} resizeMode="cover" />
                         ) : (
                           <View style={styles.productImageFallback}>
-                            <Smartphone size={22} color={UI.blue} />
+                            <ImageIcon size={22} color={UI.blue} />
                           </View>
                         )}
                       </View>
 
                       <View style={{ flex: 1 }}>
                         <Text style={styles.cardTitle}>{name}</Text>
-                        <Text style={styles.cardSubtitle}>{brand}</Text>
+                        <Text style={styles.cardSubtitle}>{String(brand).toUpperCase()}</Text>
                       </View>
 
                       <View style={[styles.badge, { backgroundColor: badge.bg }]}>
@@ -452,13 +614,30 @@ export default function MobileProductsAdminScreen() {
                     </View>
 
                     <View style={styles.row}>
-                      <Text style={styles.rowLabel}>Product ID</Text>
-                      <Text style={styles.rowValue}>{product.id}</Text>
+                      <Text style={styles.rowLabel}>Price</Text>
+                      <Text style={[styles.rowValue, { color: UI.blue }]}>{formatIQD(price)}</Text>
                     </View>
 
                     <View style={styles.row}>
-                      <Text style={styles.rowLabel}>Price</Text>
-                      <Text style={[styles.rowValue, { color: UI.blue }]}>{formatMoney(price)}</Text>
+                      <Text style={styles.rowLabel}>Monthly Price</Text>
+                      <Text style={[styles.rowValue, { color: UI.purple }]}>{formatIQD(monthly)}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Months</Text>
+                      <Text style={styles.rowValue}>{product?.months_count ?? 1}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Storage / RAM</Text>
+                      <Text style={styles.rowValue}>
+                        {product?.storage || 'N/A'} / {product?.ram || 'N/A'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Color</Text>
+                      <Text style={styles.rowValue}>{product?.color || 'N/A'}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -472,8 +651,53 @@ export default function MobileProductsAdminScreen() {
                     </View>
 
                     <View style={styles.row}>
-                      <Text style={styles.rowLabel}>Created (Iraq)</Text>
+                      <Text style={styles.rowLabel}>Created</Text>
                       <Text style={styles.rowValue}>{formatIraqTime(product.created_at)}</Text>
+                    </View>
+
+                    {!!product?.description && (
+                      <View style={styles.noteBox}>
+                        <Text style={styles.noteTitle}>Description</Text>
+                        <Text style={styles.noteText}>{product.description}</Text>
+                      </View>
+                    )}
+
+                    <View style={styles.productActionsRow}>
+                      <TouchableOpacity
+                        style={[styles.smallActionBtn, { backgroundColor: UI.blueSoft }]}
+                        onPress={() => openEditModal(product)}
+                      >
+                        <Pencil size={16} color={UI.blue} />
+                        <Text style={[styles.smallActionText, { color: UI.blue }]}>Edit</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.smallActionBtn, { backgroundColor: product?.is_active === false ? UI.greenSoft : UI.amberSoft }]}
+                        onPress={() =>
+                          toggleActiveMutation.mutate({
+                            id: product.id,
+                            next: product?.is_active === false,
+                          })
+                        }
+                      >
+                        <Power size={16} color={product?.is_active === false ? UI.green : UI.amber} />
+                        <Text
+                          style={[
+                            styles.smallActionText,
+                            { color: product?.is_active === false ? UI.green : UI.amber },
+                          ]}
+                        >
+                          {product?.is_active === false ? 'Activate' : 'Disable'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.smallActionBtn, { backgroundColor: UI.redSoft }]}
+                        onPress={() => confirmDelete(product)}
+                      >
+                        <Trash2 size={16} color={UI.red} />
+                        <Text style={[styles.smallActionText, { color: UI.red }]}>Delete</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 );
@@ -489,13 +713,15 @@ export default function MobileProductsAdminScreen() {
 
             {shopOrdersWithDetails.length > 0 ? (
               shopOrdersWithDetails.map((order: any) => {
+                if (orderType(order) && orderType(order) !== 'mobile') return null;
+
                 const product = order.product || null;
                 const profile = order.profile || null;
                 const badge = statusBadge(orderStatus(order));
-                const displayName = (profile?.full_name || '').trim() || 'Unknown Name';
-                const displayEmail = profile?.email || 'N/A';
+                const displayName = (profile?.full_name || order?.customer_full_name || '').trim() || 'Unknown Name';
+                const displayEmail = profile?.email || order?.customer_email || 'N/A';
                 const avatar = profile?.avatar_url;
-                const productName = product ? productNameFromRow(product) : (order?.product_name || 'Unknown Product');
+                const productName = product ? productNameFromRow(product) : orderProductName(order);
                 const total = orderTotal(order);
                 const qty = orderQty(order);
 
@@ -533,18 +759,25 @@ export default function MobileProductsAdminScreen() {
                     </View>
 
                     <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Brand</Text>
+                      <Text style={styles.rowValue}>
+                        {product?.brand || order?.product_brand || 'N/A'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.row}>
                       <Text style={styles.rowLabel}>Quantity</Text>
                       <Text style={styles.rowValue}>{qty}</Text>
                     </View>
 
                     <View style={styles.row}>
                       <Text style={styles.rowLabel}>Total Price</Text>
-                      <Text style={[styles.rowValue, { color: UI.purple }]}>{formatMoney(total)}</Text>
+                      <Text style={[styles.rowValue, { color: UI.purple }]}>{formatIQD(total)}</Text>
                     </View>
 
                     <View style={styles.row}>
                       <Text style={styles.rowLabel}>Phone</Text>
-                      <Text style={styles.rowValue}>{orderPhone(order)}</Text>
+                      <Text style={styles.rowValue}>{orderPhone(order) || profile?.phone || 'N/A'}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -554,7 +787,7 @@ export default function MobileProductsAdminScreen() {
 
                     <View style={styles.row}>
                       <Text style={styles.rowLabel}>City</Text>
-                      <Text style={styles.rowValue}>{profile?.city || 'N/A'}</Text>
+                      <Text style={styles.rowValue}>{orderCity(order) || profile?.city || 'N/A'}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -563,7 +796,7 @@ export default function MobileProductsAdminScreen() {
                     </View>
 
                     <View style={styles.row}>
-                      <Text style={styles.rowLabel}>Order Time (Iraq)</Text>
+                      <Text style={styles.rowLabel}>Order Time</Text>
                       <Text style={styles.rowValue}>{formatIraqTime(orderCreatedAt(order))}</Text>
                     </View>
 
@@ -585,6 +818,214 @@ export default function MobileProductsAdminScreen() {
           </>
         )}
       </ScrollView>
+
+      <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {savingMode === 'edit' ? 'Edit Mobile Product' : 'Add New Mobile Product'}
+              </Text>
+
+              <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setModalOpen(false)}>
+                <X size={18} color={UI.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.inputLabel}>Mobile Name</Text>
+              <TextInput
+                style={styles.input}
+                value={form.name}
+                onChangeText={(v) => setForm((p) => ({ ...p, name: v }))}
+                placeholder="iPhone 16 Pro Max"
+                placeholderTextColor="#94A3B8"
+              />
+
+              <Text style={styles.inputLabel}>Brand</Text>
+              <View style={styles.brandRow}>
+                {(['apple', 'samsung', 'xiaomi', 'infinix', 'tecno', 'other'] as BrandKey[]).map((brand) => {
+                  const active = form.brand === brand;
+                  return (
+                    <TouchableOpacity
+                      key={brand}
+                      style={[styles.brandChip, active && styles.brandChipActive]}
+                      onPress={() => setForm((p) => ({ ...p, brand }))}
+                    >
+                      <Text style={[styles.brandChipText, active && styles.brandChipTextActive]}>
+                        {brand}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.inputLabel}>Official Image URL</Text>
+              <TextInput
+                style={styles.input}
+                value={form.image_url}
+                onChangeText={(v) => setForm((p) => ({ ...p, image_url: v }))}
+                placeholder="https://..."
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="none"
+              />
+
+              {!!form.image_url && isLikelyUrl(form.image_url) && (
+                <View style={styles.previewWrap}>
+                  <Image source={{ uri: form.image_url }} style={styles.previewImage} resizeMode="contain" />
+                </View>
+              )}
+
+              <Text style={styles.inputLabel}>Price IQD</Text>
+              <TextInput
+                style={styles.input}
+                value={form.price_iqd}
+                onChangeText={(v) => setForm((p) => ({ ...p, price_iqd: v }))}
+                placeholder="189000"
+                placeholderTextColor="#94A3B8"
+                keyboardType="number-pad"
+              />
+
+              <Text style={styles.inputLabel}>Monthly Price IQD</Text>
+              <TextInput
+                style={styles.input}
+                value={form.monthly_price_iqd}
+                onChangeText={(v) => setForm((p) => ({ ...p, monthly_price_iqd: v }))}
+                placeholder="189000"
+                placeholderTextColor="#94A3B8"
+                keyboardType="number-pad"
+              />
+
+              <Text style={styles.inputLabel}>Months Count</Text>
+              <TextInput
+                style={styles.input}
+                value={form.months_count}
+                onChangeText={(v) => setForm((p) => ({ ...p, months_count: v }))}
+                placeholder="1"
+                placeholderTextColor="#94A3B8"
+                keyboardType="number-pad"
+              />
+
+              <Text style={styles.inputLabel}>Storage</Text>
+              <TextInput
+                style={styles.input}
+                value={form.storage}
+                onChangeText={(v) => setForm((p) => ({ ...p, storage: v }))}
+                placeholder="256GB"
+                placeholderTextColor="#94A3B8"
+              />
+
+              <Text style={styles.inputLabel}>RAM</Text>
+              <TextInput
+                style={styles.input}
+                value={form.ram}
+                onChangeText={(v) => setForm((p) => ({ ...p, ram: v }))}
+                placeholder="8GB"
+                placeholderTextColor="#94A3B8"
+              />
+
+              <Text style={styles.inputLabel}>Color Name</Text>
+              <TextInput
+                style={styles.input}
+                value={form.color}
+                onChangeText={(v) => setForm((p) => ({ ...p, color: v }))}
+                placeholder="Desert Titanium"
+                placeholderTextColor="#94A3B8"
+              />
+
+              <Text style={styles.inputLabel}>Color Hex</Text>
+              <TextInput
+                style={styles.input}
+                value={form.color_hex}
+                onChangeText={(v) => setForm((p) => ({ ...p, color_hex: v }))}
+                placeholder="#B88E5A"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="none"
+              />
+
+              <Text style={styles.inputLabel}>Stock</Text>
+              <TextInput
+                style={styles.input}
+                value={form.stock}
+                onChangeText={(v) => setForm((p) => ({ ...p, stock: v }))}
+                placeholder="10"
+                placeholderTextColor="#94A3B8"
+                keyboardType="number-pad"
+              />
+
+              <Text style={styles.inputLabel}>Badge</Text>
+              <TextInput
+                style={styles.input}
+                value={form.badge}
+                onChangeText={(v) => setForm((p) => ({ ...p, badge: v }))}
+                placeholder="new / special / discount / preorder"
+                placeholderTextColor="#94A3B8"
+              />
+
+              <Text style={styles.inputLabel}>Sort Order</Text>
+              <TextInput
+                style={styles.input}
+                value={form.sort_order}
+                onChangeText={(v) => setForm((p) => ({ ...p, sort_order: v }))}
+                placeholder="0"
+                placeholderTextColor="#94A3B8"
+                keyboardType="number-pad"
+              />
+
+              <Text style={styles.inputLabel}>Description / Specs</Text>
+              <TextInput
+                style={[styles.input, styles.textarea]}
+                value={form.description}
+                onChangeText={(v) => setForm((p) => ({ ...p, description: v }))}
+                placeholder="Write mobile details here..."
+                placeholderTextColor="#94A3B8"
+                multiline
+              />
+
+              <View style={styles.boolRow}>
+                <TouchableOpacity
+                  style={[styles.boolChip, form.is_new && styles.boolChipActiveGreen]}
+                  onPress={() => setForm((p) => ({ ...p, is_new: !p.is_new }))}
+                >
+                  <Text style={[styles.boolChipText, form.is_new && styles.boolChipTextActiveGreen]}>
+                    {form.is_new ? 'NEW: YES' : 'NEW: NO'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.boolChip, form.is_active && styles.boolChipActiveBlue]}
+                  onPress={() => setForm((p) => ({ ...p, is_active: !p.is_active }))}
+                >
+                  <Text style={[styles.boolChipText, form.is_active && styles.boolChipTextActiveBlue]}>
+                    {form.is_active ? 'ACTIVE: YES' : 'ACTIVE: NO'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ height: 10 }} />
+
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={() => saveProductMutation.mutate()}
+                disabled={saveProductMutation.isPending}
+              >
+                {saveProductMutation.isPending ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Save size={16} color="#fff" />
+                    <Text style={styles.saveBtnText}>
+                      {savingMode === 'edit' ? 'Save Changes' : 'Add Product'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <View style={{ height: 18 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -622,6 +1063,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: UI.text2,
     marginTop: 2,
+    textAlign: 'center',
   },
   logoutButton: {
     flexDirection: 'row',
@@ -667,6 +1109,25 @@ const styles = StyleSheet.create({
     borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  actionRow: {
+    marginBottom: 16,
+  },
+  addBtn: {
+    backgroundColor: UI.blue,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  addBtnText: {
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 15,
   },
 
   sectionTitle: {
@@ -727,8 +1188,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   productImageWrap: {
-    width: 54,
-    height: 54,
+    width: 58,
+    height: 58,
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
@@ -788,9 +1249,6 @@ const styles = StyleSheet.create({
   },
 
   badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 999,
@@ -841,6 +1299,25 @@ const styles = StyleSheet.create({
     color: UI.text2,
     lineHeight: 18,
     fontWeight: '700',
+  },
+
+  productActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    flexWrap: 'wrap',
+  },
+  smallActionBtn: {
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  smallActionText: {
+    fontWeight: '900',
+    fontSize: 12,
   },
 
   primaryBtn: {
@@ -924,6 +1401,153 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   backButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.35)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    maxHeight: '92%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: UI.text,
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: UI.card2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: UI.text,
+    marginBottom: 6,
+    marginTop: 8,
+  },
+  input: {
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: UI.border,
+    backgroundColor: UI.card2,
+    paddingHorizontal: 14,
+    color: UI.text,
+    fontSize: 14,
+  },
+  textarea: {
+    minHeight: 98,
+    paddingTop: 12,
+    textAlignVertical: 'top',
+  },
+
+  brandRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  brandChip: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: UI.card2,
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
+  brandChipActive: {
+    backgroundColor: UI.blueSoft,
+    borderColor: UI.blue,
+  },
+  brandChipText: {
+    color: UI.text2,
+    fontWeight: '800',
+    textTransform: 'capitalize',
+  },
+  brandChipTextActive: {
+    color: UI.blue,
+  },
+
+  previewWrap: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: UI.border,
+    backgroundColor: UI.card2,
+    borderRadius: 16,
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewImage: {
+    width: '100%',
+    height: 170,
+  },
+
+  boolRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+    flexWrap: 'wrap',
+  },
+  boolChip: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: UI.card2,
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
+  boolChipActiveGreen: {
+    backgroundColor: UI.greenSoft,
+    borderColor: UI.green,
+  },
+  boolChipActiveBlue: {
+    backgroundColor: UI.blueSoft,
+    borderColor: UI.blue,
+  },
+  boolChipText: {
+    color: UI.text2,
+    fontWeight: '900',
+    fontSize: 12,
+  },
+  boolChipTextActiveGreen: {
+    color: UI.green,
+  },
+  boolChipTextActiveBlue: {
+    color: UI.blue,
+  },
+
+  saveBtn: {
+    marginTop: 16,
+    backgroundColor: UI.blue,
+    minHeight: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  saveBtnText: {
     color: '#fff',
     fontSize: 15,
     fontWeight: '900',
