@@ -3,6 +3,10 @@
   "zenopayAgentDeposit": "وەدانەوەی پارە لەلایەن وەکیلی زینۆپایەوە",
   "loginSubWelcome": "چوونەژوورەوە بکە بۆ بەردەوامبوون",
   "iqdShort": "د.ع",
+  "firstMonthPayment": "پارەی مانگی یەکەم",
+  "installmentContractTotal": "کۆی گشتی گرێبەستی قیست",
+  "buyInstallmentWithWallet": "بە قیست بکڕە بە باڵانسی وۆڵێت",
+
   "productDetails": "وردەکاریی پرۆداکت",
   "cash": "نەقد",
   "installment": "قیست",
