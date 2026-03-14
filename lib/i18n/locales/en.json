@@ -2,6 +2,8 @@
   "home": "Home",
   "send": "Send",
 "stillNotConfirmedPleaseCheckEmail": "Your email is still not confirmed. Please check your email.",
+  "walletBalanceAfterPayment": "Wallet Balance After Payment",
+  "remainingInstallmentAmount": "Remaining Installment Amount",
   
   "iqdShort": "IQD",
   "productDetails": "Product Details",
