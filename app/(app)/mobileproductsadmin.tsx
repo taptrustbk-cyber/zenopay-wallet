@@ -32,13 +32,14 @@ import {
   Power,
   X,
   Save,
-  Boxes,
   Image as ImageIcon,
+  Upload,
 } from 'lucide-react-native';
 
 export const options = { headerShown: false };
 
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
+const PRODUCT_IMAGES_BUCKET = 'product-images';
 
 const UI = {
   bg: '#F6F8FB',
@@ -177,6 +178,45 @@ const orderCreatedAt = (row: any) => row?.created_at || row?.ordered_at || row?.
 const orderProductName = (row: any) => row?.product_name || row?.mobile_name || row?.name || 'Unknown Product';
 const orderType = (row: any) => (row?.order_type || '').toString().toLowerCase();
 
+const decodeBase64ToUint8Array = (base64: string) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  let str = base64.replace(/=+$/, '');
+  let output = '';
+
+  if (str.length % 4 === 1) {
+    throw new Error('Invalid base64 string');
+  }
+
+  for (
+    let bc = 0, bs: number | undefined, buffer: number | string, idx = 0;
+    (buffer = str.charAt(idx++));
+    ~((buffer as any) = chars.indexOf(buffer as string)) &&
+    ((bs = bc % 4 ? (bs as number) * 64 + (buffer as number) : (buffer as number)),
+    bc++ % 4)
+      ? (output += String.fromCharCode(255 & ((bs as number) >> ((-2 * bc) & 6))))
+      : 0
+  ) {
+    // noop
+  }
+
+  const bytes = new Uint8Array(output.length);
+  for (let i = 0; i < output.length; i++) {
+    bytes[i] = output.charCodeAt(i);
+  }
+  return bytes;
+};
+
+const getContentTypeFromUri = (uri: string) => {
+  const cleanUri = uri.split('?')[0].toLowerCase();
+
+  if (cleanUri.endsWith('.png')) return { ext: 'png', contentType: 'image/png' };
+  if (cleanUri.endsWith('.webp')) return { ext: 'webp', contentType: 'image/webp' };
+  if (cleanUri.endsWith('.heic')) return { ext: 'heic', contentType: 'image/heic' };
+  if (cleanUri.endsWith('.gif')) return { ext: 'gif', contentType: 'image/gif' };
+
+  return { ext: 'jpg', contentType: 'image/jpeg' };
+};
+
 export default function MobileProductsAdminScreen() {
   const { user, signOut } = useAuth();
   const router = useRouter();
@@ -187,6 +227,7 @@ export default function MobileProductsAdminScreen() {
   const [modalOpen, setModalOpen] = useState(false);
   const [savingMode, setSavingMode] = useState<'create' | 'edit'>('create');
   const [form, setForm] = useState<ProductForm>(emptyForm());
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const productsQuery = useQuery({
     queryKey: ['admin-mobile-shop-products'],
@@ -334,6 +375,74 @@ export default function MobileProductsAdminScreen() {
     });
     setSavingMode('edit');
     setModalOpen(true);
+  };
+
+  const pickAndUploadImage = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert('Permission needed', 'Please allow photo library access first.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.9,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      const asset = result.assets[0];
+      const fileUri = asset.uri;
+
+      if (!fileUri) {
+        throw new Error('No image selected');
+      }
+
+      setUploadingImage(true);
+
+      const { ext, contentType } = getContentTypeFromUri(fileUri);
+      const fileName = `mobile-${Date.now()}.${ext}`;
+      const filePath = `products/${fileName}`;
+
+      const base64 = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const fileData = decodeBase64ToUint8Array(base64);
+
+      const { error: uploadError } = await supabase.storage
+        .from(PRODUCT_IMAGES_BUCKET)
+        .upload(filePath, fileData, {
+          contentType,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from(PRODUCT_IMAGES_BUCKET)
+        .getPublicUrl(filePath);
+
+      if (!publicUrlData?.publicUrl) {
+        throw new Error('Could not create public URL');
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        image_url: publicUrlData.publicUrl,
+      }));
+
+      Alert.alert('Success', 'Image uploaded successfully');
+    } catch (error: any) {
+      Alert.alert('Upload Error', error?.message || 'Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const saveProductMutation = useMutation({
@@ -867,10 +976,25 @@ export default function MobileProductsAdminScreen() {
                 style={styles.input}
                 value={form.image_url}
                 onChangeText={(v) => setForm((p) => ({ ...p, image_url: v }))}
-                placeholder="https://..."
+                placeholder="https://... or upload image below"
                 placeholderTextColor="#94A3B8"
                 autoCapitalize="none"
               />
+
+              <TouchableOpacity
+                style={[styles.uploadBtn, uploadingImage && { opacity: 0.75 }]}
+                onPress={pickAndUploadImage}
+                disabled={uploadingImage}
+              >
+                {uploadingImage ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Upload size={16} color="#fff" />
+                    <Text style={styles.uploadBtnText}>Upload Image From Device</Text>
+                  </>
+                )}
+              </TouchableOpacity>
 
               {!!form.image_url && isLikelyUrl(form.image_url) && (
                 <View style={styles.previewWrap}>
@@ -1009,7 +1133,7 @@ export default function MobileProductsAdminScreen() {
               <TouchableOpacity
                 style={styles.saveBtn}
                 onPress={() => saveProductMutation.mutate()}
-                disabled={saveProductMutation.isPending}
+                disabled={saveProductMutation.isPending || uploadingImage}
               >
                 {saveProductMutation.isPending ? (
                   <ActivityIndicator color="#fff" />
@@ -1488,6 +1612,22 @@ const styles = StyleSheet.create({
   },
   brandChipTextActive: {
     color: UI.blue,
+  },
+
+  uploadBtn: {
+    marginTop: 10,
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: UI.purple,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  uploadBtnText: {
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 14,
   },
 
   previewWrap: {
