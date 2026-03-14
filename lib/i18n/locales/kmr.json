@@ -5,6 +5,8 @@
   "adminTopUp": "ل لایێ ئەجێنتی زینوپەی پارە هاتە دانان",
   "productDetails": "زانیاریێن موبایلێ",
   "cash": "کاش",
+  "walletBalanceAfterPayment": "بەلانسا والێتێ پشتی پارەدانێ",
+  "remainingInstallmentAmount": "برا ماوێ قستا",
   "installment": "قیست",
   "firstMonthPayment": "قستێ هەیڤا دەسپێکی",
   "installmentContractTotal": "هەمی ب شێوەی  گرێبەستا قستی ",
