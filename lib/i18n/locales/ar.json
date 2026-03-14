@@ -6,6 +6,8 @@
   "purchaseSuccess": "تمت عملية الشراء بنجاح",
   "mobilePurchasedSuccess": "تم إكمال شراء الموبايل بنجاح وتم إرساله إلى الإدارة.",
   "insufficientFirstMonthBalance": "ليس لديك رصيد كافٍ لدفعة الشهر الأول. يرجى إيداع رصيد ثم المحاولة مرة أخرى.",
+  "insufficientCashBalance": "ليس لديك رصيد كافٍ في المحفظة لشراء هذا الهاتف نقداً.",
+  "remainingPurchaseAmount": "المبلغ المتبقي للشراء",
   "all": "الكل",
   "walletBalanceAfterPayment": "رصيد المحفظة بعد الدفع",
   "remainingInstallmentAmount": "المبلغ المتبقي من التقسيط",
