@@ -426,11 +426,19 @@ export default function MobileShopScreen() {
   const selectedMonthlyPrice = getMonthlyPrice(selectedProduct);
   const selectedMonthsCount = getMonthsCount(selectedProduct);
   const quantity = Math.max(1, Number(form.quantity || 1));
+
   const selectedCashTotal = selectedCashPrice * quantity;
   const selectedFirstInstallment = selectedMonthlyPrice * quantity;
   const selectedInstallmentContractTotal = selectedMonthlyPrice * selectedMonthsCount * quantity;
+
   const payableNow = purchaseMode === 'cash' ? selectedCashTotal : selectedFirstInstallment;
-  const remainingAfterPurchase = Math.max(0, walletBalance - payableNow);
+
+  const walletBalanceAfterPayment = Math.max(0, walletBalance - payableNow);
+
+  const remainingPurchaseAmount =
+    purchaseMode === 'cash'
+      ? 0
+      : Math.max(0, selectedInstallmentContractTotal - selectedFirstInstallment);
 
   const refreshAll = async () => {
     try {
@@ -506,6 +514,7 @@ export default function MobileShopScreen() {
       const currentBalance = Number(walletQuery.data || 0);
 
       const amountToPayNow = purchaseMode === 'cash' ? cashTotalPrice : firstInstallmentPayment;
+
       const remainingAmount =
         purchaseMode === 'cash'
           ? 0
@@ -607,7 +616,13 @@ export default function MobileShopScreen() {
 
       Alert.alert(
         t('purchaseSuccess', 'Purchase successful'),
-        `${t('mobilePurchasedSuccess', 'Your mobile purchase was completed successfully and sent to admin.')}\n\n${t('purchaseType', 'Purchase type')}: ${result.purchaseMode === 'cash' ? t('cash', 'Cash') : t('installment', 'Installment')}\n${t('paidAmount', 'Paid amount')}: ${formatIQD(result.paidNow)}\n${t('remainingBalance', 'Remaining balance')}: ${formatIQD(result.nextBalance)}${result.purchaseMode === 'installment' ? `\n${t('remainingContractAmount', 'Remaining contract amount')}: ${formatIQD(result.remainingAmount)}` : ''}`,
+        `${t('mobilePurchasedSuccess', 'Your mobile purchase was completed successfully and sent to admin.')}\n\n${t('purchaseType', 'Purchase type')}: ${
+          result.purchaseMode === 'cash' ? t('cash', 'Cash') : t('installment', 'Installment')
+        }\n${t('paidAmount', 'Paid amount')}: ${formatIQD(result.paidNow)}\n${t('walletBalanceAfterPayment', 'Wallet Balance After Payment')}: ${formatIQD(result.nextBalance)}${
+          result.purchaseMode === 'installment'
+            ? `\n${t('remainingInstallmentAmount', 'Remaining Installment Amount')}: ${formatIQD(result.remainingAmount)}`
+            : `\n${t('remainingPurchaseAmount', 'Remaining Purchase Amount')}: ${formatIQD(0)}`
+        }`,
         [
           {
             text: t('done', 'Done'),
@@ -1123,9 +1138,20 @@ export default function MobileShopScreen() {
                             <Text style={styles.summaryLabel}>{t('cashPrice', 'Cash Price')}</Text>
                             <Text style={styles.summaryValue}>{formatIQD(selectedCashTotal)}</Text>
                           </View>
+
                           <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>{t('payNow', 'Pay Now')}</Text>
                             <Text style={styles.summaryValue}>{formatIQD(selectedCashTotal)}</Text>
+                          </View>
+
+                          <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>{t('walletBalanceAfterPayment', 'Wallet Balance After Payment')}</Text>
+                            <Text style={styles.summaryValue}>{formatIQD(walletBalanceAfterPayment)}</Text>
+                          </View>
+
+                          <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>{t('remainingPurchaseAmount', 'Remaining Purchase Amount')}</Text>
+                            <Text style={styles.summaryValue}>{formatIQD(0)}</Text>
                           </View>
                         </>
                       ) : (
@@ -1134,21 +1160,28 @@ export default function MobileShopScreen() {
                             <Text style={styles.summaryLabel}>{t('firstMonthPayment', 'First Month Payment')}</Text>
                             <Text style={styles.summaryValue}>{formatIQD(selectedFirstInstallment)}</Text>
                           </View>
+
                           <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>{t('installmentContractTotal', 'Installment Contract Total')}</Text>
                             <Text style={styles.summaryValue}>{formatIQD(selectedInstallmentContractTotal)}</Text>
                           </View>
+
                           <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>{t('numberOfMonths', 'Number of Months')}</Text>
                             <Text style={styles.summaryValue}>{selectedMonthsCount}</Text>
                           </View>
+
+                          <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>{t('walletBalanceAfterPayment', 'Wallet Balance After Payment')}</Text>
+                            <Text style={styles.summaryValue}>{formatIQD(walletBalanceAfterPayment)}</Text>
+                          </View>
+
+                          <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>{t('remainingInstallmentAmount', 'Remaining Installment Amount')}</Text>
+                            <Text style={styles.summaryValue}>{formatIQD(remainingPurchaseAmount)}</Text>
+                          </View>
                         </>
                       )}
-
-                      <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>{t('remainingAfterPurchase', 'Remaining After Purchase')}</Text>
-                        <Text style={styles.summaryValue}>{formatIQD(remainingAfterPurchase)}</Text>
-                      </View>
                     </View>
 
                     <TouchableOpacity
