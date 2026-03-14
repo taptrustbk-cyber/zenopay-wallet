@@ -111,6 +111,18 @@ const formatIQD = (value: any) => {
   return `${new Intl.NumberFormat('en-US').format(n)} د.ع`;
 };
 
+const toNumber = (value: any, fallback = 0) => {
+  const cleaned = String(value ?? '')
+    .replace(/,/g, '')
+    .replace(/[^\d.-]/g, '')
+    .trim();
+
+  if (!cleaned) return fallback;
+
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : fallback;
+};
+
 const formatIraqTime = (value?: string | null) => {
   if (!value) return 'N/A';
   const d = new Date(value);
@@ -161,6 +173,20 @@ const productCashPriceFromRow = (row: any) =>
 const productMonthlyFromRow = (row: any) =>
   row?.monthly_price_iqd ?? row?.monthly_price ?? row?.installment_price ?? 0;
 
+const productMonthsFromRow = (row: any) =>
+  row?.months_count ?? row?.months ?? row?.installment_months ?? 1;
+
+const productInstallmentTotalFromRow = (row: any) => {
+  const direct =
+    row?.installment_total_contract_iqd ??
+    row?.installment_contract_total_iqd ??
+    row?.total_installment_iqd;
+
+  if (direct !== undefined && direct !== null) return Number(direct || 0);
+
+  return Number(productMonthlyFromRow(row) || 0) * Number(productMonthsFromRow(row) || 1);
+};
+
 const productStockFromRow = (row: any) =>
   row?.stock ?? row?.qty ?? row?.quantity ?? row?.inventory ?? 0;
 
@@ -173,6 +199,8 @@ const orderUserId = (row: any) => row?.user_id || row?.customer_id || null;
 const orderProductId = (row: any) => row?.product_id || row?.shop_product_id || null;
 const orderQty = (row: any) => row?.quantity ?? row?.qty ?? 1;
 const orderTotal = (row: any) => row?.total_price_iqd ?? row?.total_price ?? row?.total ?? row?.amount ?? row?.price ?? 0;
+const orderPaidNow = (row: any) => row?.paid_amount_iqd ?? row?.payable_now_iqd ?? row?.first_payment_iqd ?? orderTotal(row) ?? 0;
+const orderRemaining = (row: any) => row?.remaining_amount_iqd ?? 0;
 const orderStatus = (row: any) => (row?.status || row?.payment_status || 'pending').toString().toLowerCase();
 const orderPhone = (row: any) => row?.customer_phone || row?.phone || row?.mobile || 'N/A';
 const orderAddress = (row: any) =>
@@ -182,6 +210,7 @@ const orderNotes = (row: any) => row?.note || row?.notes || row?.description || 
 const orderCreatedAt = (row: any) => row?.created_at || row?.ordered_at || row?.date || null;
 const orderProductName = (row: any) => row?.product_name || row?.mobile_name || row?.name || 'Unknown Product';
 const orderType = (row: any) => (row?.order_type || '').toString().toLowerCase();
+const orderPurchaseMode = (row: any) => (row?.purchase_mode || row?.payment_mode || 'cash').toString().toLowerCase();
 
 const decodeBase64ToUint8Array = (base64: string) => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
@@ -233,6 +262,12 @@ export default function MobileProductsAdminScreen() {
   const [savingMode, setSavingMode] = useState<'create' | 'edit'>('create');
   const [form, setForm] = useState<ProductForm>(emptyForm());
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  const liveCashPrice = toNumber(form.cash_price_iqd || form.price_iqd, 0);
+  const liveBasePrice = toNumber(form.price_iqd || form.cash_price_iqd, 0);
+  const liveMonthlyPrice = toNumber(form.monthly_price_iqd, 0);
+  const liveMonthsCount = Math.max(1, toNumber(form.months_count, 1));
+  const liveInstallmentContractTotal = liveMonthlyPrice * liveMonthsCount;
 
   const productsQuery = useQuery({
     queryKey: ['admin-mobile-shop-products'],
@@ -319,7 +354,7 @@ export default function MobileProductsAdminScreen() {
       totalOrders: list.length,
       pendingOrders: list.filter((o: any) => orderStatus(o) === 'pending').length,
       paidOrders: list.filter((o: any) => orderStatus(o) === 'paid').length,
-      totalSales: list.reduce((sum: number, o: any) => sum + Number(orderTotal(o) || 0), 0),
+      totalSales: list.reduce((sum: number, o: any) => sum + Number(orderPaidNow(o) || 0), 0),
     };
   }, [ordersQuery.data]);
 
@@ -456,25 +491,48 @@ export default function MobileProductsAdminScreen() {
       if (!form.name.trim()) throw new Error('Product name is required');
       if (!form.brand.trim()) throw new Error('Brand is required');
 
-      const payload = {
+      const basePrice = toNumber(form.price_iqd, 0);
+      const cashPrice = toNumber(form.cash_price_iqd, 0);
+      const monthlyPrice = toNumber(form.monthly_price_iqd, 0);
+      const monthsCount = Math.max(1, toNumber(form.months_count, 1));
+      const stock = Math.max(0, toNumber(form.stock, 0));
+      const sortOrder = Math.max(0, toNumber(form.sort_order, 0));
+
+      const finalCashPrice = cashPrice > 0 ? cashPrice : basePrice;
+      const finalBasePrice = basePrice > 0 ? basePrice : finalCashPrice;
+
+      if (finalCashPrice <= 0) {
+        throw new Error('Cash price must be greater than 0');
+      }
+
+      if (monthlyPrice < 0) {
+        throw new Error('Monthly price cannot be negative');
+      }
+
+      if (monthsCount <= 0) {
+        throw new Error('Months count must be greater than 0');
+      }
+
+      const payload: any = {
         category: 'mobile',
         name: form.name.trim(),
         brand: form.brand,
         image_url: form.image_url.trim() || null,
         description: form.description.trim() || null,
-        price_iqd: Number(form.price_iqd || 0),
-        cash_price_iqd: Number(form.cash_price_iqd || 0),
-        monthly_price_iqd: Number(form.monthly_price_iqd || 0),
-        months_count: Number(form.months_count || 1),
+        price_iqd: finalBasePrice,
+        cash_price_iqd: finalCashPrice,
+        monthly_price_iqd: monthlyPrice,
+        months_count: monthsCount,
+        installment_total_contract_iqd: monthlyPrice * monthsCount,
         storage: form.storage.trim() || null,
         ram: form.ram.trim() || null,
         color: form.color.trim() || null,
         color_hex: form.color_hex.trim() || '#D1D5DB',
-        stock: Number(form.stock || 0),
+        stock,
         badge: form.badge.trim() || null,
         is_new: !!form.is_new,
         is_active: !!form.is_active,
-        sort_order: Number(form.sort_order || 0),
+        sort_order: sortOrder,
       };
 
       if (savingMode === 'edit' && form.id) {
@@ -685,12 +743,12 @@ export default function MobileProductsAdminScreen() {
               </View>
 
               <View style={styles.statCard}>
-                <Text style={styles.statLabel}>Paid Orders</Text>
+                <Text style={styles.statLabel}>Paid / Collected Now</Text>
                 <Text style={[styles.statValue, { color: UI.green }]}>{orderStats.paidOrders}</Text>
               </View>
 
               <View style={styles.statCard}>
-                <Text style={styles.statLabel}>Total Sales</Text>
+                <Text style={styles.statLabel}>Collected Amount</Text>
                 <Text style={[styles.statValue, { fontSize: 18, color: UI.purple }]}>{formatIQD(orderStats.totalSales)}</Text>
               </View>
             </View>
@@ -703,8 +761,11 @@ export default function MobileProductsAdminScreen() {
                 const image = productImageFromRow(product);
                 const name = productNameFromRow(product);
                 const brand = productBrandFromRow(product);
+                const basePrice = productPriceFromRow(product);
                 const cashPrice = productCashPriceFromRow(product);
                 const monthly = productMonthlyFromRow(product);
+                const months = productMonthsFromRow(product);
+                const installmentTotal = productInstallmentTotalFromRow(product);
                 const stock = productStockFromRow(product);
                 const soldCount = (ordersQuery.data || []).filter((o: any) => orderProductId(o) === product.id).length;
 
@@ -732,6 +793,11 @@ export default function MobileProductsAdminScreen() {
                     </View>
 
                     <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Base Price</Text>
+                      <Text style={styles.rowValue}>{formatIQD(basePrice)}</Text>
+                    </View>
+
+                    <View style={styles.row}>
                       <Text style={styles.rowLabel}>Cash Price</Text>
                       <Text style={[styles.rowValue, { color: UI.blue }]}>{formatIQD(cashPrice)}</Text>
                     </View>
@@ -743,7 +809,12 @@ export default function MobileProductsAdminScreen() {
 
                     <View style={styles.row}>
                       <Text style={styles.rowLabel}>Months</Text>
-                      <Text style={styles.rowValue}>{product?.months_count ?? 1}</Text>
+                      <Text style={styles.rowValue}>{months}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Installment Contract Total</Text>
+                      <Text style={[styles.rowValue, { color: UI.purple }]}>{formatIQD(installmentTotal)}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -842,6 +913,9 @@ export default function MobileProductsAdminScreen() {
                 const productName = product ? productNameFromRow(product) : orderProductName(order);
                 const total = orderTotal(order);
                 const qty = orderQty(order);
+                const paidNow = orderPaidNow(order);
+                const remaining = orderRemaining(order);
+                const purchaseMode = orderPurchaseMode(order);
 
                 return (
                   <View key={order.id} style={styles.card}>
@@ -872,6 +946,13 @@ export default function MobileProductsAdminScreen() {
                     </View>
 
                     <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Purchase Type</Text>
+                      <Text style={[styles.rowValue, { color: purchaseMode === 'installment' ? UI.purple : UI.blue }]}>
+                        {purchaseMode.toUpperCase()}
+                      </Text>
+                    </View>
+
+                    <View style={styles.row}>
                       <Text style={styles.rowLabel}>Product</Text>
                       <Text style={styles.rowValue}>{productName}</Text>
                     </View>
@@ -889,8 +970,18 @@ export default function MobileProductsAdminScreen() {
                     </View>
 
                     <View style={styles.row}>
-                      <Text style={styles.rowLabel}>Total Price</Text>
+                      <Text style={styles.rowLabel}>Contract / Total Price</Text>
                       <Text style={[styles.rowValue, { color: UI.purple }]}>{formatIQD(total)}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Paid Now</Text>
+                      <Text style={[styles.rowValue, { color: UI.green }]}>{formatIQD(paidNow)}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Remaining Amount</Text>
+                      <Text style={[styles.rowValue, { color: UI.amber }]}>{formatIQD(remaining)}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -1009,12 +1100,12 @@ export default function MobileProductsAdminScreen() {
                 </View>
               )}
 
-              <Text style={styles.inputLabel}>Price IQD</Text>
+              <Text style={styles.inputLabel}>Base Price IQD</Text>
               <TextInput
                 style={styles.input}
                 value={form.price_iqd}
                 onChangeText={(v) => setForm((p) => ({ ...p, price_iqd: v }))}
-                placeholder="189000"
+                placeholder="1071000"
                 placeholderTextColor="#94A3B8"
                 keyboardType="number-pad"
               />
@@ -1024,7 +1115,7 @@ export default function MobileProductsAdminScreen() {
                 style={styles.input}
                 value={form.cash_price_iqd}
                 onChangeText={(v) => setForm((p) => ({ ...p, cash_price_iqd: v }))}
-                placeholder="189000"
+                placeholder="1071000"
                 placeholderTextColor="#94A3B8"
                 keyboardType="number-pad"
               />
@@ -1034,7 +1125,7 @@ export default function MobileProductsAdminScreen() {
                 style={styles.input}
                 value={form.monthly_price_iqd}
                 onChangeText={(v) => setForm((p) => ({ ...p, monthly_price_iqd: v }))}
-                placeholder="189000"
+                placeholder="260000"
                 placeholderTextColor="#94A3B8"
                 keyboardType="number-pad"
               />
@@ -1044,10 +1135,39 @@ export default function MobileProductsAdminScreen() {
                 style={styles.input}
                 value={form.months_count}
                 onChangeText={(v) => setForm((p) => ({ ...p, months_count: v }))}
-                placeholder="1"
+                placeholder="10"
                 placeholderTextColor="#94A3B8"
                 keyboardType="number-pad"
               />
+
+              <View style={styles.calcPreviewBox}>
+                <Text style={styles.calcPreviewTitle}>Live Price Preview</Text>
+
+                <View style={styles.rowNoBorder}>
+                  <Text style={styles.rowLabel}>Base Price</Text>
+                  <Text style={styles.rowValue}>{formatIQD(liveBasePrice)}</Text>
+                </View>
+
+                <View style={styles.rowNoBorder}>
+                  <Text style={styles.rowLabel}>Cash Price</Text>
+                  <Text style={[styles.rowValue, { color: UI.blue }]}>{formatIQD(liveCashPrice)}</Text>
+                </View>
+
+                <View style={styles.rowNoBorder}>
+                  <Text style={styles.rowLabel}>Monthly Price</Text>
+                  <Text style={[styles.rowValue, { color: UI.purple }]}>{formatIQD(liveMonthlyPrice)}</Text>
+                </View>
+
+                <View style={styles.rowNoBorder}>
+                  <Text style={styles.rowLabel}>Months</Text>
+                  <Text style={styles.rowValue}>{liveMonthsCount}</Text>
+                </View>
+
+                <View style={styles.rowNoBorder}>
+                  <Text style={styles.rowLabel}>Installment Contract Total</Text>
+                  <Text style={[styles.rowValue, { color: UI.green }]}>{formatIQD(liveInstallmentContractTotal)}</Text>
+                </View>
+              </View>
 
               <Text style={styles.inputLabel}>Storage</Text>
               <TextInput
@@ -1409,17 +1529,23 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: UI.border,
   },
+  rowNoBorder: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingVertical: 5,
+  },
   rowLabel: {
     fontSize: 13,
     color: UI.text2,
     fontWeight: '700',
-    maxWidth: '40%',
+    maxWidth: '45%',
   },
   rowValue: {
     fontSize: 13,
     color: UI.text,
     fontWeight: '800',
-    maxWidth: '58%',
+    maxWidth: '53%',
     textAlign: 'right',
   },
 
@@ -1442,6 +1568,21 @@ const styles = StyleSheet.create({
     color: UI.text2,
     lineHeight: 18,
     fontWeight: '700',
+  },
+
+  calcPreviewBox: {
+    marginTop: 12,
+    backgroundColor: UI.purpleSoft,
+    borderWidth: 1,
+    borderColor: '#D8B4FE',
+    borderRadius: 16,
+    padding: 12,
+  },
+  calcPreviewTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: UI.purple,
+    marginBottom: 8,
   },
 
   productActionsRow: {
