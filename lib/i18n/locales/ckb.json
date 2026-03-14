@@ -4,6 +4,8 @@
   "loginSubWelcome": "چوونەژوورەوە بکە بۆ بەردەوامبوون",
   "iqdShort": "د.ع",
   "purchaseSuccess": "کڕینەکە سەرکەوتوو بوو",
+  "insufficientCashBalance": "باڵانسی وۆڵێتەکەت بۆ کڕینی ئەم مۆبایلە بە نەقد بەس نییە.",
+  "remainingPurchaseAmount": "بڕی ماوەی کڕین",
   "mobilePurchasedSuccess": "کڕینی مۆبایلەکەت بە سەرکەوتوویی تەواو بوو و بۆ ئەدمین نێردرا.",
   "insufficientFirstMonthBalance": "باڵانسی پێویستت نییە بۆ پارەدانی مانگی یەکەم. تکایە باڵانس زیاد بکە و دووبارە هەوڵبدەوە.",
   "firstMonthPayment": "پارەی مانگی یەکەم",
