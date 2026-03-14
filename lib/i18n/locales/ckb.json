@@ -6,7 +6,8 @@
   "firstMonthPayment": "پارەی مانگی یەکەم",
   "installmentContractTotal": "کۆی گشتی گرێبەستی قیست",
   "buyInstallmentWithWallet": "بە قیست بکڕە بە باڵانسی وۆڵێت",
-
+  "walletBalanceAfterPayment": "باڵانسی وۆڵێت دوای پارەدان",
+  "remainingInstallmentAmount": "بڕی ماوەی قیست",
   "productDetails": "وردەکاریی پرۆداکت",
   "cash": "نەقد",
   "installment": "قیست",
