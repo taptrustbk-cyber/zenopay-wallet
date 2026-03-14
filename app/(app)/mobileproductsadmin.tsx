@@ -71,6 +71,7 @@ type ProductForm = {
   image_url: string;
   description: string;
   price_iqd: string;
+  cash_price_iqd: string;
   monthly_price_iqd: string;
   months_count: string;
   storage: string;
@@ -91,6 +92,7 @@ const emptyForm = (): ProductForm => ({
   image_url: '',
   description: '',
   price_iqd: '',
+  cash_price_iqd: '',
   monthly_price_iqd: '',
   months_count: '1',
   storage: '',
@@ -152,6 +154,9 @@ const productBrandFromRow = (row: any) =>
 
 const productPriceFromRow = (row: any) =>
   row?.price_iqd ?? row?.price ?? row?.sale_price ?? row?.amount ?? row?.product_price ?? 0;
+
+const productCashPriceFromRow = (row: any) =>
+  row?.cash_price_iqd ?? row?.cash_price ?? row?.price_iqd ?? row?.price ?? row?.sale_price ?? row?.amount ?? row?.product_price ?? 0;
 
 const productMonthlyFromRow = (row: any) =>
   row?.monthly_price_iqd ?? row?.monthly_price ?? row?.installment_price ?? 0;
@@ -297,7 +302,7 @@ export default function MobileProductsAdminScreen() {
     const activeProducts = list.filter((p: any) => productStatusFromRow(p) === 'active').length;
     const outOfStock = list.filter((p: any) => Number(productStockFromRow(p)) <= 0).length;
     const totalProductsValue = list.reduce((sum: number, p: any) => {
-      return sum + Number(productPriceFromRow(p) || 0) * Number(productStockFromRow(p) || 0);
+      return sum + Number(productCashPriceFromRow(p) || 0) * Number(productStockFromRow(p) || 0);
     }, 0);
 
     return {
@@ -361,6 +366,7 @@ export default function MobileProductsAdminScreen() {
       image_url: product?.image_url || '',
       description: product?.description || '',
       price_iqd: String(product?.price_iqd ?? ''),
+      cash_price_iqd: String(product?.cash_price_iqd ?? product?.price_iqd ?? ''),
       monthly_price_iqd: String(product?.monthly_price_iqd ?? ''),
       months_count: String(product?.months_count ?? '1'),
       storage: product?.storage || '',
@@ -457,6 +463,7 @@ export default function MobileProductsAdminScreen() {
         image_url: form.image_url.trim() || null,
         description: form.description.trim() || null,
         price_iqd: Number(form.price_iqd || 0),
+        cash_price_iqd: Number(form.cash_price_iqd || 0),
         monthly_price_iqd: Number(form.monthly_price_iqd || 0),
         months_count: Number(form.months_count || 1),
         storage: form.storage.trim() || null,
@@ -696,7 +703,7 @@ export default function MobileProductsAdminScreen() {
                 const image = productImageFromRow(product);
                 const name = productNameFromRow(product);
                 const brand = productBrandFromRow(product);
-                const price = productPriceFromRow(product);
+                const cashPrice = productCashPriceFromRow(product);
                 const monthly = productMonthlyFromRow(product);
                 const stock = productStockFromRow(product);
                 const soldCount = (ordersQuery.data || []).filter((o: any) => orderProductId(o) === product.id).length;
@@ -725,8 +732,8 @@ export default function MobileProductsAdminScreen() {
                     </View>
 
                     <View style={styles.row}>
-                      <Text style={styles.rowLabel}>Price</Text>
-                      <Text style={[styles.rowValue, { color: UI.blue }]}>{formatIQD(price)}</Text>
+                      <Text style={styles.rowLabel}>Cash Price</Text>
+                      <Text style={[styles.rowValue, { color: UI.blue }]}>{formatIQD(cashPrice)}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -1007,6 +1014,16 @@ export default function MobileProductsAdminScreen() {
                 style={styles.input}
                 value={form.price_iqd}
                 onChangeText={(v) => setForm((p) => ({ ...p, price_iqd: v }))}
+                placeholder="189000"
+                placeholderTextColor="#94A3B8"
+                keyboardType="number-pad"
+              />
+
+              <Text style={styles.inputLabel}>Cash Price IQD</Text>
+              <TextInput
+                style={styles.input}
+                value={form.cash_price_iqd}
+                onChangeText={(v) => setForm((p) => ({ ...p, cash_price_iqd: v }))}
                 placeholder="189000"
                 placeholderTextColor="#94A3B8"
                 keyboardType="number-pad"
