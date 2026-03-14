@@ -4,6 +4,8 @@
   "zenopayAgentDeposit": "ل لایێ ئەجێنتی زینوپەی پارە هاتە دانان ",
   "adminTopUp": "ل لایێ ئەجێنتی زینوپەی پارە هاتە دانان",
   "productDetails": "زانیاریێن موبایلێ",
+  "insufficientCashBalance": "بالانسا والێتا تە بۆ كرینا ڤي مۆبایلێ ب نقد تێرا ناکەت.",
+  "remainingPurchaseAmount": "بڕا ماوی یا كرینێ",
   "cash": "کاش",
   "purchaseSuccess": "كرین ب سەركەفتی هاتە ئەنجامدان",
   "mobilePurchasedSuccess": "كرنا مۆبایلێ تە بسركەفتی تەمام بوو و هاتە هنارتن بۆ ئەدمین.",
