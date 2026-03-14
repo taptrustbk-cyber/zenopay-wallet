@@ -34,6 +34,9 @@ import {
   Save,
   Image as ImageIcon,
   Upload,
+  CheckCircle2,
+  Ban,
+  Mail,
 } from 'lucide-react-native';
 
 export const options = { headerShown: false };
@@ -63,6 +66,7 @@ const UI = {
 };
 
 type BrandKey = 'apple' | 'samsung' | 'xiaomi' | 'infinix' | 'tecno' | 'other';
+type ReviewAction = 'approved' | 'rejected';
 
 type ProductForm = {
   id?: string | null;
@@ -201,7 +205,8 @@ const orderQty = (row: any) => row?.quantity ?? row?.qty ?? 1;
 const orderTotal = (row: any) => row?.total_price_iqd ?? row?.total_price ?? row?.total ?? row?.amount ?? row?.price ?? 0;
 const orderPaidNow = (row: any) => row?.paid_amount_iqd ?? row?.payable_now_iqd ?? row?.first_payment_iqd ?? orderTotal(row) ?? 0;
 const orderRemaining = (row: any) => row?.remaining_amount_iqd ?? 0;
-const orderStatus = (row: any) => (row?.status || row?.payment_status || 'pending').toString().toLowerCase();
+const orderStatus = (row: any) =>
+  (row?.admin_status || row?.status || row?.payment_status || 'pending').toString().toLowerCase();
 const orderPhone = (row: any) => row?.customer_phone || row?.phone || row?.mobile || 'N/A';
 const orderAddress = (row: any) =>
   row?.customer_street || row?.address || row?.delivery_address || row?.location || 'N/A';
@@ -211,6 +216,8 @@ const orderCreatedAt = (row: any) => row?.created_at || row?.ordered_at || row?.
 const orderProductName = (row: any) => row?.product_name || row?.mobile_name || row?.name || 'Unknown Product';
 const orderType = (row: any) => (row?.order_type || '').toString().toLowerCase();
 const orderPurchaseMode = (row: any) => (row?.purchase_mode || row?.payment_mode || 'cash').toString().toLowerCase();
+const orderAdminNote = (row: any) => row?.admin_note || '';
+const orderAdminStatus = (row: any) => (row?.admin_status || '').toString().toLowerCase();
 
 const decodeBase64ToUint8Array = (base64: string) => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
@@ -262,6 +269,11 @@ export default function MobileProductsAdminScreen() {
   const [savingMode, setSavingMode] = useState<'create' | 'edit'>('create');
   const [form, setForm] = useState<ProductForm>(emptyForm());
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedOrderForReview, setSelectedOrderForReview] = useState<any | null>(null);
+  const [reviewAction, setReviewAction] = useState<ReviewAction>('approved');
+  const [reviewMessage, setReviewMessage] = useState('');
 
   const liveCashPrice = toNumber(form.cash_price_iqd || form.price_iqd, 0);
   const liveBasePrice = toNumber(form.price_iqd || form.cash_price_iqd, 0);
@@ -352,7 +364,10 @@ export default function MobileProductsAdminScreen() {
     const list = ordersQuery.data || [];
     return {
       totalOrders: list.length,
-      pendingOrders: list.filter((o: any) => orderStatus(o) === 'pending').length,
+      pendingOrders: list.filter((o: any) => {
+        const s = orderAdminStatus(o) || orderStatus(o);
+        return s === 'pending' || s === 'new';
+      }).length,
       paidOrders: list.filter((o: any) => orderStatus(o) === 'paid').length,
       totalSales: list.reduce((sum: number, o: any) => sum + Number(orderPaidNow(o) || 0), 0),
     };
@@ -416,6 +431,24 @@ export default function MobileProductsAdminScreen() {
     });
     setSavingMode('edit');
     setModalOpen(true);
+  };
+
+  const openReviewModal = (order: any, action: ReviewAction) => {
+    setSelectedOrderForReview(order);
+    setReviewAction(action);
+    setReviewMessage(
+      action === 'approved'
+        ? 'Your mobile order has been approved.'
+        : 'Your mobile order has been rejected.'
+    );
+    setReviewModalOpen(true);
+  };
+
+  const closeReviewModal = () => {
+    setReviewModalOpen(false);
+    setSelectedOrderForReview(null);
+    setReviewMessage('');
+    setReviewAction('approved');
   };
 
   const pickAndUploadImage = async () => {
@@ -579,6 +612,85 @@ export default function MobileProductsAdminScreen() {
     },
     onError: (error: any) => {
       Alert.alert('Error', error?.message || 'Failed to update status');
+    },
+  });
+
+  const reviewOrderMutation = useMutation({
+    mutationFn: async ({
+      order,
+      action,
+      message,
+    }: {
+      order: any;
+      action: ReviewAction;
+      message: string;
+    }) => {
+      if (!order?.id) throw new Error('Order not found');
+
+      const adminStatus = action;
+      const status = action === 'approved' ? 'approved' : 'rejected';
+      const paymentStatus =
+        action === 'approved'
+          ? (order?.payment_status || 'pending')
+          : 'cancelled';
+
+      const updatePayload: any = {
+        admin_status: adminStatus,
+        admin_note: message.trim() || null,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: user?.id || null,
+        status,
+        payment_status: paymentStatus,
+      };
+
+      const { error: updateError } = await supabase
+        .from('shop_orders')
+        .update(updatePayload)
+        .eq('id', order.id);
+
+      if (updateError) throw updateError;
+
+      const customerEmail = order?.customer_email || order?.profile?.email || null;
+      const customerName = order?.customer_full_name || order?.profile?.full_name || 'Customer';
+
+      if (customerEmail) {
+        const { error: emailError } = await supabase.functions.invoke(
+          'send-mobile-order-review-email',
+          {
+            body: {
+              to: customerEmail,
+              customer_name: customerName,
+              order_id: order.id,
+              order_status: adminStatus,
+              message: message.trim() || '',
+              product_name: order?.product_name || orderProductName(order),
+              purchase_mode: orderPurchaseMode(order),
+              total_price_iqd: orderTotal(order),
+              paid_now_iqd: orderPaidNow(order),
+              remaining_amount_iqd: orderRemaining(order),
+            },
+          }
+        );
+
+        if (emailError) {
+          throw new Error(emailError.message || 'Order updated, but email sending failed');
+        }
+      }
+
+      return adminStatus;
+    },
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: ['admin-mobile-shop-orders'] });
+      closeReviewModal();
+      Alert.alert(
+        'Success',
+        result === 'approved'
+          ? 'Order approved and email sent successfully'
+          : 'Order rejected and email sent successfully'
+      );
+    },
+    onError: (error: any) => {
+      Alert.alert('Error', error?.message || 'Failed to review order');
     },
   });
 
@@ -906,7 +1018,7 @@ export default function MobileProductsAdminScreen() {
 
                 const product = order.product || null;
                 const profile = order.profile || null;
-                const badge = statusBadge(orderStatus(order));
+                const badge = statusBadge(orderAdminStatus(order) || orderStatus(order));
                 const displayName = (profile?.full_name || order?.customer_full_name || '').trim() || 'Unknown Name';
                 const displayEmail = profile?.email || order?.customer_email || 'N/A';
                 const avatar = profile?.avatar_url;
@@ -916,6 +1028,8 @@ export default function MobileProductsAdminScreen() {
                 const paidNow = orderPaidNow(order);
                 const remaining = orderRemaining(order);
                 const purchaseMode = orderPurchaseMode(order);
+                const adminNote = orderAdminNote(order);
+                const adminStatus = orderAdminStatus(order);
 
                 return (
                   <View key={order.id} style={styles.card}>
@@ -1009,12 +1123,56 @@ export default function MobileProductsAdminScreen() {
                       <Text style={styles.rowValue}>{formatIraqTime(orderCreatedAt(order))}</Text>
                     </View>
 
+                    <View style={styles.row}>
+                      <Text style={styles.rowLabel}>Admin Review</Text>
+                      <Text
+                        style={[
+                          styles.rowValue,
+                          {
+                            color:
+                              adminStatus === 'approved'
+                                ? UI.green
+                                : adminStatus === 'rejected'
+                                ? UI.red
+                                : UI.amber,
+                          },
+                        ]}
+                      >
+                        {(adminStatus || 'pending').toUpperCase()}
+                      </Text>
+                    </View>
+
                     {!!orderNotes(order) && (
                       <View style={styles.noteBox}>
                         <Text style={styles.noteTitle}>Notes</Text>
                         <Text style={styles.noteText}>{orderNotes(order)}</Text>
                       </View>
                     )}
+
+                    {!!adminNote && (
+                      <View style={[styles.noteBox, { backgroundColor: '#FFFDF5' }]}>
+                        <Text style={styles.noteTitle}>Admin Note</Text>
+                        <Text style={styles.noteText}>{adminNote}</Text>
+                      </View>
+                    )}
+
+                    <View style={styles.orderReviewActionsRow}>
+                      <TouchableOpacity
+                        style={[styles.reviewBtn, { backgroundColor: UI.greenSoft, borderColor: UI.green }]}
+                        onPress={() => openReviewModal(order, 'approved')}
+                      >
+                        <CheckCircle2 size={16} color={UI.green} />
+                        <Text style={[styles.reviewBtnText, { color: UI.green }]}>Approve</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.reviewBtn, { backgroundColor: UI.redSoft, borderColor: UI.red }]}
+                        onPress={() => openReviewModal(order, 'rejected')}
+                      >
+                        <Ban size={16} color={UI.red} />
+                        <Text style={[styles.reviewBtnText, { color: UI.red }]}>Reject</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 );
               })
@@ -1285,6 +1443,109 @@ export default function MobileProductsAdminScreen() {
               </TouchableOpacity>
 
               <View style={{ height: 18 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={reviewModalOpen} transparent animationType="slide" onRequestClose={closeReviewModal}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.reviewSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {reviewAction === 'approved' ? 'Approve Order' : 'Reject Order'}
+              </Text>
+
+              <TouchableOpacity style={styles.modalCloseBtn} onPress={closeReviewModal}>
+                <X size={18} color={UI.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.reviewInfoCard}>
+                <Text style={styles.reviewInfoTitle}>
+                  {selectedOrderForReview?.product_name || orderProductName(selectedOrderForReview)}
+                </Text>
+                <Text style={styles.reviewInfoSub}>
+                  Order ID: {selectedOrderForReview?.id || 'N/A'}
+                </Text>
+                <Text style={styles.reviewInfoSub}>
+                  Email: {selectedOrderForReview?.customer_email || selectedOrderForReview?.profile?.email || 'N/A'}
+                </Text>
+              </View>
+
+              <View style={styles.actionTypeRow}>
+                <View
+                  style={[
+                    styles.actionTypeBadge,
+                    {
+                      backgroundColor:
+                        reviewAction === 'approved' ? UI.greenSoft : UI.redSoft,
+                    },
+                  ]}
+                >
+                  {reviewAction === 'approved' ? (
+                    <CheckCircle2 size={16} color={UI.green} />
+                  ) : (
+                    <Ban size={16} color={UI.red} />
+                  )}
+                  <Text
+                    style={[
+                      styles.actionTypeText,
+                      { color: reviewAction === 'approved' ? UI.green : UI.red },
+                    ]}
+                  >
+                    {reviewAction === 'approved' ? 'APPROVE' : 'REJECT'}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.inputLabel}>Message to customer</Text>
+              <TextInput
+                style={[styles.input, styles.textarea]}
+                value={reviewMessage}
+                onChangeText={setReviewMessage}
+                placeholder="Write your message here..."
+                placeholderTextColor="#94A3B8"
+                multiline
+              />
+
+              <View style={styles.emailHintBox}>
+                <Mail size={16} color={UI.blue} />
+                <Text style={styles.emailHintText}>
+                  This message will be saved in admin_note and sent to the customer email automatically.
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.submitReviewBtn,
+                  {
+                    backgroundColor:
+                      reviewAction === 'approved' ? UI.green : UI.red,
+                    opacity: reviewOrderMutation.isPending ? 0.7 : 1,
+                  },
+                ]}
+                onPress={() => {
+                  if (!selectedOrderForReview) return;
+                  reviewOrderMutation.mutate({
+                    order: selectedOrderForReview,
+                    action: reviewAction,
+                    message: reviewMessage,
+                  });
+                }}
+                disabled={reviewOrderMutation.isPending}
+              >
+                {reviewOrderMutation.isPending ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.submitReviewBtnText}>
+                    {reviewAction === 'approved' ? 'Approve & Send Email' : 'Reject & Send Email'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <View style={{ height: 16 }} />
             </ScrollView>
           </View>
         </View>
@@ -1604,6 +1865,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
+  orderReviewActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  reviewBtn: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 10,
+  },
+  reviewBtnText: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
+
   primaryBtn: {
     marginTop: 12,
     backgroundColor: UI.blue,
@@ -1702,6 +1984,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     maxHeight: '92%',
+  },
+  reviewSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    maxHeight: '76%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1848,6 +2138,71 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   saveBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+
+  reviewInfoCard: {
+    backgroundColor: UI.card2,
+    borderWidth: 1,
+    borderColor: UI.border,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 12,
+  },
+  reviewInfoTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: UI.text,
+  },
+  reviewInfoSub: {
+    fontSize: 13,
+    color: UI.text2,
+    marginTop: 4,
+    fontWeight: '700',
+  },
+  actionTypeRow: {
+    marginBottom: 8,
+  },
+  actionTypeBadge: {
+    alignSelf: 'flex-start',
+    minHeight: 36,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actionTypeText: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  emailHintBox: {
+    marginTop: 12,
+    borderRadius: 14,
+    padding: 12,
+    backgroundColor: UI.blueSoft,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'flex-start',
+  },
+  emailHintText: {
+    flex: 1,
+    color: UI.blue,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  submitReviewBtn: {
+    marginTop: 16,
+    minHeight: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  submitReviewBtnText: {
     color: '#fff',
     fontSize: 15,
     fontWeight: '900',
