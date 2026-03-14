@@ -2,6 +2,8 @@
   "home": "Home",
   "send": "Send",
 "stillNotConfirmedPleaseCheckEmail": "Your email is still not confirmed. Please check your email.",
+  "insufficientCashBalance": "You don't have enough wallet balance to buy this mobile in cash.",
+  "remainingPurchaseAmount": "Remaining Purchase Amount",
   "walletBalanceAfterPayment": "Wallet Balance After Payment",
   "remainingInstallmentAmount": "Remaining Installment Amount",
   "purchaseSuccess": "Purchase Successful",
