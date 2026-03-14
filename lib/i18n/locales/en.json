@@ -4,7 +4,9 @@
 "stillNotConfirmedPleaseCheckEmail": "Your email is still not confirmed. Please check your email.",
   "walletBalanceAfterPayment": "Wallet Balance After Payment",
   "remainingInstallmentAmount": "Remaining Installment Amount",
-  
+  "purchaseSuccess": "Purchase Successful",
+  "mobilePurchasedSuccess": "Your mobile purchase was completed successfully and sent to admin.",
+  "insufficientFirstMonthBalance": "You don't have enough balance for the first monthly payment. Please deposit balance and try again.",
   "iqdShort": "IQD",
   "productDetails": "Product Details",
   "cash": "Cash",
