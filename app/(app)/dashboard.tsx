@@ -750,19 +750,19 @@ const styles = StyleSheet.create({
   },
 
   phonesStage: {
-    width: 128,
-    height: 148,
+    width: 138,
+    height: 160,
     position: 'relative',
-    marginTop: -2,
+    marginTop: -6,
     marginBottom: 8,
   },
 
   phoneSamsungWrap: {
     position: 'absolute',
-    right: 10,
-    top: 6,
-    width: 78,
-    height: 128,
+    right: 8,
+    top: 2,
+    width: 85,
+    height: 138,
     zIndex: 1,
   },
   phoneSamsungImage: {
@@ -772,10 +772,10 @@ const styles = StyleSheet.create({
 
   phoneIphoneWrap: {
     position: 'absolute',
-    left: 0,
-    top: 18,
-    width: 78,
-    height: 128,
+    left: -2,
+    top: 14,
+    width: 86,
+    height: 138,
     borderRadius: 12,
     overflow: 'hidden',
     zIndex: 2,
