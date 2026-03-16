@@ -1,270 +1,609 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-View,
-Text,
-TextInput,
-TouchableOpacity,
-ScrollView,
-Image,
-Alert,
-StyleSheet
-} from 'react-native'
-import * as ImagePicker from 'expo-image-picker'
-import { supabase } from '@/lib/supabase'
+  ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Stack, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { supabase } from '@/lib/supabase';
 
-export default function AdminTopupCards(){
+type SimCardRow = {
+  id: string;
+  title: string | null;
+  provider: string | null;
+  amount_iqd: number | null;
+  price_iqd: number | null;
+  price_usd?: number | null;
+  image_url: string | null;
+  notes: string | null;
+  is_active: boolean | null;
+  sort_order?: number | null;
+  created_at?: string | null;
+};
 
-const [cards,setCards] = useState<any[]>([])
-const [title,setTitle] = useState('')
-const [provider,setProvider] = useState('')
-const [amount,setAmount] = useState('')
-const [price,setPrice] = useState('')
-const [notes,setNotes] = useState('')
-const [image,setImage] = useState('')
+type FilterType = 'all' | 'available' | 'unavailable';
+type SortType = 'newest' | 'oldest' | 'price_low' | 'price_high' | 'name_az';
 
-useEffect(()=>{
-loadCards()
-},[])
+const BUCKET_NAME = 'product-images';
 
-const loadCards = async ()=>{
+const UI = {
+  bg: '#07122B',
+  bg2: '#0A1736',
+  card: '#0E1B40',
+  card2: '#122252',
+  border: 'rgba(255,255,255,0.08)',
+  softBorder: 'rgba(255,255,255,0.06)',
+  text: '#FFFFFF',
+  textSoft: 'rgba(255,255,255,0.68)',
+  gold: '#F6E08F',
+  goldDark: '#8B5E10',
+  goldBorder: '#D8BE63',
+  pillBg: 'rgba(246,224,143,0.10)',
+  red: '#EF4444',
+  green: '#75C06B',
+  greenBg: 'rgba(117,192,107,0.18)',
+  redBg: 'rgba(239,68,68,0.16)',
+};
 
-const {data,error} = await supabase
-.from('topup_cards')
-.select('*')
-.order('created_at',{ascending:false})
+const PROVIDERS = [
+  { key: 'korek', label: 'Korek', logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uu16k1t8p3uz3dpr3k6ic' },
+  { key: 'zain', label: 'Zain', logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uq8qjx7d0g47h9rv2jvzz' },
+  { key: 'asiacell', label: 'AsiaCell', logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/q8puaw0dyshx6jruwg83i' },
+  { key: 'ftth', label: 'FTTH', logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/1ogdfkyuisk5c6unchj2s' },
+  { key: 'reber', label: 'Reber', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png' },
+  { key: 'kurdtel', label: 'Kurdtel', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png' },
+];
 
-if(!error)setCards(data)
-
+function formatIQD(value?: number | null) {
+  return new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
 }
 
-const uploadImage = async ()=>{
-
-const result = await ImagePicker.launchImageLibraryAsync({
-mediaTypes: ImagePicker.MediaTypeOptions.Images,
-quality:1
-})
-
-if(result.canceled) return
-
-const uri = result.assets[0].uri
-
-const file = await fetch(uri)
-const blob = await file.blob()
-
-const filename = Date.now()+'.jpg'
-
-const {error} = await supabase.storage
-.from('avatars')
-.upload(filename,blob)
-
-if(error){
-Alert.alert(error.message)
-return
+function normalizeProvider(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, '');
 }
 
-const {data} = supabase.storage
-.from('avatars')
-.getPublicUrl(filename)
-
-setImage(data.publicUrl)
-
+function getProviderInfo(provider?: string | null) {
+  const key = normalizeProvider(String(provider || ''));
+  return (
+    PROVIDERS.find((p) => p.key === key) || {
+      key,
+      label: provider || 'Provider',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png',
+    }
+  );
 }
 
-const addCard = async ()=>{
-
-if(!title || !provider){
-Alert.alert('missing data')
-return
+function getSortLabel(sort: SortType) {
+  switch (sort) {
+    case 'oldest':
+      return 'Oldest';
+    case 'price_low':
+      return 'Price Low';
+    case 'price_high':
+      return 'Price High';
+    case 'name_az':
+      return 'A-Z';
+    default:
+      return 'Newest';
+  }
 }
 
-const {error} = await supabase
-.from('topup_cards')
-.insert({
-title,
-provider,
-amount_iqd:amount,
-price_iqd:price,
-image_url:image,
-notes
-})
+export default function AdminSimCardScreen() {
+  const router = useRouter();
 
-if(error){
-Alert.alert(error.message)
-return
-}
+  const [cards, setCards] = useState<SimCardRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
-setTitle('')
-setProvider('')
-setAmount('')
-setPrice('')
-setNotes('')
-setImage('')
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [sortBy, setSortBy] = useState<SortType>('newest');
 
-loadCards()
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-}
+  const [provider, setProvider] = useState('korek');
+  const [title, setTitle] = useState('');
+  const [amountIqd, setAmountIqd] = useState('');
+  const [priceIqd, setPriceIqd] = useState('');
+  const [notes, setNotes] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [isAvailable, setIsAvailable] = useState(true);
 
-const deleteCard = async(id:string)=>{
+  const selectedProviderInfo = getProviderInfo(provider);
 
-await supabase
-.from('topup_cards')
-.delete()
-.eq('id',id)
+  const resetForm = () => {
+    setEditingId(null);
+    setProvider('korek');
+    setTitle('');
+    setAmountIqd('');
+    setPriceIqd('');
+    setNotes('');
+    setImageUrl('');
+    setIsAvailable(true);
+  };
 
-loadCards()
+  const fetchCards = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('topup_cards')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-}
+      if (error) throw error;
+      setCards((data || []) as SimCardRow[]);
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Could not load SIM cards.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
-return(
+  useEffect(() => {
+    fetchCards();
+  }, []);
 
-<ScrollView style={styles.container}>
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchCards();
+  };
 
-<Text style={styles.title}>
-Add New Card
-</Text>
+  const stats = useMemo(() => {
+    const all = cards.length;
+    const available = cards.filter((c) => !!c.is_active).length;
+    const unavailable = cards.filter((c) => !c.is_active).length;
+    return { all, available, unavailable };
+  }, [cards]);
 
-<TextInput
-placeholder="Card name"
-style={styles.input}
-value={title}
-onChangeText={setTitle}
-/>
+  const filteredCards = useMemo(() => {
+    let rows = [...cards];
 
-<TextInput
-placeholder="Provider (Korek / Zain / Asia)"
-style={styles.input}
-value={provider}
-onChangeText={setProvider}
-/>
+    if (filter === 'available') rows = rows.filter((x) => !!x.is_active);
+    if (filter === 'unavailable') rows = rows.filter((x) => !x.is_active);
 
-<TextInput
-placeholder="Amount IQD"
-style={styles.input}
-value={amount}
-onChangeText={setAmount}
-/>
+    switch (sortBy) {
+      case 'oldest':
+        rows.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+        break;
+      case 'price_low':
+        rows.sort((a, b) => Number(a.price_iqd || 0) - Number(b.price_iqd || 0));
+        break;
+      case 'price_high':
+        rows.sort((a, b) => Number(b.price_iqd || 0) - Number(a.price_iqd || 0));
+        break;
+      case 'name_az':
+        rows.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+        break;
+      default:
+        rows.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        break;
+    }
 
-<TextInput
-placeholder="Price IQD"
-style={styles.input}
-value={price}
-onChangeText={setPrice}
-/>
+    return rows;
+  }, [cards, filter, sortBy]);
 
-<TextInput
-placeholder="Notes"
-style={styles.input}
-value={notes}
-onChangeText={setNotes}
-/>
+  const cycleSort = () => {
+    setSortBy((prev) => {
+      if (prev === 'newest') return 'oldest';
+      if (prev === 'oldest') return 'price_low';
+      if (prev === 'price_low') return 'price_high';
+      if (prev === 'price_high') return 'name_az';
+      return 'newest';
+    });
+  };
 
-<TouchableOpacity
-style={styles.button}
-onPress={uploadImage}
->
-<Text style={styles.buttonText}>
-Upload Image
-</Text>
-</TouchableOpacity>
+  const pickAndUploadImage = async () => {
+    try {
+      setUploading(true);
 
-{image &&
-<Image
-source={{uri:image}}
-style={{height:100,marginVertical:10}}
-/>
-}
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission needed', 'Please allow photo library access.');
+        return;
+      }
 
-<TouchableOpacity
-style={styles.button}
-onPress={addCard}
->
-<Text style={styles.buttonText}>
-Add Card
-</Text>
-</TouchableOpacity>
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.9,
+        allowsEditing: true,
+        aspect: [4, 4],
+      });
 
+      if (result.canceled || !result.assets?.length) return;
 
-<Text style={styles.title}>
-All Cards
-</Text>
+      const asset = result.assets[0];
+      const uri = asset.uri;
+      const mimeType = asset.mimeType || 'image/jpeg';
+      const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
 
-{cards.map((card)=>(
-<View key={card.id} style={styles.card}>
+      const response = await fetch(uri);
+      const arrayBuffer = await response.arrayBuffer();
 
-<Image
-source={{uri:card.image_url}}
-style={{height:70,width:70}}
-/>
+      const fileName = `sim-card-${Date.now()}.${ext}`;
 
-<View style={{flex:1}}>
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET_NAME)
+        .upload(fileName, arrayBuffer, {
+          contentType: mimeType,
+          upsert: false,
+        });
 
-<Text style={{fontWeight:'bold'}}>
-{card.title}
-</Text>
+      if (uploadError) throw uploadError;
 
-<Text>
-{card.price_iqd} IQD
-</Text>
+      const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(fileName);
+      setImageUrl(data.publicUrl);
+      Alert.alert('Success', 'Image uploaded successfully.');
+    } catch (error: any) {
+      Alert.alert('Upload error', error?.message || 'Could not upload image.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
-</View>
+  const validateForm = () => {
+    if (!provider.trim()) {
+      Alert.alert('Missing provider', 'Please enter or choose a provider.');
+      return false;
+    }
+    if (!title.trim()) {
+      Alert.alert('Missing title', 'Please enter the SIM card title.');
+      return false;
+    }
+    if (!amountIqd.trim()) {
+      Alert.alert('Missing amount', 'Please enter amount IQD.');
+      return false;
+    }
+    if (!priceIqd.trim()) {
+      Alert.alert('Missing price', 'Please enter price IQD.');
+      return false;
+    }
+    return true;
+  };
 
-<TouchableOpacity
-onPress={()=>deleteCard(card.id)}
->
-<Text style={{color:'red'}}>
-Delete
-</Text>
-</TouchableOpacity>
+  const handleSubmit = async () => {
+    try {
+      if (!validateForm()) return;
 
-</View>
-))}
+      setSubmitting(true);
 
-</ScrollView>
+      const payload = {
+        title: title.trim(),
+        provider: normalizeProvider(provider),
+        amount_iqd: Number(String(amountIqd).replace(/,/g, '')),
+        price_iqd: Number(String(priceIqd).replace(/,/g, '')),
+        price_usd: Number(String(priceIqd).replace(/,/g, '')) / 1530,
+        image_url: imageUrl.trim() || null,
+        notes: notes.trim() || null,
+        is_active: isAvailable,
+      };
 
-)
+      if (editingId) {
+        const { error } = await supabase
+          .from('topup_cards')
+          .update(payload)
+          .eq('id', editingId);
 
-}
+        if (error) throw error;
+        Alert.alert('Updated', 'SIM card updated successfully.');
+      } else {
+        const { error } = await supabase
+          .from('topup_cards')
+          .insert(payload);
 
-const styles = StyleSheet.create({
+        if (error) throw error;
+        Alert.alert('Added', 'SIM card added successfully.');
+      }
 
-container:{
-flex:1,
-padding:20
-},
+      resetForm();
+      await fetchCards();
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Could not save SIM card.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-title:{
-fontSize:20,
-fontWeight:'bold',
-marginBottom:10
-},
+  const handleEdit = (card: SimCardRow) => {
+    setEditingId(card.id);
+    setProvider(String(card.provider || 'korek'));
+    setTitle(String(card.title || ''));
+    setAmountIqd(String(card.amount_iqd || ''));
+    setPriceIqd(String(card.price_iqd || ''));
+    setNotes(String(card.notes || ''));
+    setImageUrl(String(card.image_url || ''));
+    setIsAvailable(!!card.is_active);
+  };
 
-input:{
-borderWidth:1,
-padding:10,
-marginBottom:10,
-borderRadius:10
-},
+  const handleDelete = (id: string) => {
+    Alert.alert('Delete card', 'Are you sure you want to delete this card?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const { error } = await supabase.from('topup_cards').delete().eq('id', id);
+            if (error) throw error;
+            await fetchCards();
+          } catch (error: any) {
+            Alert.alert('Error', error?.message || 'Could not delete card.');
+          }
+        },
+      },
+    ]);
+  };
 
-button:{
-backgroundColor:'#FDE68A',
-padding:15,
-borderRadius:10,
-alignItems:'center',
-marginBottom:10
-},
+  const quickToggleAvailability = async (card: SimCardRow) => {
+    try {
+      const { error } = await supabase
+        .from('topup_cards')
+        .update({ is_active: !card.is_active })
+        .eq('id', card.id);
 
-buttonText:{
-fontWeight:'bold'
-},
+      if (error) throw error;
+      await fetchCards();
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Could not update availability.');
+    }
+  };
 
-card:{
-flexDirection:'row',
-alignItems:'center',
-gap:10,
-marginVertical:10,
-borderWidth:1,
-padding:10,
-borderRadius:10
-}
+  return (
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar barStyle="light-content" />
 
-})
+      <View style={styles.container}>
+        <View style={styles.topHeader}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.9}
+            style={styles.backPill}
+          >
+            <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
+            <Text style={styles.backPillText}>Admin Panel</Text>
+          </TouchableOpacity>
+
+          <Text numberOfLines={1} style={styles.screenTitle}>
+            SIM Cards
+          </Text>
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
+        >
+          <View style={styles.formCard}>
+            <Text style={styles.formTitle}>
+              {editingId ? 'Edit Card' : 'Add New Card'}
+            </Text>
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.providerPicker}
+              onPress={() => {
+                const currentIndex = PROVIDERS.findIndex((x) => x.key === normalizeProvider(provider));
+                const next = PROVIDERS[(currentIndex + 1) % PROVIDERS.length];
+                setProvider(next.key);
+              }}
+            >
+              <Image source={{ uri: selectedProviderInfo.logo }} style={styles.providerLogoSmall} resizeMode="contain" />
+              <Text style={styles.providerPickerText}>{selectedProviderInfo.label}</Text>
+              <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.72)" />
+            </TouchableOpacity>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Card title (e.g. Korek Telekom 1000 IQD)"
+              placeholderTextColor="rgba(255,255,255,0.42)"
+              value={title}
+              onChangeText={setTitle}
+            />
+
+            <View style={styles.doubleRow}>
+              <TextInput
+                style={[styles.input, styles.halfInput]}
+                placeholder="1,000 IQD"
+                placeholderTextColor="rgba(255,255,255,0.42)"
+                keyboardType="numeric"
+                value={amountIqd}
+                onChangeText={setAmountIqd}
+              />
+              <TextInput
+                style={[styles.input, styles.halfInput]}
+                placeholder="1,400 IQD"
+                placeholderTextColor="rgba(255,255,255,0.42)"
+                keyboardType="numeric"
+                value={priceIqd}
+                onChangeText={setPriceIqd}
+              />
+            </View>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Enter any notes here..."
+              placeholderTextColor="rgba(255,255,255,0.42)"
+              value={notes}
+              onChangeText={setNotes}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Or paste image URL here..."
+              placeholderTextColor="rgba(255,255,255,0.42)"
+              value={imageUrl}
+              onChangeText={setImageUrl}
+              autoCapitalize="none"
+            />
+
+            <View style={styles.statusRow}>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                style={[styles.statusPill, isAvailable && styles.statusPillActive]}
+                onPress={() => setIsAvailable(true)}
+              >
+                <Text style={[styles.statusPillText, isAvailable && styles.statusPillTextActive]}>
+                  Available
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.9}
+                style={[styles.statusPill, !isAvailable && styles.statusPillInactive]}
+                onPress={() => setIsAvailable(false)}
+              >
+                <Text style={[styles.statusPillText, !isAvailable && styles.statusPillTextInactive]}>
+                  Unavailable
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {!!imageUrl && (
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.previewImage}
+                resizeMode="cover"
+              />
+            )}
+
+            <TouchableOpacity
+              activeOpacity={0.92}
+              style={styles.uploadButton}
+              onPress={pickAndUploadImage}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <ActivityIndicator color={UI.goldDark} />
+              ) : (
+                <>
+                  <Ionicons name="camera" size={24} color={UI.goldDark} />
+                  <Text style={styles.uploadButtonText}>Upload Image</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.92}
+              style={styles.addButton}
+              onPress={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator color={UI.goldDark} />
+              ) : (
+                <Text style={styles.addButtonText}>
+                  {editingId ? 'Update Card' : 'Add Card'}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            {editingId && (
+              <TouchableOpacity
+                activeOpacity={0.92}
+                style={styles.cancelEditButton}
+                onPress={resetForm}
+              >
+                <Text style={styles.cancelEditButtonText}>Cancel Edit</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <Text style={styles.listTitle}>All Cards</Text>
+
+          <View style={styles.filterBar}>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={[styles.filterItem, filter === 'all' && styles.filterItemActive]}
+              onPress={() => setFilter('all')}
+            >
+              <Text style={[styles.filterItemText, filter === 'all' && styles.filterItemTextActive]}>
+                All
+              </Text>
+              <View style={styles.filterCount}><Text style={styles.filterCountText}>{stats.all}</Text></View>
+            </TouchableOpacity>
+
+            <View style={styles.filterDivider} />
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.filterItem}
+              onPress={() => setFilter('available')}
+            >
+              <Ionicons name="albums-outline" size={18} color="rgba(255,255,255,0.72)" />
+              <Text style={[styles.filterItemText, filter === 'available' && styles.filterItemTextActive]}>
+                Available
+              </Text>
+              <View style={styles.filterCount}><Text style={styles.filterCountText}>{stats.available}</Text></View>
+            </TouchableOpacity>
+
+            <View style={styles.filterDivider} />
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.filterItem}
+              onPress={() => setFilter('unavailable')}
+            >
+              <Ionicons name="ellipsis-vertical" size={18} color="rgba(255,255,255,0.72)" />
+              <Text style={[styles.filterItemText, filter === 'unavailable' && styles.filterItemTextActive]}>
+                Unavailable
+              </Text>
+              <View style={styles.filterCount}><Text style={styles.filterCountText}>{stats.unavailable}</Text></View>
+            </TouchableOpacity>
+
+            <View style={styles.filterDivider} />
+
+            <TouchableOpacity activeOpacity={0.9} style={styles.sortItem} onPress={cycleSort}>
+              <Ionicons name="filter-outline" size={18} color="rgba(255,255,255,0.72)" />
+              <Text style={styles.filterItemText}>{getSortLabel(sortBy)}</Text>
+              <Ionicons name="chevron-down" size={18} color="rgba(255,255,255,0.72)" />
+            </TouchableOpacity>
+          </View>
+
+          {loading ? (
+            <View style={styles.loaderWrap}>
+              <ActivityIndicator size="large" color="#FFFFFF" />
+            </View>
+          ) : filteredCards.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="card-outline" size={42} color={UI.gold} />
+              <Text style={styles.emptyTitle}>No cards found</Text>
+              <Text style={styles.emptyText}>Add your first SIM card from the form above.</Text>
+            </View>
+          ) : (
+            filteredCards.map((card) => {
+              const providerInfo = getProviderInfo(card.provider);
+
+              return (
+                <View key={card.id} style={styles.cardListItem}>
+                  <Image
+                    source={{ uri: card.image_url || providerInfo.logo }}
+                    style={styles.cardThumb}
+                    resizeMode="cover"
+                  />
+
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.cardItemTitle}>{card.title || '-'}</Text>
+                    <Text style={styles.cardItemPrice}>Price {formatIQD(card.price_iqd)} IQD</Text>
+                    {!!card.notes && (
+                      <Text numberOfLines={2} style={styles.cardItemNotes}>
+                        {card.notes}
+                      </Text>
+                    )}
+
+                    <TouchableOpacity
+                      active
