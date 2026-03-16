@@ -298,7 +298,7 @@ export default function DashboardScreen() {
           </View>
 
           <View style={[styles.mobileAdMain, isRTL && styles.mobileAdMainRTL]}>
-            {/* Left text */}
+            {/* Left side */}
             <View style={[styles.mobileAdLeft, isRTL && styles.mobileAdLeftRTL]}>
               <Text
                 style={[styles.mobileAdTitle, isRTL && styles.textRTL]}
@@ -331,22 +331,24 @@ export default function DashboardScreen() {
               </Text>
 
               <View style={styles.mobileAdPriceBox}>
-                <Text style={[styles.mobileAdPriceText, isRTL && styles.textRTL]}>
+                <Text style={styles.mobileAdPriceText} numberOfLines={2}>
                   {i18n.t('mobileShopAdInstallmentPrice')}
                 </Text>
               </View>
             </View>
 
-            {/* Right visual */}
+            {/* Right side */}
             <View style={styles.mobileAdRight}>
               <View style={styles.phonesStage}>
-                <Image
-                  source={require('@/assets/images/samsung-s25-ultra.png')}
-                  style={styles.phoneSamsungImage}
-                  resizeMode="contain"
-                />
+                <View style={styles.phoneSamsungWrap}>
+                  <Image
+                    source={require('@/assets/images/samsung-s25-ultra.png')}
+                    style={styles.phoneSamsungImage}
+                    resizeMode="contain"
+                  />
+                </View>
 
-                <View style={styles.iphoneImageWrap}>
+                <View style={styles.phoneIphoneWrap}>
                   <Image
                     source={require('@/assets/images/iphone17-promax-orange.png')}
                     style={styles.phoneIphoneImage}
@@ -360,7 +362,7 @@ export default function DashboardScreen() {
                 </View>
               </View>
 
-              <View style={[styles.mobileAdButton, isRTL && styles.mobileAdButtonRTL]}>
+              <View style={styles.mobileAdButton}>
                 <Text style={styles.mobileAdButtonText} numberOfLines={1}>
                   {i18n.t('mobileShopAdButton')}
                 </Text>
@@ -579,7 +581,7 @@ const styles = StyleSheet.create({
   mobileAdMain: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: 10,
   },
   mobileAdMainRTL: {
     flexDirection: 'row-reverse',
@@ -595,7 +597,7 @@ const styles = StyleSheet.create({
   },
 
   mobileAdRight: {
-    width: 112,
+    width: 118,
     alignItems: 'center',
     justifyContent: 'flex-start',
   },
@@ -624,31 +626,37 @@ const styles = StyleSheet.create({
   mobileAdPillGreen: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 5,
     backgroundColor: UI.adGreen,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
+    minWidth: 82,
   },
   mobileAdPillGreenText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '900',
+    textAlign: 'center',
   },
 
   mobileAdPillOlive: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 5,
     backgroundColor: UI.adOlive,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
+    minWidth: 104,
   },
   mobileAdPillOliveText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '900',
+    textAlign: 'center',
   },
 
   mobileAdLine: {
@@ -661,55 +669,62 @@ const styles = StyleSheet.create({
 
   mobileAdPriceBox: {
     marginTop: 10,
-    alignSelf: 'flex-start',
+    width: 150,
     backgroundColor: UI.adGreenDark,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
-    maxWidth: '94%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   mobileAdPriceText: {
     color: '#FFFFFF',
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 17,
     fontWeight: '900',
+    textAlign: 'center',
   },
 
   phonesStage: {
-    width: 112,
-    height: 144,
+    width: 118,
+    height: 132,
     position: 'relative',
-    marginTop: -4,
+    marginTop: -2,
     marginBottom: 8,
   },
 
-  phoneSamsungImage: {
+  phoneSamsungWrap: {
     position: 'absolute',
-    right: -2,
-    top: -2,
-    width: 82,
-    height: 146,
+    right: 8,
+    top: 4,
+    width: 66,
+    height: 110,
+    zIndex: 1,
+  },
+  phoneSamsungImage: {
+    width: '100%',
+    height: '100%',
   },
 
-  iphoneImageWrap: {
+  phoneIphoneWrap: {
     position: 'absolute',
-    left: 0,
-    top: 30,
-    width: 58,
-    height: 96,
+    left: 10,
+    top: 18,
+    width: 66,
+    height: 110,
     borderRadius: 12,
     overflow: 'hidden',
+    zIndex: 2,
   },
-
   phoneIphoneImage: {
-    width: 58,
-    height: 96,
+    width: '100%',
+    height: '100%',
   },
 
   discountTag: {
     position: 'absolute',
-    right: -4,
-    bottom: 12,
+    right: 0,
+    bottom: 4,
     backgroundColor: UI.adRed,
     paddingHorizontal: 8,
     paddingVertical: 6,
@@ -717,6 +732,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-8deg' }],
     borderWidth: 2,
     borderColor: '#FFFFFF',
+    zIndex: 3,
   },
   discountTagTop: {
     color: '#FFFFFF',
@@ -733,24 +749,21 @@ const styles = StyleSheet.create({
   },
 
   mobileAdButton: {
-    alignSelf: 'flex-start',
+    width: 118,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 7,
     backgroundColor: UI.adGreen,
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 999,
-    marginLeft: 6,
-  },
-  mobileAdButtonRTL: {
-    marginLeft: 0,
-    marginRight: 6,
   },
   mobileAdButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '900',
+    textAlign: 'center',
   },
 
   marketLightCard: {
