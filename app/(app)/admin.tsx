@@ -172,7 +172,7 @@ export default function AdminScreen() {
           <MenuItem
             label="Top-Up Orders"
             subLabel="Review orders and add PIN codes"
-            onPress={() => router.push('/admin-topup-orders' as any)}
+            onPress={() => router.push('/admin-topup-cards' as any)}
             icon={<ClipboardList size={18} color={UI.gold} />}
             tone="gold"
           />
