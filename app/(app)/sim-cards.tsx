@@ -11,12 +11,12 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
-import { useAuth } from '@/contexts/AuthContext';
 
 const IQD_RATE = 1530;
 
@@ -27,20 +27,11 @@ interface TopupCard {
   category: string | null;
   amount_iqd: number;
   price_usd: number;
+  price_iqd?: number | null;
   image_url: string | null;
+  description?: string | null;
   is_active: boolean;
   sort_order: number | null;
-}
-
-interface TopupOrder {
-  id: string;
-  provider?: string | null;
-  card_title?: string | null;
-  amount_iqd?: number | null;
-  price_iqd?: number | null;
-  status?: string | null;
-  pin_code?: string | null;
-  created_at?: string | null;
 }
 
 const providerConfig: Record<
@@ -116,15 +107,6 @@ function formatIQD(value?: number | null) {
   }).format(Number(value || 0));
 }
 
-function formatDate(date?: string | null) {
-  if (!date) return '';
-  try {
-    return new Date(date).toLocaleDateString();
-  } catch {
-    return '';
-  }
-}
-
 function getCurrentLang() {
   const raw = String((i18n as any)?.language || (i18n as any)?.locale || 'en').toLowerCase();
   if (raw.startsWith('ar')) return 'ar';
@@ -140,19 +122,15 @@ const TEXTS = {
     searchProviders: 'Search network or card',
     noNetworks: 'No cards available',
     noNetworksSub: 'No active cards found in Supabase.',
-    recentOrders: 'Your recent card orders',
-    seeAll: 'See all',
-    noOrders: 'You have not purchased any cards yet',
-    pending: 'Pending',
-    success: 'Success',
-    cancelled: 'Cancelled',
-    pinReady: 'PIN ready',
-    pinPending: 'Pending delivery',
     buyNow: 'Buy now',
     amount: 'Amount',
     price: 'Price',
     selectedNetwork: 'Selected network',
-    cardsAvailable: 'Available cards',
+    providers: 'Providers',
+    availableCards: 'Available cards',
+    cardsCount: 'cards',
+    chooseProvider: 'Choose a provider to see available cards',
+    backToProviders: 'Back to providers',
   },
   ar: {
     pageTitle: 'بطاقات التعبئة',
@@ -160,19 +138,15 @@ const TEXTS = {
     searchProviders: 'ابحث عن الشبكة أو البطاقة',
     noNetworks: 'لا توجد بطاقات',
     noNetworksSub: 'لا توجد بطاقات مفعلة في Supabase.',
-    recentOrders: 'آخر طلباتك للبطاقات',
-    seeAll: 'عرض الكل',
-    noOrders: 'لم تقم بشراء أي بطاقة بعد',
-    pending: 'قيد الانتظار',
-    success: 'ناجح',
-    cancelled: 'ملغي',
-    pinReady: 'الرمز جاهز',
-    pinPending: 'بانتظار التسليم',
     buyNow: 'اشتر الآن',
     amount: 'الفئة',
     price: 'السعر',
     selectedNetwork: 'الشبكة المحددة',
-    cardsAvailable: 'البطاقات المتوفرة',
+    providers: 'الشبكات',
+    availableCards: 'البطاقات المتوفرة',
+    cardsCount: 'بطاقات',
+    chooseProvider: 'اختر شبكة لعرض البطاقات المتوفرة',
+    backToProviders: 'العودة للشبكات',
   },
   ckb: {
     pageTitle: 'کڕینی کارتی مۆبایل',
@@ -180,19 +154,15 @@ const TEXTS = {
     searchProviders: 'گەڕان بە ناوی نێتوورک یان کارت',
     noNetworks: 'هیچ کارتێک بەردەست نییە',
     noNetworksSub: 'هیچ کارتێکی چالاک لە Supabase نەدۆزرایەوە.',
-    recentOrders: 'دوایین داواکارییەکانی کارت',
-    seeAll: 'هەمووی ببینە',
-    noOrders: 'هێشتا هیچ کارتێکت نەکڕیوە',
-    pending: 'چاوەڕێیە',
-    success: 'سەرکەوتوو',
-    cancelled: 'هەڵوەشاوە',
-    pinReady: 'پین کۆد ئامادەیە',
-    pinPending: 'چاوەڕوانی ناردن',
     buyNow: 'ئێستا بکڕە',
     amount: 'بڕ',
     price: 'نرخ',
     selectedNetwork: 'نێتوورکی هەڵبژێردراو',
-    cardsAvailable: 'کارتە بەردەستەکان',
+    providers: 'نێتوورکەکان',
+    availableCards: 'کارتە بەردەستەکان',
+    cardsCount: 'کارت',
+    chooseProvider: 'نێتوورکێک هەڵبژێرە بۆ بینینی کارتە بەردەستەکان',
+    backToProviders: 'گەڕانەوە بۆ نێتوورکەکان',
   },
   kmr: {
     pageTitle: 'کرینا کارتێن موبایل',
@@ -200,19 +170,15 @@ const TEXTS = {
     searchProviders: 'لێگەڕێ ب ناڤێ تۆڕێ یان کارتێ',
     noNetworks: 'هیچ کارتێن بەردەست نینن',
     noNetworksSub: 'هیچ کارتێن چالاک ل Supabase نەهاتیە دیتن.',
-    recentOrders: 'داواکارییێن تۆ یێن دوماهی',
-    seeAll: 'هەمی ببینە',
-    noOrders: 'هێشتا تو هیچ کارتێ نەکری',
-    pending: 'لە چاوەڕوانیدایە',
-    success: 'سەرکەفتی',
-    cancelled: 'هەلوەشیا',
-    pinReady: 'PIN ئامادەیە',
-    pinPending: 'چاوەڕوانی ناردنێ',
     buyNow: 'ئێستا بکرە',
     amount: 'بڕ',
     price: 'نرخ',
     selectedNetwork: 'تۆڕا هەلبژێردی',
-    cardsAvailable: 'کارتێن بەردەست',
+    providers: 'تۆڕ',
+    availableCards: 'کارتێن بەردەست',
+    cardsCount: 'کارت',
+    chooseProvider: 'تۆڕەکێ هەلبژێرە بۆ دیتنا کارتێن بەردەست',
+    backToProviders: 'ڤەگەڕان بۆ تۆڕان',
   },
 } as const;
 
@@ -223,58 +189,30 @@ function useT() {
 
 export default function SimCardsScreen() {
   const router = useRouter();
-  const { user } = useAuth();
   const t = useT();
 
   const [cards, setCards] = useState<TopupCard[]>([]);
-  const [orders, setOrders] = useState<TopupOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [ordersLoading, setOrdersLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 
   const fetchCards = async () => {
-    const { data, error } = await supabase
-      .from('topup_cards')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-      .order('amount_iqd', { ascending: true });
-
-    if (error) throw error;
-    setCards((data || []) as TopupCard[]);
-  };
-
-  const fetchOrders = async () => {
     try {
-      if (!user?.id) {
-        setOrders([]);
-        return;
-      }
-
       const { data, error } = await supabase
-        .from('topup_orders')
+        .from('topup_cards')
         .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .eq('is_active', true)
+        .order('provider', { ascending: true })
+        .order('sort_order', { ascending: true })
+        .order('amount_iqd', { ascending: true });
 
       if (error) throw error;
-      setOrders((data || []) as TopupOrder[]);
-    } catch (e) {
-      setOrders([]);
-    } finally {
-      setOrdersLoading(false);
-    }
-  };
-
-  const loadAll = async () => {
-    try {
-      await Promise.all([fetchCards(), fetchOrders()]);
+      setCards((data || []) as TopupCard[]);
     } catch (error: any) {
-      console.log('topup page error:', error);
+      console.log('sim-card error:', error);
       Alert.alert('Error', error?.message || 'Could not load cards.');
+      setCards([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -282,16 +220,23 @@ export default function SimCardsScreen() {
   };
 
   useEffect(() => {
-    loadAll();
+    fetchCards();
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadAll();
+    await fetchCards();
   };
 
   const providerList = useMemo(() => {
-    const map = new Map<string, { provider: string; count: number; preview?: string | null }>();
+    const map = new Map<
+      string,
+      {
+        provider: string;
+        count: number;
+        preview?: string | null;
+      }
+    >();
 
     cards.forEach((card) => {
       const key = String(card.provider || '').toLowerCase();
@@ -318,10 +263,7 @@ export default function SimCardsScreen() {
 
     return providerList.filter((item) => {
       const style = getProviderStyle(item.provider);
-      return (
-        item.provider.includes(q) ||
-        style.label.toLowerCase().includes(q)
-      );
+      return item.provider.includes(q) || style.label.toLowerCase().includes(q);
     });
   }, [providerList, search]);
 
@@ -336,7 +278,8 @@ export default function SimCardsScreen() {
       const matchSearch = q
         ? card.title?.toLowerCase().includes(q) ||
           card.provider?.toLowerCase().includes(q) ||
-          String(card.amount_iqd || '').includes(q)
+          String(card.amount_iqd || '').includes(q) ||
+          String(card.price_iqd || '').includes(q)
         : true;
 
       return matchProvider && matchSearch;
@@ -344,6 +287,11 @@ export default function SimCardsScreen() {
   }, [cards, search, selectedProvider]);
 
   const handleCardPress = (card: TopupCard) => {
+    const finalPriceIqd =
+      Number(card.price_iqd || 0) > 0
+        ? Number(card.price_iqd || 0)
+        : Math.round((card.price_usd || 0) * IQD_RATE);
+
     router.push({
       pathname: '/(app)/buy-card' as any,
       params: {
@@ -352,46 +300,17 @@ export default function SimCardsScreen() {
         price: String(card.price_usd),
         provider: card.provider,
         amount: String(card.amount_iqd),
-        type: 'topup',
+        type: 'sim',
         image: card.image_url || '',
-        iqd_price: String(Math.round((card.price_usd || 0) * IQD_RATE)),
+        iqd_price: String(finalPriceIqd),
       },
     });
-  };
-
-  const openNotifications = () => {
-    router.push('/(app)/notifications' as any);
-  };
-
-  const getStatusStyle = (status?: string | null) => {
-    const s = String(status || '').toLowerCase();
-
-    if (s === 'success' || s === 'approved' || s === 'completed') {
-      return {
-        bg: '#ECFDF3',
-        text: '#027A48',
-        label: t.success,
-      };
-    }
-
-    if (s === 'cancelled' || s === 'canceled' || s === 'rejected') {
-      return {
-        bg: '#FEF3F2',
-        text: '#D92D20',
-        label: t.cancelled,
-      };
-    }
-
-    return {
-      bg: '#FFF8E8',
-      text: '#B58103',
-      label: t.pending,
-    };
   };
 
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
         <TouchableOpacity
@@ -401,7 +320,7 @@ export default function SimCardsScreen() {
               setSearch('');
               return;
             }
-            router.replace('/(app)/dashboard' as any);
+            router.back();
           }}
           activeOpacity={0.85}
           style={styles.iconButton}
@@ -410,37 +329,25 @@ export default function SimCardsScreen() {
         </TouchableOpacity>
 
         <Text numberOfLines={1} style={styles.headerTitle}>
-          {selectedProvider
-            ? getProviderStyle(selectedProvider).label
-            : t.pageTitle}
+          {selectedProvider ? getProviderStyle(selectedProvider).label : t.pageTitle}
         </Text>
 
-        <TouchableOpacity
-          onPress={openNotifications}
-          activeOpacity={0.85}
-          style={styles.iconButton}
-        >
-          <Ionicons name="notifications-outline" size={21} color="#5A4700" />
-        </TouchableOpacity>
+        <View style={styles.headerRightSpace} />
       </View>
 
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.heroCard}>
           <Text style={styles.heroTitle}>{t.mobileCards}</Text>
-          {selectedProvider ? (
-            <Text style={styles.heroSubtitle}>
-              {t.selectedNetwork}: {getProviderStyle(selectedProvider).label}
-            </Text>
-          ) : (
-            <Text style={styles.heroSubtitle}>{t.cardsAvailable}</Text>
-          )}
+          <Text style={styles.heroSubtitle}>
+            {selectedProvider
+              ? `${t.selectedNetwork}: ${getProviderStyle(selectedProvider).label}`
+              : t.chooseProvider}
+          </Text>
         </View>
 
         <View style={styles.searchBox}>
@@ -459,88 +366,6 @@ export default function SimCardsScreen() {
           )}
         </View>
 
-        {!selectedProvider && (
-          <View style={styles.ordersSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t.recentOrders}</Text>
-            </View>
-
-            {ordersLoading ? (
-              <View style={styles.ordersLoading}>
-                <ActivityIndicator size="small" color="#C99700" />
-              </View>
-            ) : orders.length === 0 ? (
-              <View style={styles.emptyOrdersCard}>
-                <Ionicons name="time-outline" size={20} color="#AC8700" />
-                <Text style={styles.emptyOrdersText}>{t.noOrders}</Text>
-              </View>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.ordersRow}
-              >
-                {orders.map((order) => {
-                  const statusStyle = getStatusStyle(order.status);
-                  const provider = getProviderStyle(order.provider);
-
-                  return (
-                    <View key={order.id} style={styles.orderCard}>
-                      <View style={styles.orderTop}>
-                        <View
-                          style={[
-                            styles.orderProviderBadge,
-                            { backgroundColor: provider.soft, borderColor: provider.border },
-                          ]}
-                        >
-                          <Text style={[styles.orderProviderText, { color: provider.color }]}>
-                            {provider.label}
-                          </Text>
-                        </View>
-
-                        <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
-                          <Text style={[styles.statusPillText, { color: statusStyle.text }]}>
-                            {statusStyle.label}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <Text numberOfLines={2} style={styles.orderTitle}>
-                        {order.card_title || `${provider.label} ${formatIQD(order.amount_iqd)} IQD`}
-                      </Text>
-
-                      <Text style={styles.orderMeta}>
-                        {formatIQD(order.amount_iqd)} IQD
-                      </Text>
-
-                      <Text style={styles.orderMeta}>
-                        {formatDate(order.created_at)}
-                      </Text>
-
-                      <View style={styles.pinWrap}>
-                        <Ionicons
-                          name={order.pin_code ? 'checkmark-circle' : 'hourglass-outline'}
-                          size={15}
-                          color={order.pin_code ? '#079455' : '#B58103'}
-                        />
-                        <Text
-                          numberOfLines={1}
-                          style={[
-                            styles.pinText,
-                            { color: order.pin_code ? '#079455' : '#B58103' },
-                          ]}
-                        >
-                          {order.pin_code ? `${t.pinReady}: ${order.pin_code}` : t.pinPending}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </ScrollView>
-            )}
-          </View>
-        )}
-
         {loading ? (
           <View style={styles.loaderWrap}>
             <ActivityIndicator size="large" color="#C99700" />
@@ -553,121 +378,149 @@ export default function SimCardsScreen() {
               <Text style={styles.emptyText}>{t.noNetworksSub}</Text>
             </View>
           ) : (
-            <View style={styles.providersGrid}>
-              {filteredProviders.map((item) => {
-                const provider = getProviderStyle(item.provider);
-                const imageUri = item.preview || provider.logo;
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{t.providers}</Text>
+              </View>
 
-                return (
-                  <TouchableOpacity
-                    key={item.provider}
-                    activeOpacity={0.92}
-                    style={styles.providerCard}
-                    onPress={() => {
-                      setSelectedProvider(item.provider);
-                      setSearch('');
-                    }}
-                  >
-                    <View
-                      style={[
-                        styles.providerImageWrap,
-                        {
-                          backgroundColor: provider.soft,
-                          borderColor: provider.border,
-                        },
-                      ]}
+              <View style={styles.providersGrid}>
+                {filteredProviders.map((item) => {
+                  const provider = getProviderStyle(item.provider);
+                  const imageUri = item.preview || provider.logo;
+
+                  return (
+                    <TouchableOpacity
+                      key={item.provider}
+                      activeOpacity={0.92}
+                      style={styles.providerCard}
+                      onPress={() => {
+                        setSelectedProvider(item.provider);
+                        setSearch('');
+                      }}
                     >
-                      <Image
-                        source={{ uri: imageUri }}
-                        style={styles.providerImage}
-                        resizeMode="contain"
-                      />
-                    </View>
+                      <View
+                        style={[
+                          styles.providerImageWrap,
+                          {
+                            backgroundColor: provider.soft,
+                            borderColor: provider.border,
+                          },
+                        ]}
+                      >
+                        <Image
+                          source={{ uri: imageUri }}
+                          style={styles.providerImage}
+                          resizeMode="contain"
+                        />
+                      </View>
 
-                    <View style={styles.providerFooter}>
-                      <Text numberOfLines={1} style={styles.providerName}>
-                        {provider.label}
-                      </Text>
-                      <Text style={styles.providerCount}>
-                        {item.count} cards
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                      <View style={styles.providerFooter}>
+                        <Text numberOfLines={1} style={styles.providerName}>
+                          {provider.label}
+                        </Text>
+                        <Text style={styles.providerCount}>
+                          {item.count} {t.cardsCount}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </>
           )
         ) : filteredCards.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="card-outline" size={36} color="#B08A00" />
             <Text style={styles.emptyTitle}>{t.noNetworks}</Text>
             <Text style={styles.emptyText}>{t.noNetworksSub}</Text>
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.backToProvidersButton}
+              onPress={() => {
+                setSelectedProvider(null);
+                setSearch('');
+              }}
+            >
+              <Text style={styles.backToProvidersButtonText}>{t.backToProviders}</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.cardsGrid}>
-            {filteredCards.map((card) => {
-              const provider = getProviderStyle(card.provider);
-              const convertedIQDPrice = Math.round((card.price_usd || 0) * IQD_RATE);
-              const imageUri = card.image_url || provider.logo;
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{t.availableCards}</Text>
 
-              return (
-                <TouchableOpacity
-                  key={card.id}
-                  style={styles.cardItem}
-                  activeOpacity={0.92}
-                  onPress={() => handleCardPress(card)}
-                >
-                  <View
-                    style={[
-                      styles.cardImageWrap,
-                      {
-                        backgroundColor: provider.soft,
-                        borderColor: provider.border,
-                      },
-                    ]}
-                  >
-                    <Image
-                      source={{ uri: imageUri }}
-                      style={styles.cardImage}
-                      resizeMode="contain"
-                    />
-                  </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedProvider(null);
+                  setSearch('');
+                }}
+                activeOpacity={0.85}
+                style={styles.backProvidersMini}
+              >
+                <Ionicons name="grid-outline" size={14} color="#5A4700" />
+                <Text style={styles.backProvidersMiniText}>{t.providers}</Text>
+              </TouchableOpacity>
+            </View>
 
-                  <Text numberOfLines={2} style={styles.cardName}>
-                    {card.title}
-                  </Text>
+            <View style={styles.cardsList}>
+              {filteredCards.map((card) => {
+                const provider = getProviderStyle(card.provider);
+                const finalPriceIqd =
+                  Number(card.price_iqd || 0) > 0
+                    ? Number(card.price_iqd || 0)
+                    : Math.round((card.price_usd || 0) * IQD_RATE);
 
-                  <View style={styles.priceBlock}>
-                    <Text style={styles.cardAmountLabel}>{t.amount}</Text>
-                    <Text style={styles.cardAmountValue}>{formatIQD(card.amount_iqd)} IQD</Text>
-                  </View>
+                const imageUri = card.image_url || provider.logo;
 
-                  <View style={styles.cardPriceRow}>
-                    <View style={styles.smallPriceBox}>
-                      <Text style={styles.smallPriceLabel}>USD</Text>
-                      <Text style={styles.smallPriceValue}>${Number(card.price_usd || 0).toFixed(2)}</Text>
-                    </View>
-
-                    <View style={[styles.smallPriceBox, styles.smallPriceBoxGold]}>
-                      <Text style={styles.smallPriceLabel}>{t.price}</Text>
-                      <Text style={[styles.smallPriceValue, styles.smallPriceValueGold]}>
-                        {formatIQD(convertedIQDPrice)} IQD
-                      </Text>
-                    </View>
-                  </View>
-
+                return (
                   <TouchableOpacity
-                    activeOpacity={0.9}
-                    style={styles.buyButton}
+                    key={card.id}
+                    style={styles.cardRow}
+                    activeOpacity={0.92}
                     onPress={() => handleCardPress(card)}
                   >
-                    <Ionicons name="cart-outline" size={16} color="#5A4700" />
-                    <Text style={styles.buyButtonText}>{t.buyNow}</Text>
+                    <View
+                      style={[
+                        styles.cardImageWrap,
+                        {
+                          backgroundColor: provider.soft,
+                          borderColor: provider.border,
+                        },
+                      ]}
+                    >
+                      <Image source={{ uri: imageUri }} style={styles.cardImage} resizeMode="contain" />
+                    </View>
+
+                    <View style={styles.cardMiddle}>
+                      <Text numberOfLines={2} style={styles.cardName}>
+                        {card.title}
+                      </Text>
+
+                      <Text style={styles.cardAmountText}>
+                        {t.amount}: {formatIQD(card.amount_iqd)} IQD
+                      </Text>
+
+                      {!!card.description && (
+                        <Text numberOfLines={2} style={styles.cardDescription}>
+                          {card.description}
+                        </Text>
+                      )}
+                    </View>
+
+                    <View style={styles.cardRight}>
+                      <Text style={styles.cardPriceValue}>{formatIQD(finalPriceIqd)} IQD</Text>
+
+                      <View style={styles.buyMiniButton}>
+                        <Ionicons name="cart-outline" size={14} color="#5A4700" />
+                        <Text style={styles.buyMiniButtonText}>{t.buyNow}</Text>
+                      </View>
+                    </View>
                   </TouchableOpacity>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                );
+              })}
+            </View>
+          </>
         )}
 
         <View style={{ height: 30 }} />
@@ -702,6 +555,10 @@ const styles = StyleSheet.create({
     borderColor: '#F0E1AF',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerRightSpace: {
+    width: 40,
+    height: 40,
   },
   headerTitle: {
     flex: 1,
@@ -741,6 +598,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#8A6E08',
+    lineHeight: 20,
   },
 
   searchBox: {
@@ -762,11 +620,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  ordersSection: {
-    marginBottom: 14,
-  },
   sectionHeader: {
     marginBottom: 10,
+    marginTop: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -775,90 +631,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
     color: '#241E0E',
-  },
-  ordersLoading: {
-    minHeight: 70,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyOrdersCard: {
-    minHeight: 66,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0E2B2',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    gap: 10,
-  },
-  emptyOrdersText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#7A715B',
-    fontWeight: '700',
-  },
-  ordersRow: {
-    paddingRight: 6,
-  },
-  orderCard: {
-    width: 230,
-    marginRight: 12,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0E2B2',
-    padding: 14,
-  },
-  orderTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  orderProviderBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  orderProviderText: {
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  statusPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  statusPillText: {
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  orderTitle: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '900',
-    color: '#231E11',
-    marginBottom: 6,
-    minHeight: 40,
-  },
-  orderMeta: {
-    fontSize: 12,
-    color: '#7B725C',
-    fontWeight: '700',
-    marginBottom: 3,
-  },
-  pinWrap: {
-    marginTop: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  pinText: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '800',
   },
 
   loaderWrap: {
@@ -941,16 +713,46 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
-  cardsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 14,
+  backToProvidersButton: {
+    marginTop: 14,
+    minHeight: 44,
+    borderRadius: 16,
+    backgroundColor: '#FDE68A',
+    borderWidth: 1,
+    borderColor: '#F4D461',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
   },
-  cardItem: {
-    width: '48%',
+  backToProvidersButtonText: {
+    color: '#5A4700',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+
+  backProvidersMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFF8D8',
+    borderWidth: 1,
+    borderColor: '#F1DA85',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  backProvidersMiniText: {
+    color: '#5A4700',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+
+  cardsList: {
+    gap: 12,
+  },
+  cardRow: {
     borderRadius: 22,
-    padding: 10,
+    padding: 12,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#EFE3B3',
@@ -959,90 +761,74 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   cardImageWrap: {
-    minHeight: 110,
+    width: 86,
+    height: 86,
     borderRadius: 18,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 10,
-    marginBottom: 10,
+    padding: 8,
+    overflow: 'hidden',
   },
   cardImage: {
     width: '100%',
-    height: 82,
-  },
-  cardName: {
-    minHeight: 40,
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#201B10',
-    fontWeight: '900',
-  },
-  priceBlock: {
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  cardAmountLabel: {
-    fontSize: 11,
-    color: '#8B7C49',
-    fontWeight: '800',
-    marginBottom: 2,
-  },
-  cardAmountValue: {
-    fontSize: 19,
-    color: '#A67C00',
-    fontWeight: '900',
-  },
-  cardPriceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  smallPriceBox: {
-    flex: 1,
-    borderRadius: 14,
-    backgroundColor: '#FAFAFA',
-    borderWidth: 1,
-    borderColor: '#EEEEEE',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-  },
-  smallPriceBoxGold: {
-    backgroundColor: '#FFF9E8',
-    borderColor: '#F0E2A9',
-  },
-  smallPriceLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#8A816C',
-    marginBottom: 2,
-  },
-  smallPriceValue: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#1F1A10',
-  },
-  smallPriceValueGold: {
-    color: '#7C6100',
+    height: '100%',
   },
 
-  buyButton: {
-    marginTop: 12,
-    minHeight: 44,
-    borderRadius: 16,
+  cardMiddle: {
+    flex: 1,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  cardName: {
+    fontSize: 15,
+    lineHeight: 21,
+    color: '#201B10',
+    fontWeight: '900',
+    marginBottom: 6,
+  },
+  cardAmountText: {
+    fontSize: 13,
+    color: '#8B7C49',
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  cardDescription: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#7B7460',
+    fontWeight: '700',
+  },
+
+  cardRight: {
+    minHeight: 86,
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  cardPriceValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#7C6100',
+  },
+  buyMiniButton: {
+    minHeight: 38,
+    borderRadius: 12,
     backgroundColor: '#FDE68A',
     borderWidth: 1,
     borderColor: '#F4D461',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
+    paddingHorizontal: 10,
   },
-  buyButtonText: {
+  buyMiniButtonText: {
     color: '#5A4700',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '900',
   },
 });
