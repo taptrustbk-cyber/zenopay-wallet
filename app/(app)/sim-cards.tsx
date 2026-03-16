@@ -1,146 +1,335 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, Platform } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Platform,
+  TextInput,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Stack } from 'expo-router';
+import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 
-interface SimCard {
+const IQD_RATE = 1530;
+
+interface TopupCard {
   id: string;
-  name: string;
-  price: number;
+  title: string;
   provider: string;
-  amount: number;
-  image: string;
+  category: string | null;
+  amount_iqd: number;
+  price_usd: number;
+  image_url: string | null;
+  is_active: boolean;
+  sort_order: number | null;
 }
 
-const providerConfig: Record<string, { color: string; bgColor: string; logo: string }> = {
+const providerConfig: Record<
+  string,
+  {
+    label: string;
+    color: string;
+    soft: string;
+    border: string;
+    logo: string;
+  }
+> = {
   korek: {
-    color: '#FF6B00',
-    bgColor: 'rgba(255, 107, 0, 0.15)',
+    label: 'Korek',
+    color: '#0F4C81',
+    soft: '#EEF6FF',
+    border: '#D7E9FF',
     logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uu16k1t8p3uz3dpr3k6ic',
   },
   zain: {
-    color: '#00A651',
-    bgColor: 'rgba(0, 166, 81, 0.15)',
+    label: 'Zain',
+    color: '#6D3BBF',
+    soft: '#F5F0FF',
+    border: '#E4D8FF',
     logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uq8qjx7d0g47h9rv2jvzz',
   },
   asiacell: {
-    color: '#C8102E',
-    bgColor: 'rgba(200, 16, 46, 0.15)',
+    label: 'AsiaCell',
+    color: '#C93A2F',
+    soft: '#FFF4F1',
+    border: '#FFD9D2',
     logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/q8puaw0dyshx6jruwg83i',
   },
   ftth: {
-    color: '#0066CC',
-    bgColor: 'rgba(0, 102, 204, 0.15)',
+    label: 'FTTH',
+    color: '#1B6FD8',
+    soft: '#EDF5FF',
+    border: '#D7E7FF',
     logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/1ogdfkyuisk5c6unchj2s',
+  },
+  fasthope: {
+    label: 'Fast Hope',
+    color: '#DD2E73',
+    soft: '#FFF1F7',
+    border: '#FFD7E8',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Help_Icon.svg/1024px-Help_Icon.svg.png',
+  },
+  kurdtel: {
+    label: 'Kurdtel',
+    color: '#3A3A3A',
+    soft: '#F7F7F7',
+    border: '#E7E7E7',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png',
   },
 };
 
-const simCards: SimCard[] = [
-  { id: '1', name: 'Korek 5,000 IQD', price: 3.6, provider: 'korek', amount: 5000, image: '' },
-  { id: '2', name: 'Korek 10,000 IQD', price: 7.6, provider: 'korek', amount: 10000, image: '' },
-  { id: '3', name: 'Korek 15,000 IQD', price: 11.1, provider: 'korek', amount: 15000, image: '' },
-  { id: '4', name: 'FTTH 29,000 IQD', price: 21, provider: 'ftth', amount: 29000, image: '' },
-  { id: '5', name: 'Zain 5,000 IQD', price: 3.6, provider: 'zain', amount: 5000, image: '' },
-  { id: '6', name: 'Zain 10,000 IQD', price: 7.6, provider: 'zain', amount: 10000, image: '' },
-  { id: '7', name: 'Asiacell 5,000 IQD', price: 3.6, provider: 'asiacell', amount: 5000, image: '' },
-  { id: '8', name: 'Asiacell 10,000 IQD', price: 7.6, provider: 'asiacell', amount: 10000, image: '' },
-];
+function formatIQD(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+}
 
-const ProviderLogo = ({ provider }: { provider: string }) => {
-  const config = providerConfig[provider] || providerConfig.korek;
+function formatUSD(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value || 0);
+}
 
-  if (config.logo) {
-    return (
-      <View style={[styles.providerLogoContainer, { backgroundColor: config.bgColor }]}>
-        <Image source={{ uri: config.logo }} style={styles.providerLogoImage} resizeMode="contain" />
-      </View>
-    );
-  }
-
-  const providerLabels: Record<string, string> = {
-    korek: 'KOREK',
-    zain: 'ZAIN',
-    asiacell: 'ASIACELL',
-    ftth: 'FTTH',
+function getProviderStyle(provider: string) {
+  return providerConfig[provider?.toLowerCase()] || {
+    label: provider || 'Card',
+    color: '#B8860B',
+    soft: '#FFFBEA',
+    border: '#F5E7A1',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png',
   };
-
-  return (
-    <View style={[styles.providerLogoContainer, { backgroundColor: config.bgColor }]}>
-      <Text style={[styles.providerLogoText, { color: config.color, fontSize: provider === 'asiacell' ? 10 : 12 }]}>
-        {providerLabels[provider] || provider.toUpperCase()}
-      </Text>
-      <Text style={[styles.providerSubtext, { color: config.color }]}>TELECOM</Text>
-    </View>
-  );
-};
+}
 
 export default function SimCardsScreen() {
   const router = useRouter();
 
-  const handleCardPress = (card: SimCard) => {
+  const [cards, setCards] = useState<TopupCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const fetchCards = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('topup_cards')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('amount_iqd', { ascending: true });
+
+      if (error) throw error;
+      setCards((data || []) as TopupCard[]);
+    } catch (error: any) {
+      console.log('topup_cards error:', error);
+      Alert.alert(
+        i18n.t('error') || 'Error',
+        error?.message || 'Could not load top-up cards.'
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCards();
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchCards();
+  };
+
+  const filteredCards = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return cards;
+
+    return cards.filter((card) => {
+      return (
+        card.title?.toLowerCase().includes(q) ||
+        card.provider?.toLowerCase().includes(q) ||
+        String(card.amount_iqd || '').includes(q) ||
+        String(card.price_usd || '').includes(q) ||
+        (card.category || '').toLowerCase().includes(q)
+      );
+    });
+  }, [cards, search]);
+
+  const handleCardPress = (card: TopupCard) => {
     router.push({
       pathname: '/(app)/buy-card' as any,
       params: {
-        name: card.name,
-        price: card.price.toString(),
+        id: card.id,
+        name: card.title,
+        price: String(card.price_usd),
         provider: card.provider,
-        amount: card.amount.toString(),
-        type: 'sim',
+        amount: String(card.amount_iqd),
+        type: 'topup',
+        image: card.image_url || '',
+        iqd_price: String(Math.round((card.price_usd || 0) * IQD_RATE)),
       },
     });
   };
 
   return (
     <View style={styles.container}>
-      {/* ✅ Remove expo-router default header (dark blue one) */}
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ✅ Single header only (one back icon + centered title) */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.replace('/(app)/dashboard' as any)}
-          style={styles.backButton}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="arrow-back" size={22} color="#16a34a" />
-        </TouchableOpacity>
+      <View style={styles.headerWrap}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity
+            onPress={() => router.replace('/(app)/dashboard' as any)}
+            style={styles.backButton}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="arrow-back" size={24} color="#6B5500" />
+          </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>{i18n.t('market.topup') || 'Top-Up Cards'}</Text>
-        <View style={{ width: 24 }} />
+          <View style={styles.headerTitlePill}>
+            <Text style={styles.headerTitle}>
+              {i18n.t('market.topup') || 'Top-Up Cards'}
+            </Text>
+          </View>
+
+          <TouchableOpacity activeOpacity={0.85} style={styles.notifyButton}>
+            <Ionicons name="notifications-outline" size={22} color="#6B5500" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
-        {/* ✅ GREEN top card background + only ONE text: "Mobile Cards" */}
-        <View style={styles.topCard}>
-          <Text style={styles.pageTitle}>{i18n.t('mobileCards') || 'Mobile Cards'}</Text>
-          {/* ✅ Removed pageSubtitle completely */}
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <View style={styles.heroCard}>
+          <Text style={styles.heroMini}>
+            {i18n.t('mobileCards') || 'Mobile Cards'}
+          </Text>
+          <Text style={styles.heroTitle}>
+            Buy top-up cards بسهولة و بە شێوازێکی نوێ
+          </Text>
+          <Text style={styles.heroSub}>
+            Real images • Clean design • IQD amounts • Easy search
+          </Text>
         </View>
 
-        <View style={styles.grid}>
-          {simCards.map((card) => {
-            const config = providerConfig[card.provider] || providerConfig.korek;
+        <View style={styles.searchBox}>
+          <Ionicons name="search-outline" size={24} color="#8C8C8C" />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder={i18n.t('search') || 'Search'}
+            placeholderTextColor="#A0A0A0"
+            style={styles.searchInput}
+          />
+          {!!search && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={22} color="#B0B0B0" />
+            </TouchableOpacity>
+          )}
+        </View>
 
-            return (
-              <TouchableOpacity
-                key={card.id}
-                style={styles.cardItem}
-                activeOpacity={0.9}
-                onPress={() => handleCardPress(card)}
-              >
-                <ProviderLogo provider={card.provider} />
-                <Text style={styles.cardName}>{card.name}</Text>
-                <Text style={[styles.cardPrice, { color: config.color }]}>${card.price.toFixed(2)}</Text>
+        {loading ? (
+          <View style={styles.loaderWrap}>
+            <ActivityIndicator size="large" color="#D4A800" />
+          </View>
+        ) : filteredCards.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Ionicons name="card-outline" size={38} color="#B08A00" />
+            <Text style={styles.emptyTitle}>No cards found</Text>
+            <Text style={styles.emptyText}>
+              Search result empty or no active cards in Supabase.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.grid}>
+            {filteredCards.map((card) => {
+              const provider = getProviderStyle(card.provider);
+              const convertedIQDPrice = Math.round((card.price_usd || 0) * IQD_RATE);
+              const imageUri = card.image_url || provider.logo;
 
-                <TouchableOpacity style={styles.buyButton} activeOpacity={0.9} onPress={() => handleCardPress(card)}>
-                  <Text style={styles.buyButtonText}>{i18n.t('buyNow')}</Text>
+              return (
+                <TouchableOpacity
+                  key={card.id}
+                  style={styles.cardItem}
+                  activeOpacity={0.92}
+                  onPress={() => handleCardPress(card)}
+                >
+                  <View
+                    style={[
+                      styles.cardTopAccent,
+                      {
+                        backgroundColor: provider.soft,
+                        borderColor: provider.border,
+                      },
+                    ]}
+                  >
+                    <View style={styles.providerBadge}>
+                      <Text style={[styles.providerBadgeText, { color: provider.color }]}>
+                        {provider.label}
+                      </Text>
+                    </View>
+
+                    <Image
+                      source={{ uri: imageUri }}
+                      style={styles.cardImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+
+                  <View style={styles.cardBody}>
+                    <Text numberOfLines={2} style={styles.cardName}>
+                      {card.title}
+                    </Text>
+
+                    <Text style={styles.amountText}>
+                      {formatIQD(card.amount_iqd)} IQD
+                    </Text>
+
+                    <View style={styles.priceRow}>
+                      <View>
+                        <Text style={styles.priceLabel}>Price</Text>
+                        <Text style={styles.priceUsd}>${formatUSD(card.price_usd)}</Text>
+                      </View>
+
+                      <View style={styles.iqdBox}>
+                        <Text style={styles.iqdBoxLabel}>IQD</Text>
+                        <Text style={styles.iqdBoxValue}>
+                          {formatIQD(convertedIQDPrice)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.buyButton}
+                      activeOpacity={0.9}
+                      onPress={() => handleCardPress(card)}
+                    >
+                      <Ionicons name="cart-outline" size={16} color="#6B5500" />
+                      <Text style={styles.buyButtonText}>
+                        {i18n.t('buyNow') || 'Buy Now'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </TouchableOpacity>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
+        )}
 
-        <View style={{ height: 28 }} />
+        <View style={{ height: 30 }} />
       </ScrollView>
     </View>
   );
@@ -149,61 +338,148 @@ export default function SimCardsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFDF7',
   },
 
-  header: {
+  headerWrap: {
+    backgroundColor: '#FFF3C9',
+    paddingTop: Platform.OS === 'ios' ? 56 : 42,
+    paddingBottom: 16,
+    paddingHorizontal: 18,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2E3A0',
+  },
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 54 : 46,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
   },
   backButton: {
-    padding: 6,
-    borderRadius: 10,
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#F2E3A0',
+  },
+  headerTitlePill: {
+    flex: 1,
+    marginHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: '#F2E3A0',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '800' as const,
-    color: '#111111',
+    fontWeight: '900',
+    color: '#2A2415',
+  },
+  notifyButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#F2E3A0',
   },
 
   content: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   contentContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 10,
   },
 
-  // ✅ changed to GREEN background + bigger title
-  topCard: {
-    marginHorizontal: 20,
-    marginTop: 18,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    borderRadius: 16,
-    backgroundColor: '#16a34a',
+  heroCard: {
+    borderRadius: 24,
+    padding: 18,
+    backgroundColor: '#FFF8DB',
     borderWidth: 1,
-    borderColor: '#16a34a',
+    borderColor: '#F6E7A8',
+    marginBottom: 16,
   },
-  // ✅ resized text (bigger) + white text
-  pageTitle: {
+  heroMini: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#B08900',
+    marginBottom: 6,
+  },
+  heroTitle: {
     fontSize: 24,
-    fontWeight: '900' as const,
+    lineHeight: 31,
+    fontWeight: '900',
+    color: '#2C2410',
+    marginBottom: 8,
+  },
+  heroSub: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#6D6652',
+    fontWeight: '600',
+  },
+
+  searchBox: {
+    minHeight: 58,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE4B5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 17,
+    color: '#1A1A1A',
+    fontWeight: '600',
+  },
+
+  loaderWrap: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  emptyCard: {
+    marginTop: 10,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE4B5',
+    paddingVertical: 36,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#2C2410',
+    marginTop: 12,
+  },
+  emptyText: {
+    marginTop: 8,
     textAlign: 'center',
-    lineHeight: 32,
-    color: '#FFFFFF',
+    color: '#7B7460',
+    fontSize: 14,
+    lineHeight: 21,
   },
 
   grid: {
-    marginTop: 16,
-    marginHorizontal: 20,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
@@ -212,64 +488,116 @@ const styles = StyleSheet.create({
 
   cardItem: {
     width: '48%',
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
+    borderRadius: 24,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#EFE4B5',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
+  },
+  cardTopAccent: {
+    margin: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingTop: 10,
+    paddingHorizontal: 10,
+    paddingBottom: 8,
+  },
+  providerBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 10,
+  },
+  providerBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  cardImage: {
+    width: '100%',
+    height: 96,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
   },
 
-  providerLogoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    overflow: 'hidden' as const,
+  cardBody: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
   },
-  providerLogoImage: {
-    width: 60,
-    height: 60,
-  },
-  providerLogoText: {
-    fontSize: 12,
-    fontWeight: '800' as const,
-    letterSpacing: 1,
-  },
-  providerSubtext: {
-    fontSize: 8,
-    fontWeight: '600' as const,
-    marginTop: 2,
-    letterSpacing: 0.5,
-  },
-
   cardName: {
     fontSize: 15,
-    fontWeight: '800' as const,
-    textAlign: 'center' as const,
-    color: '#111111',
-    marginBottom: 8,
-    lineHeight: 20,
+    lineHeight: 21,
+    fontWeight: '900',
+    color: '#1D1A12',
+    minHeight: 42,
   },
-  cardPrice: {
+  amountText: {
+    marginTop: 6,
     fontSize: 18,
-    fontWeight: '900' as const,
-    marginBottom: 12,
+    fontWeight: '900',
+    color: '#A67C00',
+  },
+
+  priceRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  priceLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8B846F',
+    marginBottom: 2,
+  },
+  priceUsd: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#1C1A14',
+  },
+  iqdBox: {
+    alignItems: 'flex-end',
+    backgroundColor: '#FFF9E8',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F0E1A6',
+  },
+  iqdBoxLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#9B8A42',
+  },
+  iqdBoxValue: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#6E5800',
   },
 
   buyButton: {
+    marginTop: 12,
     width: '100%',
-    paddingVertical: 11,
-    borderRadius: 14,
+    paddingVertical: 13,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#16a34a',
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: '#FDE68A',
+    borderWidth: 1,
+    borderColor: '#F3D35C',
   },
   buyButtonText: {
-    color: '#FFFFFF',
+    color: '#6B5500',
     fontSize: 14,
-    fontWeight: '800' as const,
+    fontWeight: '900',
   },
 });
