@@ -84,21 +84,82 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { user, profile, hardRefresh } = useAuth();
   const { theme } = useTheme();
-  const [isRefreshing, setIsRefreshing] = React.useState(false);
-  const [isBalanceHidden, setIsBalanceHidden] = React.useState(false);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isBalanceHidden, setIsBalanceHidden] = useState(false);
+
+  const [iphoneSource, setIphoneSource] = useState<any>(PHONE_IPHONE);
+  const [samsungSource, setSamsungSource] = useState<any>(PHONE_SAMSUNG);
   const [adAssetsReady, setAdAssetsReady] = useState(false);
 
   const isRTL = I18nManager.isRTL;
+  const locale = String((i18n as any)?.locale || '').toLowerCase();
+
+  const adCopy = useMemo(() => {
+    if (locale.includes('kmr') || locale.includes('ku')) {
+      return {
+        badge: 'پلانی فرۆشتن بە شێوەی قست هەیە!',
+        title: 'مۆبایلی نوێ بکڕە بە نرخێکی زۆر باش',
+        cash: 'نەقد',
+        installment: 'قست',
+        line1: 'مۆبایلەکەت بە نەقد یان بە شێوازی قست بەدەست بهێنە.',
+        line2: 'قستی مانگانەی گونجاو بۆ زۆربەی مۆبایلە بەردەستن.',
+        price: 'قست لە 50,000 دینارەوە دەست پێ دەکات',
+        button: 'ئێستا بکڕە',
+        discount: 'داشکاندن',
+      };
+    }
+
+    if (locale.includes('ar')) {
+      return {
+        badge: 'خطة شراء بالتقسيط متوفرة!',
+        title: 'اشترِ موبايل جديد بسعر مناسب جداً',
+        cash: 'نقداً',
+        installment: 'تقسيط',
+        line1: 'احصل على موبايلك نقداً أو بنظام التقسيط بسهولة.',
+        line2: 'أقساط شهرية مناسبة على أغلب أنواع الموبايلات.',
+        price: 'القسط يبدأ من 50,000 دينار',
+        button: 'اشترِ الآن',
+        discount: 'خصم',
+      };
+    }
+
+    return {
+      badge: 'پلانی شیوەی قست هەیە!',
+      title: 'مۆبایلێکی نوێ بکڕە بە نرخێکی زۆر باش',
+      cash: 'نەقد',
+      installment: 'قست',
+      line1: 'مۆبایلەکەت بە نەقد یان بە شێوازی قست وەربگرە.',
+      line2: 'قستی مانگانەی گونجاو بۆ زۆربەی مۆبایلەکان بەردەستن.',
+      price: 'قست لە 50,000 دینارەوە دەست پێ دەکات',
+      button: 'ئێستا بکڕە',
+      discount: 'داشکاندن',
+    };
+  }, [locale]);
 
   useEffect(() => {
     let mounted = true;
 
     const preloadAssets = async () => {
       try {
-        await Promise.all([
+        const [iphoneAsset, samsungAsset] = await Promise.all([
           Asset.fromModule(PHONE_IPHONE).downloadAsync(),
           Asset.fromModule(PHONE_SAMSUNG).downloadAsync(),
         ]);
+
+        if (!mounted) return;
+
+        setIphoneSource(
+          iphoneAsset.localUri
+            ? { uri: iphoneAsset.localUri, cache: 'force-cache' as any }
+            : PHONE_IPHONE
+        );
+
+        setSamsungSource(
+          samsungAsset.localUri
+            ? { uri: samsungAsset.localUri, cache: 'force-cache' as any }
+            : PHONE_SAMSUNG
+        );
       } catch (e) {
         console.log('Asset preload warning:', e);
       } finally {
@@ -164,36 +225,17 @@ export default function DashboardScreen() {
     } finally {
       setIsRefreshing(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hardRefresh, walletQuery.refetch]);
-
-  if (!profile) {
-    return (
-      <View
-        style={[
-          styles.container,
-          { backgroundColor: UI.bg, justifyContent: 'center', alignItems: 'center' },
-        ]}
-      >
-        <ActivityIndicator size="large" color={UI.green} />
-      </View>
-    );
-  }
-
-  const balanceText = walletQuery.data?.balance?.toFixed(2) || '0.00';
-  const currencyText = walletQuery.data?.currency || 'USD';
+  }, [hardRefresh, walletQuery]);
 
   const avatarUrl = (profile as any)?.avatar_url as string | undefined;
   const fullName = (profile as any)?.full_name as string | undefined;
 
   useEffect(() => {
-    if (!user?.id) return;
-    if (!avatarUrl) return;
+    if (!user?.id || !avatarUrl) return;
 
     const currentV = __avatarVersionByUser[user.id];
     if (!currentV) {
       __avatarVersionByUser[user.id] = 1;
-      return;
     }
   }, [avatarUrl, user?.id]);
 
@@ -220,6 +262,22 @@ export default function DashboardScreen() {
     const v = ver[key];
     return `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}v=${v}`;
   }, [avatarUrl, user?.id]);
+
+  const balanceText = walletQuery.data?.balance?.toFixed(2) || '0.00';
+  const currencyText = walletQuery.data?.currency || 'USD';
+
+  if (!profile) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: UI.bg, justifyContent: 'center', alignItems: 'center' },
+        ]}
+      >
+        <ActivityIndicator size="large" color={UI.green} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: UI.bg }]}>
@@ -310,10 +368,26 @@ export default function DashboardScreen() {
 
         {/* Quick actions */}
         <View style={styles.quickRow}>
-          <ActionCircle icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
-          <ActionCircle icon="cash" label={i18n.t('withdraw')} onPress={() => router.push('/(app)/withdraw' as any)} />
-          <ActionCircle icon="download" label={i18n.t('deposit')} onPress={() => router.push('/(app)/receive' as any)} />
-          <ActionCircle icon="receipt" label={i18n.t('transactions')} onPress={() => router.push('/(app)/transactions' as any)} />
+          <ActionCircle
+            icon="send"
+            label={i18n.t('send')}
+            onPress={() => router.push('/(app)/send' as any)}
+          />
+          <ActionCircle
+            icon="cash"
+            label={i18n.t('withdraw')}
+            onPress={() => router.push('/(app)/withdraw' as any)}
+          />
+          <ActionCircle
+            icon="download"
+            label={i18n.t('deposit')}
+            onPress={() => router.push('/(app)/receive' as any)}
+          />
+          <ActionCircle
+            icon="receipt"
+            label={i18n.t('transactions')}
+            onPress={() => router.push('/(app)/transactions' as any)}
+          />
         </View>
 
         {/* Mobile Shop Ad */}
@@ -324,7 +398,7 @@ export default function DashboardScreen() {
         >
           <View style={styles.mobileAdTopBadge}>
             <Text style={styles.mobileAdTopBadgeText} numberOfLines={1}>
-              {i18n.t('mobileShopAdBadge')}
+              {adCopy.badge}
             </Text>
           </View>
 
@@ -333,32 +407,33 @@ export default function DashboardScreen() {
             <View style={[styles.mobileAdLeft, isRTL && styles.mobileAdLeftRTL]}>
               <Text
                 style={[styles.mobileAdTitle, isRTL && styles.textRTL]}
-                numberOfLines={4}
+                numberOfLines={3}
               >
-                {i18n.t('mobileShopAdTitle')}
+                {adCopy.title}
               </Text>
 
               <View style={[styles.mobileAdPillsWrap, isRTL && styles.mobileAdPillsWrapRTL]}>
                 <View style={styles.mobileAdPillGreen}>
                   <Ionicons name="cash-outline" size={12} color="#FFFFFF" />
                   <Text style={styles.mobileAdPillGreenText} numberOfLines={1}>
-                    {i18n.t('mobileShopAdCash')}
+                    {adCopy.cash}
                   </Text>
                 </View>
 
                 <View style={styles.mobileAdPillOlive}>
                   <Ionicons name="calendar-outline" size={12} color="#FFFFFF" />
                   <Text style={styles.mobileAdPillOliveText} numberOfLines={1}>
-                    {i18n.t('mobileShopAdInstallment')}
+                    {adCopy.installment}
                   </Text>
                 </View>
               </View>
 
-              <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]}>
-                {i18n.t('mobileShopAdLine1')}
+              <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]} numberOfLines={2}>
+                {adCopy.line1}
               </Text>
-              <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]}>
-                {i18n.t('mobileShopAdLine2')}
+
+              <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]} numberOfLines={2}>
+                {adCopy.line2}
               </Text>
 
               <View
@@ -372,8 +447,11 @@ export default function DashboardScreen() {
                     styles.mobileAdPriceText,
                     isRTL ? styles.mobileAdPriceTextRTL : styles.mobileAdPriceTextLTR,
                   ]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.82}
                 >
-                  {i18n.t('mobileShopAdInstallmentPrice')}
+                  {adCopy.price}
                 </Text>
               </View>
             </View>
@@ -381,39 +459,35 @@ export default function DashboardScreen() {
             {/* Right side */}
             <View style={styles.mobileAdRight}>
               <View style={styles.phonesStage}>
-                {adAssetsReady && (
-                  <>
-                    <View style={styles.phoneSamsungWrap}>
-                      <Image
-                        source={PHONE_SAMSUNG}
-                        defaultSource={PHONE_SAMSUNG}
-                        style={styles.phoneSamsungImage}
-                        resizeMode="contain"
-                        fadeDuration={0}
-                      />
-                    </View>
+                <View style={styles.phoneSamsungWrap}>
+                  <Image
+                    source={samsungSource}
+                    defaultSource={PHONE_SAMSUNG}
+                    style={styles.phoneSamsungImage}
+                    resizeMode="contain"
+                    fadeDuration={0}
+                  />
+                </View>
 
-                    <View style={styles.phoneIphoneWrap}>
-                      <Image
-                        source={PHONE_IPHONE}
-                        defaultSource={PHONE_IPHONE}
-                        style={styles.phoneIphoneImage}
-                        resizeMode="contain"
-                        fadeDuration={0}
-                      />
-                    </View>
-                  </>
-                )}
+                <View style={styles.phoneIphoneWrap}>
+                  <Image
+                    source={iphoneSource}
+                    defaultSource={PHONE_IPHONE}
+                    style={styles.phoneIphoneImage}
+                    resizeMode="contain"
+                    fadeDuration={0}
+                  />
+                </View>
 
                 <View style={styles.discountTag}>
                   <Text style={styles.discountTagTop}>-10%</Text>
-                  <Text style={styles.discountTagBottom}>{i18n.t('mobileShopAdDiscount')}</Text>
+                  <Text style={styles.discountTagBottom}>{adCopy.discount}</Text>
                 </View>
               </View>
 
               <View style={styles.mobileAdButton}>
                 <Text style={styles.mobileAdButtonText} numberOfLines={1}>
-                  {i18n.t('mobileShopAdButton')}
+                  {adCopy.button}
                 </Text>
                 <Ionicons
                   name={isRTL ? 'arrow-back' : 'arrow-forward'}
@@ -485,9 +559,21 @@ export default function DashboardScreen() {
       {/* Bottom nav */}
       <View style={[styles.bottomNav, { borderColor: UI.border, backgroundColor: UI.card }]}>
         <NavItem icon="home" label={i18n.t('home')} active onPress={() => {}} />
-        <NavItem icon="card" label={i18n.t('Cards')} onPress={() => router.push('/(app)/Cards' as any)} />
-        <NavItem icon="chatbox" label={i18n.t('consulateInfo')} onPress={() => router.push('/(app)/consulate' as any)} />
-        <NavItem icon="settings" label={i18n.t('settings')} onPress={() => router.push('/(app)/settings' as any)} />
+        <NavItem
+          icon="card"
+          label={i18n.t('Cards')}
+          onPress={() => router.push('/(app)/Cards' as any)}
+        />
+        <NavItem
+          icon="chatbox"
+          label={i18n.t('consulateInfo')}
+          onPress={() => router.push('/(app)/consulate' as any)}
+        />
+        <NavItem
+          icon="settings"
+          label={i18n.t('settings')}
+          onPress={() => router.push('/(app)/settings' as any)}
+        />
       </View>
     </View>
   );
@@ -604,7 +690,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 16,
     backgroundColor: UI.adBg,
-    borderRadius: 18,
+    borderRadius: 20,
     paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: 12,
@@ -615,11 +701,11 @@ const styles = StyleSheet.create({
   mobileAdTopBadge: {
     alignSelf: 'flex-start',
     backgroundColor: UI.adGold,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 999,
     marginBottom: 10,
-    maxWidth: '74%',
+    maxWidth: '82%',
   },
   mobileAdTopBadgeText: {
     color: UI.adDark,
@@ -646,16 +732,17 @@ const styles = StyleSheet.create({
   },
 
   mobileAdRight: {
-    width: 128,
+    width: 146,
     alignItems: 'center',
     justifyContent: 'flex-start',
   },
 
   mobileAdTitle: {
     color: UI.adDark,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 24,
     fontWeight: '900',
+    letterSpacing: 0.1,
   },
   textRTL: {
     textAlign: 'right',
@@ -665,7 +752,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 8,
+    marginTop: 9,
     marginBottom: 8,
   },
   mobileAdPillsWrapRTL: {
@@ -710,27 +797,27 @@ const styles = StyleSheet.create({
 
   mobileAdLine: {
     color: '#374151',
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 12.5,
+    lineHeight: 18,
     fontWeight: '700',
-    marginTop: 1,
+    marginTop: 2,
   },
 
   mobileAdPriceBox: {
-    marginTop: 10,
-    minHeight: 58,
+    marginTop: 11,
+    minHeight: 48,
     backgroundColor: UI.adGreenDark,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 14,
     justifyContent: 'center',
   },
   mobileAdPriceBoxLTR: {
-    width: 170,
+    width: 230,
     alignSelf: 'flex-start',
   },
   mobileAdPriceBoxRTL: {
-    width: 214,
+    width: 248,
     alignSelf: 'flex-end',
     marginRight: 2,
   },
@@ -740,29 +827,29 @@ const styles = StyleSheet.create({
   },
   mobileAdPriceTextLTR: {
     fontSize: 13,
-    lineHeight: 17,
+    lineHeight: 16,
     textAlign: 'center',
   },
   mobileAdPriceTextRTL: {
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'right',
+    fontSize: 13,
+    lineHeight: 16,
+    textAlign: 'center',
   },
 
   phonesStage: {
-    width: 138,
-    height: 160,
+    width: 154,
+    height: 178,
     position: 'relative',
-    marginTop: -6,
+    marginTop: -8,
     marginBottom: 8,
   },
 
   phoneSamsungWrap: {
     position: 'absolute',
-    right: 8,
+    right: 10,
     top: 2,
-    width: 85,
-    height: 138,
+    width: 98,
+    height: 152,
     zIndex: 1,
   },
   phoneSamsungImage: {
@@ -772,11 +859,11 @@ const styles = StyleSheet.create({
 
   phoneIphoneWrap: {
     position: 'absolute',
-    left: -2,
+    left: -4,
     top: 14,
-    width: 86,
-    height: 138,
-    borderRadius: 12,
+    width: 100,
+    height: 156,
+    borderRadius: 16,
     overflow: 'hidden',
     zIndex: 2,
   },
@@ -787,16 +874,17 @@ const styles = StyleSheet.create({
 
   discountTag: {
     position: 'absolute',
-    right: 2,
-    bottom: 10,
+    right: 0,
+    bottom: 12,
     backgroundColor: UI.adRed,
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
     paddingVertical: 5,
-    borderRadius: 11,
+    borderRadius: 12,
     transform: [{ rotate: '-8deg' }],
     borderWidth: 2,
     borderColor: '#FFFFFF',
     zIndex: 3,
+    minWidth: 56,
   },
   discountTagTop: {
     color: '#FFFFFF',
@@ -813,14 +901,14 @@ const styles = StyleSheet.create({
   },
 
   mobileAdButton: {
-    width: 128,
+    width: 132,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
     backgroundColor: UI.adGreen,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: 999,
   },
   mobileAdButtonText: {
