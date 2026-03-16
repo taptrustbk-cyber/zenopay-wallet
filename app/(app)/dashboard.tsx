@@ -47,78 +47,18 @@ const UI = {
 const __avatarVersionByUser: Record<string, number> = {};
 
 const getCurrentLocale = () => {
-  const raw =
-    String((i18n as any)?.locale || (i18n as any)?.languageTag || (i18n as any)?.language || '')
-      .trim()
-      .toLowerCase();
+  const raw = String(
+    (i18n as any)?.locale || (i18n as any)?.languageTag || (i18n as any)?.language || ''
+  )
+    .trim()
+    .toLowerCase();
 
   if (raw.includes('ckb') || raw.includes('sorani')) return 'ckb';
-  if (raw.includes('kmr') || raw.includes('kurmanji') || raw === 'ku') return 'kmr';
+  if (raw.includes('kmr') || raw.includes('badini') || raw === 'ku') return 'kmr';
   if (raw.startsWith('ar')) return 'ar';
   if (raw.startsWith('en')) return 'en';
 
-  // fallback when app returns custom short codes or mixed names
-  if (raw.includes('badini')) return 'kmr';
-  if (raw.includes('kurdish')) return 'ckb';
-
   return 'ckb';
-};
-
-const getAdCopy = (locale: 'ckb' | 'kmr' | 'ar' | 'en') => {
-  switch (locale) {
-    case 'kmr':
-      return {
-        badge: 'Planê firotanê bi qestan heye!',
-        title: 'Mobilek nû bi bihayekî gelek baş bikire',
-        cash: 'Nexd',
-        installment: 'Qist',
-        line1: 'Mobileya xwe bi nexd an bi awayê qestan bistîne.',
-        line2: 'Qistên mehane yên guncaw ji bo piraniya mobileyan hene.',
-        price: 'Qist ji 50,000 dînar dest pê dike',
-        button: 'Niha bikire',
-        discount: 'Daxistin',
-      };
-
-    case 'ar':
-      return {
-        badge: 'خطة شراء بالتقسيط متوفرة!',
-        title: 'اشترِ هاتفاً جديداً بسعر ممتاز جداً',
-        cash: 'نقداً',
-        installment: 'تقسيط',
-        line1: 'احصل على هاتفك نقداً أو بنظام التقسيط بسهولة.',
-        line2: 'أقساط شهرية مناسبة متوفرة لمعظم الهواتف.',
-        price: 'القسط يبدأ من 50,000 دينار',
-        button: 'اشترِ الآن',
-        discount: 'خصم',
-      };
-
-    case 'en':
-      return {
-        badge: 'Installment plan available!',
-        title: 'Buy a new phone at a very good price',
-        cash: 'Cash',
-        installment: 'Installment',
-        line1: 'Get your phone with cash or through an easy installment plan.',
-        line2: 'Flexible monthly installments are available for most phones.',
-        price: 'Installment starts from 50,000 IQD',
-        button: 'Buy Now',
-        discount: 'Discount',
-      };
-
-    case 'ckb':
-    default:
-      return {
-        badge: 'پلانی شیوەی قست هەیە!',
-        title: 'مۆبایلێکی نوێ بکڕە بە نرخێکی زۆر باش',
-        cash: 'نەقد',
-        installment: 'قست',
-        line1: 'مۆبایلەکەت بە نەقد یان بە شێوازی قست وەربگرە.',
-        line2: 'قستی مانگانەی گونجاو بۆ زۆربەی مۆبایلەکان بەردەستن.',
-        price: 'قست لە 50,000 دینارەوە دەست پێ دەکات',
-        button: 'ئێستا بکڕە',
-        discount: 'داشکاندن',
-      };
-  }
 };
 
 const ActionCircle = ({
@@ -168,9 +108,8 @@ export default function DashboardScreen() {
   const [adAssetsReady, setAdAssetsReady] = useState(false);
 
   const locale = getCurrentLocale();
-  const isRTL = locale === 'ckb' || locale === 'kmr' || locale === 'ar' || I18nManager.isRTL;
-
-  const adCopy = useMemo(() => getAdCopy(locale), [locale]);
+  const isRTL =
+    locale === 'ckb' || locale === 'kmr' || locale === 'ar' || I18nManager.isRTL;
 
   useEffect(() => {
     let mounted = true;
@@ -431,68 +370,18 @@ export default function DashboardScreen() {
           activeOpacity={0.92}
           onPress={() => router.push('/(app)/mobile-shop' as any)}
         >
-          <View style={styles.mobileAdTopBadge}>
-            <Text style={styles.mobileAdTopBadgeText} numberOfLines={1}>
-              {adCopy.badge}
+          <View style={[styles.mobileAdTopBadge, isRTL && styles.mobileAdTopBadgeRTL]}>
+            <Text
+              style={[styles.mobileAdTopBadgeText, isRTL && styles.textRTL]}
+              numberOfLines={1}
+            >
+              {i18n.t('mobileShopAd.badge')}
             </Text>
           </View>
 
           <View style={[styles.mobileAdMain, isRTL && styles.mobileAdMainRTL]}>
-            {/* Left side */}
-            <View style={[styles.mobileAdLeft, isRTL && styles.mobileAdLeftRTL]}>
-              <Text
-                style={[styles.mobileAdTitle, isRTL && styles.textRTL]}
-                numberOfLines={3}
-              >
-                {adCopy.title}
-              </Text>
-
-              <View style={[styles.mobileAdPillsWrap, isRTL && styles.mobileAdPillsWrapRTL]}>
-                <View style={styles.mobileAdPillGreen}>
-                  <Ionicons name="cash-outline" size={12} color="#FFFFFF" />
-                  <Text style={styles.mobileAdPillGreenText} numberOfLines={1}>
-                    {adCopy.cash}
-                  </Text>
-                </View>
-
-                <View style={styles.mobileAdPillOlive}>
-                  <Ionicons name="calendar-outline" size={12} color="#FFFFFF" />
-                  <Text style={styles.mobileAdPillOliveText} numberOfLines={1}>
-                    {adCopy.installment}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]} numberOfLines={2}>
-                {adCopy.line1}
-              </Text>
-
-              <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]} numberOfLines={2}>
-                {adCopy.line2}
-              </Text>
-
-              <View
-                style={[
-                  styles.mobileAdPriceBox,
-                  isRTL ? styles.mobileAdPriceBoxRTL : styles.mobileAdPriceBoxLTR,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.mobileAdPriceText,
-                    isRTL ? styles.mobileAdPriceTextRTL : styles.mobileAdPriceTextLTR,
-                  ]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.82}
-                >
-                  {adCopy.price}
-                </Text>
-              </View>
-            </View>
-
-            {/* Right side */}
-            <View style={styles.mobileAdRight}>
+            {/* Image side */}
+            <View style={styles.mobileAdImageSide}>
               <View style={styles.phonesStage}>
                 <View style={styles.phoneSamsungWrap}>
                   <Image
@@ -514,22 +403,80 @@ export default function DashboardScreen() {
                   />
                 </View>
 
-                <View style={styles.discountTag}>
+                <View style={[styles.discountTag, isRTL && styles.discountTagRTL]}>
                   <Text style={styles.discountTagTop}>-10%</Text>
-                  <Text style={styles.discountTagBottom}>{adCopy.discount}</Text>
+                  <Text style={styles.discountTagBottom} numberOfLines={1}>
+                    {i18n.t('mobileShopAd.discount')}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Text side */}
+            <View style={[styles.mobileAdTextSide, isRTL && styles.mobileAdTextSideRTL]}>
+              <Text
+                style={[styles.mobileAdTitle, isRTL && styles.textRTL]}
+                numberOfLines={3}
+              >
+                {i18n.t('mobileShopAd.title')}
+              </Text>
+
+              <View style={[styles.mobileAdPillsWrap, isRTL && styles.mobileAdPillsWrapRTL]}>
+                <View style={styles.mobileAdPillGreen}>
+                  <Ionicons name="cash-outline" size={12} color="#FFFFFF" />
+                  <Text style={styles.mobileAdPillGreenText} numberOfLines={1}>
+                    {i18n.t('mobileShopAd.cash')}
+                  </Text>
+                </View>
+
+                <View style={styles.mobileAdPillOlive}>
+                  <Ionicons name="calendar-outline" size={12} color="#FFFFFF" />
+                  <Text style={styles.mobileAdPillOliveText} numberOfLines={1}>
+                    {i18n.t('mobileShopAd.installment')}
+                  </Text>
                 </View>
               </View>
 
-              <View style={styles.mobileAdButton}>
-                <Text style={styles.mobileAdButtonText} numberOfLines={1}>
-                  {adCopy.button}
-                </Text>
-                <Ionicons
-                  name={isRTL ? 'arrow-back' : 'arrow-forward'}
-                  size={16}
-                  color="#FFFFFF"
-                />
-              </View>
+              <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]} numberOfLines={2}>
+                {i18n.t('mobileShopAd.line1')}
+              </Text>
+
+              <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]} numberOfLines={2}>
+                {i18n.t('mobileShopAd.line2')}
+              </Text>
+            </View>
+          </View>
+
+          {/* Bottom CTA row */}
+          <View style={[styles.mobileAdBottomRow, isRTL && styles.mobileAdBottomRowRTL]}>
+            <View
+              style={[
+                styles.mobileAdPriceBox,
+                isRTL ? styles.mobileAdPriceBoxRTL : styles.mobileAdPriceBoxLTR,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.mobileAdPriceText,
+                  isRTL ? styles.mobileAdPriceTextRTL : styles.mobileAdPriceTextLTR,
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.76}
+              >
+                {i18n.t('mobileShopAd.price')}
+              </Text>
+            </View>
+
+            <View style={styles.mobileAdButton}>
+              <Text style={styles.mobileAdButtonText} numberOfLines={1}>
+                {i18n.t('mobileShopAd.button')}
+              </Text>
+              <Ionicons
+                name={isRTL ? 'arrow-back' : 'arrow-forward'}
+                size={16}
+                color="#FFFFFF"
+              />
             </View>
           </View>
         </TouchableOpacity>
@@ -742,6 +689,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     maxWidth: '82%',
   },
+  mobileAdTopBadgeRTL: {
+    alignSelf: 'flex-end',
+  },
   mobileAdTopBadgeText: {
     color: UI.adDark,
     fontSize: 13,
@@ -751,25 +701,24 @@ const styles = StyleSheet.create({
   mobileAdMain: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
   },
   mobileAdMainRTL: {
     flexDirection: 'row-reverse',
   },
 
-  mobileAdLeft: {
-    flex: 1,
-    paddingRight: 2,
-  },
-  mobileAdLeftRTL: {
-    paddingRight: 0,
-    paddingLeft: 2,
-  },
-
-  mobileAdRight: {
-    width: 146,
+  mobileAdImageSide: {
+    width: 126,
     alignItems: 'center',
     justifyContent: 'flex-start',
+  },
+
+  mobileAdTextSide: {
+    flex: 1,
+    paddingLeft: 10,
+  },
+  mobileAdTextSideRTL: {
+    paddingLeft: 0,
+    paddingRight: 10,
   },
 
   mobileAdTitle: {
@@ -791,6 +740,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   mobileAdPillsWrapRTL: {
+    flexDirection: 'row-reverse',
     justifyContent: 'flex-start',
   },
 
@@ -838,53 +788,20 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  mobileAdPriceBox: {
-    marginTop: 11,
-    minHeight: 48,
-    backgroundColor: UI.adGreenDark,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
-    justifyContent: 'center',
-  },
-  mobileAdPriceBoxLTR: {
-    width: 230,
-    alignSelf: 'flex-start',
-  },
-  mobileAdPriceBoxRTL: {
-    width: 248,
-    alignSelf: 'flex-end',
-    marginRight: 2,
-  },
-  mobileAdPriceText: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-  },
-  mobileAdPriceTextLTR: {
-    fontSize: 13,
-    lineHeight: 16,
-    textAlign: 'center',
-  },
-  mobileAdPriceTextRTL: {
-    fontSize: 13,
-    lineHeight: 16,
-    textAlign: 'center',
-  },
-
   phonesStage: {
-    width: 154,
-    height: 178,
+    width: 120,
+    height: 170,
     position: 'relative',
-    marginTop: -8,
-    marginBottom: 8,
+    marginTop: 2,
+    marginBottom: 4,
   },
 
   phoneSamsungWrap: {
     position: 'absolute',
-    right: 10,
-    top: 2,
-    width: 98,
-    height: 152,
+    right: 4,
+    top: 0,
+    width: 78,
+    height: 140,
     zIndex: 1,
   },
   phoneSamsungImage: {
@@ -894,10 +811,10 @@ const styles = StyleSheet.create({
 
   phoneIphoneWrap: {
     position: 'absolute',
-    left: -4,
-    top: 14,
-    width: 100,
-    height: 156,
+    left: 0,
+    top: 18,
+    width: 76,
+    height: 138,
     borderRadius: 16,
     overflow: 'hidden',
     zIndex: 2,
@@ -910,7 +827,7 @@ const styles = StyleSheet.create({
   discountTag: {
     position: 'absolute',
     right: 0,
-    bottom: 12,
+    bottom: 8,
     backgroundColor: UI.adRed,
     paddingHorizontal: 8,
     paddingVertical: 5,
@@ -920,6 +837,9 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
     zIndex: 3,
     minWidth: 56,
+  },
+  discountTagRTL: {
+    right: 4,
   },
   discountTagTop: {
     color: '#FFFFFF',
@@ -935,15 +855,56 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
 
+  mobileAdBottomRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mobileAdBottomRowRTL: {
+    flexDirection: 'row-reverse',
+  },
+
+  mobileAdPriceBox: {
+    minHeight: 52,
+    backgroundColor: UI.adGreenDark,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 16,
+    justifyContent: 'center',
+    flex: 1,
+  },
+  mobileAdPriceBoxLTR: {
+    alignSelf: 'stretch',
+  },
+  mobileAdPriceBoxRTL: {
+    alignSelf: 'stretch',
+  },
+  mobileAdPriceText: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+  },
+  mobileAdPriceTextLTR: {
+    fontSize: 12.5,
+    lineHeight: 15,
+    textAlign: 'center',
+  },
+  mobileAdPriceTextRTL: {
+    fontSize: 12,
+    lineHeight: 15,
+    textAlign: 'center',
+  },
+
   mobileAdButton: {
-    width: 132,
+    minWidth: 126,
+    maxWidth: 132,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
     backgroundColor: UI.adGreen,
     paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingVertical: 13,
     borderRadius: 999,
   },
   mobileAdButtonText: {
