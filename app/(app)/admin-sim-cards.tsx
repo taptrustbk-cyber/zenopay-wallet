@@ -606,4 +606,445 @@ export default function AdminSimCardScreen() {
                     )}
 
                     <TouchableOpacity
-                      active
+                      activeOpacity={0.9}
+                      onPress={() => quickToggleAvailability(card)}
+                      style={[
+                        styles.availabilityBadge,
+                        card.is_active ? styles.availabilityBadgeOn : styles.availabilityBadgeOff,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.availabilityBadgeText,
+                          card.is_active ? styles.availabilityBadgeTextOn : styles.availabilityBadgeTextOff,
+                        ]}
+                      >
+                        {card.is_active ? 'Available' : 'Unavailable'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.actionsBox}>
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      style={styles.actionBtn}
+                      onPress={() => handleEdit(card)}
+                    >
+                      <Ionicons name="pencil" size={18} color="#E8C35A" />
+                    </TouchableOpacity>
+
+                    <View style={styles.actionDivider} />
+
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      style={styles.actionBtn}
+                      onPress={() => handleDelete(card.id)}
+                    >
+                      <Ionicons name="trash" size={18} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })
+          )}
+
+          <View style={{ height: 36 }} />
+        </ScrollView>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: UI.bg,
+  },
+
+  container: {
+    flex: 1,
+    backgroundColor: UI.bg,
+    paddingHorizontal: 18,
+  },
+
+  topHeader: {
+    paddingTop: Platform.OS === 'ios' ? 8 : 10,
+    paddingBottom: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  backPillText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  screenTitle: {
+    marginLeft: 18,
+    flex: 1,
+    color: '#EAF0FF',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+
+  scrollContent: {
+    paddingBottom: 20,
+  },
+
+  formCard: {
+    backgroundColor: 'rgba(17,30,73,0.82)',
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 18,
+    marginBottom: 22,
+    shadowColor: '#000',
+    shadowOpacity: 0.30,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
+  },
+  formTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '800',
+    marginBottom: 16,
+  },
+
+  providerPicker: {
+    minHeight: 58,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: UI.softBorder,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    paddingHorizontal: 14,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  providerLogoSmall: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    marginRight: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  providerPickerText: {
+    flex: 1,
+    color: '#F8FAFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+
+  input: {
+    minHeight: 58,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: UI.softBorder,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    paddingHorizontal: 16,
+    color: '#FFFFFF',
+    fontSize: 17,
+    marginBottom: 14,
+  },
+
+  doubleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 14,
+  },
+  halfInput: {
+    flex: 1,
+  },
+
+  statusRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 14,
+  },
+  statusPill: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: UI.softBorder,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusPillActive: {
+    backgroundColor: 'rgba(117,192,107,0.14)',
+    borderColor: 'rgba(117,192,107,0.35)',
+  },
+  statusPillInactive: {
+    backgroundColor: 'rgba(239,68,68,0.10)',
+    borderColor: 'rgba(239,68,68,0.28)',
+  },
+  statusPillText: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  statusPillTextActive: {
+    color: '#A8E09F',
+  },
+  statusPillTextInactive: {
+    color: '#FF8C8C',
+  },
+
+  previewImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 20,
+    marginBottom: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+
+  uploadButton: {
+    minHeight: 68,
+    borderRadius: 20,
+    backgroundColor: UI.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  uploadButtonText: {
+    color: UI.goldDark,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+
+  addButton: {
+    minHeight: 68,
+    borderRadius: 20,
+    backgroundColor: UI.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  addButtonText: {
+    color: UI.goldDark,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+
+  cancelEditButton: {
+    marginTop: 12,
+    minHeight: 52,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  cancelEditButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  listTitle: {
+    color: '#FFFFFF',
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+
+  filterBar: {
+    minHeight: 58,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    marginBottom: 18,
+  },
+  filterItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 42,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    gap: 8,
+  },
+  filterItemActive: {
+    backgroundColor: 'rgba(246,224,143,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(246,224,143,0.55)',
+  },
+  filterItemText: {
+    color: 'rgba(255,255,255,0.70)',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  filterItemTextActive: {
+    color: '#FFF1BE',
+  },
+  filterCount: {
+    minWidth: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(246,224,143,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  filterCountText: {
+    color: '#F4D981',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  filterDivider: {
+    width: 1,
+    height: 26,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    marginHorizontal: 4,
+  },
+  sortItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 'auto',
+    paddingHorizontal: 8,
+  },
+
+  loaderWrap: {
+    paddingVertical: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  emptyCard: {
+    minHeight: 220,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  emptyTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 12,
+  },
+  emptyText: {
+    color: 'rgba(255,255,255,0.60)',
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+
+  cardListItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(17,30,73,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 24,
+    padding: 14,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.20,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  cardThumb: {
+    width: 96,
+    height: 136,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+  },
+
+  cardInfo: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingTop: 2,
+  },
+  cardItemTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  cardItemPrice: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  cardItemNotes: {
+    color: 'rgba(255,255,255,0.62)',
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: 12,
+  },
+
+  availabilityBadge: {
+    alignSelf: 'flex-start',
+    minHeight: 34,
+    paddingHorizontal: 14,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  availabilityBadgeOn: {
+    backgroundColor: UI.greenBg,
+  },
+  availabilityBadgeOff: {
+    backgroundColor: UI.redBg,
+  },
+  availabilityBadgeText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  availabilityBadgeTextOn: {
+    color: '#AEDF88',
+  },
+  availabilityBadgeTextOff: {
+    color: '#FF9A9A',
+  },
+
+  actionsBox: {
+    width: 84,
+    minHeight: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    marginTop: 4,
+  },
+  actionBtn: {
+    flex: 1,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+});
