@@ -129,7 +129,7 @@ export default function BuyCardScreen() {
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
     queryFn: async () => {
-      if (!user?.id) throw new Error('User not found');
+      if (!user?.id) throw new Error(i18n.t('auth.loginRequired') || 'Please login first.');
 
       const { data, error } = await supabase
         .from('wallets')
@@ -146,7 +146,7 @@ export default function BuyCardScreen() {
   const profileQuery = useQuery({
     queryKey: ['profile_buy_card', user?.id],
     queryFn: async () => {
-      if (!user?.id) throw new Error('User not found');
+      if (!user?.id) throw new Error(i18n.t('auth.loginRequired') || 'Please login first.');
 
       const { data, error } = await supabase
         .from('profiles')
@@ -179,7 +179,9 @@ export default function BuyCardScreen() {
       const currentBalance = Number(walletQuery.data.balance || 0);
 
       if (currentBalance < priceUsd) {
-        throw new Error(i18n.t('buyCard.insufficientBalanceForPurchase') || 'Insufficient balance for purchase.');
+        throw new Error(
+          i18n.t('buyCard.insufficientBalanceForPurchase') || 'Insufficient balance for purchase.'
+        );
       }
 
       const newBalance = currentBalance - priceUsd;
@@ -248,7 +250,9 @@ export default function BuyCardScreen() {
   const handlePurchase = () => {
     Alert.alert(
       i18n.t('buyCard.confirmPurchaseTitle') || 'Confirm Purchase',
-      `${i18n.t('buyCard.purchaseConfirmMessage') || 'Do you want to buy'} ${cardName} ${i18n.t('buyCard.for') || 'for'} $${formatUSD(priceUsd)}?`,
+      `${i18n.t('buyCard.purchaseConfirmMessage') || 'Do you want to buy'} ${cardName} ${
+        i18n.t('buyCard.for') || 'for'
+      } $${formatUSD(priceUsd)}?`,
       [
         {
           text: i18n.t('common.cancel') || 'Cancel',
@@ -271,12 +275,10 @@ export default function BuyCardScreen() {
   };
 
   const renderCardImage = () => {
-    if (imageUrl) {
-      return <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="contain" />;
-    }
+    const finalImage = imageUrl || providerStyle.logo;
 
-    if (providerStyle.logo) {
-      return <Image source={{ uri: providerStyle.logo }} style={styles.cardImage} resizeMode="contain" />;
+    if (finalImage) {
+      return <Image source={{ uri: finalImage }} style={styles.cardImage} resizeMode="cover" />;
     }
 
     return (
@@ -299,9 +301,7 @@ export default function BuyCardScreen() {
             <Ionicons name="arrow-back" size={18} color={UI.goldDark} />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>
-            {i18n.t('buyCard.title') || 'Buy Card'}
-          </Text>
+          <Text style={styles.headerTitle}>{i18n.t('buyCard.title') || 'Buy Card'}</Text>
 
           <View style={styles.headerRightSpacer} />
         </View>
@@ -364,9 +364,7 @@ export default function BuyCardScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.secondaryButton} onPress={goBack} activeOpacity={0.9}>
-            <Text style={styles.secondaryButtonText}>
-              {i18n.t('common.back') || 'Back'}
-            </Text>
+            <Text style={styles.secondaryButtonText}>{i18n.t('common.back') || 'Back'}</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -383,18 +381,14 @@ export default function BuyCardScreen() {
           <Ionicons name="arrow-back" size={18} color={UI.goldDark} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>
-          {i18n.t('buyCard.title') || 'Buy Card'}
-        </Text>
+        <Text style={styles.headerTitle}>{i18n.t('buyCard.title') || 'Buy Card'}</Text>
 
         <View style={styles.headerRightSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.topCard}>
-          <Text style={styles.topCardMini}>
-            {cardTypeLabel}
-          </Text>
+          <Text style={styles.topCardMini}>{cardTypeLabel}</Text>
           <Text style={styles.topCardTitle}>
             {i18n.t('buyCard.reviewYourOrder') || 'Review your order'}
           </Text>
@@ -442,9 +436,7 @@ export default function BuyCardScreen() {
           {walletQuery.isLoading ? (
             <ActivityIndicator color={UI.goldDark} />
           ) : (
-            <Text style={styles.balanceAmount}>
-              ${formatUSD(walletQuery.data?.balance || 0)}
-            </Text>
+            <Text style={styles.balanceAmount}>${formatUSD(walletQuery.data?.balance || 0)}</Text>
           )}
         </View>
 
@@ -480,9 +472,7 @@ export default function BuyCardScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.secondaryButton} onPress={goBack} activeOpacity={0.9}>
-          <Text style={styles.secondaryButtonText}>
-            {i18n.t('common.cancel') || 'Cancel'}
-          </Text>
+          <Text style={styles.secondaryButtonText}>{i18n.t('common.cancel') || 'Cancel'}</Text>
         </TouchableOpacity>
 
         <View style={{ height: 10 }} />
@@ -565,9 +555,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   cardIconContainer: {
-    width: 122,
-    height: 122,
-    borderRadius: 22,
+    width: 150,
+    height: 150,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -576,8 +566,8 @@ const styles = StyleSheet.create({
     borderColor: '#F2E8C7',
   },
   cardImage: {
-    width: 90,
-    height: 90,
+    width: '100%',
+    height: '100%',
   },
   cardName: {
     fontSize: 20,
@@ -624,6 +614,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
     color: UI.text,
+    textTransform: 'capitalize',
   },
 
   balanceCard: {
@@ -757,5 +748,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
     color: UI.text,
+    textTransform: 'capitalize',
   },
 });
