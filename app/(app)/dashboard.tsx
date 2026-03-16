@@ -28,6 +28,15 @@ const UI = {
   greenSoft: '#EAF7F1',
   blueBanner: '#1E66D0',
   iconGray: '#6B7280',
+
+  adBg: '#FFF8DB',
+  adBorder: '#F3D768',
+  adGold: '#F4C400',
+  adDark: '#1F2937',
+  adGreen: '#2E8B57',
+  adGreenDark: '#1F6A43',
+  adOlive: '#95A320',
+  adRed: '#EF4444',
 };
 
 /**
@@ -294,24 +303,65 @@ export default function DashboardScreen() {
           <ActionCircle icon="receipt" label={i18n.t('transactions')} onPress={() => router.push('/(app)/transactions' as any)} />
         </View>
 
-        {/* Ramadan offer banner */}
-        <View style={styles.banner}>
-          <View style={styles.bannerRow}>
-            <View style={styles.bannerIcons}>
-              <View style={styles.bannerIconCircle}>
-                <Ionicons name="moon" size={22} color="#FFFFFF" />
+        {/* Mobile Shop Ad Banner */}
+        <TouchableOpacity
+          style={styles.mobileAd}
+          activeOpacity={0.92}
+          onPress={() => router.push('/(app)/mobile-shop' as any)}
+        >
+          <View style={styles.mobileAdTopBadge}>
+            <Text style={styles.mobileAdTopBadgeText}>{i18n.t('mobileShopAdBadge')}</Text>
+          </View>
+
+          <View style={styles.mobileAdRow}>
+            <View style={styles.mobileAdLeft}>
+              <Text style={styles.mobileAdTitle}>{i18n.t('mobileShopAdTitle')}</Text>
+
+              <View style={styles.mobileAdPillsWrap}>
+                <View style={styles.mobileAdPillGreen}>
+                  <Ionicons name="cash-outline" size={15} color="#FFFFFF" />
+                  <Text style={styles.mobileAdPillGreenText}>{i18n.t('mobileShopAdCash')}</Text>
+                </View>
+
+                <View style={styles.mobileAdPillOlive}>
+                  <Ionicons name="calendar-outline" size={15} color="#FFFFFF" />
+                  <Text style={styles.mobileAdPillOliveText}>{i18n.t('mobileShopAdInstallment')}</Text>
+                </View>
               </View>
-              <View style={styles.bannerIconCircle}>
-                <Ionicons name="gift" size={22} color="#FFFFFF" />
+
+              <Text style={styles.mobileAdLine}>{i18n.t('mobileShopAdLine1')}</Text>
+              <Text style={styles.mobileAdLine}>{i18n.t('mobileShopAdLine2')}</Text>
+
+              <View style={styles.mobileAdPriceBox}>
+                <Text style={styles.mobileAdPriceText}>{i18n.t('mobileShopAdInstallmentPrice')}</Text>
+              </View>
+
+              <View style={styles.mobileAdButton}>
+                <Text style={styles.mobileAdButtonText}>{i18n.t('mobileShopAdButton')}</Text>
+                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
               </View>
             </View>
 
-            <View style={{ flex: 1 }}>
-              <Text style={styles.bannerTitle}>{i18n.t('ramadanOfferTitle')}</Text>
-              <Text style={styles.bannerSub}>{i18n.t('ramadanOfferMessage')}</Text>
+            <View style={styles.mobileAdRight}>
+              <Image
+                source={require('@/assets/images/samsung-s25-ultra.png')}
+                style={styles.phoneSamsungImage}
+                resizeMode="contain"
+              />
+
+              <Image
+                source={require('@/assets/images/iphone17-promax-orange.png')}
+                style={styles.phoneIphoneImage}
+                resizeMode="contain"
+              />
+
+              <View style={styles.discountTag}>
+                <Text style={styles.discountTagTop}>-10%</Text>
+                <Text style={styles.discountTagBottom}>{i18n.t('mobileShopAdDiscount')}</Text>
+              </View>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Market Shop section */}
         <View style={styles.marketLightCard}>
@@ -482,30 +532,163 @@ const styles = StyleSheet.create({
   },
   quickLabel: { marginTop: 8, fontSize: 13, fontWeight: '800', color: UI.text, textAlign: 'center' },
 
-  banner: {
+  mobileAd: {
     marginHorizontal: 16,
     marginTop: 16,
-    backgroundColor: UI.blueBanner,
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: UI.adBg,
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: UI.adBorder,
+    overflow: 'hidden',
   },
-  bannerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  bannerIcons: { flexDirection: 'row', gap: 10 },
-  bannerIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  mobileAdTopBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: UI.adGold,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    marginBottom: 12,
   },
-  bannerTitle: { color: '#fff', fontSize: 19, fontWeight: '900' },
-  bannerSub: {
-    color: 'rgba(255,255,255,0.95)',
-    marginTop: 6,
+  mobileAdTopBadgeText: {
+    color: UI.adDark,
     fontSize: 14,
+    fontWeight: '900',
+  },
+  mobileAdRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  mobileAdLeft: {
+    flex: 1.15,
+    justifyContent: 'space-between',
+    paddingRight: 2,
+  },
+  mobileAdRight: {
+    width: 132,
+    minHeight: 240,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mobileAdTitle: {
+    color: UI.adDark,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '900',
+  },
+  mobileAdPillsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 10,
+  },
+  mobileAdPillGreen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: UI.adGreen,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  mobileAdPillGreenText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  mobileAdPillOlive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: UI.adOlive,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  mobileAdPillOliveText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  mobileAdLine: {
+    color: '#374151',
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '700',
-    lineHeight: 19,
+    marginTop: 2,
+  },
+  mobileAdPriceBox: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    backgroundColor: UI.adGreenDark,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+  },
+  mobileAdPriceText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  mobileAdButton: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: UI.adGreen,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: 999,
+  },
+  mobileAdButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+
+  phoneSamsungImage: {
+    position: 'absolute',
+    right: -4,
+    top: 4,
+    width: 102,
+    height: 198,
+  },
+  phoneIphoneImage: {
+    position: 'absolute',
+    left: -2,
+    top: 18,
+    width: 86,
+    height: 182,
+  },
+
+  discountTag: {
+    position: 'absolute',
+    right: 2,
+    top: 132,
+    backgroundColor: UI.adRed,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 14,
+    transform: [{ rotate: '-8deg' }],
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  discountTagTop: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  discountTagBottom: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginTop: 1,
   },
 
   marketLightCard: {
