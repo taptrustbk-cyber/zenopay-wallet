@@ -46,6 +46,81 @@ const UI = {
 
 const __avatarVersionByUser: Record<string, number> = {};
 
+const getCurrentLocale = () => {
+  const raw =
+    String((i18n as any)?.locale || (i18n as any)?.languageTag || (i18n as any)?.language || '')
+      .trim()
+      .toLowerCase();
+
+  if (raw.includes('ckb') || raw.includes('sorani')) return 'ckb';
+  if (raw.includes('kmr') || raw.includes('kurmanji') || raw === 'ku') return 'kmr';
+  if (raw.startsWith('ar')) return 'ar';
+  if (raw.startsWith('en')) return 'en';
+
+  // fallback when app returns custom short codes or mixed names
+  if (raw.includes('badini')) return 'kmr';
+  if (raw.includes('kurdish')) return 'ckb';
+
+  return 'ckb';
+};
+
+const getAdCopy = (locale: 'ckb' | 'kmr' | 'ar' | 'en') => {
+  switch (locale) {
+    case 'kmr':
+      return {
+        badge: 'Planê firotanê bi qestan heye!',
+        title: 'Mobilek nû bi bihayekî gelek baş bikire',
+        cash: 'Nexd',
+        installment: 'Qist',
+        line1: 'Mobileya xwe bi nexd an bi awayê qestan bistîne.',
+        line2: 'Qistên mehane yên guncaw ji bo piraniya mobileyan hene.',
+        price: 'Qist ji 50,000 dînar dest pê dike',
+        button: 'Niha bikire',
+        discount: 'Daxistin',
+      };
+
+    case 'ar':
+      return {
+        badge: 'خطة شراء بالتقسيط متوفرة!',
+        title: 'اشترِ هاتفاً جديداً بسعر ممتاز جداً',
+        cash: 'نقداً',
+        installment: 'تقسيط',
+        line1: 'احصل على هاتفك نقداً أو بنظام التقسيط بسهولة.',
+        line2: 'أقساط شهرية مناسبة متوفرة لمعظم الهواتف.',
+        price: 'القسط يبدأ من 50,000 دينار',
+        button: 'اشترِ الآن',
+        discount: 'خصم',
+      };
+
+    case 'en':
+      return {
+        badge: 'Installment plan available!',
+        title: 'Buy a new phone at a very good price',
+        cash: 'Cash',
+        installment: 'Installment',
+        line1: 'Get your phone with cash or through an easy installment plan.',
+        line2: 'Flexible monthly installments are available for most phones.',
+        price: 'Installment starts from 50,000 IQD',
+        button: 'Buy Now',
+        discount: 'Discount',
+      };
+
+    case 'ckb':
+    default:
+      return {
+        badge: 'پلانی شیوەی قست هەیە!',
+        title: 'مۆبایلێکی نوێ بکڕە بە نرخێکی زۆر باش',
+        cash: 'نەقد',
+        installment: 'قست',
+        line1: 'مۆبایلەکەت بە نەقد یان بە شێوازی قست وەربگرە.',
+        line2: 'قستی مانگانەی گونجاو بۆ زۆربەی مۆبایلەکان بەردەستن.',
+        price: 'قست لە 50,000 دینارەوە دەست پێ دەکات',
+        button: 'ئێستا بکڕە',
+        discount: 'داشکاندن',
+      };
+  }
+};
+
 const ActionCircle = ({
   icon,
   label,
@@ -92,50 +167,10 @@ export default function DashboardScreen() {
   const [samsungSource, setSamsungSource] = useState<any>(PHONE_SAMSUNG);
   const [adAssetsReady, setAdAssetsReady] = useState(false);
 
-  const isRTL = I18nManager.isRTL;
-  const locale = String((i18n as any)?.locale || '').toLowerCase();
+  const locale = getCurrentLocale();
+  const isRTL = locale === 'ckb' || locale === 'kmr' || locale === 'ar' || I18nManager.isRTL;
 
-  const adCopy = useMemo(() => {
-    if (locale.includes('kmr') || locale.includes('ku')) {
-      return {
-        badge: 'پلانی فرۆشتن بە شێوەی قست هەیە!',
-        title: 'مۆبایلی نوێ بکڕە بە نرخێکی زۆر باش',
-        cash: 'نەقد',
-        installment: 'قست',
-        line1: 'مۆبایلەکەت بە نەقد یان بە شێوازی قست بەدەست بهێنە.',
-        line2: 'قستی مانگانەی گونجاو بۆ زۆربەی مۆبایلە بەردەستن.',
-        price: 'قست لە 50,000 دینارەوە دەست پێ دەکات',
-        button: 'ئێستا بکڕە',
-        discount: 'داشکاندن',
-      };
-    }
-
-    if (locale.includes('ar')) {
-      return {
-        badge: 'خطة شراء بالتقسيط متوفرة!',
-        title: 'اشترِ موبايل جديد بسعر مناسب جداً',
-        cash: 'نقداً',
-        installment: 'تقسيط',
-        line1: 'احصل على موبايلك نقداً أو بنظام التقسيط بسهولة.',
-        line2: 'أقساط شهرية مناسبة على أغلب أنواع الموبايلات.',
-        price: 'القسط يبدأ من 50,000 دينار',
-        button: 'اشترِ الآن',
-        discount: 'خصم',
-      };
-    }
-
-    return {
-      badge: 'پلانی شیوەی قست هەیە!',
-      title: 'مۆبایلێکی نوێ بکڕە بە نرخێکی زۆر باش',
-      cash: 'نەقد',
-      installment: 'قست',
-      line1: 'مۆبایلەکەت بە نەقد یان بە شێوازی قست وەربگرە.',
-      line2: 'قستی مانگانەی گونجاو بۆ زۆربەی مۆبایلەکان بەردەستن.',
-      price: 'قست لە 50,000 دینارەوە دەست پێ دەکات',
-      button: 'ئێستا بکڕە',
-      discount: 'داشکاندن',
-    };
-  }, [locale]);
+  const adCopy = useMemo(() => getAdCopy(locale), [locale]);
 
   useEffect(() => {
     let mounted = true;
