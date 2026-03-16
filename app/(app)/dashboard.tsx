@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useEffect } from 'react';
+import React, { useCallback, useMemo, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   StyleSheet,
@@ -11,6 +11,7 @@ import {
   Image,
   I18nManager,
 } from 'react-native';
+import { Asset } from 'expo-asset';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -85,8 +86,32 @@ export default function DashboardScreen() {
   const { theme } = useTheme();
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isBalanceHidden, setIsBalanceHidden] = React.useState(false);
+  const [adAssetsReady, setAdAssetsReady] = useState(false);
 
   const isRTL = I18nManager.isRTL;
+
+  useEffect(() => {
+    let mounted = true;
+
+    const preloadAssets = async () => {
+      try {
+        await Promise.all([
+          Asset.fromModule(PHONE_IPHONE).downloadAsync(),
+          Asset.fromModule(PHONE_SAMSUNG).downloadAsync(),
+        ]);
+      } catch (e) {
+        console.log('Asset preload warning:', e);
+      } finally {
+        if (mounted) setAdAssetsReady(true);
+      }
+    };
+
+    preloadAssets();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
@@ -217,7 +242,10 @@ export default function DashboardScreen() {
             onPress={() => router.push('/(app)/profile' as any)}
           >
             {avatarPreview ? (
-              <Image source={{ uri: avatarPreview }} style={styles.profileAvatar} />
+              <Image
+                source={{ uri: avatarPreview, cache: 'force-cache' as any }}
+                style={styles.profileAvatar}
+              />
             ) : (
               <View style={styles.profileAvatarFallback}>
                 <Ionicons name="person" size={20} color={UI.green} />
@@ -353,23 +381,29 @@ export default function DashboardScreen() {
             {/* Right side */}
             <View style={styles.mobileAdRight}>
               <View style={styles.phonesStage}>
-                <View style={styles.phoneSamsungWrap}>
-                  <Image
-                    source={PHONE_SAMSUNG}
-                    style={styles.phoneSamsungImage}
-                    resizeMode="contain"
-                    fadeDuration={0}
-                  />
-                </View>
+                {adAssetsReady && (
+                  <>
+                    <View style={styles.phoneSamsungWrap}>
+                      <Image
+                        source={PHONE_SAMSUNG}
+                        defaultSource={PHONE_SAMSUNG}
+                        style={styles.phoneSamsungImage}
+                        resizeMode="contain"
+                        fadeDuration={0}
+                      />
+                    </View>
 
-                <View style={styles.phoneIphoneWrap}>
-                  <Image
-                    source={PHONE_IPHONE}
-                    style={styles.phoneIphoneImage}
-                    resizeMode="contain"
-                    fadeDuration={0}
-                  />
-                </View>
+                    <View style={styles.phoneIphoneWrap}>
+                      <Image
+                        source={PHONE_IPHONE}
+                        defaultSource={PHONE_IPHONE}
+                        style={styles.phoneIphoneImage}
+                        resizeMode="contain"
+                        fadeDuration={0}
+                      />
+                    </View>
+                  </>
+                )}
 
                 <View style={styles.discountTag}>
                   <Text style={styles.discountTagTop}>-10%</Text>
@@ -612,7 +646,7 @@ const styles = StyleSheet.create({
   },
 
   mobileAdRight: {
-    width: 124,
+    width: 128,
     alignItems: 'center',
     justifyContent: 'flex-start',
   },
@@ -696,7 +730,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   mobileAdPriceBoxRTL: {
-    width: 205,
+    width: 214,
     alignSelf: 'flex-end',
     marginRight: 2,
   },
@@ -716,8 +750,8 @@ const styles = StyleSheet.create({
   },
 
   phonesStage: {
-    width: 124,
-    height: 142,
+    width: 128,
+    height: 148,
     position: 'relative',
     marginTop: -2,
     marginBottom: 8,
@@ -726,9 +760,9 @@ const styles = StyleSheet.create({
   phoneSamsungWrap: {
     position: 'absolute',
     right: 10,
-    top: 8,
-    width: 72,
-    height: 118,
+    top: 6,
+    width: 78,
+    height: 128,
     zIndex: 1,
   },
   phoneSamsungImage: {
@@ -738,10 +772,10 @@ const styles = StyleSheet.create({
 
   phoneIphoneWrap: {
     position: 'absolute',
-    left: 10,
+    left: 0,
     top: 18,
-    width: 72,
-    height: 118,
+    width: 78,
+    height: 128,
     borderRadius: 12,
     overflow: 'hidden',
     zIndex: 2,
@@ -753,12 +787,12 @@ const styles = StyleSheet.create({
 
   discountTag: {
     position: 'absolute',
-    right: 0,
-    bottom: 8,
+    right: 2,
+    bottom: 10,
     backgroundColor: UI.adRed,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+    borderRadius: 11,
     transform: [{ rotate: '-8deg' }],
     borderWidth: 2,
     borderColor: '#FFFFFF',
@@ -766,20 +800,20 @@ const styles = StyleSheet.create({
   },
   discountTagTop: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '900',
     textAlign: 'center',
   },
   discountTagBottom: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '900',
     textAlign: 'center',
     marginTop: 1,
   },
 
   mobileAdButton: {
-    width: 124,
+    width: 128,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
