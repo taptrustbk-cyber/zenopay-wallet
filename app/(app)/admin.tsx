@@ -162,9 +162,9 @@ export default function AdminScreen() {
           />
 
           <MenuItem
-            label="Top-Up Cards"
-            subLabel="Add, edit and manage cards"
-            onPress={() => router.push('/admin-topup-cards' as any)}
+            label="SIM Cards"
+            subLabel="Add, edit and manage mobile cards"
+            onPress={() => router.push('/admin-sim-cards' as any)}
             icon={<CreditCard size={18} color={UI.gold} />}
             tone="gold"
           />
