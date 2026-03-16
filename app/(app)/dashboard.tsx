@@ -297,25 +297,26 @@ export default function DashboardScreen() {
             </Text>
           </View>
 
-          <View style={[styles.mobileAdRow, isRTL && styles.mobileAdRowRTL]}>
+          <View style={[styles.mobileAdMain, isRTL && styles.mobileAdMainRTL]}>
+            {/* Left text */}
             <View style={[styles.mobileAdLeft, isRTL && styles.mobileAdLeftRTL]}>
               <Text
                 style={[styles.mobileAdTitle, isRTL && styles.textRTL]}
-                numberOfLines={3}
+                numberOfLines={4}
               >
                 {i18n.t('mobileShopAdTitle')}
               </Text>
 
               <View style={[styles.mobileAdPillsWrap, isRTL && styles.mobileAdPillsWrapRTL]}>
                 <View style={styles.mobileAdPillGreen}>
-                  <Ionicons name="cash-outline" size={13} color="#FFFFFF" />
+                  <Ionicons name="cash-outline" size={12} color="#FFFFFF" />
                   <Text style={styles.mobileAdPillGreenText} numberOfLines={1}>
                     {i18n.t('mobileShopAdCash')}
                   </Text>
                 </View>
 
                 <View style={styles.mobileAdPillOlive}>
-                  <Ionicons name="calendar-outline" size={13} color="#FFFFFF" />
+                  <Ionicons name="calendar-outline" size={12} color="#FFFFFF" />
                   <Text style={styles.mobileAdPillOliveText} numberOfLines={1}>
                     {i18n.t('mobileShopAdInstallment')}
                   </Text>
@@ -334,8 +335,32 @@ export default function DashboardScreen() {
                   {i18n.t('mobileShopAdInstallmentPrice')}
                 </Text>
               </View>
+            </View>
 
-              <View style={styles.mobileAdButton}>
+            {/* Right visual */}
+            <View style={styles.mobileAdRight}>
+              <View style={styles.phonesStage}>
+                <Image
+                  source={require('@/assets/images/samsung-s25-ultra.png')}
+                  style={styles.phoneSamsungImage}
+                  resizeMode="contain"
+                />
+
+                <View style={styles.iphoneImageWrap}>
+                  <Image
+                    source={require('@/assets/images/iphone17-promax-orange.png')}
+                    style={styles.phoneIphoneImage}
+                    resizeMode="contain"
+                  />
+                </View>
+
+                <View style={styles.discountTag}>
+                  <Text style={styles.discountTagTop}>-10%</Text>
+                  <Text style={styles.discountTagBottom}>{i18n.t('mobileShopAdDiscount')}</Text>
+                </View>
+              </View>
+
+              <View style={[styles.mobileAdButton, isRTL && styles.mobileAdButtonRTL]}>
                 <Text style={styles.mobileAdButtonText} numberOfLines={1}>
                   {i18n.t('mobileShopAdButton')}
                 </Text>
@@ -344,27 +369,6 @@ export default function DashboardScreen() {
                   size={16}
                   color="#FFFFFF"
                 />
-              </View>
-            </View>
-
-            <View style={styles.mobileAdRight}>
-              <Image
-                source={require('@/assets/images/samsung-s25-ultra.png')}
-                style={styles.phoneSamsungImage}
-                resizeMode="contain"
-              />
-
-              <View style={styles.iphoneImageWrap}>
-                <Image
-                  source={require('@/assets/images/iphone17-promax-orange.png')}
-                  style={styles.phoneIphoneImage}
-                  resizeMode="contain"
-                />
-              </View>
-
-              <View style={styles.discountTag}>
-                <Text style={styles.discountTagTop}>-10%</Text>
-                <Text style={styles.discountTagBottom}>{i18n.t('mobileShopAdDiscount')}</Text>
               </View>
             </View>
           </View>
@@ -571,14 +575,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
   },
-  mobileAdRow: {
+
+  mobileAdMain: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
   },
-  mobileAdRowRTL: {
+  mobileAdMainRTL: {
     flexDirection: 'row-reverse',
   },
+
   mobileAdLeft: {
     flex: 1,
     paddingRight: 2,
@@ -587,13 +593,11 @@ const styles = StyleSheet.create({
     paddingRight: 0,
     paddingLeft: 2,
   },
+
   mobileAdRight: {
-    width: 104,
-    height: 178,
-    position: 'relative',
+    width: 112,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    marginTop: 2,
   },
 
   mobileAdTitle: {
@@ -616,6 +620,7 @@ const styles = StyleSheet.create({
   mobileAdPillsWrapRTL: {
     justifyContent: 'flex-start',
   },
+
   mobileAdPillGreen: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -630,6 +635,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '900',
   },
+
   mobileAdPillOlive: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -660,7 +666,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
-    maxWidth: '92%',
+    maxWidth: '94%',
   },
   mobileAdPriceText: {
     color: '#FFFFFF',
@@ -669,53 +675,44 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  mobileAdButton: {
-    marginTop: 10,
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    backgroundColor: UI.adGreen,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 999,
-  },
-  mobileAdButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
+  phonesStage: {
+    width: 112,
+    height: 144,
+    position: 'relative',
+    marginTop: -4,
+    marginBottom: 8,
   },
 
   phoneSamsungImage: {
     position: 'absolute',
-    right: -8,
-    top: -4,
-    width: 76,
-    height: 148,
+    right: -2,
+    top: -2,
+    width: 82,
+    height: 146,
   },
 
   iphoneImageWrap: {
     position: 'absolute',
-    left: -6,
-    top: 28,
+    left: 0,
+    top: 30,
     width: 58,
-    height: 102,
+    height: 96,
+    borderRadius: 12,
     overflow: 'hidden',
-    borderRadius: 14,
   },
 
   phoneIphoneImage: {
     width: 58,
-    height: 102,
+    height: 96,
   },
 
   discountTag: {
     position: 'absolute',
-    right: -2,
-    bottom: 18,
+    right: -4,
+    bottom: 12,
     backgroundColor: UI.adRed,
     paddingHorizontal: 8,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: 12,
     transform: [{ rotate: '-8deg' }],
     borderWidth: 2,
@@ -733,6 +730,27 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center',
     marginTop: 1,
+  },
+
+  mobileAdButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: UI.adGreen,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    marginLeft: 6,
+  },
+  mobileAdButtonRTL: {
+    marginLeft: 0,
+    marginRight: 6,
+  },
+  mobileAdButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
   },
 
   marketLightCard: {
