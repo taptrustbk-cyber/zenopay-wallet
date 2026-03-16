@@ -1,21 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
+  ActivityIndicator,
+  Alert,
   Image,
   Platform,
-  TextInput,
-  ActivityIndicator,
   RefreshControl,
-  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
+import { useAuth } from '@/contexts/AuthContext';
 
 const IQD_RATE = 1530;
 
@@ -31,6 +32,17 @@ interface TopupCard {
   sort_order: number | null;
 }
 
+interface TopupOrder {
+  id: string;
+  provider?: string | null;
+  card_title?: string | null;
+  amount_iqd?: number | null;
+  price_iqd?: number | null;
+  status?: string | null;
+  pin_code?: string | null;
+  created_at?: string | null;
+}
+
 const providerConfig: Record<
   string,
   {
@@ -43,96 +55,226 @@ const providerConfig: Record<
 > = {
   korek: {
     label: 'Korek',
-    color: '#0F4C81',
-    soft: '#EEF6FF',
-    border: '#D7E9FF',
+    color: '#1570A6',
+    soft: '#F1F9FF',
+    border: '#D8EEFF',
     logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uu16k1t8p3uz3dpr3k6ic',
   },
   zain: {
     label: 'Zain',
-    color: '#6D3BBF',
-    soft: '#F5F0FF',
-    border: '#E4D8FF',
+    color: '#6E3CBC',
+    soft: '#F6F1FF',
+    border: '#E8DFFF',
     logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uq8qjx7d0g47h9rv2jvzz',
   },
   asiacell: {
     label: 'AsiaCell',
-    color: '#C93A2F',
-    soft: '#FFF4F1',
-    border: '#FFD9D2',
+    color: '#D53434',
+    soft: '#FFF3F2',
+    border: '#FFDCD8',
     logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/q8puaw0dyshx6jruwg83i',
   },
   ftth: {
     label: 'FTTH',
-    color: '#1B6FD8',
-    soft: '#EDF5FF',
-    border: '#D7E7FF',
+    color: '#2269D1',
+    soft: '#F2F7FF',
+    border: '#DCE8FF',
     logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/1ogdfkyuisk5c6unchj2s',
   },
   fasthope: {
     label: 'Fast Hope',
-    color: '#DD2E73',
+    color: '#E03E84',
     soft: '#FFF1F7',
-    border: '#FFD7E8',
+    border: '#FFD9E8',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Help_Icon.svg/1024px-Help_Icon.svg.png',
   },
   kurdtel: {
     label: 'Kurdtel',
-    color: '#3A3A3A',
+    color: '#333333',
     soft: '#F7F7F7',
-    border: '#E7E7E7',
+    border: '#E8E8E8',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png',
   },
 };
 
-function formatIQD(value: number) {
+function getProviderStyle(provider?: string | null) {
+  const key = String(provider || '').toLowerCase();
+  return (
+    providerConfig[key] || {
+      label: provider || 'Card',
+      color: '#9A7B00',
+      soft: '#FFFBEF',
+      border: '#F3E1A2',
+      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png',
+    }
+  );
+}
+
+function formatIQD(value?: number | null) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
-  }).format(value || 0);
+  }).format(Number(value || 0));
 }
 
-function formatUSD(value: number) {
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value || 0);
+function formatDate(date?: string | null) {
+  if (!date) return '';
+  try {
+    return new Date(date).toLocaleDateString();
+  } catch {
+    return '';
+  }
 }
 
-function getProviderStyle(provider: string) {
-  return providerConfig[provider?.toLowerCase()] || {
-    label: provider || 'Card',
-    color: '#B8860B',
-    soft: '#FFFBEA',
-    border: '#F5E7A1',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png',
-  };
+function getCurrentLang() {
+  const raw = String((i18n as any)?.language || (i18n as any)?.locale || 'en').toLowerCase();
+  if (raw.startsWith('ar')) return 'ar';
+  if (raw.startsWith('ckb')) return 'ckb';
+  if (raw.startsWith('ku') || raw.startsWith('kmr')) return 'kmr';
+  return 'en';
+}
+
+const TEXTS = {
+  en: {
+    pageTitle: 'Top-Up Cards',
+    mobileCards: 'Buy Mobile Cards',
+    searchProviders: 'Search network or card',
+    noNetworks: 'No cards available',
+    noNetworksSub: 'No active cards found in Supabase.',
+    recentOrders: 'Your recent card orders',
+    seeAll: 'See all',
+    noOrders: 'You have not purchased any cards yet',
+    pending: 'Pending',
+    success: 'Success',
+    cancelled: 'Cancelled',
+    pinReady: 'PIN ready',
+    pinPending: 'Pending delivery',
+    buyNow: 'Buy now',
+    amount: 'Amount',
+    price: 'Price',
+    selectedNetwork: 'Selected network',
+    cardsAvailable: 'Available cards',
+  },
+  ar: {
+    pageTitle: 'بطاقات التعبئة',
+    mobileCards: 'شراء بطاقات الموبايل',
+    searchProviders: 'ابحث عن الشبكة أو البطاقة',
+    noNetworks: 'لا توجد بطاقات',
+    noNetworksSub: 'لا توجد بطاقات مفعلة في Supabase.',
+    recentOrders: 'آخر طلباتك للبطاقات',
+    seeAll: 'عرض الكل',
+    noOrders: 'لم تقم بشراء أي بطاقة بعد',
+    pending: 'قيد الانتظار',
+    success: 'ناجح',
+    cancelled: 'ملغي',
+    pinReady: 'الرمز جاهز',
+    pinPending: 'بانتظار التسليم',
+    buyNow: 'اشتر الآن',
+    amount: 'الفئة',
+    price: 'السعر',
+    selectedNetwork: 'الشبكة المحددة',
+    cardsAvailable: 'البطاقات المتوفرة',
+  },
+  ckb: {
+    pageTitle: 'کڕینی کارتی مۆبایل',
+    mobileCards: 'کڕینی کارتی مۆبایل',
+    searchProviders: 'گەڕان بە ناوی نێتوورک یان کارت',
+    noNetworks: 'هیچ کارتێک بەردەست نییە',
+    noNetworksSub: 'هیچ کارتێکی چالاک لە Supabase نەدۆزرایەوە.',
+    recentOrders: 'دوایین داواکارییەکانی کارت',
+    seeAll: 'هەمووی ببینە',
+    noOrders: 'هێشتا هیچ کارتێکت نەکڕیوە',
+    pending: 'چاوەڕێیە',
+    success: 'سەرکەوتوو',
+    cancelled: 'هەڵوەشاوە',
+    pinReady: 'پین کۆد ئامادەیە',
+    pinPending: 'چاوەڕوانی ناردن',
+    buyNow: 'ئێستا بکڕە',
+    amount: 'بڕ',
+    price: 'نرخ',
+    selectedNetwork: 'نێتوورکی هەڵبژێردراو',
+    cardsAvailable: 'کارتە بەردەستەکان',
+  },
+  kmr: {
+    pageTitle: 'کرینا کارتێن موبایل',
+    mobileCards: 'کرینا کارتێن موبایل',
+    searchProviders: 'لێگەڕێ ب ناڤێ تۆڕێ یان کارتێ',
+    noNetworks: 'هیچ کارتێن بەردەست نینن',
+    noNetworksSub: 'هیچ کارتێن چالاک ل Supabase نەهاتیە دیتن.',
+    recentOrders: 'داواکارییێن تۆ یێن دوماهی',
+    seeAll: 'هەمی ببینە',
+    noOrders: 'هێشتا تو هیچ کارتێ نەکری',
+    pending: 'لە چاوەڕوانیدایە',
+    success: 'سەرکەفتی',
+    cancelled: 'هەلوەشیا',
+    pinReady: 'PIN ئامادەیە',
+    pinPending: 'چاوەڕوانی ناردنێ',
+    buyNow: 'ئێستا بکرە',
+    amount: 'بڕ',
+    price: 'نرخ',
+    selectedNetwork: 'تۆڕا هەلبژێردی',
+    cardsAvailable: 'کارتێن بەردەست',
+  },
+} as const;
+
+function useT() {
+  const lang = getCurrentLang() as keyof typeof TEXTS;
+  return TEXTS[lang] || TEXTS.en;
 }
 
 export default function SimCardsScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const t = useT();
 
   const [cards, setCards] = useState<TopupCard[]>([]);
+  const [orders, setOrders] = useState<TopupOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ordersLoading, setOrdersLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 
   const fetchCards = async () => {
+    const { data, error } = await supabase
+      .from('topup_cards')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('amount_iqd', { ascending: true });
+
+    if (error) throw error;
+    setCards((data || []) as TopupCard[]);
+  };
+
+  const fetchOrders = async () => {
     try {
+      if (!user?.id) {
+        setOrders([]);
+        return;
+      }
+
       const { data, error } = await supabase
-        .from('topup_cards')
+        .from('topup_orders')
         .select('*')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true })
-        .order('amount_iqd', { ascending: true });
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
       if (error) throw error;
-      setCards((data || []) as TopupCard[]);
+      setOrders((data || []) as TopupOrder[]);
+    } catch (e) {
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const loadAll = async () => {
+    try {
+      await Promise.all([fetchCards(), fetchOrders()]);
     } catch (error: any) {
-      console.log('topup_cards error:', error);
-      Alert.alert(
-        i18n.t('error') || 'Error',
-        error?.message || 'Could not load top-up cards.'
-      );
+      console.log('topup page error:', error);
+      Alert.alert('Error', error?.message || 'Could not load cards.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -140,28 +282,66 @@ export default function SimCardsScreen() {
   };
 
   useEffect(() => {
-    fetchCards();
+    loadAll();
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchCards();
+    await loadAll();
   };
+
+  const providerList = useMemo(() => {
+    const map = new Map<string, { provider: string; count: number; preview?: string | null }>();
+
+    cards.forEach((card) => {
+      const key = String(card.provider || '').toLowerCase();
+      const current = map.get(key);
+
+      if (!current) {
+        map.set(key, {
+          provider: key,
+          count: 1,
+          preview: card.image_url,
+        });
+      } else {
+        current.count += 1;
+        if (!current.preview && card.image_url) current.preview = card.image_url;
+      }
+    });
+
+    return Array.from(map.values());
+  }, [cards]);
+
+  const filteredProviders = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return providerList;
+
+    return providerList.filter((item) => {
+      const style = getProviderStyle(item.provider);
+      return (
+        item.provider.includes(q) ||
+        style.label.toLowerCase().includes(q)
+      );
+    });
+  }, [providerList, search]);
 
   const filteredCards = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return cards;
 
     return cards.filter((card) => {
-      return (
-        card.title?.toLowerCase().includes(q) ||
-        card.provider?.toLowerCase().includes(q) ||
-        String(card.amount_iqd || '').includes(q) ||
-        String(card.price_usd || '').includes(q) ||
-        (card.category || '').toLowerCase().includes(q)
-      );
+      const matchProvider = selectedProvider
+        ? String(card.provider || '').toLowerCase() === String(selectedProvider).toLowerCase()
+        : true;
+
+      const matchSearch = q
+        ? card.title?.toLowerCase().includes(q) ||
+          card.provider?.toLowerCase().includes(q) ||
+          String(card.amount_iqd || '').includes(q)
+        : true;
+
+      return matchProvider && matchSearch;
     });
-  }, [cards, search]);
+  }, [cards, search, selectedProvider]);
 
   const handleCardPress = (card: TopupCard) => {
     router.push({
@@ -179,30 +359,69 @@ export default function SimCardsScreen() {
     });
   };
 
+  const openNotifications = () => {
+    router.push('/(app)/notifications' as any);
+  };
+
+  const getStatusStyle = (status?: string | null) => {
+    const s = String(status || '').toLowerCase();
+
+    if (s === 'success' || s === 'approved' || s === 'completed') {
+      return {
+        bg: '#ECFDF3',
+        text: '#027A48',
+        label: t.success,
+      };
+    }
+
+    if (s === 'cancelled' || s === 'canceled' || s === 'rejected') {
+      return {
+        bg: '#FEF3F2',
+        text: '#D92D20',
+        label: t.cancelled,
+      };
+    }
+
+    return {
+      bg: '#FFF8E8',
+      text: '#B58103',
+      label: t.pending,
+    };
+  };
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={styles.headerWrap}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity
-            onPress={() => router.replace('/(app)/dashboard' as any)}
-            style={styles.backButton}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="arrow-back" size={24} color="#6B5500" />
-          </TouchableOpacity>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => {
+            if (selectedProvider) {
+              setSelectedProvider(null);
+              setSearch('');
+              return;
+            }
+            router.replace('/(app)/dashboard' as any);
+          }}
+          activeOpacity={0.85}
+          style={styles.iconButton}
+        >
+          <Ionicons name="arrow-back" size={22} color="#5A4700" />
+        </TouchableOpacity>
 
-          <View style={styles.headerTitlePill}>
-            <Text style={styles.headerTitle}>
-              {i18n.t('market.topup') || 'Top-Up Cards'}
-            </Text>
-          </View>
+        <Text numberOfLines={1} style={styles.headerTitle}>
+          {selectedProvider
+            ? getProviderStyle(selectedProvider).label
+            : t.pageTitle}
+        </Text>
 
-          <TouchableOpacity activeOpacity={0.85} style={styles.notifyButton}>
-            <Ionicons name="notifications-outline" size={22} color="#6B5500" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          onPress={openNotifications}
+          activeOpacity={0.85}
+          style={styles.iconButton}
+        >
+          <Ionicons name="notifications-outline" size={21} color="#5A4700" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -214,47 +433,178 @@ export default function SimCardsScreen() {
         }
       >
         <View style={styles.heroCard}>
-          <Text style={styles.heroMini}>
-            {i18n.t('mobileCards') || 'Mobile Cards'}
-          </Text>
-          <Text style={styles.heroTitle}>
-            Buy top-up cards بسهولة و بە شێوازێکی نوێ
-          </Text>
-          <Text style={styles.heroSub}>
-            Real images • Clean design • IQD amounts • Easy search
-          </Text>
+          <Text style={styles.heroTitle}>{t.mobileCards}</Text>
+          {selectedProvider ? (
+            <Text style={styles.heroSubtitle}>
+              {t.selectedNetwork}: {getProviderStyle(selectedProvider).label}
+            </Text>
+          ) : (
+            <Text style={styles.heroSubtitle}>{t.cardsAvailable}</Text>
+          )}
         </View>
 
         <View style={styles.searchBox}>
-          <Ionicons name="search-outline" size={24} color="#8C8C8C" />
+          <Ionicons name="search-outline" size={22} color="#8C8C8C" />
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder={i18n.t('search') || 'Search'}
+            placeholder={t.searchProviders}
             placeholderTextColor="#A0A0A0"
             style={styles.searchInput}
           />
           {!!search && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={22} color="#B0B0B0" />
+              <Ionicons name="close-circle" size={20} color="#B0B0B0" />
             </TouchableOpacity>
           )}
         </View>
 
+        {!selectedProvider && (
+          <View style={styles.ordersSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{t.recentOrders}</Text>
+            </View>
+
+            {ordersLoading ? (
+              <View style={styles.ordersLoading}>
+                <ActivityIndicator size="small" color="#C99700" />
+              </View>
+            ) : orders.length === 0 ? (
+              <View style={styles.emptyOrdersCard}>
+                <Ionicons name="time-outline" size={20} color="#AC8700" />
+                <Text style={styles.emptyOrdersText}>{t.noOrders}</Text>
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.ordersRow}
+              >
+                {orders.map((order) => {
+                  const statusStyle = getStatusStyle(order.status);
+                  const provider = getProviderStyle(order.provider);
+
+                  return (
+                    <View key={order.id} style={styles.orderCard}>
+                      <View style={styles.orderTop}>
+                        <View
+                          style={[
+                            styles.orderProviderBadge,
+                            { backgroundColor: provider.soft, borderColor: provider.border },
+                          ]}
+                        >
+                          <Text style={[styles.orderProviderText, { color: provider.color }]}>
+                            {provider.label}
+                          </Text>
+                        </View>
+
+                        <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
+                          <Text style={[styles.statusPillText, { color: statusStyle.text }]}>
+                            {statusStyle.label}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text numberOfLines={2} style={styles.orderTitle}>
+                        {order.card_title || `${provider.label} ${formatIQD(order.amount_iqd)} IQD`}
+                      </Text>
+
+                      <Text style={styles.orderMeta}>
+                        {formatIQD(order.amount_iqd)} IQD
+                      </Text>
+
+                      <Text style={styles.orderMeta}>
+                        {formatDate(order.created_at)}
+                      </Text>
+
+                      <View style={styles.pinWrap}>
+                        <Ionicons
+                          name={order.pin_code ? 'checkmark-circle' : 'hourglass-outline'}
+                          size={15}
+                          color={order.pin_code ? '#079455' : '#B58103'}
+                        />
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.pinText,
+                            { color: order.pin_code ? '#079455' : '#B58103' },
+                          ]}
+                        >
+                          {order.pin_code ? `${t.pinReady}: ${order.pin_code}` : t.pinPending}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        )}
+
         {loading ? (
           <View style={styles.loaderWrap}>
-            <ActivityIndicator size="large" color="#D4A800" />
+            <ActivityIndicator size="large" color="#C99700" />
           </View>
+        ) : !selectedProvider ? (
+          filteredProviders.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="card-outline" size={36} color="#B08A00" />
+              <Text style={styles.emptyTitle}>{t.noNetworks}</Text>
+              <Text style={styles.emptyText}>{t.noNetworksSub}</Text>
+            </View>
+          ) : (
+            <View style={styles.providersGrid}>
+              {filteredProviders.map((item) => {
+                const provider = getProviderStyle(item.provider);
+                const imageUri = item.preview || provider.logo;
+
+                return (
+                  <TouchableOpacity
+                    key={item.provider}
+                    activeOpacity={0.92}
+                    style={styles.providerCard}
+                    onPress={() => {
+                      setSelectedProvider(item.provider);
+                      setSearch('');
+                    }}
+                  >
+                    <View
+                      style={[
+                        styles.providerImageWrap,
+                        {
+                          backgroundColor: provider.soft,
+                          borderColor: provider.border,
+                        },
+                      ]}
+                    >
+                      <Image
+                        source={{ uri: imageUri }}
+                        style={styles.providerImage}
+                        resizeMode="contain"
+                      />
+                    </View>
+
+                    <View style={styles.providerFooter}>
+                      <Text numberOfLines={1} style={styles.providerName}>
+                        {provider.label}
+                      </Text>
+                      <Text style={styles.providerCount}>
+                        {item.count} cards
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )
         ) : filteredCards.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Ionicons name="card-outline" size={38} color="#B08A00" />
-            <Text style={styles.emptyTitle}>No cards found</Text>
-            <Text style={styles.emptyText}>
-              Search result empty or no active cards in Supabase.
-            </Text>
+            <Ionicons name="card-outline" size={36} color="#B08A00" />
+            <Text style={styles.emptyTitle}>{t.noNetworks}</Text>
+            <Text style={styles.emptyText}>{t.noNetworksSub}</Text>
           </View>
         ) : (
-          <View style={styles.grid}>
+          <View style={styles.cardsGrid}>
             {filteredCards.map((card) => {
               const provider = getProviderStyle(card.provider);
               const convertedIQDPrice = Math.round((card.price_usd || 0) * IQD_RATE);
@@ -269,19 +619,13 @@ export default function SimCardsScreen() {
                 >
                   <View
                     style={[
-                      styles.cardTopAccent,
+                      styles.cardImageWrap,
                       {
                         backgroundColor: provider.soft,
                         borderColor: provider.border,
                       },
                     ]}
                   >
-                    <View style={styles.providerBadge}>
-                      <Text style={[styles.providerBadgeText, { color: provider.color }]}>
-                        {provider.label}
-                      </Text>
-                    </View>
-
                     <Image
                       source={{ uri: imageUri }}
                       style={styles.cardImage}
@@ -289,40 +633,37 @@ export default function SimCardsScreen() {
                     />
                   </View>
 
-                  <View style={styles.cardBody}>
-                    <Text numberOfLines={2} style={styles.cardName}>
-                      {card.title}
-                    </Text>
+                  <Text numberOfLines={2} style={styles.cardName}>
+                    {card.title}
+                  </Text>
 
-                    <Text style={styles.amountText}>
-                      {formatIQD(card.amount_iqd)} IQD
-                    </Text>
+                  <View style={styles.priceBlock}>
+                    <Text style={styles.cardAmountLabel}>{t.amount}</Text>
+                    <Text style={styles.cardAmountValue}>{formatIQD(card.amount_iqd)} IQD</Text>
+                  </View>
 
-                    <View style={styles.priceRow}>
-                      <View>
-                        <Text style={styles.priceLabel}>Price</Text>
-                        <Text style={styles.priceUsd}>${formatUSD(card.price_usd)}</Text>
-                      </View>
-
-                      <View style={styles.iqdBox}>
-                        <Text style={styles.iqdBoxLabel}>IQD</Text>
-                        <Text style={styles.iqdBoxValue}>
-                          {formatIQD(convertedIQDPrice)}
-                        </Text>
-                      </View>
+                  <View style={styles.cardPriceRow}>
+                    <View style={styles.smallPriceBox}>
+                      <Text style={styles.smallPriceLabel}>USD</Text>
+                      <Text style={styles.smallPriceValue}>${Number(card.price_usd || 0).toFixed(2)}</Text>
                     </View>
 
-                    <TouchableOpacity
-                      style={styles.buyButton}
-                      activeOpacity={0.9}
-                      onPress={() => handleCardPress(card)}
-                    >
-                      <Ionicons name="cart-outline" size={16} color="#6B5500" />
-                      <Text style={styles.buyButtonText}>
-                        {i18n.t('buyNow') || 'Buy Now'}
+                    <View style={[styles.smallPriceBox, styles.smallPriceBoxGold]}>
+                      <Text style={styles.smallPriceLabel}>{t.price}</Text>
+                      <Text style={[styles.smallPriceValue, styles.smallPriceValueGold]}>
+                        {formatIQD(convertedIQDPrice)} IQD
                       </Text>
-                    </TouchableOpacity>
+                    </View>
                   </View>
+
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={styles.buyButton}
+                    onPress={() => handleCardPress(card)}
+                  >
+                    <Ionicons name="cart-outline" size={16} color="#5A4700" />
+                    <Text style={styles.buyButtonText}>{t.buyNow}</Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
               );
             })}
@@ -338,59 +679,37 @@ export default function SimCardsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFDF7',
+    backgroundColor: '#FFFDF8',
   },
 
-  headerWrap: {
-    backgroundColor: '#FFF3C9',
-    paddingTop: Platform.OS === 'ios' ? 56 : 42,
-    paddingBottom: 16,
-    paddingHorizontal: 18,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 54 : 38,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: '#FFF9E8',
     borderBottomWidth: 1,
-    borderBottomColor: '#F2E3A0',
-  },
-  headerTop: {
+    borderBottomColor: '#F2E4B4',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F0E1AF',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#F2E3A0',
-  },
-  headerTitlePill: {
-    flex: 1,
-    marginHorizontal: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderWidth: 1,
-    borderColor: '#F2E3A0',
-    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 10,
+    fontSize: 18,
     fontWeight: '900',
-    color: '#2A2415',
-  },
-  notifyButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#F2E3A0',
+    color: '#2A2412',
   },
 
   content: {
@@ -398,205 +717,331 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 14,
     paddingBottom: 10,
   },
 
   heroCard: {
-    borderRadius: 24,
-    padding: 18,
-    backgroundColor: '#FFF8DB',
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#FFF6D9',
     borderWidth: 1,
-    borderColor: '#F6E7A8',
-    marginBottom: 16,
-  },
-  heroMini: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#B08900',
-    marginBottom: 6,
+    borderColor: '#F3E3A7',
+    marginBottom: 14,
   },
   heroTitle: {
-    fontSize: 24,
-    lineHeight: 31,
+    fontSize: 21,
+    lineHeight: 28,
     fontWeight: '900',
-    color: '#2C2410',
-    marginBottom: 8,
+    color: '#221C0B',
   },
-  heroSub: {
+  heroSubtitle: {
+    marginTop: 5,
     fontSize: 13,
-    lineHeight: 20,
-    color: '#6D6652',
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#8A6E08',
   },
 
   searchBox: {
-    minHeight: 58,
+    minHeight: 54,
     borderRadius: 18,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#EFE4B5',
+    borderColor: '#EFE3B3',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: 15,
+    marginBottom: 14,
   },
   searchInput: {
     flex: 1,
     marginLeft: 10,
-    fontSize: 17,
-    color: '#1A1A1A',
-    fontWeight: '600',
+    color: '#1F1B12',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  ordersSection: {
+    marginBottom: 14,
+  },
+  sectionHeader: {
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#241E0E',
+  },
+  ordersLoading: {
+    minHeight: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyOrdersCard: {
+    minHeight: 66,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F0E2B2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  emptyOrdersText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#7A715B',
+    fontWeight: '700',
+  },
+  ordersRow: {
+    paddingRight: 6,
+  },
+  orderCard: {
+    width: 230,
+    marginRight: 12,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F0E2B2',
+    padding: 14,
+  },
+  orderTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  orderProviderBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  orderProviderText: {
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  orderTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '900',
+    color: '#231E11',
+    marginBottom: 6,
+    minHeight: 40,
+  },
+  orderMeta: {
+    fontSize: 12,
+    color: '#7B725C',
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  pinWrap: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pinText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '800',
   },
 
   loaderWrap: {
-    paddingVertical: 60,
+    paddingVertical: 56,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   emptyCard: {
-    marginTop: 10,
+    marginTop: 8,
     borderRadius: 22,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#EFE4B5',
-    paddingVertical: 36,
+    borderColor: '#EFE3B3',
+    paddingVertical: 34,
     paddingHorizontal: 20,
     alignItems: 'center',
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '900',
     color: '#2C2410',
-    marginTop: 12,
+    marginTop: 10,
   },
   emptyText: {
     marginTop: 8,
     textAlign: 'center',
     color: '#7B7460',
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: '700',
   },
 
-  grid: {
+  providersGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     rowGap: 14,
   },
-
-  cardItem: {
+  providerCard: {
     width: '48%',
-    borderRadius: 24,
+    borderRadius: 22,
+    overflow: 'hidden',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#EFE4B5',
-    overflow: 'hidden',
+    borderColor: '#EFE3B3',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  cardTopAccent: {
+  providerImageWrap: {
     margin: 10,
+    minHeight: 116,
     borderRadius: 18,
     borderWidth: 1,
-    paddingTop: 10,
-    paddingHorizontal: 10,
-    paddingBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
   },
-  providerBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-    marginBottom: 10,
+  providerImage: {
+    width: '100%',
+    height: 82,
   },
-  providerBadgeText: {
-    fontSize: 11,
+  providerFooter: {
+    paddingHorizontal: 12,
+    paddingBottom: 14,
+    alignItems: 'center',
+  },
+  providerName: {
+    fontSize: 18,
     fontWeight: '900',
+    color: '#232011',
+  },
+  providerCount: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#8A7B4A',
+    fontWeight: '800',
+  },
+
+  cardsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 14,
+  },
+  cardItem: {
+    width: '48%',
+    borderRadius: 22,
+    padding: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE3B3',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  cardImageWrap: {
+    minHeight: 110,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+    marginBottom: 10,
   },
   cardImage: {
     width: '100%',
-    height: 96,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-  },
-
-  cardBody: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
+    height: 82,
   },
   cardName: {
-    fontSize: 15,
-    lineHeight: 21,
+    minHeight: 40,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#201B10',
     fontWeight: '900',
-    color: '#1D1A12',
-    minHeight: 42,
   },
-  amountText: {
-    marginTop: 6,
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#A67C00',
+  priceBlock: {
+    marginTop: 8,
+    marginBottom: 10,
   },
-
-  priceRow: {
-    marginTop: 10,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  priceLabel: {
+  cardAmountLabel: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#8B846F',
+    color: '#8B7C49',
+    fontWeight: '800',
     marginBottom: 2,
   },
-  priceUsd: {
-    fontSize: 20,
+  cardAmountValue: {
+    fontSize: 19,
+    color: '#A67C00',
     fontWeight: '900',
-    color: '#1C1A14',
   },
-  iqdBox: {
-    alignItems: 'flex-end',
-    backgroundColor: '#FFF9E8',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+  cardPriceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  smallPriceBox: {
+    flex: 1,
     borderRadius: 14,
+    backgroundColor: '#FAFAFA',
     borderWidth: 1,
-    borderColor: '#F0E1A6',
+    borderColor: '#EEEEEE',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
   },
-  iqdBoxLabel: {
+  smallPriceBoxGold: {
+    backgroundColor: '#FFF9E8',
+    borderColor: '#F0E2A9',
+  },
+  smallPriceLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#9B8A42',
+    color: '#8A816C',
+    marginBottom: 2,
   },
-  iqdBoxValue: {
-    fontSize: 13,
+  smallPriceValue: {
+    fontSize: 12,
     fontWeight: '900',
-    color: '#6E5800',
+    color: '#1F1A10',
+  },
+  smallPriceValueGold: {
+    color: '#7C6100',
   },
 
   buyButton: {
     marginTop: 12,
-    width: '100%',
-    paddingVertical: 13,
+    minHeight: 44,
     borderRadius: 16,
+    backgroundColor: '#FDE68A',
+    borderWidth: 1,
+    borderColor: '#F4D461',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 8,
-    backgroundColor: '#FDE68A',
-    borderWidth: 1,
-    borderColor: '#F3D35C',
   },
   buyButtonText: {
-    color: '#6B5500',
+    color: '#5A4700',
     fontSize: 14,
     fontWeight: '900',
   },
