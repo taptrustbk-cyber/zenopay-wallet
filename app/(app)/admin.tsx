@@ -15,6 +15,8 @@ import {
   MinusCircle,
   FileText,
   ReceiptText,
+  CreditCard,
+  ClipboardList,
 } from 'lucide-react-native';
 
 export const options = { headerShown: false };
@@ -38,6 +40,9 @@ const UI = {
   red: '#DC2626',
   redSoft: '#FEE2E2',
 
+  gold: '#B45309',
+  goldSoft: '#FEF3C7',
+
   shadow: 'rgba(15, 23, 42, 0.08)',
 };
 
@@ -46,7 +51,7 @@ type MenuItemProps = {
   subLabel: string;
   onPress: () => void;
   icon: React.ReactNode;
-  tone?: 'green' | 'blue';
+  tone?: 'green' | 'blue' | 'gold';
 };
 
 export default function AdminScreen() {
@@ -71,8 +76,11 @@ export default function AdminScreen() {
   }
 
   const MenuItem = ({ label, subLabel, onPress, icon, tone = 'blue' }: MenuItemProps) => {
-    const iconBg = tone === 'green' ? UI.greenSoft : UI.blueSoft;
-    const iconColor = tone === 'green' ? UI.green : UI.blue;
+    const iconBg =
+      tone === 'green' ? UI.greenSoft : tone === 'gold' ? UI.goldSoft : UI.blueSoft;
+
+    const glowColor =
+      tone === 'green' ? UI.green : tone === 'gold' ? UI.gold : UI.blue;
 
     return (
       <TouchableOpacity style={styles.menuCard} onPress={onPress} activeOpacity={0.9}>
@@ -88,7 +96,7 @@ export default function AdminScreen() {
           {subLabel}
         </Text>
 
-        <View style={[styles.menuGlow, { backgroundColor: tone === 'green' ? UI.green : UI.blue, opacity: 0.08 }]} />
+        <View style={[styles.menuGlow, { backgroundColor: glowColor, opacity: 0.08 }]} />
       </TouchableOpacity>
     );
   };
@@ -96,7 +104,11 @@ export default function AdminScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerIconBtn} onPress={() => router.push('/dashboard')} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.headerIconBtn}
+          onPress={() => router.push('/dashboard' as any)}
+          activeOpacity={0.85}
+        >
           <Home size={18} color={UI.text} />
         </TouchableOpacity>
 
@@ -136,7 +148,7 @@ export default function AdminScreen() {
           <MenuItem
             label="Dashboard"
             subLabel="Overview & stats"
-            onPress={() => router.push('/dashboardadmin')}
+            onPress={() => router.push('/dashboardadmin' as any)}
             icon={<LayoutDashboard size={18} color={UI.blue} />}
             tone="blue"
           />
@@ -144,15 +156,31 @@ export default function AdminScreen() {
           <MenuItem
             label="Mobile Products"
             subLabel="Shop products"
-            onPress={() => router.push('/mobileproductsadmin')}
+            onPress={() => router.push('/mobileproductsadmin' as any)}
             icon={<Smartphone size={18} color={UI.green} />}
             tone="green"
           />
 
           <MenuItem
+            label="Top-Up Cards"
+            subLabel="Add, edit and manage cards"
+            onPress={() => router.push('/admin-topup-cards' as any)}
+            icon={<CreditCard size={18} color={UI.gold} />}
+            tone="gold"
+          />
+
+          <MenuItem
+            label="Top-Up Orders"
+            subLabel="Review orders and add PIN codes"
+            onPress={() => router.push('/admin-topup-orders' as any)}
+            icon={<ClipboardList size={18} color={UI.gold} />}
+            tone="gold"
+          />
+
+          <MenuItem
             label="Account Approval"
             subLabel="Approve users"
-            onPress={() => router.push('/accountapprovaladmin')}
+            onPress={() => router.push('/accountapprovaladmin' as any)}
             icon={<ShieldCheck size={18} color={UI.blue} />}
             tone="blue"
           />
@@ -160,7 +188,7 @@ export default function AdminScreen() {
           <MenuItem
             label="Deposits"
             subLabel="Deposit requests"
-            onPress={() => router.push('/depositsadmin')}
+            onPress={() => router.push('/depositsadmin' as any)}
             icon={<ArrowDownToLine size={18} color={UI.green} />}
             tone="green"
           />
@@ -168,7 +196,7 @@ export default function AdminScreen() {
           <MenuItem
             label="Withdrawals"
             subLabel="Withdraw requests"
-            onPress={() => router.push('/withdrawalsadmin')}
+            onPress={() => router.push('/withdrawalsadmin' as any)}
             icon={<ArrowUpFromLine size={18} color={UI.blue} />}
             tone="blue"
           />
@@ -176,7 +204,7 @@ export default function AdminScreen() {
           <MenuItem
             label="Add Balance"
             subLabel="Increase wallet"
-            onPress={() => router.push('/addbalanceadmin')}
+            onPress={() => router.push('/addbalanceadmin' as any)}
             icon={<PlusCircle size={18} color={UI.green} />}
             tone="green"
           />
@@ -184,7 +212,7 @@ export default function AdminScreen() {
           <MenuItem
             label="Withdraw Balance"
             subLabel="Decrease wallet"
-            onPress={() => router.push('/withdrawbalanceadmin')}
+            onPress={() => router.push('/withdrawbalanceadmin' as any)}
             icon={<MinusCircle size={18} color={UI.blue} />}
             tone="blue"
           />
@@ -192,7 +220,7 @@ export default function AdminScreen() {
           <MenuItem
             label="KYC Document"
             subLabel="User verification"
-            onPress={() => router.push('/kycdocumentsadmin')}
+            onPress={() => router.push('/kycdocumentsadmin' as any)}
             icon={<FileText size={18} color={UI.green} />}
             tone="green"
           />
@@ -200,7 +228,7 @@ export default function AdminScreen() {
           <MenuItem
             label="Transactions"
             subLabel="History & logs"
-            onPress={() => router.push('/transactionsadmin')}
+            onPress={() => router.push('/transactionsadmin' as any)}
             icon={<ReceiptText size={18} color={UI.blue} />}
             tone="blue"
           />
