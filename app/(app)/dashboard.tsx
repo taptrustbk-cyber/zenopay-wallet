@@ -19,6 +19,9 @@ import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 import { Wallet } from '@/lib/types';
 
+const PHONE_IPHONE = require('@/assets/images/iphone17-promax-orange.png');
+const PHONE_SAMSUNG = require('@/assets/images/samsung-s25-ultra.png');
+
 const UI = {
   bg: '#F5F6FA',
   card: '#FFFFFF',
@@ -330,8 +333,18 @@ export default function DashboardScreen() {
                 {i18n.t('mobileShopAdLine2')}
               </Text>
 
-              <View style={styles.mobileAdPriceBox}>
-                <Text style={styles.mobileAdPriceText} numberOfLines={2}>
+              <View
+                style={[
+                  styles.mobileAdPriceBox,
+                  isRTL ? styles.mobileAdPriceBoxRTL : styles.mobileAdPriceBoxLTR,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.mobileAdPriceText,
+                    isRTL ? styles.mobileAdPriceTextRTL : styles.mobileAdPriceTextLTR,
+                  ]}
+                >
                   {i18n.t('mobileShopAdInstallmentPrice')}
                 </Text>
               </View>
@@ -342,17 +355,19 @@ export default function DashboardScreen() {
               <View style={styles.phonesStage}>
                 <View style={styles.phoneSamsungWrap}>
                   <Image
-                    source={require('@/assets/images/samsung-s25-ultra.png')}
+                    source={PHONE_SAMSUNG}
                     style={styles.phoneSamsungImage}
                     resizeMode="contain"
+                    fadeDuration={0}
                   />
                 </View>
 
                 <View style={styles.phoneIphoneWrap}>
                   <Image
-                    source={require('@/assets/images/iphone17-promax-orange.png')}
+                    source={PHONE_IPHONE}
                     style={styles.phoneIphoneImage}
                     resizeMode="contain"
+                    fadeDuration={0}
                   />
                 </View>
 
@@ -570,7 +585,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 999,
     marginBottom: 10,
-    maxWidth: '72%',
+    maxWidth: '74%',
   },
   mobileAdTopBadgeText: {
     color: UI.adDark,
@@ -597,7 +612,7 @@ const styles = StyleSheet.create({
   },
 
   mobileAdRight: {
-    width: 118,
+    width: 124,
     alignItems: 'center',
     justifyContent: 'flex-start',
   },
@@ -669,25 +684,40 @@ const styles = StyleSheet.create({
 
   mobileAdPriceBox: {
     marginTop: 10,
-    width: 150,
+    minHeight: 58,
     backgroundColor: UI.adGreenDark,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: 14,
     justifyContent: 'center',
-    alignItems: 'center',
+  },
+  mobileAdPriceBoxLTR: {
+    width: 170,
+    alignSelf: 'flex-start',
+  },
+  mobileAdPriceBoxRTL: {
+    width: 205,
+    alignSelf: 'flex-end',
+    marginRight: 2,
   },
   mobileAdPriceText: {
     color: '#FFFFFF',
+    fontWeight: '900',
+  },
+  mobileAdPriceTextLTR: {
     fontSize: 13,
     lineHeight: 17,
-    fontWeight: '900',
     textAlign: 'center',
+  },
+  mobileAdPriceTextRTL: {
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'right',
   },
 
   phonesStage: {
-    width: 118,
-    height: 132,
+    width: 124,
+    height: 142,
     position: 'relative',
     marginTop: -2,
     marginBottom: 8,
@@ -695,10 +725,10 @@ const styles = StyleSheet.create({
 
   phoneSamsungWrap: {
     position: 'absolute',
-    right: 8,
-    top: 4,
-    width: 66,
-    height: 110,
+    right: 10,
+    top: 8,
+    width: 72,
+    height: 118,
     zIndex: 1,
   },
   phoneSamsungImage: {
@@ -710,8 +740,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 10,
     top: 18,
-    width: 66,
-    height: 110,
+    width: 72,
+    height: 118,
     borderRadius: 12,
     overflow: 'hidden',
     zIndex: 2,
@@ -724,7 +754,7 @@ const styles = StyleSheet.create({
   discountTag: {
     position: 'absolute',
     right: 0,
-    bottom: 4,
+    bottom: 8,
     backgroundColor: UI.adRed,
     paddingHorizontal: 8,
     paddingVertical: 6,
@@ -749,14 +779,14 @@ const styles = StyleSheet.create({
   },
 
   mobileAdButton: {
-    width: 118,
+    width: 124,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
     backgroundColor: UI.adGreen,
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 10,
     borderRadius: 999,
   },
   mobileAdButtonText: {
