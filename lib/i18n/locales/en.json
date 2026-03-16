@@ -300,6 +300,25 @@
   "losers": "Losers",
   "txStatusCompleted": "Completed",
   "from": "From",
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "error": "Error"
+  },
+  "auth": {
+    "loginRequired": "Please login first."
+  },
+  "buyCard": {
+    "title": "Buy Card",
+    "provider": "Provider",
+    "amount": "Amount",
+    "yourBalance": "Your IQD Balance",
+    "confirmBuy": "Confirm Purchase",
+    "insufficientBalance": "Insufficient IQD balance.",
+    "orderPlacedTitle": "Order placed",
+    "orderPlacedMessage": "Your card order has been created successfully.",
+    "orderFailed": "Could not create order."
+  },
 
   "loadingPrices": "Loading prices...",
   "failedToLoadPrices": "Failed to load prices",
