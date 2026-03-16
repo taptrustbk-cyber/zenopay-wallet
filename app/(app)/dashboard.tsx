@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
+  I18nManager,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,11 +40,6 @@ const UI = {
   adRed: '#EF4444',
 };
 
-/**
- * ✅ Avatar stable cache-busting (ONLY when avatar_url changes)
- * - Prevents reload on refresh / navigation
- * - Updates only when user changes the profile photo and profile.avatar_url changes
- */
 const __avatarVersionByUser: Record<string, number> = {};
 
 const ActionCircle = ({
@@ -83,9 +79,11 @@ const NavItem = ({
 export default function DashboardScreen() {
   const router = useRouter();
   const { user, profile, hardRefresh } = useAuth();
-  const { theme } = useTheme(); // keep your theme (not breaking)
+  const { theme } = useTheme();
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isBalanceHidden, setIsBalanceHidden] = React.useState(false);
+
+  const isRTL = I18nManager.isRTL;
 
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
@@ -133,7 +131,6 @@ export default function DashboardScreen() {
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      // ✅ you still refresh profile/balance when user pulls to refresh
       await hardRefresh();
       await walletQuery.refetch();
     } finally {
@@ -161,31 +158,22 @@ export default function DashboardScreen() {
   const avatarUrl = (profile as any)?.avatar_url as string | undefined;
   const fullName = (profile as any)?.full_name as string | undefined;
 
-  /**
-   * ✅ Avatar preview that does NOT change when you come back to dashboard.
-   * It changes only if avatarUrl changes (meaning user updated their photo).
-   */
   useEffect(() => {
     if (!user?.id) return;
     if (!avatarUrl) return;
 
-    // create version only once, then only change when avatarUrl changes
     const currentV = __avatarVersionByUser[user.id];
     if (!currentV) {
-      __avatarVersionByUser[user.id] = 1; // stable first version
+      __avatarVersionByUser[user.id] = 1;
       return;
     }
-
-    // If avatarUrl string changes => user changed photo => update version
-    // We store lastUrl on the version object using another map:
   }, [avatarUrl, user?.id]);
 
   const avatarPreview = useMemo(() => {
     if (!avatarUrl || !user?.id) return null;
 
-    // store last url and version in module scope (stable across screen unmount/mount)
     const key = user.id;
-    const holder = (__avatarVersionByUser as any);
+    const holder = __avatarVersionByUser as any;
 
     if (!holder.__lastUrl) holder.__lastUrl = {};
     if (!holder.__ver) holder.__ver = {};
@@ -196,7 +184,6 @@ export default function DashboardScreen() {
     if (!ver[key]) ver[key] = 1;
 
     if (lastUrl[key] && lastUrl[key] !== avatarUrl) {
-      // ✅ only when url changed (profile photo updated)
       ver[key] = Date.now();
     }
 
@@ -221,17 +208,13 @@ export default function DashboardScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          {/* LEFT: Profile photo + full name */}
           <TouchableOpacity
             style={styles.profileChip}
             activeOpacity={0.85}
             onPress={() => router.push('/(app)/profile' as any)}
           >
             {avatarPreview ? (
-              <Image
-                source={{ uri: avatarPreview }}
-                style={styles.profileAvatar}
-              />
+              <Image source={{ uri: avatarPreview }} style={styles.profileAvatar} />
             ) : (
               <View style={styles.profileAvatarFallback}>
                 <Ionicons name="person" size={20} color={UI.green} />
@@ -243,7 +226,6 @@ export default function DashboardScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* RIGHT */}
           <View style={styles.headerRight} />
         </View>
 
@@ -295,7 +277,7 @@ export default function DashboardScreen() {
           )}
         </View>
 
-        {/* 4 round action buttons row */}
+        {/* Quick actions */}
         <View style={styles.quickRow}>
           <ActionCircle icon="send" label={i18n.t('send')} onPress={() => router.push('/(app)/send' as any)} />
           <ActionCircle icon="cash" label={i18n.t('withdraw')} onPress={() => router.push('/(app)/withdraw' as any)} />
@@ -303,42 +285,65 @@ export default function DashboardScreen() {
           <ActionCircle icon="receipt" label={i18n.t('transactions')} onPress={() => router.push('/(app)/transactions' as any)} />
         </View>
 
-        {/* Mobile Shop Ad Banner */}
+        {/* Mobile Shop Ad */}
         <TouchableOpacity
           style={styles.mobileAd}
           activeOpacity={0.92}
           onPress={() => router.push('/(app)/mobile-shop' as any)}
         >
           <View style={styles.mobileAdTopBadge}>
-            <Text style={styles.mobileAdTopBadgeText}>{i18n.t('mobileShopAdBadge')}</Text>
+            <Text style={styles.mobileAdTopBadgeText} numberOfLines={1}>
+              {i18n.t('mobileShopAdBadge')}
+            </Text>
           </View>
 
-          <View style={styles.mobileAdRow}>
-            <View style={styles.mobileAdLeft}>
-              <Text style={styles.mobileAdTitle}>{i18n.t('mobileShopAdTitle')}</Text>
+          <View style={[styles.mobileAdRow, isRTL && styles.mobileAdRowRTL]}>
+            <View style={[styles.mobileAdLeft, isRTL && styles.mobileAdLeftRTL]}>
+              <Text
+                style={[styles.mobileAdTitle, isRTL && styles.textRTL]}
+                numberOfLines={3}
+              >
+                {i18n.t('mobileShopAdTitle')}
+              </Text>
 
-              <View style={styles.mobileAdPillsWrap}>
+              <View style={[styles.mobileAdPillsWrap, isRTL && styles.mobileAdPillsWrapRTL]}>
                 <View style={styles.mobileAdPillGreen}>
-                  <Ionicons name="cash-outline" size={15} color="#FFFFFF" />
-                  <Text style={styles.mobileAdPillGreenText}>{i18n.t('mobileShopAdCash')}</Text>
+                  <Ionicons name="cash-outline" size={13} color="#FFFFFF" />
+                  <Text style={styles.mobileAdPillGreenText} numberOfLines={1}>
+                    {i18n.t('mobileShopAdCash')}
+                  </Text>
                 </View>
 
                 <View style={styles.mobileAdPillOlive}>
-                  <Ionicons name="calendar-outline" size={15} color="#FFFFFF" />
-                  <Text style={styles.mobileAdPillOliveText}>{i18n.t('mobileShopAdInstallment')}</Text>
+                  <Ionicons name="calendar-outline" size={13} color="#FFFFFF" />
+                  <Text style={styles.mobileAdPillOliveText} numberOfLines={1}>
+                    {i18n.t('mobileShopAdInstallment')}
+                  </Text>
                 </View>
               </View>
 
-              <Text style={styles.mobileAdLine}>{i18n.t('mobileShopAdLine1')}</Text>
-              <Text style={styles.mobileAdLine}>{i18n.t('mobileShopAdLine2')}</Text>
+              <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]}>
+                {i18n.t('mobileShopAdLine1')}
+              </Text>
+              <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]}>
+                {i18n.t('mobileShopAdLine2')}
+              </Text>
 
               <View style={styles.mobileAdPriceBox}>
-                <Text style={styles.mobileAdPriceText}>{i18n.t('mobileShopAdInstallmentPrice')}</Text>
+                <Text style={[styles.mobileAdPriceText, isRTL && styles.textRTL]}>
+                  {i18n.t('mobileShopAdInstallmentPrice')}
+                </Text>
               </View>
 
               <View style={styles.mobileAdButton}>
-                <Text style={styles.mobileAdButtonText}>{i18n.t('mobileShopAdButton')}</Text>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                <Text style={styles.mobileAdButtonText} numberOfLines={1}>
+                  {i18n.t('mobileShopAdButton')}
+                </Text>
+                <Ionicons
+                  name={isRTL ? 'arrow-back' : 'arrow-forward'}
+                  size={16}
+                  color="#FFFFFF"
+                />
               </View>
             </View>
 
@@ -349,11 +354,13 @@ export default function DashboardScreen() {
                 resizeMode="contain"
               />
 
-              <Image
-                source={require('@/assets/images/iphone17-promax-orange.png')}
-                style={styles.phoneIphoneImage}
-                resizeMode="contain"
-              />
+              <View style={styles.iphoneImageWrap}>
+                <Image
+                  source={require('@/assets/images/iphone17-promax-orange.png')}
+                  style={styles.phoneIphoneImage}
+                  resizeMode="contain"
+                />
+              </View>
 
               <View style={styles.discountTag}>
                 <Text style={styles.discountTagTop}>-10%</Text>
@@ -530,14 +537,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quickLabel: { marginTop: 8, fontSize: 13, fontWeight: '800', color: UI.text, textAlign: 'center' },
+  quickLabel: {
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: '800',
+    color: UI.text,
+    textAlign: 'center',
+  },
 
   mobileAd: {
     marginHorizontal: 16,
     marginTop: 16,
     backgroundColor: UI.adBg,
-    borderRadius: 20,
-    padding: 14,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
     borderWidth: 1,
     borderColor: UI.adBorder,
     overflow: 'hidden',
@@ -545,147 +560,176 @@ const styles = StyleSheet.create({
   mobileAdTopBadge: {
     alignSelf: 'flex-start',
     backgroundColor: UI.adGold,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 999,
-    marginBottom: 12,
+    marginBottom: 10,
+    maxWidth: '72%',
   },
   mobileAdTopBadgeText: {
     color: UI.adDark,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '900',
   },
   mobileAdRow: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 12,
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  mobileAdRowRTL: {
+    flexDirection: 'row-reverse',
   },
   mobileAdLeft: {
-    flex: 1.15,
-    justifyContent: 'space-between',
+    flex: 1,
     paddingRight: 2,
   },
-  mobileAdRight: {
-    width: 132,
-    minHeight: 240,
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
+  mobileAdLeftRTL: {
+    paddingRight: 0,
+    paddingLeft: 2,
   },
+  mobileAdRight: {
+    width: 104,
+    height: 178,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    marginTop: 2,
+  },
+
   mobileAdTitle: {
     color: UI.adDark,
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 15,
+    lineHeight: 22,
     fontWeight: '900',
   },
+  textRTL: {
+    textAlign: 'right',
+  },
+
   mobileAdPillsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-    marginBottom: 10,
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  mobileAdPillsWrapRTL: {
+    justifyContent: 'flex-start',
   },
   mobileAdPillGreen: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     backgroundColor: UI.adGreen,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 999,
   },
   mobileAdPillGreenText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '900',
   },
   mobileAdPillOlive: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     backgroundColor: UI.adOlive,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 999,
   },
   mobileAdPillOliveText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '900',
   },
+
   mobileAdLine: {
     color: '#374151',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 17,
     fontWeight: '700',
-    marginTop: 2,
+    marginTop: 1,
   },
+
   mobileAdPriceBox: {
-    marginTop: 12,
+    marginTop: 10,
     alignSelf: 'flex-start',
     backgroundColor: UI.adGreenDark,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    maxWidth: '92%',
   },
   mobileAdPriceText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '900',
   },
+
   mobileAdButton: {
-    marginTop: 12,
+    marginTop: 10,
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 7,
     backgroundColor: UI.adGreen,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
     borderRadius: 999,
   },
   mobileAdButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '900',
   },
 
   phoneSamsungImage: {
     position: 'absolute',
-    right: -4,
-    top: 4,
-    width: 102,
-    height: 198,
+    right: -8,
+    top: -4,
+    width: 76,
+    height: 148,
   },
-  phoneIphoneImage: {
+
+  iphoneImageWrap: {
     position: 'absolute',
-    left: -2,
-    top: 18,
-    width: 86,
-    height: 182,
+    left: -6,
+    top: 28,
+    width: 58,
+    height: 102,
+    overflow: 'hidden',
+    borderRadius: 14,
+  },
+
+  phoneIphoneImage: {
+    width: 58,
+    height: 102,
   },
 
   discountTag: {
     position: 'absolute',
-    right: 2,
-    top: 132,
+    right: -2,
+    bottom: 18,
     backgroundColor: UI.adRed,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    borderRadius: 12,
     transform: [{ rotate: '-8deg' }],
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
   discountTagTop: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '900',
     textAlign: 'center',
   },
   discountTagBottom: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '900',
     textAlign: 'center',
     marginTop: 1,
@@ -702,9 +746,20 @@ const styles = StyleSheet.create({
   },
   marketHeader: { marginBottom: 12 },
   marketTitle: { fontSize: 19, fontWeight: '900', color: UI.text },
-  marketSub: { marginTop: 6, color: UI.text2, fontSize: 14, fontWeight: '700', lineHeight: 19 },
+  marketSub: {
+    marginTop: 6,
+    color: UI.text2,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 19,
+  },
 
-  marketMiniGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
+  marketMiniGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
   marketMiniItem: {
     width: '48%',
     borderRadius: 14,
@@ -724,10 +779,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  marketMiniLabel: { color: UI.text, fontSize: 14, fontWeight: '800', flex: 1 },
+  marketMiniLabel: {
+    color: UI.text,
+    fontSize: 14,
+    fontWeight: '800',
+    flex: 1,
+  },
 
   errorContainer: { alignItems: 'center', paddingVertical: 20, gap: 10 },
-  errorTextLight: { color: '#fff', textAlign: 'center', fontWeight: '800', fontSize: 14 },
+  errorTextLight: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: '800',
+    fontSize: 14,
+  },
   retryButton: {
     backgroundColor: 'rgba(255,255,255,0.18)',
     paddingHorizontal: 18,
@@ -745,5 +810,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   navItem: { alignItems: 'center' },
-  navText: { color: '#9CA3AF', fontSize: 13, fontWeight: '800', marginTop: 4 },
+  navText: {
+    color: '#9CA3AF',
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 4,
+  },
 });
