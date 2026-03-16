@@ -420,7 +420,7 @@ export default function SimCardsScreen() {
                         <Image
                           source={{ uri: imageUri }}
                           style={styles.providerImage}
-                          resizeMode="contain"
+                          resizeMode="cover"
                         />
                       </View>
 
@@ -499,7 +499,11 @@ export default function SimCardsScreen() {
                         },
                       ]}
                     >
-                      <Image source={{ uri: imageUri }} style={styles.cardImage} resizeMode="contain" />
+                      <Image
+                        source={{ uri: imageUri }}
+                        style={styles.cardImage}
+                        resizeMode="cover"
+                      />
                     </View>
 
                     <View style={styles.cardMiddle}>
@@ -693,20 +697,20 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   providerImageWrap: {
-    margin: 10,
-    minHeight: 116,
+    marginTop: 10,
+    marginHorizontal: 10,
+    height: 150,
     borderRadius: 18,
     borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
+    overflow: 'hidden',
   },
   providerImage: {
     width: '100%',
-    height: 82,
+    height: '100%',
   },
   providerFooter: {
     paddingHorizontal: 12,
+    paddingTop: 12,
     paddingBottom: 14,
     alignItems: 'center',
   },
@@ -774,13 +778,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardImageWrap: {
-    width: 86,
-    height: 86,
+    width: 96,
+    height: 96,
     borderRadius: 18,
     borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 8,
     overflow: 'hidden',
   },
   cardImage: {
@@ -814,7 +815,7 @@ const styles = StyleSheet.create({
   },
 
   cardRight: {
-    minHeight: 86,
+    minHeight: 96,
     alignItems: 'flex-end',
     justifyContent: 'space-between',
   },
