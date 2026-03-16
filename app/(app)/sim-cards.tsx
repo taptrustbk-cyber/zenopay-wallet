@@ -307,6 +307,10 @@ export default function SimCardsScreen() {
     });
   };
 
+  const openNotifications = () => {
+    router.push('/(app)/notifications' as any);
+  };
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -332,7 +336,13 @@ export default function SimCardsScreen() {
           {selectedProvider ? getProviderStyle(selectedProvider).label : t.pageTitle}
         </Text>
 
-        <View style={styles.headerRightSpace} />
+        <TouchableOpacity
+          onPress={openNotifications}
+          activeOpacity={0.85}
+          style={styles.iconButton}
+        >
+          <Ionicons name="notifications-outline" size={21} color="#5A4700" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -556,10 +566,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerRightSpace: {
-    width: 40,
-    height: 40,
-  },
   headerTitle: {
     flex: 1,
     textAlign: 'center',
@@ -586,12 +592,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F3E3A7',
     marginBottom: 14,
+    alignItems: 'center',
   },
   heroTitle: {
     fontSize: 21,
     lineHeight: 28,
     fontWeight: '900',
     color: '#221C0B',
+    textAlign: 'center',
   },
   heroSubtitle: {
     marginTop: 5,
@@ -599,6 +607,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#8A6E08',
     lineHeight: 20,
+    textAlign: 'center',
   },
 
   searchBox: {
