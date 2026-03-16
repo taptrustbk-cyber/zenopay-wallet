@@ -375,7 +375,7 @@ export default function DashboardScreen() {
               style={[styles.mobileAdTopBadgeText, isRTL && styles.textRTL]}
               numberOfLines={1}
             >
-              {i18n.t('mobileShopAd.badge')}
+              {i18n.t('mobileShopAdBadge')}
             </Text>
           </View>
 
@@ -383,30 +383,34 @@ export default function DashboardScreen() {
             {/* Image side */}
             <View style={styles.mobileAdImageSide}>
               <View style={styles.phonesStage}>
-                <View style={styles.phoneSamsungWrap}>
-                  <Image
-                    source={samsungSource}
-                    defaultSource={PHONE_SAMSUNG}
-                    style={styles.phoneSamsungImage}
-                    resizeMode="contain"
-                    fadeDuration={0}
-                  />
-                </View>
+                {adAssetsReady && (
+                  <>
+                    <View style={styles.phoneSamsungWrap}>
+                      <Image
+                        source={samsungSource}
+                        defaultSource={PHONE_SAMSUNG}
+                        style={styles.phoneSamsungImage}
+                        resizeMode="contain"
+                        fadeDuration={0}
+                      />
+                    </View>
 
-                <View style={styles.phoneIphoneWrap}>
-                  <Image
-                    source={iphoneSource}
-                    defaultSource={PHONE_IPHONE}
-                    style={styles.phoneIphoneImage}
-                    resizeMode="contain"
-                    fadeDuration={0}
-                  />
-                </View>
+                    <View style={styles.phoneIphoneWrap}>
+                      <Image
+                        source={iphoneSource}
+                        defaultSource={PHONE_IPHONE}
+                        style={styles.phoneIphoneImage}
+                        resizeMode="contain"
+                        fadeDuration={0}
+                      />
+                    </View>
+                  </>
+                )}
 
                 <View style={[styles.discountTag, isRTL && styles.discountTagRTL]}>
                   <Text style={styles.discountTagTop}>-10%</Text>
                   <Text style={styles.discountTagBottom} numberOfLines={1}>
-                    {i18n.t('mobileShopAd.discount')}
+                    {i18n.t('mobileShopAdDiscount')}
                   </Text>
                 </View>
               </View>
@@ -418,31 +422,31 @@ export default function DashboardScreen() {
                 style={[styles.mobileAdTitle, isRTL && styles.textRTL]}
                 numberOfLines={3}
               >
-                {i18n.t('mobileShopAd.title')}
+                {i18n.t('mobileShopAdTitle')}
               </Text>
 
               <View style={[styles.mobileAdPillsWrap, isRTL && styles.mobileAdPillsWrapRTL]}>
                 <View style={styles.mobileAdPillGreen}>
                   <Ionicons name="cash-outline" size={12} color="#FFFFFF" />
                   <Text style={styles.mobileAdPillGreenText} numberOfLines={1}>
-                    {i18n.t('mobileShopAd.cash')}
+                    {i18n.t('mobileShopAdCash')}
                   </Text>
                 </View>
 
                 <View style={styles.mobileAdPillOlive}>
                   <Ionicons name="calendar-outline" size={12} color="#FFFFFF" />
                   <Text style={styles.mobileAdPillOliveText} numberOfLines={1}>
-                    {i18n.t('mobileShopAd.installment')}
+                    {i18n.t('mobileShopAdInstallment')}
                   </Text>
                 </View>
               </View>
 
               <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]} numberOfLines={2}>
-                {i18n.t('mobileShopAd.line1')}
+                {i18n.t('mobileShopAdLine1')}
               </Text>
 
               <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]} numberOfLines={2}>
-                {i18n.t('mobileShopAd.line2')}
+                {i18n.t('mobileShopAdLine2')}
               </Text>
             </View>
           </View>
@@ -464,13 +468,13 @@ export default function DashboardScreen() {
                 adjustsFontSizeToFit
                 minimumFontScale={0.76}
               >
-                {i18n.t('mobileShopAd.price')}
+                {i18n.t('mobileShopAdInstallmentPrice')}
               </Text>
             </View>
 
             <View style={styles.mobileAdButton}>
               <Text style={styles.mobileAdButtonText} numberOfLines={1}>
-                {i18n.t('mobileShopAd.button')}
+                {i18n.t('mobileShopAdButton')}
               </Text>
               <Ionicons
                 name={isRTL ? 'arrow-back' : 'arrow-forward'}
