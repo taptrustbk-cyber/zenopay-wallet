@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Asset } from 'expo-asset';
 import { useQuery } from '@tanstack/react-query';
+import { formatIQD } from '@/lib/format';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
