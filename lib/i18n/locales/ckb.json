@@ -254,7 +254,76 @@
   "contactUsAt": "پەیوەندی بکە لە",
   "save": "پاشەکەوتکردن",
   "settings": "ڕێکخستنەکان",
+"withdraw": "وێدراو",
+  "withdrawRequest": "داواکاری وێدراو",
+  "withdrawHistory": "مێژووی وێدراو",
+  "withdrawAvailableBalance": "باڵانسی بەردەست بۆ وێدراو",
+  "withdrawSuccessMessage": "داواکاری وێدراوەکەت بە سەرکەوتوویی نێردرا",
 
+  "accountBalance": "باڵانسی هەژمار",
+  "balance": "باڵانس",
+
+  "selectPaymentMethod": "هەڵبژاردنی شێوازی پارەدان",
+  "choosePaymentMethod": "شێوازی پارەدان هەڵبژێرە",
+  "noPaymentMethods": "هیچ شێوازێکی پارەدان نییە",
+  "noPaymentMethodsDesc": "هێشتا ئەدمین هیچ شێوازێکی پارەدانی زیاد نەکردووە",
+
+  "amount": "بڕ",
+  "withdrawalAmount": "بڕی وێدراو",
+  "enterAmount": "بڕ بنووسە",
+  "invalidAmount": "بڕەکە دروست نییە",
+
+  "senderName": "ناوی نێرەر",
+  "enterSenderName": "ناوی نێرەر بنووسە",
+
+  "senderNumber": "ژمارەی نێرەر",
+  "enterSenderNumber": "ژمارەی نێرەر بنووسە",
+
+  "transferNote": "تێبینی (ئیختیاری)",
+  "writeAnyNote": "هەر تێبینییەک بنووسە",
+
+  "transactionImage": "وێنەی مامەڵە",
+  "uploadTransactionImage": "وێنەی مامەڵە باربکە",
+  "uploadTransactionImageHelp": "وێنەی پسوڵە یان سکرینشۆتی گواستنەوە زیاد بکە",
+  "changeImage": "گۆڕینی وێنە",
+  "previewFullScreen": "پیشاندانی فول سکرین",
+  "viewReceipt": "بینینی پسوڵە",
+
+  "bankImage": "وێنەی بانک",
+  "qrCode": "کۆدی QR",
+  "bankNumber": "ژمارەی بانک",
+  "paymentMethod": "شێوازی پارەدان",
+
+  "status": "دۆخ",
+  "pending": "چاوەڕێیە",
+  "approved": "پەسەندکراوە",
+  "rejected": "ڕەتکراوەتەوە",
+
+  "note": "تێبینی",
+  "reason": "هۆکار",
+
+  "date": "بەروار",
+  "trackYourRequests": "دۆخی داواکارییەکانت بەدواداچوون بکە",
+  "withdrawHistoryEmptyDesc": "هەموو داواکارییەکانی وێدراو لێرە دەردەکەون",
+  "noWithdrawalsYet": "هێشتا هیچ وێدراوێک نییە",
+
+  "submitWithdrawRequest": "ناردنی داواکاری وێدراو",
+  "fillWithdrawForm": "شێوازی پارەدان هەڵبژێرە و زانیارییەکانی گواستنەوەکە بنووسە",
+
+  "iqdShort": "د.ع",
+
+  "success": "سەرکەوتوو",
+  "error": "هەڵە",
+
+  "failedToLoadBalance": "بارکردنی باڵانس سەرکەوتوو نەبوو",
+  "walletNotFound": "جزدان نەدۆزرایەوە",
+  "insufficientBalance": "باڵانس بەس نییە",
+  "security": "پاراستن",
+  "contactSupport": "پەیوەندی بە پشتیوانی بکە",
+
+  "photoPermissionDenied": "ڕێگەی دەستگەیشتن بە وێنە نەدرا",
+
+  "back": "گەڕانەوە",
   "success": "سەرکەوتوو",
   "logout": "دەرچوون",
   "done": "تەواو",
