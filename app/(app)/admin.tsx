@@ -17,6 +17,7 @@ import {
   ReceiptText,
   CreditCard,
   ClipboardList,
+  Gift,
 } from 'lucide-react-native';
 
 export const options = { headerShown: false };
@@ -166,6 +167,14 @@ export default function AdminScreen() {
             subLabel="Add, edit and manage mobile cards"
             onPress={() => router.push('/admin-sim-cards' as any)}
             icon={<CreditCard size={18} color={UI.gold} />}
+            tone="gold"
+          />
+
+          <MenuItem
+            label="Gift Cards"
+            subLabel="Add, edit and manage gift cards"
+            onPress={() => router.push('/admin-gift-card' as any)}
+            icon={<Gift size={18} color={UI.gold} />}
             tone="gold"
           />
 
