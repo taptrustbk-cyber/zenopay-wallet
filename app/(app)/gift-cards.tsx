@@ -40,10 +40,9 @@ interface GiftCardRow {
   price_iqd?: number | null;
   image_url?: string | null;
 
-  // optional extra columns if you add them later in Supabase
-  cover_image_url?: string | null;     // image for main category card
-  category_image_url?: string | null;  // another optional image for category grid
-  item_image_url?: string | null;      // image for item inside list
+  cover_image_url?: string | null;
+  category_image_url?: string | null;
+  item_image_url?: string | null;
   description?: string | null;
 
   is_active?: boolean | null;
@@ -308,9 +307,9 @@ function normalizeCategory(value?: string | null): GiftCategoryKey | null {
 }
 
 function formatIQD(value?: number | null) {
-  return new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: 0,
-  }).format(Number(value || 0));
+  const num = Number(value || 0);
+  const rounded = Math.round(num);
+  return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
 function getCategoryMeta(
@@ -341,12 +340,7 @@ function getCategoryMeta(
 }
 
 function getCategoryPreviewImage(row: GiftCardRow) {
-  return (
-    row.cover_image_url ||
-    row.category_image_url ||
-    row.image_url ||
-    null
-  );
+  return row.cover_image_url || row.category_image_url || row.image_url || null;
 }
 
 function getItemImage(row: GiftCardRow) {
@@ -360,16 +354,16 @@ function getItemTitle(row: GiftCardRow, selectedMeta?: GiftCategory | null) {
   const categoryName = selectedMeta?.title || row.brand || row.category || 'Gift Card';
 
   if (amount > 0) {
-    if (selectedMeta?.key === 'pubg_uc') return `${amount} UC`;
-    if (selectedMeta?.key === 'free_fire') return `${amount} Diamond`;
-    return `${amount} ${categoryName}`;
+    if (selectedMeta?.key === 'pubg_uc') return `${formatIQD(amount)} UC`;
+    if (selectedMeta?.key === 'free_fire') return `${formatIQD(amount)} Diamond`;
+    return `${formatIQD(amount)} ${categoryName}`;
   }
 
   return categoryName;
 }
 
 export default function GiftCardsScreen() {
-  const { theme } = useTheme(); // keep
+  const { theme } = useTheme();
   const router = useRouter();
   const t = useT();
 
@@ -507,14 +501,15 @@ export default function GiftCardsScreen() {
 
   const handleBuy = (item: GiftCardRow) => {
     const itemImage = getItemImage(item) || '';
+    const finalPriceIqd = Number(item.price_iqd || 0);
 
     router.push({
       pathname: '/(app)/buy-card' as any,
       params: {
         id: item.id,
         name: getItemTitle(item, selectedMeta),
-        price_iqd: String(item.price_iqd || 0),
-        price: String(item.price_iqd || 0),
+        price_iqd: String(finalPriceIqd),
+        price: String(finalPriceIqd),
         provider: String(item.brand || item.category || 'gift_card')
           .toLowerCase()
           .replace(/\s+/g, '_'),
@@ -759,10 +754,10 @@ export default function GiftCardsScreen() {
                       <Text style={styles.cardAmountText}>
                         {t.amount}:{' '}
                         {selectedMeta?.key === 'pubg_uc'
-                          ? `${Number(item.amount || 0)} UC`
+                          ? `${formatIQD(Number(item.amount || 0))} UC`
                           : selectedMeta?.key === 'free_fire'
-                          ? `${Number(item.amount || 0)}`
-                          : `${Number(item.amount || 0)}`}
+                          ? `${formatIQD(Number(item.amount || 0))}`
+                          : `${formatIQD(Number(item.amount || 0))}`}
                       </Text>
 
                       {!!item.description && (
