@@ -38,7 +38,12 @@ type GiftCardRow = {
   amount: number | null;
   price_iqd: number | null;
   image_url: string | null;
+  item_image_url?: string | null;
+  cover_image_url?: string | null;
+  description?: string | null;
   stock_count: number | null;
+  brand?: string | null;
+  category?: string | null;
   is_active: boolean | null;
   sort_order?: number | null;
   created_at?: string | null;
@@ -49,6 +54,8 @@ type SortType = 'newest' | 'oldest' | 'price_low' | 'price_high' | 'name_az';
 type AdminTab = 'categories' | 'cards';
 
 const BUCKET_NAME = 'product-images';
+const FALLBACK_IMAGE =
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png';
 
 const UI = {
   bg: '#07122B',
@@ -70,10 +77,10 @@ const UI = {
 };
 
 const GIFT_TYPES = [
-  { key: 'pubg-uc', label: 'PUBG UC', icon: 'game-controller-outline' as const },
-  { key: 'free-fire', label: 'Free Fire', icon: 'flame-outline' as const },
+  { key: 'pubg_uc', label: 'PUBG UC', icon: 'game-controller-outline' as const },
+  { key: 'free_fire', label: 'Free Fire', icon: 'flame-outline' as const },
   { key: 'itunes', label: 'iTunes', icon: 'logo-apple' as const },
-  { key: 'google-play', label: 'Google Play', icon: 'logo-google-playstore' as const },
+  { key: 'google_play', label: 'Google Play', icon: 'logo-google-playstore' as const },
   { key: 'steam', label: 'Steam', icon: 'desktop-outline' as const },
   { key: 'playstation', label: 'PlayStation', icon: 'logo-playstation' as const },
   { key: 'xbox', label: 'Xbox', icon: 'logo-xbox' as const },
@@ -88,13 +95,18 @@ function formatIQD(value?: number | null) {
   }).format(Number(value || 0));
 }
 
-function slugify(value: string) {
+function normalizeSlug(value: string) {
   return String(value || '')
     .trim()
     .toLowerCase()
     .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/--+/g, '-');
+    .replace(/\s+/g, '_')
+    .replace(/-/g, '_')
+    .replace(/__+/g, '_');
+}
+
+function toNumber(value: string | number | null | undefined) {
+  return Number(String(value ?? '').replace(/,/g, '').trim() || 0);
 }
 
 function getSortLabel(sort: SortType) {
@@ -113,7 +125,7 @@ function getSortLabel(sort: SortType) {
 }
 
 function getGiftTypeInfo(slug?: string | null) {
-  const key = String(slug || '').trim().toLowerCase();
+  const key = normalizeSlug(String(slug || ''));
   return (
     GIFT_TYPES.find((p) => p.key === key) || {
       key,
@@ -134,7 +146,7 @@ export default function AdminGiftCardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState<'category' | 'card' | null>(null);
 
   const [filter, setFilter] = useState<FilterType>('all');
   const [sortBy, setSortBy] = useState<SortType>('newest');
@@ -143,17 +155,20 @@ export default function AdminGiftCardScreen() {
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
 
   const [categoryTitle, setCategoryTitle] = useState('PUBG UC');
-  const [categorySlug, setCategorySlug] = useState('pubg-uc');
+  const [categorySlug, setCategorySlug] = useState('pubg_uc');
   const [categorySubtitle, setCategorySubtitle] = useState('');
   const [categoryCoverImage, setCategoryCoverImage] = useState('');
+  const [categorySortOrder, setCategorySortOrder] = useState('0');
   const [categoryIsAvailable, setCategoryIsAvailable] = useState(true);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [cardTitle, setCardTitle] = useState('');
   const [cardAmount, setCardAmount] = useState('');
   const [cardPriceIqd, setCardPriceIqd] = useState('');
-  const [cardStockCount, setCardStockCount] = useState('');
-  const [cardImageUrl, setCardImageUrl] = useState('');
+  const [cardStockCount, setCardStockCount] = useState('0');
+  const [cardItemImageUrl, setCardItemImageUrl] = useState('');
+  const [cardDescription, setCardDescription] = useState('');
+  const [cardSortOrder, setCardSortOrder] = useState('0');
   const [cardIsAvailable, setCardIsAvailable] = useState(true);
 
   const selectedCategory = useMemo(
@@ -166,21 +181,30 @@ export default function AdminGiftCardScreen() {
   const resetCategoryForm = () => {
     setEditingCategoryId(null);
     setCategoryTitle('PUBG UC');
-    setCategorySlug('pubg-uc');
+    setCategorySlug('pubg_uc');
     setCategorySubtitle('');
     setCategoryCoverImage('');
+    setCategorySortOrder('0');
     setCategoryIsAvailable(true);
   };
 
-  const resetCardForm = () => {
+  const resetCardForm = (keepSelectedCategory = true) => {
     setEditingCardId(null);
     setCardTitle('');
     setCardAmount('');
     setCardPriceIqd('');
-    setCardStockCount('');
-    setCardImageUrl('');
+    setCardStockCount('0');
+    setCardItemImageUrl('');
+    setCardDescription('');
+    setCardSortOrder('0');
     setCardIsAvailable(true);
-    if (categories.length && !selectedCategoryId) {
+
+    if (!keepSelectedCategory) {
+      setSelectedCategoryId(categories[0]?.id || '');
+      return;
+    }
+
+    if (!selectedCategoryId && categories.length) {
       setSelectedCategoryId(categories[0].id);
     }
   };
@@ -191,10 +215,12 @@ export default function AdminGiftCardScreen() {
         supabase
           .from('gift_card_categories')
           .select('*')
+          .order('sort_order', { ascending: true })
           .order('created_at', { ascending: false }),
         supabase
           .from('gift_cards')
           .select('*')
+          .order('sort_order', { ascending: true })
           .order('created_at', { ascending: false }),
       ]);
 
@@ -207,8 +233,13 @@ export default function AdminGiftCardScreen() {
       setCategories(categoriesData);
       setCards(cardsData);
 
-      if (!selectedCategoryId && categoriesData.length > 0) {
-        setSelectedCategoryId(categoriesData[0].id);
+      if (!categoriesData.length) {
+        setSelectedCategoryId('');
+      } else {
+        const stillExists = categoriesData.some((x) => x.id === selectedCategoryId);
+        if (!selectedCategoryId || !stillExists) {
+          setSelectedCategoryId(categoriesData[0].id);
+        }
       }
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Could not load gift cards data.');
@@ -258,10 +289,12 @@ export default function AdminGiftCardScreen() {
         rows.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
         break;
       default:
-        rows.sort(
-          (a, b) =>
-            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-        );
+        rows.sort((a, b) => {
+          const aOrder = Number(a.sort_order || 0);
+          const bOrder = Number(b.sort_order || 0);
+          if (aOrder !== bOrder) return aOrder - bOrder;
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        });
         break;
     }
 
@@ -291,10 +324,12 @@ export default function AdminGiftCardScreen() {
         rows.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
         break;
       default:
-        rows.sort(
-          (a, b) =>
-            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-        );
+        rows.sort((a, b) => {
+          const aOrder = Number(a.sort_order || 0);
+          const bOrder = Number(b.sort_order || 0);
+          if (aOrder !== bOrder) return aOrder - bOrder;
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        });
         break;
     }
 
@@ -313,7 +348,7 @@ export default function AdminGiftCardScreen() {
 
   const pickAndUploadImage = async (mode: 'category' | 'card') => {
     try {
-      setUploading(true);
+      setUploading(mode);
 
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
@@ -325,7 +360,7 @@ export default function AdminGiftCardScreen() {
         mediaTypes: ['images'],
         quality: 0.9,
         allowsEditing: true,
-        aspect: mode === 'category' ? [4, 4] : [4, 4],
+        aspect: [4, 4],
       });
 
       if (result.canceled || !result.assets?.length) return;
@@ -342,7 +377,7 @@ export default function AdminGiftCardScreen() {
       const response = await fetch(uri);
       const arrayBuffer = await response.arrayBuffer();
 
-      const fileName = `${mode}-${Date.now()}.${ext}`;
+      const fileName = `gift-${mode}-${Date.now()}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from(BUCKET_NAME)
@@ -358,20 +393,20 @@ export default function AdminGiftCardScreen() {
       if (mode === 'category') {
         setCategoryCoverImage(data.publicUrl);
       } else {
-        setCardImageUrl(data.publicUrl);
+        setCardItemImageUrl(data.publicUrl);
       }
 
       Alert.alert('Success', 'Image uploaded successfully.');
     } catch (error: any) {
       Alert.alert('Upload error', error?.message || 'Could not upload image.');
     } finally {
-      setUploading(false);
+      setUploading(null);
     }
   };
 
   const validateCategoryForm = () => {
     if (!categoryTitle.trim()) {
-      Alert.alert('Missing title', 'Please enter gift card category title.');
+      Alert.alert('Missing title', 'Please enter category title.');
       return false;
     }
     if (!categorySlug.trim()) {
@@ -391,7 +426,7 @@ export default function AdminGiftCardScreen() {
       return false;
     }
     if (!cardAmount.trim()) {
-      Alert.alert('Missing amount', 'Please enter gift card balance or amount.');
+      Alert.alert('Missing amount', 'Please enter card amount.');
       return false;
     }
     if (!cardPriceIqd.trim()) {
@@ -401,18 +436,44 @@ export default function AdminGiftCardScreen() {
     return true;
   };
 
+  const syncCardsWithCategory = async (
+    categoryId: string,
+    categoryPayload: {
+      title: string;
+      slug: string;
+      cover_image_url: string | null;
+      is_active: boolean;
+    }
+  ) => {
+    const { error } = await supabase
+      .from('gift_cards')
+      .update({
+        brand: categoryPayload.title,
+        category: categoryPayload.slug,
+        cover_image_url: categoryPayload.cover_image_url,
+        is_active: categoryPayload.is_active,
+      })
+      .eq('category_id', categoryId);
+
+    if (error) throw error;
+  };
+
   const handleSubmitCategory = async () => {
     try {
       if (!validateCategoryForm()) return;
 
       setSubmitting(true);
 
+      const normalizedSlug = normalizeSlug(categorySlug.trim());
+      const giftInfo = getGiftTypeInfo(normalizedSlug);
+
       const payload = {
         title: categoryTitle.trim(),
-        slug: slugify(categorySlug.trim()),
+        slug: normalizedSlug,
         subtitle: categorySubtitle.trim() || null,
         cover_image_url: categoryCoverImage.trim() || null,
-        icon_name: getGiftTypeInfo(categorySlug).icon,
+        icon_name: giftInfo.icon,
+        sort_order: toNumber(categorySortOrder),
         is_active: categoryIsAvailable,
       };
 
@@ -423,10 +484,28 @@ export default function AdminGiftCardScreen() {
           .eq('id', editingCategoryId);
 
         if (error) throw error;
+
+        await syncCardsWithCategory(editingCategoryId, {
+          title: payload.title,
+          slug: payload.slug,
+          cover_image_url: payload.cover_image_url,
+          is_active: payload.is_active,
+        });
+
         Alert.alert('Updated', 'Gift card category updated successfully.');
       } else {
-        const { error } = await supabase.from('gift_card_categories').insert(payload);
+        const { data, error } = await supabase
+          .from('gift_card_categories')
+          .insert(payload)
+          .select()
+          .single();
+
         if (error) throw error;
+
+        if (data?.id) {
+          setSelectedCategoryId(data.id);
+        }
+
         Alert.alert('Added', 'Gift card category added successfully.');
       }
 
@@ -443,16 +522,30 @@ export default function AdminGiftCardScreen() {
     try {
       if (!validateCardForm()) return;
 
+      if (!selectedCategory) {
+        Alert.alert('Missing category', 'Please choose a valid category first.');
+        return;
+      }
+
       setSubmitting(true);
+
+      const normalizedSlug = normalizeSlug(selectedCategory.slug || '');
+      const itemImage = cardItemImageUrl.trim() || null;
 
       const payload = {
         category_id: selectedCategoryId,
         title: cardTitle.trim(),
-        amount: Number(String(cardAmount).replace(/,/g, '')),
-        price_iqd: Number(String(cardPriceIqd).replace(/,/g, '')),
-        image_url: cardImageUrl.trim() || null,
-        stock_count: Number(String(cardStockCount || '0').replace(/,/g, '')),
-        is_active: cardIsAvailable,
+        amount: toNumber(cardAmount),
+        price_iqd: toNumber(cardPriceIqd),
+        stock_count: toNumber(cardStockCount),
+        description: cardDescription.trim() || null,
+        image_url: itemImage,
+        item_image_url: itemImage,
+        cover_image_url: selectedCategory.cover_image_url || null,
+        brand: selectedCategory.title?.trim() || null,
+        category: normalizedSlug || null,
+        sort_order: toNumber(cardSortOrder),
+        is_active: cardIsAvailable && !!selectedCategory.is_active,
       };
 
       if (editingCardId) {
@@ -482,9 +575,10 @@ export default function AdminGiftCardScreen() {
     setActiveTab('categories');
     setEditingCategoryId(category.id);
     setCategoryTitle(String(category.title || ''));
-    setCategorySlug(String(category.slug || ''));
+    setCategorySlug(normalizeSlug(String(category.slug || '')));
     setCategorySubtitle(String(category.subtitle || ''));
     setCategoryCoverImage(String(category.cover_image_url || ''));
+    setCategorySortOrder(String(category.sort_order ?? 0));
     setCategoryIsAvailable(!!category.is_active);
   };
 
@@ -495,28 +589,51 @@ export default function AdminGiftCardScreen() {
     setCardTitle(String(card.title || ''));
     setCardAmount(String(card.amount || ''));
     setCardPriceIqd(String(card.price_iqd || ''));
-    setCardStockCount(String(card.stock_count || ''));
-    setCardImageUrl(String(card.image_url || ''));
+    setCardStockCount(String(card.stock_count ?? 0));
+    setCardItemImageUrl(String(card.item_image_url || card.image_url || ''));
+    setCardDescription(String(card.description || ''));
+    setCardSortOrder(String(card.sort_order ?? 0));
     setCardIsAvailable(!!card.is_active);
   };
 
   const handleDeleteCategory = (id: string) => {
-    Alert.alert('Delete category', 'Are you sure you want to delete this category?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const { error } = await supabase.from('gift_card_categories').delete().eq('id', id);
-            if (error) throw error;
-            await fetchAll();
-          } catch (error: any) {
-            Alert.alert('Error', error?.message || 'Could not delete category.');
-          }
+    const linkedCardsCount = cards.filter((x) => x.category_id === id).length;
+
+    Alert.alert(
+      'Delete category',
+      linkedCardsCount > 0
+        ? `This category has ${linkedCardsCount} cards. Delete category and all linked cards?`
+        : 'Are you sure you want to delete this category?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (linkedCardsCount > 0) {
+                const { error: deleteCardsError } = await supabase
+                  .from('gift_cards')
+                  .delete()
+                  .eq('category_id', id);
+
+                if (deleteCardsError) throw deleteCardsError;
+              }
+
+              const { error } = await supabase.from('gift_card_categories').delete().eq('id', id);
+              if (error) throw error;
+
+              if (editingCategoryId === id) resetCategoryForm();
+              if (selectedCategoryId === id) setSelectedCategoryId('');
+
+              await fetchAll();
+            } catch (error: any) {
+              Alert.alert('Error', error?.message || 'Could not delete category.');
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const handleDeleteCard = (id: string) => {
@@ -529,6 +646,9 @@ export default function AdminGiftCardScreen() {
           try {
             const { error } = await supabase.from('gift_cards').delete().eq('id', id);
             if (error) throw error;
+
+            if (editingCardId === id) resetCardForm();
+
             await fetchAll();
           } catch (error: any) {
             Alert.alert('Error', error?.message || 'Could not delete card.');
@@ -540,12 +660,22 @@ export default function AdminGiftCardScreen() {
 
   const quickToggleCategoryAvailability = async (category: GiftCategoryRow) => {
     try {
+      const nextActive = !category.is_active;
+
       const { error } = await supabase
         .from('gift_card_categories')
-        .update({ is_active: !category.is_active })
+        .update({ is_active: nextActive })
         .eq('id', category.id);
 
       if (error) throw error;
+
+      await syncCardsWithCategory(category.id, {
+        title: String(category.title || ''),
+        slug: normalizeSlug(String(category.slug || '')),
+        cover_image_url: category.cover_image_url || null,
+        is_active: nextActive,
+      });
+
       await fetchAll();
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Could not update availability.');
@@ -585,7 +715,7 @@ export default function AdminGiftCardScreen() {
 
       <TouchableOpacity
         activeOpacity={0.9}
-        style={styles.filterItem}
+        style={[styles.filterItem, filter === 'available' && styles.filterItemActive]}
         onPress={() => setFilter('available')}
       >
         <Ionicons name="albums-outline" size={18} color="rgba(255,255,255,0.72)" />
@@ -606,7 +736,7 @@ export default function AdminGiftCardScreen() {
 
       <TouchableOpacity
         activeOpacity={0.9}
-        style={styles.filterItem}
+        style={[styles.filterItem, filter === 'unavailable' && styles.filterItemActive]}
         onPress={() => setFilter('unavailable')}
       >
         <Ionicons name="ellipsis-vertical" size={18} color="rgba(255,255,255,0.72)" />
@@ -716,9 +846,9 @@ export default function AdminGiftCardScreen() {
                   style={styles.providerPicker}
                   onPress={() => {
                     const currentIndex = GIFT_TYPES.findIndex(
-                      (x) => x.key === String(categorySlug || '').toLowerCase()
+                      (x) => x.key === normalizeSlug(String(categorySlug || ''))
                     );
-                    const next = GIFT_TYPES[(currentIndex + 1) % GIFT_TYPES.length];
+                    const next = GIFT_TYPES[(currentIndex + 1 + GIFT_TYPES.length) % GIFT_TYPES.length];
                     setCategorySlug(next.key);
                     setCategoryTitle(next.label);
                   }}
@@ -740,7 +870,7 @@ export default function AdminGiftCardScreen() {
 
                 <TextInput
                   style={styles.input}
-                  placeholder="Category slug (e.g. pubg-uc)"
+                  placeholder="Category slug (e.g. pubg_uc)"
                   placeholderTextColor="rgba(255,255,255,0.42)"
                   value={categorySlug}
                   onChangeText={setCategorySlug}
@@ -757,11 +887,20 @@ export default function AdminGiftCardScreen() {
 
                 <TextInput
                   style={styles.input}
-                  placeholder="Primary image URL for gift-cards.tsx"
+                  placeholder="Main image URL for category page"
                   placeholderTextColor="rgba(255,255,255,0.42)"
                   value={categoryCoverImage}
                   onChangeText={setCategoryCoverImage}
                   autoCapitalize="none"
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Sort order (0,1,2...)"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  keyboardType="numeric"
+                  value={categorySortOrder}
+                  onChangeText={setCategorySortOrder}
                 />
 
                 <View style={styles.statusRow}>
@@ -797,21 +936,25 @@ export default function AdminGiftCardScreen() {
                 </View>
 
                 {!!categoryCoverImage && (
-                  <Image source={{ uri: categoryCoverImage }} style={styles.previewImage} resizeMode="cover" />
+                  <Image
+                    source={{ uri: categoryCoverImage }}
+                    style={styles.previewImage}
+                    resizeMode="cover"
+                  />
                 )}
 
                 <TouchableOpacity
                   activeOpacity={0.92}
                   style={styles.uploadButton}
                   onPress={() => pickAndUploadImage('category')}
-                  disabled={uploading}
+                  disabled={uploading !== null}
                 >
-                  {uploading ? (
+                  {uploading === 'category' ? (
                     <ActivityIndicator color={UI.goldDark} />
                   ) : (
                     <>
                       <Ionicons name="camera" size={24} color={UI.goldDark} />
-                      <Text style={styles.uploadButtonText}>Upload Primary Image</Text>
+                      <Text style={styles.uploadButtonText}>Upload Main Category Image</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -853,19 +996,20 @@ export default function AdminGiftCardScreen() {
                 <View style={styles.emptyCard}>
                   <Ionicons name="images-outline" size={42} color={UI.gold} />
                   <Text style={styles.emptyTitle}>No categories found</Text>
-                  <Text style={styles.emptyText}>Add your first gift card category from the form above.</Text>
+                  <Text style={styles.emptyText}>
+                    Add your first gift card category from the form above.
+                  </Text>
                 </View>
               ) : (
                 filteredCategories.map((category) => {
                   const giftType = getGiftTypeInfo(category.slug);
+                  const linkedCount = cards.filter((x) => x.category_id === category.id).length;
 
                   return (
                     <View key={category.id} style={styles.cardListItem}>
                       <Image
                         source={{
-                          uri:
-                            category.cover_image_url ||
-                            'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png',
+                          uri: category.cover_image_url || FALLBACK_IMAGE,
                         }}
                         style={styles.cardThumb}
                         resizeMode="cover"
@@ -886,6 +1030,10 @@ export default function AdminGiftCardScreen() {
                             {category.subtitle}
                           </Text>
                         )}
+
+                        <Text numberOfLines={1} style={styles.linkedCountText}>
+                          Linked cards: {linkedCount}
+                        </Text>
 
                         <TouchableOpacity
                           activeOpacity={0.9}
@@ -950,7 +1098,7 @@ export default function AdminGiftCardScreen() {
                       return;
                     }
                     const currentIndex = categories.findIndex((x) => x.id === selectedCategoryId);
-                    const next = categories[(currentIndex + 1) % categories.length];
+                    const next = categories[(currentIndex + 1 + categories.length) % categories.length];
                     setSelectedCategoryId(next.id);
                   }}
                 >
@@ -969,7 +1117,7 @@ export default function AdminGiftCardScreen() {
 
                 <TextInput
                   style={styles.input}
-                  placeholder="Card title (e.g. 60 UC PUBG)"
+                  placeholder="Card title (e.g. 60 UC)"
                   placeholderTextColor="rgba(255,255,255,0.42)"
                   value={cardTitle}
                   onChangeText={setCardTitle}
@@ -978,7 +1126,7 @@ export default function AdminGiftCardScreen() {
                 <View style={styles.doubleRow}>
                   <TextInput
                     style={[styles.input, styles.halfInput]}
-                    placeholder="Balance / amount"
+                    placeholder="Amount"
                     placeholderTextColor="rgba(255,255,255,0.42)"
                     keyboardType="numeric"
                     value={cardAmount}
@@ -994,21 +1142,40 @@ export default function AdminGiftCardScreen() {
                   />
                 </View>
 
+                <View style={styles.doubleRow}>
+                  <TextInput
+                    style={[styles.input, styles.halfInput]}
+                    placeholder="Stock count"
+                    placeholderTextColor="rgba(255,255,255,0.42)"
+                    keyboardType="numeric"
+                    value={cardStockCount}
+                    onChangeText={setCardStockCount}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.halfInput]}
+                    placeholder="Sort order"
+                    placeholderTextColor="rgba(255,255,255,0.42)"
+                    keyboardType="numeric"
+                    value={cardSortOrder}
+                    onChangeText={setCardSortOrder}
+                  />
+                </View>
+
                 <TextInput
-                  style={styles.input}
-                  placeholder="Stock count"
+                  style={[styles.input, styles.textarea]}
+                  placeholder="Description"
                   placeholderTextColor="rgba(255,255,255,0.42)"
-                  keyboardType="numeric"
-                  value={cardStockCount}
-                  onChangeText={setCardStockCount}
+                  value={cardDescription}
+                  onChangeText={setCardDescription}
+                  multiline
                 />
 
                 <TextInput
                   style={styles.input}
-                  placeholder="Image URL for list item"
+                  placeholder="Item image URL for list card"
                   placeholderTextColor="rgba(255,255,255,0.42)"
-                  value={cardImageUrl}
-                  onChangeText={setCardImageUrl}
+                  value={cardItemImageUrl}
+                  onChangeText={setCardItemImageUrl}
                   autoCapitalize="none"
                 />
 
@@ -1044,22 +1211,26 @@ export default function AdminGiftCardScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {!!cardImageUrl && (
-                  <Image source={{ uri: cardImageUrl }} style={styles.previewImage} resizeMode="cover" />
+                {!!cardItemImageUrl && (
+                  <Image
+                    source={{ uri: cardItemImageUrl }}
+                    style={styles.previewImage}
+                    resizeMode="cover"
+                  />
                 )}
 
                 <TouchableOpacity
                   activeOpacity={0.92}
                   style={styles.uploadButton}
                   onPress={() => pickAndUploadImage('card')}
-                  disabled={uploading}
+                  disabled={uploading !== null}
                 >
-                  {uploading ? (
+                  {uploading === 'card' ? (
                     <ActivityIndicator color={UI.goldDark} />
                   ) : (
                     <>
                       <Ionicons name="camera" size={24} color={UI.goldDark} />
-                      <Text style={styles.uploadButtonText}>Upload Card Image</Text>
+                      <Text style={styles.uploadButtonText}>Upload Item Image</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -1083,7 +1254,7 @@ export default function AdminGiftCardScreen() {
                   <TouchableOpacity
                     activeOpacity={0.92}
                     style={styles.cancelEditButton}
-                    onPress={resetCardForm}
+                    onPress={() => resetCardForm()}
                   >
                     <Text style={styles.cancelEditButtonText}>Cancel Edit</Text>
                   </TouchableOpacity>
@@ -1106,16 +1277,18 @@ export default function AdminGiftCardScreen() {
               ) : (
                 filteredCards.map((card) => {
                   const category = categories.find((x) => x.id === card.category_id);
-                  const giftType = getGiftTypeInfo(category?.slug);
+                  const giftType = getGiftTypeInfo(category?.slug || card.category);
 
                   return (
                     <View key={card.id} style={styles.cardListItem}>
                       <Image
                         source={{
                           uri:
+                            card.item_image_url ||
                             card.image_url ||
                             category?.cover_image_url ||
-                            'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png',
+                            card.cover_image_url ||
+                            FALLBACK_IMAGE,
                         }}
                         style={styles.cardThumb}
                         resizeMode="cover"
@@ -1134,8 +1307,14 @@ export default function AdminGiftCardScreen() {
                         </Text>
 
                         <Text numberOfLines={2} style={styles.cardItemNotes}>
-                          {category?.title || 'Gift Category'} • Amount {card.amount || 0}
+                          {category?.title || card.brand || 'Gift Category'} • Amount {card.amount || 0}
                         </Text>
+
+                        {!!card.description && (
+                          <Text numberOfLines={2} style={styles.cardDescriptionText}>
+                            {card.description}
+                          </Text>
+                        )}
 
                         <TouchableOpacity
                           activeOpacity={0.9}
@@ -1329,6 +1508,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     marginBottom: 14,
   },
+  textarea: {
+    minHeight: 100,
+    paddingTop: 16,
+    textAlignVertical: 'top',
+  },
 
   doubleRow: {
     flexDirection: 'row',
@@ -1394,7 +1578,7 @@ const styles = StyleSheet.create({
   },
   uploadButtonText: {
     color: UI.goldDark,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
   },
 
@@ -1582,6 +1766,18 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.62)',
     fontSize: 14,
     lineHeight: 21,
+    marginBottom: 8,
+  },
+  linkedCountText: {
+    color: '#F4D981',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  cardDescriptionText: {
+    color: 'rgba(255,255,255,0.56)',
+    fontSize: 13,
+    lineHeight: 20,
     marginBottom: 12,
   },
 
