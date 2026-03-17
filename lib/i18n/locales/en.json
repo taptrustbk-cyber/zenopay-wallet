@@ -202,6 +202,75 @@
   "withdraw": "Withdraw",
   "transactions": "Transactions",
   "retry": "Retry",
+   "withdraw": "Withdraw",
+  "withdrawRequest": "Withdraw Request",
+  "withdrawHistory": "Withdraw History",
+  "withdrawAvailableBalance": "Available balance for withdrawal",
+  "withdrawSuccessMessage": "Your withdraw request has been sent successfully",
+
+  "accountBalance": "Account Balance",
+  "balance": "Balance",
+
+  "selectPaymentMethod": "Select Payment Method",
+  "choosePaymentMethod": "Choose payment method",
+  "noPaymentMethods": "No payment methods",
+  "noPaymentMethodsDesc": "Admin has not added any payment methods yet",
+
+  "amount": "Amount",
+  "withdrawalAmount": "Withdrawal Amount",
+  "enterAmount": "Enter amount",
+  "invalidAmount": "Invalid amount",
+
+  "senderName": "Sender Name",
+  "enterSenderName": "Enter sender name",
+
+  "senderNumber": "Sender Number",
+  "enterSenderNumber": "Enter sender number",
+
+  "transferNote": "Note (optional)",
+  "writeAnyNote": "Write any note",
+
+  "transactionImage": "Transaction Image",
+  "uploadTransactionImage": "Upload transaction image",
+  "uploadTransactionImageHelp": "Add your receipt or transfer screenshot",
+  "changeImage": "Change Image",
+  "previewFullScreen": "Preview Full Screen",
+  "viewReceipt": "View Receipt",
+
+  "bankImage": "Bank Image",
+  "qrCode": "QR Code",
+  "bankNumber": "Bank Number",
+  "paymentMethod": "Payment Method",
+
+  "status": "Status",
+  "pending": "Pending",
+  "approved": "Approved",
+  "rejected": "Rejected",
+
+  "note": "Note",
+  "reason": "Reason",
+
+  "date": "Date",
+  "trackYourRequests": "Track your pending, approved, or rejected requests",
+  "withdrawHistoryEmptyDesc": "Your withdraw requests will appear here",
+  "noWithdrawalsYet": "No withdrawals yet",
+
+  "submitWithdrawRequest": "Submit Withdraw Request",
+
+  "iqdShort": "IQD",
+
+  "success": "Success",
+  "error": "Error",
+
+  "failedToLoadBalance": "Failed to load balance",
+  "walletNotFound": "Wallet not found",
+  "insufficientBalance": "Insufficient balance",
+  "security": "Security",
+  "contactSupport": "Contact support",
+
+  "photoPermissionDenied": "Photo permission denied",
+
+  "back": "Back",
   "tapToChangePhoto": "Tap to change photo",
   "unknownUser": "Unknown user",
   "changePhoto": "Change Photo",
