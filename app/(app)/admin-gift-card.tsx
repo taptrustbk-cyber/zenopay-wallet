@@ -1,109 +1,91 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
-  Modal,
   Platform,
   RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
+import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, Stack } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
 
-type AdminTab = 'categories' | 'cards' | 'orders';
-type OrderStatus = 'pending' | 'success' | 'cancelled';
-
-interface GiftCardCategoryRow {
+type GiftCategoryRow = {
   id: string;
-  title: string;
-  slug: string;
+  title: string | null;
+  slug: string | null;
   subtitle: string | null;
   cover_image_url: string | null;
   icon_name: string | null;
-  sort_order: number | null;
   is_active: boolean | null;
+  sort_order?: number | null;
   created_at?: string | null;
-  updated_at?: string | null;
-}
+};
 
-interface GiftCardRow {
+type GiftCardRow = {
   id: string;
-  category_id: string;
-  title: string;
+  category_id: string | null;
+  title: string | null;
   amount: number | null;
   price_iqd: number | null;
   image_url: string | null;
   stock_count: number | null;
   is_active: boolean | null;
-  sort_order: number | null;
+  sort_order?: number | null;
   created_at?: string | null;
-  updated_at?: string | null;
-  category?: GiftCardCategoryRow | null;
-}
+};
 
-interface GiftCardOrderRow {
-  id: string;
-  user_id: string;
-  gift_card_id: string | null;
-  category_id: string | null;
-  card_title: string | null;
-  category_title: string | null;
-  amount: number | null;
-  price_iqd: number | null;
-  status: string | null;
-  pin_code: string | null;
-  notes: string | null;
-  created_at: string | null;
-  updated_at?: string | null;
-}
+type FilterType = 'all' | 'available' | 'unavailable';
+type SortType = 'newest' | 'oldest' | 'price_low' | 'price_high' | 'name_az';
+type AdminTab = 'categories' | 'cards';
 
 const BUCKET_NAME = 'product-images';
-const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 
 const UI = {
-  bg: '#FFFDF8',
-  card: '#FFFFFF',
-  text: '#221C0B',
-  text2: '#806A12',
-  text3: '#8A7B49',
-  border: '#EFE3B3',
-  border2: '#F3E3A7',
-  yellow: '#FDE68A',
-  yellowDark: '#9A7B00',
-  yellowSoft: '#FFF6D9',
-  green: '#16A34A',
-  greenSoft: '#ECFDF3',
-  red: '#D92D20',
-  redSoft: '#FEF3F2',
-  blue: '#2563EB',
-  blueSoft: '#EFF6FF',
-  inputBg: '#FFFCF2',
+  bg: '#07122B',
+  bg2: '#0A1736',
+  card: '#0E1B40',
+  card2: '#122252',
+  border: 'rgba(255,255,255,0.08)',
+  softBorder: 'rgba(255,255,255,0.06)',
+  text: '#FFFFFF',
+  textSoft: 'rgba(255,255,255,0.68)',
+  gold: '#F6E08F',
+  goldDark: '#8B5E10',
+  goldBorder: '#D8BE63',
+  pillBg: 'rgba(246,224,143,0.10)',
+  red: '#EF4444',
+  green: '#75C06B',
+  greenBg: 'rgba(117,192,107,0.18)',
+  redBg: 'rgba(239,68,68,0.16)',
 };
+
+const GIFT_TYPES = [
+  { key: 'pubg-uc', label: 'PUBG UC', icon: 'game-controller-outline' as const },
+  { key: 'free-fire', label: 'Free Fire', icon: 'flame-outline' as const },
+  { key: 'itunes', label: 'iTunes', icon: 'logo-apple' as const },
+  { key: 'google-play', label: 'Google Play', icon: 'logo-google-playstore' as const },
+  { key: 'steam', label: 'Steam', icon: 'desktop-outline' as const },
+  { key: 'playstation', label: 'PlayStation', icon: 'logo-playstation' as const },
+  { key: 'xbox', label: 'Xbox', icon: 'logo-xbox' as const },
+  { key: 'amazon', label: 'Amazon', icon: 'bag-handle-outline' as const },
+  { key: 'netflix', label: 'Netflix', icon: 'film-outline' as const },
+  { key: 'spotify', label: 'Spotify', icon: 'musical-notes-outline' as const },
+];
 
 function formatIQD(value?: number | null) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return '';
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return '';
-  }
 }
 
 function slugify(value: string) {
@@ -115,167 +97,227 @@ function slugify(value: string) {
     .replace(/--+/g, '-');
 }
 
-async function uploadImageToSupabase(uri: string, folder: string) {
-  const response = await fetch(uri);
-  const blob = await response.blob();
+function getSortLabel(sort: SortType) {
+  switch (sort) {
+    case 'oldest':
+      return 'Oldest';
+    case 'price_low':
+      return 'Price Low';
+    case 'price_high':
+      return 'Price High';
+    case 'name_az':
+      return 'A-Z';
+    default:
+      return 'Newest';
+  }
+}
 
-  const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
-  const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
-  const { error } = await supabase.storage.from(BUCKET_NAME).upload(fileName, blob, {
-    cacheControl: '3600',
-    upsert: true,
-    contentType: blob.type || `image/${ext}`,
-  });
-
-  if (error) throw error;
-
-  const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(fileName);
-  return data.publicUrl;
+function getGiftTypeInfo(slug?: string | null) {
+  const key = String(slug || '').trim().toLowerCase();
+  return (
+    GIFT_TYPES.find((p) => p.key === key) || {
+      key,
+      label: slug || 'Gift Card',
+      icon: 'gift-outline' as const,
+    }
+  );
 }
 
 export default function AdminGiftCardScreen() {
   const router = useRouter();
-  const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('categories');
+
+  const [categories, setCategories] = useState<GiftCategoryRow[]>([]);
+  const [cards, setCards] = useState<GiftCardRow[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  const [categories, setCategories] = useState<GiftCardCategoryRow[]>([]);
-  const [cards, setCards] = useState<GiftCardRow[]>([]);
-  const [orders, setOrders] = useState<GiftCardOrderRow[]>([]);
-
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
-  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<GiftCardCategoryRow | null>(null);
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [sortBy, setSortBy] = useState<SortType>('newest');
 
-  const [cardModalOpen, setCardModalOpen] = useState(false);
-  const [editingCard, setEditingCard] = useState<GiftCardRow | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
 
-  const [orderModalOpen, setOrderModalOpen] = useState(false);
-  const [editingOrder, setEditingOrder] = useState<GiftCardOrderRow | null>(null);
-
-  const [categoryTitle, setCategoryTitle] = useState('');
-  const [categorySlug, setCategorySlug] = useState('');
+  const [categoryTitle, setCategoryTitle] = useState('PUBG UC');
+  const [categorySlug, setCategorySlug] = useState('pubg-uc');
   const [categorySubtitle, setCategorySubtitle] = useState('');
-  const [categoryIconName, setCategoryIconName] = useState('gift-outline');
-  const [categorySortOrder, setCategorySortOrder] = useState('0');
-  const [categoryIsActive, setCategoryIsActive] = useState(true);
-  const [categoryCoverImage, setCategoryCoverImage] = useState<string | null>(null);
+  const [categoryCoverImage, setCategoryCoverImage] = useState('');
+  const [categoryIsAvailable, setCategoryIsAvailable] = useState(true);
 
-  const [cardCategoryId, setCardCategoryId] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [cardTitle, setCardTitle] = useState('');
   const [cardAmount, setCardAmount] = useState('');
   const [cardPriceIqd, setCardPriceIqd] = useState('');
-  const [cardStockCount, setCardStockCount] = useState('0');
-  const [cardSortOrder, setCardSortOrder] = useState('0');
-  const [cardIsActive, setCardIsActive] = useState(true);
-  const [cardImage, setCardImage] = useState<string | null>(null);
+  const [cardStockCount, setCardStockCount] = useState('');
+  const [cardImageUrl, setCardImageUrl] = useState('');
+  const [cardIsAvailable, setCardIsAvailable] = useState(true);
 
-  const [orderStatus, setOrderStatus] = useState<OrderStatus>('pending');
-  const [orderPinCode, setOrderPinCode] = useState('');
-  const [orderNotes, setOrderNotes] = useState('');
+  const selectedCategory = useMemo(
+    () => categories.find((x) => x.id === selectedCategoryId) || null,
+    [categories, selectedCategoryId]
+  );
 
-  const isAdmin = useMemo(() => {
-    return ADMIN_EMAILS.includes(String(user?.email || '').toLowerCase());
-  }, [user?.email]);
+  const selectedGiftTypeInfo = getGiftTypeInfo(categorySlug);
 
   const resetCategoryForm = () => {
-    setEditingCategory(null);
-    setCategoryTitle('');
-    setCategorySlug('');
+    setEditingCategoryId(null);
+    setCategoryTitle('PUBG UC');
+    setCategorySlug('pubg-uc');
     setCategorySubtitle('');
-    setCategoryIconName('gift-outline');
-    setCategorySortOrder('0');
-    setCategoryIsActive(true);
-    setCategoryCoverImage(null);
+    setCategoryCoverImage('');
+    setCategoryIsAvailable(true);
   };
 
   const resetCardForm = () => {
-    setEditingCard(null);
-    setCardCategoryId(categories[0]?.id || '');
+    setEditingCardId(null);
     setCardTitle('');
     setCardAmount('');
     setCardPriceIqd('');
-    setCardStockCount('0');
-    setCardSortOrder('0');
-    setCardIsActive(true);
-    setCardImage(null);
+    setCardStockCount('');
+    setCardImageUrl('');
+    setCardIsAvailable(true);
+    if (categories.length && !selectedCategoryId) {
+      setSelectedCategoryId(categories[0].id);
+    }
   };
 
-  const resetOrderForm = () => {
-    setEditingOrder(null);
-    setOrderStatus('pending');
-    setOrderPinCode('');
-    setOrderNotes('');
-  };
-
-  const fetchAll = useCallback(async () => {
+  const fetchAll = async () => {
     try {
-      const [categoriesRes, cardsRes, ordersRes] = await Promise.all([
+      const [categoriesRes, cardsRes] = await Promise.all([
         supabase
           .from('gift_card_categories')
           .select('*')
-          .order('sort_order', { ascending: true })
           .order('created_at', { ascending: false }),
-
         supabase
           .from('gift_cards')
-          .select('*')
-          .order('sort_order', { ascending: true })
-          .order('created_at', { ascending: false }),
-
-        supabase
-          .from('gift_card_orders')
           .select('*')
           .order('created_at', { ascending: false }),
       ]);
 
       if (categoriesRes.error) throw categoriesRes.error;
       if (cardsRes.error) throw cardsRes.error;
-      if (ordersRes.error) throw ordersRes.error;
 
-      setCategories((categoriesRes.data || []) as GiftCardCategoryRow[]);
+      const categoriesData = (categoriesRes.data || []) as GiftCategoryRow[];
+      const cardsData = (cardsRes.data || []) as GiftCardRow[];
 
-      const rawCards = (cardsRes.data || []) as GiftCardRow[];
-      const mappedCards = rawCards.map((card) => ({
-        ...card,
-        category: (categoriesRes.data || []).find((c: any) => c.id === card.category_id) || null,
-      }));
-      setCards(mappedCards);
+      setCategories(categoriesData);
+      setCards(cardsData);
 
-      setOrders((ordersRes.data || []) as GiftCardOrderRow[]);
+      if (!selectedCategoryId && categoriesData.length > 0) {
+        setSelectedCategoryId(categoriesData[0].id);
+      }
     } catch (error: any) {
-      console.log('admin gift card fetch error:', error);
-      Alert.alert('Error', error?.message || 'Could not load admin gift card data.');
+      Alert.alert('Error', error?.message || 'Could not load gift cards data.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     fetchAll();
-  }, [fetchAll]);
-
-  useEffect(() => {
-    if (!cardCategoryId && categories.length > 0) {
-      setCardCategoryId(categories[0].id);
-    }
-  }, [categories, cardCategoryId]);
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchAll();
   };
 
-  const pickImage = async (type: 'category' | 'card') => {
+  const categoryStats = useMemo(() => {
+    const all = categories.length;
+    const available = categories.filter((c) => !!c.is_active).length;
+    const unavailable = categories.filter((c) => !c.is_active).length;
+    return { all, available, unavailable };
+  }, [categories]);
+
+  const cardStats = useMemo(() => {
+    const all = cards.length;
+    const available = cards.filter((c) => !!c.is_active).length;
+    const unavailable = cards.filter((c) => !c.is_active).length;
+    return { all, available, unavailable };
+  }, [cards]);
+
+  const filteredCategories = useMemo(() => {
+    let rows = [...categories];
+
+    if (filter === 'available') rows = rows.filter((x) => !!x.is_active);
+    if (filter === 'unavailable') rows = rows.filter((x) => !x.is_active);
+
+    switch (sortBy) {
+      case 'oldest':
+        rows.sort(
+          (a, b) =>
+            new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+        );
+        break;
+      case 'name_az':
+        rows.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+        break;
+      default:
+        rows.sort(
+          (a, b) =>
+            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        );
+        break;
+    }
+
+    return rows;
+  }, [categories, filter, sortBy]);
+
+  const filteredCards = useMemo(() => {
+    let rows = [...cards];
+
+    if (filter === 'available') rows = rows.filter((x) => !!x.is_active);
+    if (filter === 'unavailable') rows = rows.filter((x) => !x.is_active);
+
+    switch (sortBy) {
+      case 'oldest':
+        rows.sort(
+          (a, b) =>
+            new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+        );
+        break;
+      case 'price_low':
+        rows.sort((a, b) => Number(a.price_iqd || 0) - Number(b.price_iqd || 0));
+        break;
+      case 'price_high':
+        rows.sort((a, b) => Number(b.price_iqd || 0) - Number(a.price_iqd || 0));
+        break;
+      case 'name_az':
+        rows.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+        break;
+      default:
+        rows.sort(
+          (a, b) =>
+            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        );
+        break;
+    }
+
+    return rows;
+  }, [cards, filter, sortBy]);
+
+  const cycleSort = () => {
+    setSortBy((prev) => {
+      if (prev === 'newest') return 'oldest';
+      if (prev === 'oldest') return 'price_low';
+      if (prev === 'price_low') return 'price_high';
+      if (prev === 'price_high') return 'name_az';
+      return 'newest';
+    });
+  };
+
+  const pickAndUploadImage = async (mode: 'category' | 'card') => {
     try {
+      setUploading(true);
+
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert('Permission needed', 'Please allow photo access.');
+        Alert.alert('Permission needed', 'Please allow photo library access.');
         return;
       }
 
@@ -283,1451 +325,1312 @@ export default function AdminGiftCardScreen() {
         mediaTypes: ['images'],
         quality: 0.9,
         allowsEditing: true,
-        aspect: type === 'category' ? [1, 1] : [4, 3],
+        aspect: mode === 'category' ? [4, 4] : [4, 4],
       });
 
       if (result.canceled || !result.assets?.length) return;
 
-      const uri = result.assets[0].uri;
+      const asset = result.assets[0];
+      const uri = asset.uri;
+      const mimeType = asset.mimeType || 'image/jpeg';
+      const ext = mimeType.includes('png')
+        ? 'png'
+        : mimeType.includes('webp')
+        ? 'webp'
+        : 'jpg';
 
-      if (type === 'category') {
-        setCategoryCoverImage(uri);
+      const response = await fetch(uri);
+      const arrayBuffer = await response.arrayBuffer();
+
+      const fileName = `${mode}-${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET_NAME)
+        .upload(fileName, arrayBuffer, {
+          contentType: mimeType,
+          upsert: false,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(fileName);
+
+      if (mode === 'category') {
+        setCategoryCoverImage(data.publicUrl);
       } else {
-        setCardImage(uri);
+        setCardImageUrl(data.publicUrl);
       }
+
+      Alert.alert('Success', 'Image uploaded successfully.');
     } catch (error: any) {
-      Alert.alert('Error', error?.message || 'Could not pick image.');
+      Alert.alert('Upload error', error?.message || 'Could not upload image.');
+    } finally {
+      setUploading(false);
     }
   };
 
-  const openCreateCategory = () => {
-    resetCategoryForm();
-    setCategoryModalOpen(true);
+  const validateCategoryForm = () => {
+    if (!categoryTitle.trim()) {
+      Alert.alert('Missing title', 'Please enter gift card category title.');
+      return false;
+    }
+    if (!categorySlug.trim()) {
+      Alert.alert('Missing slug', 'Please enter category slug.');
+      return false;
+    }
+    return true;
   };
 
-  const openEditCategory = (row: GiftCardCategoryRow) => {
-    setEditingCategory(row);
-    setCategoryTitle(row.title || '');
-    setCategorySlug(row.slug || '');
-    setCategorySubtitle(row.subtitle || '');
-    setCategoryIconName(row.icon_name || 'gift-outline');
-    setCategorySortOrder(String(row.sort_order ?? 0));
-    setCategoryIsActive(!!row.is_active);
-    setCategoryCoverImage(row.cover_image_url || null);
-    setCategoryModalOpen(true);
+  const validateCardForm = () => {
+    if (!selectedCategoryId.trim()) {
+      Alert.alert('Missing category', 'Please choose a category first.');
+      return false;
+    }
+    if (!cardTitle.trim()) {
+      Alert.alert('Missing title', 'Please enter gift card title.');
+      return false;
+    }
+    if (!cardAmount.trim()) {
+      Alert.alert('Missing amount', 'Please enter gift card balance or amount.');
+      return false;
+    }
+    if (!cardPriceIqd.trim()) {
+      Alert.alert('Missing price', 'Please enter price IQD.');
+      return false;
+    }
+    return true;
   };
 
-  const saveCategory = async () => {
+  const handleSubmitCategory = async () => {
     try {
-      if (!categoryTitle.trim()) {
-        Alert.alert('Required', 'Category title is required.');
-        return;
-      }
+      if (!validateCategoryForm()) return;
 
       setSubmitting(true);
 
-      let imageUrl = categoryCoverImage || null;
-      if (categoryCoverImage && !categoryCoverImage.startsWith('http')) {
-        imageUrl = await uploadImageToSupabase(categoryCoverImage, 'gift-categories');
-      }
-
       const payload = {
         title: categoryTitle.trim(),
-        slug: (categorySlug.trim() || slugify(categoryTitle)).trim(),
+        slug: slugify(categorySlug.trim()),
         subtitle: categorySubtitle.trim() || null,
-        icon_name: categoryIconName.trim() || 'gift-outline',
-        cover_image_url: imageUrl,
-        sort_order: Number(categorySortOrder || 0),
-        is_active: categoryIsActive,
+        cover_image_url: categoryCoverImage.trim() || null,
+        icon_name: getGiftTypeInfo(categorySlug).icon,
+        is_active: categoryIsAvailable,
       };
 
-      if (editingCategory) {
+      if (editingCategoryId) {
         const { error } = await supabase
           .from('gift_card_categories')
           .update(payload)
-          .eq('id', editingCategory.id);
+          .eq('id', editingCategoryId);
 
         if (error) throw error;
-        Alert.alert('Success', 'Category updated successfully.');
+        Alert.alert('Updated', 'Gift card category updated successfully.');
       } else {
         const { error } = await supabase.from('gift_card_categories').insert(payload);
         if (error) throw error;
-        Alert.alert('Success', 'Category created successfully.');
+        Alert.alert('Added', 'Gift card category added successfully.');
       }
 
-      setCategoryModalOpen(false);
       resetCategoryForm();
       await fetchAll();
     } catch (error: any) {
-      console.log('save category error:', error);
-      Alert.alert('Error', error?.message || 'Could not save category.');
+      Alert.alert('Error', error?.message || 'Could not save gift card category.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const deleteCategory = async (row: GiftCardCategoryRow) => {
-    Alert.alert(
-      'Delete category',
-      `Delete "${row.title}"? This can also remove linked gift cards if your database cascade is enabled.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { error } = await supabase
-                .from('gift_card_categories')
-                .delete()
-                .eq('id', row.id);
-
-              if (error) throw error;
-              await fetchAll();
-            } catch (error: any) {
-              Alert.alert('Error', error?.message || 'Could not delete category.');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const openCreateCard = () => {
-    resetCardForm();
-    setCardModalOpen(true);
-  };
-
-  const openEditCard = (row: GiftCardRow) => {
-    setEditingCard(row);
-    setCardCategoryId(row.category_id || categories[0]?.id || '');
-    setCardTitle(row.title || '');
-    setCardAmount(String(row.amount ?? ''));
-    setCardPriceIqd(String(row.price_iqd ?? ''));
-    setCardStockCount(String(row.stock_count ?? 0));
-    setCardSortOrder(String(row.sort_order ?? 0));
-    setCardIsActive(!!row.is_active);
-    setCardImage(row.image_url || null);
-    setCardModalOpen(true);
-  };
-
-  const saveCard = async () => {
+  const handleSubmitCard = async () => {
     try {
-      if (!cardCategoryId) {
-        Alert.alert('Required', 'Please choose a category.');
-        return;
-      }
-      if (!cardTitle.trim()) {
-        Alert.alert('Required', 'Card title is required.');
-        return;
-      }
-      if (!cardPriceIqd.trim()) {
-        Alert.alert('Required', 'Price IQD is required.');
-        return;
-      }
+      if (!validateCardForm()) return;
 
       setSubmitting(true);
 
-      let imageUrl = cardImage || null;
-      if (cardImage && !cardImage.startsWith('http')) {
-        imageUrl = await uploadImageToSupabase(cardImage, 'gift-card-items');
-      }
-
       const payload = {
-        category_id: cardCategoryId,
+        category_id: selectedCategoryId,
         title: cardTitle.trim(),
-        amount: Number(cardAmount || 0),
-        price_iqd: Number(cardPriceIqd || 0),
-        image_url: imageUrl,
-        stock_count: Number(cardStockCount || 0),
-        sort_order: Number(cardSortOrder || 0),
-        is_active: cardIsActive,
+        amount: Number(String(cardAmount).replace(/,/g, '')),
+        price_iqd: Number(String(cardPriceIqd).replace(/,/g, '')),
+        image_url: cardImageUrl.trim() || null,
+        stock_count: Number(String(cardStockCount || '0').replace(/,/g, '')),
+        is_active: cardIsAvailable,
       };
 
-      if (editingCard) {
+      if (editingCardId) {
         const { error } = await supabase
           .from('gift_cards')
           .update(payload)
-          .eq('id', editingCard.id);
+          .eq('id', editingCardId);
 
         if (error) throw error;
-        Alert.alert('Success', 'Gift card updated successfully.');
+        Alert.alert('Updated', 'Gift card updated successfully.');
       } else {
         const { error } = await supabase.from('gift_cards').insert(payload);
         if (error) throw error;
-        Alert.alert('Success', 'Gift card created successfully.');
+        Alert.alert('Added', 'Gift card added successfully.');
       }
 
-      setCardModalOpen(false);
       resetCardForm();
       await fetchAll();
     } catch (error: any) {
-      console.log('save card error:', error);
       Alert.alert('Error', error?.message || 'Could not save gift card.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const deleteCard = async (row: GiftCardRow) => {
-    Alert.alert('Delete gift card', `Delete "${row.title}"?`, [
+  const handleEditCategory = (category: GiftCategoryRow) => {
+    setActiveTab('categories');
+    setEditingCategoryId(category.id);
+    setCategoryTitle(String(category.title || ''));
+    setCategorySlug(String(category.slug || ''));
+    setCategorySubtitle(String(category.subtitle || ''));
+    setCategoryCoverImage(String(category.cover_image_url || ''));
+    setCategoryIsAvailable(!!category.is_active);
+  };
+
+  const handleEditCard = (card: GiftCardRow) => {
+    setActiveTab('cards');
+    setEditingCardId(card.id);
+    setSelectedCategoryId(String(card.category_id || ''));
+    setCardTitle(String(card.title || ''));
+    setCardAmount(String(card.amount || ''));
+    setCardPriceIqd(String(card.price_iqd || ''));
+    setCardStockCount(String(card.stock_count || ''));
+    setCardImageUrl(String(card.image_url || ''));
+    setCardIsAvailable(!!card.is_active);
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    Alert.alert('Delete category', 'Are you sure you want to delete this category?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
           try {
-            const { error } = await supabase.from('gift_cards').delete().eq('id', row.id);
+            const { error } = await supabase.from('gift_card_categories').delete().eq('id', id);
             if (error) throw error;
             await fetchAll();
           } catch (error: any) {
-            Alert.alert('Error', error?.message || 'Could not delete gift card.');
+            Alert.alert('Error', error?.message || 'Could not delete category.');
           }
         },
       },
     ]);
   };
 
-  const openEditOrder = (row: GiftCardOrderRow) => {
-    setEditingOrder(row);
-    setOrderStatus((['pending', 'success', 'cancelled'].includes(String(row.status || '').toLowerCase())
-      ? String(row.status).toLowerCase()
-      : 'pending') as OrderStatus);
-    setOrderPinCode(row.pin_code || '');
-    setOrderNotes(row.notes || '');
-    setOrderModalOpen(true);
+  const handleDeleteCard = (id: string) => {
+    Alert.alert('Delete card', 'Are you sure you want to delete this gift card?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const { error } = await supabase.from('gift_cards').delete().eq('id', id);
+            if (error) throw error;
+            await fetchAll();
+          } catch (error: any) {
+            Alert.alert('Error', error?.message || 'Could not delete card.');
+          }
+        },
+      },
+    ]);
   };
 
-  const saveOrder = async () => {
+  const quickToggleCategoryAvailability = async (category: GiftCategoryRow) => {
     try {
-      if (!editingOrder) return;
-      setSubmitting(true);
-
-      const payload = {
-        status: orderStatus,
-        pin_code: orderPinCode.trim() || null,
-        notes: orderNotes.trim() || null,
-      };
-
       const { error } = await supabase
-        .from('gift_card_orders')
-        .update(payload)
-        .eq('id', editingOrder.id);
+        .from('gift_card_categories')
+        .update({ is_active: !category.is_active })
+        .eq('id', category.id);
 
       if (error) throw error;
-
-      Alert.alert('Success', 'Order updated successfully.');
-      setOrderModalOpen(false);
-      resetOrderForm();
       await fetchAll();
     } catch (error: any) {
-      console.log('save order error:', error);
-      Alert.alert('Error', error?.message || 'Could not update order.');
-    } finally {
-      setSubmitting(false);
+      Alert.alert('Error', error?.message || 'Could not update availability.');
     }
   };
 
-  const filteredCardsBySelectedCategory = useMemo(() => {
-    return cards;
-  }, [cards]);
+  const quickToggleCardAvailability = async (card: GiftCardRow) => {
+    try {
+      const { error } = await supabase
+        .from('gift_cards')
+        .update({ is_active: !card.is_active })
+        .eq('id', card.id);
 
-  const renderTabButton = (key: AdminTab, label: string, count: number) => {
-    const active = activeTab === key;
-    return (
-      <TouchableOpacity
-        key={key}
-        activeOpacity={0.9}
-        style={[styles.tabButton, active && styles.tabButtonActive]}
-        onPress={() => setActiveTab(key)}
-      >
-        <Text style={[styles.tabButtonText, active && styles.tabButtonTextActive]}>
-          {label}
-        </Text>
-        <View style={[styles.tabCount, active && styles.tabCountActive]}>
-          <Text style={[styles.tabCountText, active && styles.tabCountTextActive]}>
-            {count}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
+      if (error) throw error;
+      await fetchAll();
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Could not update availability.');
+    }
   };
 
-  if (!isAdmin) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <Stack.Screen options={{ headerShown: false }} />
-        <View style={styles.centerWrap}>
-          <Ionicons name="lock-closed-outline" size={42} color="#B08A00" />
-          <Text style={styles.emptyTitle}>Admin access only</Text>
-          <Text style={styles.emptyText}>This page is only for admin account.</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => router.back()}>
-            <Text style={styles.primaryButtonText}>Go back</Text>
-          </TouchableOpacity>
+  const renderFilterBar = (stats: { all: number; available: number; unavailable: number }) => (
+    <View style={styles.filterBar}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={[styles.filterItem, filter === 'all' && styles.filterItemActive]}
+        onPress={() => setFilter('all')}
+      >
+        <Text style={[styles.filterItemText, filter === 'all' && styles.filterItemTextActive]}>
+          All
+        </Text>
+        <View style={styles.filterCount}>
+          <Text style={styles.filterCountText}>{stats.all}</Text>
         </View>
-      </SafeAreaView>
-    );
-  }
+      </TouchableOpacity>
+
+      <View style={styles.filterDivider} />
+
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={styles.filterItem}
+        onPress={() => setFilter('available')}
+      >
+        <Ionicons name="albums-outline" size={18} color="rgba(255,255,255,0.72)" />
+        <Text
+          style={[
+            styles.filterItemText,
+            filter === 'available' && styles.filterItemTextActive,
+          ]}
+        >
+          Available
+        </Text>
+        <View style={styles.filterCount}>
+          <Text style={styles.filterCountText}>{stats.available}</Text>
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.filterDivider} />
+
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={styles.filterItem}
+        onPress={() => setFilter('unavailable')}
+      >
+        <Ionicons name="ellipsis-vertical" size={18} color="rgba(255,255,255,0.72)" />
+        <Text
+          style={[
+            styles.filterItemText,
+            filter === 'unavailable' && styles.filterItemTextActive,
+          ]}
+        >
+          Unavailable
+        </Text>
+        <View style={styles.filterCount}>
+          <Text style={styles.filterCountText}>{stats.unavailable}</Text>
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.filterDivider} />
+
+      <TouchableOpacity activeOpacity={0.9} style={styles.sortItem} onPress={cycleSort}>
+        <Ionicons name="filter-outline" size={18} color="rgba(255,255,255,0.72)" />
+        <Text style={styles.filterItemText}>{getSortLabel(sortBy)}</Text>
+        <Ionicons name="chevron-down" size={18} color="rgba(255,255,255,0.72)" />
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderTabSwitch = () => (
+    <View style={styles.tabSwitchWrap}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={[styles.tabSwitchBtn, activeTab === 'categories' && styles.tabSwitchBtnActive]}
+        onPress={() => setActiveTab('categories')}
+      >
+        <Ionicons
+          name="images-outline"
+          size={18}
+          color={activeTab === 'categories' ? UI.goldDark : '#FFFFFF'}
+        />
+        <Text
+          style={[
+            styles.tabSwitchText,
+            activeTab === 'categories' && styles.tabSwitchTextActive,
+          ]}
+        >
+          Categories
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={[styles.tabSwitchBtn, activeTab === 'cards' && styles.tabSwitchBtnActive]}
+        onPress={() => setActiveTab('cards')}
+      >
+        <Ionicons
+          name="gift-outline"
+          size={18}
+          color={activeTab === 'cards' ? UI.goldDark : '#FFFFFF'}
+        />
+        <Text
+          style={[styles.tabSwitchText, activeTab === 'cards' && styles.tabSwitchTextActive]}
+        >
+          Cards
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar barStyle="light-content" />
 
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.85} style={styles.iconButton}>
-          <Ionicons name="arrow-back" size={22} color="#5A4700" />
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <View style={styles.topHeader}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.9}
+            style={styles.backPill}
+          >
+            <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
+            <Text style={styles.backPillText}>Admin Panel</Text>
+          </TouchableOpacity>
 
-        <Text numberOfLines={1} style={styles.headerTitle}>
-          Admin Gift Cards
-        </Text>
-
-        <TouchableOpacity onPress={onRefresh} activeOpacity={0.85} style={styles.iconButton}>
-          <Ionicons name="refresh-outline" size={21} color="#5A4700" />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        <View style={styles.heroCard}>
-          <Text style={styles.heroMini}>Gift Cards Admin</Text>
-          <Text style={styles.heroTitle}>Full control for categories, products, and orders</Text>
-          <Text style={styles.heroText}>
-            Upload images to your bucket "{BUCKET_NAME}", manage category cover image,
-            manage product image, and send PIN code with note to user after order.
+          <Text numberOfLines={1} style={styles.screenTitle}>
+            Gift Cards
           </Text>
         </View>
 
         <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabsRow}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+          }
         >
-          {renderTabButton('categories', 'Categories', categories.length)}
-          {renderTabButton('cards', 'Cards', cards.length)}
-          {renderTabButton('orders', 'Orders', orders.length)}
-        </ScrollView>
+          {renderTabSwitch()}
 
-        {loading ? (
-          <View style={styles.loaderWrap}>
-            <ActivityIndicator size="large" color="#C99700" />
-          </View>
-        ) : (
-          <>
-            {activeTab === 'categories' && (
-              <>
-                <TouchableOpacity style={styles.primaryButton} onPress={openCreateCategory}>
-                  <Ionicons name="add-circle-outline" size={18} color="#5A4700" />
-                  <Text style={styles.primaryButtonText}>Add New Category</Text>
-                </TouchableOpacity>
+          {activeTab === 'categories' ? (
+            <>
+              <View style={styles.formCard}>
+                <Text style={styles.formTitle}>
+                  {editingCategoryId ? 'Edit Category' : 'Add New Category'}
+                </Text>
 
-                <View style={styles.listWrap}>
-                  {categories.map((row) => (
-                    <View key={row.id} style={styles.itemCard}>
-                      <View style={styles.itemTopRow}>
-                        <View style={styles.badge}>
-                          <Ionicons name="images-outline" size={14} color="#9A7B00" />
-                          <Text style={styles.badgeText}>Primary Screen Category</Text>
-                        </View>
-
-                        <View
-                          style={[
-                            styles.statusSmall,
-                            row.is_active ? styles.statusSuccess : styles.statusCancelled,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.statusSmallText,
-                              row.is_active
-                                ? styles.statusSuccessText
-                                : styles.statusCancelledText,
-                            ]}
-                          >
-                            {row.is_active ? 'Active' : 'Inactive'}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <Text style={styles.itemTitle}>{row.title}</Text>
-                      {!!row.subtitle && <Text style={styles.itemSubtitle}>{row.subtitle}</Text>}
-
-                      {!!row.cover_image_url && (
-                        <Image source={{ uri: row.cover_image_url }} style={styles.largePreview} />
-                      )}
-
-                      <View style={styles.infoGrid}>
-                        <View style={styles.infoBox}>
-                          <Text style={styles.infoLabel}>Slug</Text>
-                          <Text style={styles.infoValue}>{row.slug}</Text>
-                        </View>
-
-                        <View style={styles.infoBox}>
-                          <Text style={styles.infoLabel}>Sort</Text>
-                          <Text style={styles.infoValue}>{row.sort_order ?? 0}</Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.actionRow}>
-                        <TouchableOpacity style={styles.secondaryButton} onPress={() => openEditCategory(row)}>
-                          <Ionicons name="create-outline" size={16} color="#1D4ED8" />
-                          <Text style={styles.secondaryButtonTextBlue}>Edit</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.dangerButton} onPress={() => deleteCategory(row)}>
-                          <Ionicons name="trash-outline" size={16} color="#D92D20" />
-                          <Text style={styles.dangerButtonText}>Delete</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
-
-                  {categories.length === 0 && (
-                    <View style={styles.emptyCard}>
-                      <Ionicons name="folder-open-outline" size={38} color="#B08A00" />
-                      <Text style={styles.emptyTitle}>No categories yet</Text>
-                      <Text style={styles.emptyText}>
-                        Create primary gift card categories here.
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </>
-            )}
-
-            {activeTab === 'cards' && (
-              <>
-                <TouchableOpacity style={styles.primaryButton} onPress={openCreateCard}>
-                  <Ionicons name="add-circle-outline" size={18} color="#5A4700" />
-                  <Text style={styles.primaryButtonText}>Add New Gift Card</Text>
-                </TouchableOpacity>
-
-                <View style={styles.listWrap}>
-                  {filteredCardsBySelectedCategory.map((row) => (
-                    <View key={row.id} style={styles.itemCard}>
-                      <View style={styles.itemTopRow}>
-                        <View style={styles.badge}>
-                          <Ionicons name="gift-outline" size={14} color="#9A7B00" />
-                          <Text style={styles.badgeText}>{row.category?.title || 'Gift Card'}</Text>
-                        </View>
-
-                        <View
-                          style={[
-                            styles.statusSmall,
-                            row.is_active ? styles.statusSuccess : styles.statusCancelled,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.statusSmallText,
-                              row.is_active
-                                ? styles.statusSuccessText
-                                : styles.statusCancelledText,
-                            ]}
-                          >
-                            {row.is_active ? 'Active' : 'Inactive'}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <Text style={styles.itemTitle}>{row.title}</Text>
-
-                      {!!row.image_url && (
-                        <Image source={{ uri: row.image_url }} style={styles.largePreview} />
-                      )}
-
-                      <View style={styles.infoGrid}>
-                        <View style={styles.infoBox}>
-                          <Text style={styles.infoLabel}>Amount</Text>
-                          <Text style={styles.infoValue}>{row.amount ?? 0}</Text>
-                        </View>
-
-                        <View style={styles.infoBox}>
-                          <Text style={styles.infoLabel}>Price</Text>
-                          <Text style={styles.infoValue}>{formatIQD(row.price_iqd)} IQD</Text>
-                        </View>
-
-                        <View style={styles.infoBox}>
-                          <Text style={styles.infoLabel}>Stock</Text>
-                          <Text style={styles.infoValue}>{row.stock_count ?? 0}</Text>
-                        </View>
-
-                        <View style={styles.infoBox}>
-                          <Text style={styles.infoLabel}>Sort</Text>
-                          <Text style={styles.infoValue}>{row.sort_order ?? 0}</Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.actionRow}>
-                        <TouchableOpacity style={styles.secondaryButton} onPress={() => openEditCard(row)}>
-                          <Ionicons name="create-outline" size={16} color="#1D4ED8" />
-                          <Text style={styles.secondaryButtonTextBlue}>Edit</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.dangerButton} onPress={() => deleteCard(row)}>
-                          <Ionicons name="trash-outline" size={16} color="#D92D20" />
-                          <Text style={styles.dangerButtonText}>Delete</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
-
-                  {cards.length === 0 && (
-                    <View style={styles.emptyCard}>
-                      <Ionicons name="gift-outline" size={38} color="#B08A00" />
-                      <Text style={styles.emptyTitle}>No gift cards yet</Text>
-                      <Text style={styles.emptyText}>
-                        Add products here. These will appear when user opens a category in gift-cards.tsx.
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </>
-            )}
-
-            {activeTab === 'orders' && (
-              <View style={styles.listWrap}>
-                {orders.map((row) => {
-                  const normalized = String(row.status || '').toLowerCase();
-                  const isSuccess = normalized === 'success';
-                  const isCancelled = normalized === 'cancelled';
-
-                  return (
-                    <View key={row.id} style={styles.itemCard}>
-                      <View style={styles.itemTopRow}>
-                        <View style={styles.badge}>
-                          <Ionicons name="receipt-outline" size={14} color="#9A7B00" />
-                          <Text style={styles.badgeText}>{row.category_title || 'Gift Card Order'}</Text>
-                        </View>
-
-                        <View
-                          style={[
-                            styles.statusSmall,
-                            isSuccess
-                              ? styles.statusSuccess
-                              : isCancelled
-                              ? styles.statusCancelled
-                              : styles.statusPending,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.statusSmallText,
-                              isSuccess
-                                ? styles.statusSuccessText
-                                : isCancelled
-                                ? styles.statusCancelledText
-                                : styles.statusPendingText,
-                            ]}
-                          >
-                            {normalized || 'pending'}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <Text style={styles.itemTitle}>{row.card_title || 'Gift Card'}</Text>
-                      <Text style={styles.itemSubtitle}>
-                        User ID: {row.user_id}
-                      </Text>
-
-                      <View style={styles.infoGrid}>
-                        <View style={styles.infoBox}>
-                          <Text style={styles.infoLabel}>Amount</Text>
-                          <Text style={styles.infoValue}>{row.amount ?? 0}</Text>
-                        </View>
-
-                        <View style={styles.infoBox}>
-                          <Text style={styles.infoLabel}>Price</Text>
-                          <Text style={styles.infoValue}>{formatIQD(row.price_iqd)} IQD</Text>
-                        </View>
-
-                        <View style={styles.infoBoxWide}>
-                          <Text style={styles.infoLabel}>Date</Text>
-                          <Text style={styles.infoValue}>{formatDate(row.created_at)}</Text>
-                        </View>
-                      </View>
-
-                      {!!row.pin_code && (
-                        <View style={styles.pinBox}>
-                          <Text style={styles.pinLabel}>PIN code</Text>
-                          <Text selectable style={styles.pinValue}>
-                            {row.pin_code}
-                          </Text>
-                        </View>
-                      )}
-
-                      {!!row.notes && (
-                        <View style={styles.notesBox}>
-                          <Text style={styles.notesLabel}>Admin note</Text>
-                          <Text style={styles.notesText}>{row.notes}</Text>
-                        </View>
-                      )}
-
-                      <View style={styles.actionRow}>
-                        <TouchableOpacity style={styles.secondaryButton} onPress={() => openEditOrder(row)}>
-                          <Ionicons name="create-outline" size={16} color="#1D4ED8" />
-                          <Text style={styles.secondaryButtonTextBlue}>Set PIN / Note</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  );
-                })}
-
-                {orders.length === 0 && (
-                  <View style={styles.emptyCard}>
-                    <Ionicons name="notifications-off-outline" size={38} color="#B08A00" />
-                    <Text style={styles.emptyTitle}>No orders yet</Text>
-                    <Text style={styles.emptyText}>
-                      User gift card orders will appear here.
-                    </Text>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={styles.providerPicker}
+                  onPress={() => {
+                    const currentIndex = GIFT_TYPES.findIndex(
+                      (x) => x.key === String(categorySlug || '').toLowerCase()
+                    );
+                    const next = GIFT_TYPES[(currentIndex + 1) % GIFT_TYPES.length];
+                    setCategorySlug(next.key);
+                    setCategoryTitle(next.label);
+                  }}
+                >
+                  <View style={styles.giftTypeIconWrap}>
+                    <Ionicons name={selectedGiftTypeInfo.icon} size={22} color={UI.gold} />
                   </View>
+                  <Text style={styles.providerPickerText}>{selectedGiftTypeInfo.label}</Text>
+                  <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.72)" />
+                </TouchableOpacity>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Category title (e.g. PUBG UC)"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  value={categoryTitle}
+                  onChangeText={setCategoryTitle}
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Category slug (e.g. pubg-uc)"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  value={categorySlug}
+                  onChangeText={setCategorySlug}
+                  autoCapitalize="none"
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Subtitle (e.g. UC Cards)"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  value={categorySubtitle}
+                  onChangeText={setCategorySubtitle}
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Primary image URL for gift-cards.tsx"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  value={categoryCoverImage}
+                  onChangeText={setCategoryCoverImage}
+                  autoCapitalize="none"
+                />
+
+                <View style={styles.statusRow}>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={[styles.statusPill, categoryIsAvailable && styles.statusPillActive]}
+                    onPress={() => setCategoryIsAvailable(true)}
+                  >
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        categoryIsAvailable && styles.statusPillTextActive,
+                      ]}
+                    >
+                      Available
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={[styles.statusPill, !categoryIsAvailable && styles.statusPillInactive]}
+                    onPress={() => setCategoryIsAvailable(false)}
+                  >
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        !categoryIsAvailable && styles.statusPillTextInactive,
+                      ]}
+                    >
+                      Unavailable
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {!!categoryCoverImage && (
+                  <Image source={{ uri: categoryCoverImage }} style={styles.previewImage} resizeMode="cover" />
+                )}
+
+                <TouchableOpacity
+                  activeOpacity={0.92}
+                  style={styles.uploadButton}
+                  onPress={() => pickAndUploadImage('category')}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <ActivityIndicator color={UI.goldDark} />
+                  ) : (
+                    <>
+                      <Ionicons name="camera" size={24} color={UI.goldDark} />
+                      <Text style={styles.uploadButtonText}>Upload Primary Image</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.92}
+                  style={styles.addButton}
+                  onPress={handleSubmitCategory}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <ActivityIndicator color={UI.goldDark} />
+                  ) : (
+                    <Text style={styles.addButtonText}>
+                      {editingCategoryId ? 'Update Category' : 'Add Category'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                {editingCategoryId && (
+                  <TouchableOpacity
+                    activeOpacity={0.92}
+                    style={styles.cancelEditButton}
+                    onPress={resetCategoryForm}
+                  >
+                    <Text style={styles.cancelEditButtonText}>Cancel Edit</Text>
+                  </TouchableOpacity>
                 )}
               </View>
-            )}
-          </>
-        )}
 
-        <View style={{ height: 30 }} />
-      </ScrollView>
+              <Text style={styles.listTitle}>All Categories</Text>
+              {renderFilterBar(categoryStats)}
 
-      <Modal visible={categoryModalOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalTitle}>
-                {editingCategory ? 'Edit Category' : 'Create Category'}
-              </Text>
+              {loading ? (
+                <View style={styles.loaderWrap}>
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                </View>
+              ) : filteredCategories.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Ionicons name="images-outline" size={42} color={UI.gold} />
+                  <Text style={styles.emptyTitle}>No categories found</Text>
+                  <Text style={styles.emptyText}>Add your first gift card category from the form above.</Text>
+                </View>
+              ) : (
+                filteredCategories.map((category) => {
+                  const giftType = getGiftTypeInfo(category.slug);
 
-              <Text style={styles.inputLabel}>Category title</Text>
-              <TextInput
-                style={styles.input}
-                value={categoryTitle}
-                onChangeText={(v) => {
-                  setCategoryTitle(v);
-                  if (!editingCategory) setCategorySlug(slugify(v));
-                }}
-                placeholder="PUBG UC"
-                placeholderTextColor="#9E8F61"
-              />
+                  return (
+                    <View key={category.id} style={styles.cardListItem}>
+                      <Image
+                        source={{
+                          uri:
+                            category.cover_image_url ||
+                            'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png',
+                        }}
+                        style={styles.cardThumb}
+                        resizeMode="cover"
+                      />
 
-              <Text style={styles.inputLabel}>Slug</Text>
-              <TextInput
-                style={styles.input}
-                value={categorySlug}
-                onChangeText={setCategorySlug}
-                placeholder="pubg-uc"
-                placeholderTextColor="#9E8F61"
-                autoCapitalize="none"
-              />
+                      <View style={styles.cardInfo}>
+                        <View style={styles.inlineTitleRow}>
+                          <View style={styles.miniGiftIcon}>
+                            <Ionicons name={giftType.icon} size={14} color={UI.gold} />
+                          </View>
+                          <Text style={styles.cardItemTitle}>{category.title || '-'}</Text>
+                        </View>
 
-              <Text style={styles.inputLabel}>Subtitle</Text>
-              <TextInput
-                style={styles.input}
-                value={categorySubtitle}
-                onChangeText={setCategorySubtitle}
-                placeholder="UC Cards"
-                placeholderTextColor="#9E8F61"
-              />
+                        <Text style={styles.cardItemPrice}>{category.slug || '-'}</Text>
 
-              <Text style={styles.inputLabel}>Icon name</Text>
-              <TextInput
-                style={styles.input}
-                value={categoryIconName}
-                onChangeText={setCategoryIconName}
-                placeholder="gift-outline"
-                placeholderTextColor="#9E8F61"
-              />
+                        {!!category.subtitle && (
+                          <Text numberOfLines={2} style={styles.cardItemNotes}>
+                            {category.subtitle}
+                          </Text>
+                        )}
 
-              <Text style={styles.inputLabel}>Sort order</Text>
-              <TextInput
-                style={styles.input}
-                value={categorySortOrder}
-                onChangeText={setCategorySortOrder}
-                placeholder="0"
-                keyboardType="numeric"
-                placeholderTextColor="#9E8F61"
-              />
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          onPress={() => quickToggleCategoryAvailability(category)}
+                          style={[
+                            styles.availabilityBadge,
+                            category.is_active
+                              ? styles.availabilityBadgeOn
+                              : styles.availabilityBadgeOff,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.availabilityBadgeText,
+                              category.is_active
+                                ? styles.availabilityBadgeTextOn
+                                : styles.availabilityBadgeTextOff,
+                            ]}
+                          >
+                            {category.is_active ? 'Available' : 'Unavailable'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
 
-              <View style={styles.switchRow}>
-                <Text style={styles.inputLabelNoMargin}>Active</Text>
-                <Switch value={categoryIsActive} onValueChange={setCategoryIsActive} />
-              </View>
+                      <View style={styles.actionsBox}>
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          style={styles.actionBtn}
+                          onPress={() => handleEditCategory(category)}
+                        >
+                          <Ionicons name="pencil" size={18} color="#E8C35A" />
+                        </TouchableOpacity>
 
-              <Text style={styles.inputLabel}>Primary image for gift-cards.tsx</Text>
-              <TouchableOpacity style={styles.uploadButton} onPress={() => pickImage('category')}>
-                <Ionicons name="image-outline" size={18} color="#5A4700" />
-                <Text style={styles.uploadButtonText}>Choose / Replace Image</Text>
-              </TouchableOpacity>
+                        <View style={styles.actionDivider} />
 
-              {!!categoryCoverImage && (
-                <Image source={{ uri: categoryCoverImage }} style={styles.modalPreviewImage} />
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          style={styles.actionBtn}
+                          onPress={() => handleDeleteCategory(category.id)}
+                        >
+                          <Ionicons name="trash" size={18} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })
               )}
+            </>
+          ) : (
+            <>
+              <View style={styles.formCard}>
+                <Text style={styles.formTitle}>
+                  {editingCardId ? 'Edit Card' : 'Add New Card'}
+                </Text>
 
-              <View style={styles.modalActions}>
                 <TouchableOpacity
-                  style={styles.modalCancelBtn}
+                  activeOpacity={0.9}
+                  style={styles.providerPicker}
                   onPress={() => {
-                    setCategoryModalOpen(false);
-                    resetCategoryForm();
+                    if (!categories.length) {
+                      Alert.alert('No categories', 'Please create a category first.');
+                      return;
+                    }
+                    const currentIndex = categories.findIndex((x) => x.id === selectedCategoryId);
+                    const next = categories[(currentIndex + 1) % categories.length];
+                    setSelectedCategoryId(next.id);
                   }}
                 >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
+                  <View style={styles.giftTypeIconWrap}>
+                    <Ionicons
+                      name={getGiftTypeInfo(selectedCategory?.slug).icon}
+                      size={22}
+                      color={UI.gold}
+                    />
+                  </View>
+                  <Text style={styles.providerPickerText}>
+                    {selectedCategory?.title || 'Choose Category'}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.72)" />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.modalSaveBtn} onPress={saveCategory} disabled={submitting}>
-                  {submitting ? (
-                    <ActivityIndicator color="#5A4700" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Card title (e.g. 60 UC PUBG)"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  value={cardTitle}
+                  onChangeText={setCardTitle}
+                />
+
+                <View style={styles.doubleRow}>
+                  <TextInput
+                    style={[styles.input, styles.halfInput]}
+                    placeholder="Balance / amount"
+                    placeholderTextColor="rgba(255,255,255,0.42)"
+                    keyboardType="numeric"
+                    value={cardAmount}
+                    onChangeText={setCardAmount}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.halfInput]}
+                    placeholder="Price IQD"
+                    placeholderTextColor="rgba(255,255,255,0.42)"
+                    keyboardType="numeric"
+                    value={cardPriceIqd}
+                    onChangeText={setCardPriceIqd}
+                  />
+                </View>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Stock count"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  keyboardType="numeric"
+                  value={cardStockCount}
+                  onChangeText={setCardStockCount}
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Image URL for list item"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  value={cardImageUrl}
+                  onChangeText={setCardImageUrl}
+                  autoCapitalize="none"
+                />
+
+                <View style={styles.statusRow}>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={[styles.statusPill, cardIsAvailable && styles.statusPillActive]}
+                    onPress={() => setCardIsAvailable(true)}
+                  >
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        cardIsAvailable && styles.statusPillTextActive,
+                      ]}
+                    >
+                      Available
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={[styles.statusPill, !cardIsAvailable && styles.statusPillInactive]}
+                    onPress={() => setCardIsAvailable(false)}
+                  >
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        !cardIsAvailable && styles.statusPillTextInactive,
+                      ]}
+                    >
+                      Unavailable
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {!!cardImageUrl && (
+                  <Image source={{ uri: cardImageUrl }} style={styles.previewImage} resizeMode="cover" />
+                )}
+
+                <TouchableOpacity
+                  activeOpacity={0.92}
+                  style={styles.uploadButton}
+                  onPress={() => pickAndUploadImage('card')}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <ActivityIndicator color={UI.goldDark} />
                   ) : (
-                    <Text style={styles.modalSaveText}>
-                      {editingCategory ? 'Update' : 'Create'}
+                    <>
+                      <Ionicons name="camera" size={24} color={UI.goldDark} />
+                      <Text style={styles.uploadButtonText}>Upload Card Image</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.92}
+                  style={styles.addButton}
+                  onPress={handleSubmitCard}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <ActivityIndicator color={UI.goldDark} />
+                  ) : (
+                    <Text style={styles.addButtonText}>
+                      {editingCardId ? 'Update Card' : 'Add Card'}
                     </Text>
                   )}
                 </TouchableOpacity>
+
+                {editingCardId && (
+                  <TouchableOpacity
+                    activeOpacity={0.92}
+                    style={styles.cancelEditButton}
+                    onPress={resetCardForm}
+                  >
+                    <Text style={styles.cancelEditButtonText}>Cancel Edit</Text>
+                  </TouchableOpacity>
+                )}
               </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
-      <Modal visible={cardModalOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalTitle}>
-                {editingCard ? 'Edit Gift Card' : 'Create Gift Card'}
-              </Text>
+              <Text style={styles.listTitle}>All Cards</Text>
+              {renderFilterBar(cardStats)}
 
-              <Text style={styles.inputLabel}>Choose category</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 6 }}>
-                {categories.map((cat) => {
-                  const active = cardCategoryId === cat.id;
+              {loading ? (
+                <View style={styles.loaderWrap}>
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                </View>
+              ) : filteredCards.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Ionicons name="gift-outline" size={42} color={UI.gold} />
+                  <Text style={styles.emptyTitle}>No cards found</Text>
+                  <Text style={styles.emptyText}>Add your first gift card from the form above.</Text>
+                </View>
+              ) : (
+                filteredCards.map((card) => {
+                  const category = categories.find((x) => x.id === card.category_id);
+                  const giftType = getGiftTypeInfo(category?.slug);
+
                   return (
-                    <TouchableOpacity
-                      key={cat.id}
-                      onPress={() => setCardCategoryId(cat.id)}
-                      style={[styles.choiceChip, active && styles.choiceChipActive]}
-                    >
-                      <Text style={[styles.choiceChipText, active && styles.choiceChipTextActive]}>
-                        {cat.title}
-                      </Text>
-                    </TouchableOpacity>
+                    <View key={card.id} style={styles.cardListItem}>
+                      <Image
+                        source={{
+                          uri:
+                            card.image_url ||
+                            category?.cover_image_url ||
+                            'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png',
+                        }}
+                        style={styles.cardThumb}
+                        resizeMode="cover"
+                      />
+
+                      <View style={styles.cardInfo}>
+                        <View style={styles.inlineTitleRow}>
+                          <View style={styles.miniGiftIcon}>
+                            <Ionicons name={giftType.icon} size={14} color={UI.gold} />
+                          </View>
+                          <Text style={styles.cardItemTitle}>{card.title || '-'}</Text>
+                        </View>
+
+                        <Text style={styles.cardItemPrice}>
+                          Price {formatIQD(card.price_iqd)} IQD
+                        </Text>
+
+                        <Text numberOfLines={2} style={styles.cardItemNotes}>
+                          {category?.title || 'Gift Category'} • Amount {card.amount || 0}
+                        </Text>
+
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          onPress={() => quickToggleCardAvailability(card)}
+                          style={[
+                            styles.availabilityBadge,
+                            card.is_active
+                              ? styles.availabilityBadgeOn
+                              : styles.availabilityBadgeOff,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.availabilityBadgeText,
+                              card.is_active
+                                ? styles.availabilityBadgeTextOn
+                                : styles.availabilityBadgeTextOff,
+                            ]}
+                          >
+                            {card.is_active ? 'Available' : 'Unavailable'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <View style={styles.actionsBox}>
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          style={styles.actionBtn}
+                          onPress={() => handleEditCard(card)}
+                        >
+                          <Ionicons name="pencil" size={18} color="#E8C35A" />
+                        </TouchableOpacity>
+
+                        <View style={styles.actionDivider} />
+
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          style={styles.actionBtn}
+                          onPress={() => handleDeleteCard(card.id)}
+                        >
+                          <Ionicons name="trash" size={18} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   );
-                })}
-              </ScrollView>
-
-              <Text style={styles.inputLabel}>Gift card title</Text>
-              <TextInput
-                style={styles.input}
-                value={cardTitle}
-                onChangeText={setCardTitle}
-                placeholder="60 UC PUBG"
-                placeholderTextColor="#9E8F61"
-              />
-
-              <Text style={styles.inputLabel}>Balance / amount</Text>
-              <TextInput
-                style={styles.input}
-                value={cardAmount}
-                onChangeText={setCardAmount}
-                placeholder="60"
-                keyboardType="numeric"
-                placeholderTextColor="#9E8F61"
-              />
-
-              <Text style={styles.inputLabel}>Price IQD</Text>
-              <TextInput
-                style={styles.input}
-                value={cardPriceIqd}
-                onChangeText={setCardPriceIqd}
-                placeholder="1500"
-                keyboardType="numeric"
-                placeholderTextColor="#9E8F61"
-              />
-
-              <Text style={styles.inputLabel}>Stock count</Text>
-              <TextInput
-                style={styles.input}
-                value={cardStockCount}
-                onChangeText={setCardStockCount}
-                placeholder="100"
-                keyboardType="numeric"
-                placeholderTextColor="#9E8F61"
-              />
-
-              <Text style={styles.inputLabel}>Sort order</Text>
-              <TextInput
-                style={styles.input}
-                value={cardSortOrder}
-                onChangeText={setCardSortOrder}
-                placeholder="0"
-                keyboardType="numeric"
-                placeholderTextColor="#9E8F61"
-              />
-
-              <View style={styles.switchRow}>
-                <Text style={styles.inputLabelNoMargin}>Active</Text>
-                <Switch value={cardIsActive} onValueChange={setCardIsActive} />
-              </View>
-
-              <Text style={styles.inputLabel}>Product image for list screen</Text>
-              <TouchableOpacity style={styles.uploadButton} onPress={() => pickImage('card')}>
-                <Ionicons name="image-outline" size={18} color="#5A4700" />
-                <Text style={styles.uploadButtonText}>Choose / Replace Product Image</Text>
-              </TouchableOpacity>
-
-              {!!cardImage && (
-                <Image source={{ uri: cardImage }} style={styles.modalPreviewImageWide} />
+                })
               )}
+            </>
+          )}
 
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => {
-                    setCardModalOpen(false);
-                    resetCardForm();
-                  }}
-                >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.modalSaveBtn} onPress={saveCard} disabled={submitting}>
-                  {submitting ? (
-                    <ActivityIndicator color="#5A4700" />
-                  ) : (
-                    <Text style={styles.modalSaveText}>
-                      {editingCard ? 'Update' : 'Create'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={orderModalOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalTitle}>Set PIN / Note for Order</Text>
-
-              <Text style={styles.inputLabel}>Status</Text>
-              <View style={styles.statusSelectorRow}>
-                {(['pending', 'success', 'cancelled'] as OrderStatus[]).map((status) => {
-                  const active = orderStatus === status;
-                  return (
-                    <TouchableOpacity
-                      key={status}
-                      style={[styles.choiceChip, active && styles.choiceChipActive]}
-                      onPress={() => setOrderStatus(status)}
-                    >
-                      <Text style={[styles.choiceChipText, active && styles.choiceChipTextActive]}>
-                        {status}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              <Text style={styles.inputLabel}>PIN code</Text>
-              <TextInput
-                style={styles.input}
-                value={orderPinCode}
-                onChangeText={setOrderPinCode}
-                placeholder="716382637363"
-                placeholderTextColor="#9E8F61"
-              />
-
-              <Text style={styles.inputLabel}>Note for user</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={orderNotes}
-                onChangeText={setOrderNotes}
-                placeholder="Write admin note here..."
-                placeholderTextColor="#9E8F61"
-                multiline
-              />
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => {
-                    setOrderModalOpen(false);
-                    resetOrderForm();
-                  }}
-                >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.modalSaveBtn} onPress={saveOrder} disabled={submitting}>
-                  {submitting ? (
-                    <ActivityIndicator color="#5A4700" />
-                  ) : (
-                    <Text style={styles.modalSaveText}>Save</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+          <View style={{ height: 36 }} />
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
     backgroundColor: UI.bg,
   },
 
-  header: {
-    paddingTop: Platform.OS === 'ios' ? 10 : 12,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: '#FFF9E8',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F2E4B4',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F0E1AF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
+  container: {
     flex: 1,
-    textAlign: 'center',
-    marginHorizontal: 10,
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#2A2412',
+    backgroundColor: UI.bg,
+    paddingHorizontal: 18,
   },
 
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
+  topHeader: {
+    paddingTop: Platform.OS === 'ios' ? 8 : 10,
     paddingBottom: 18,
-  },
-
-  heroCard: {
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#FFF6D9',
-    borderWidth: 1,
-    borderColor: '#F3E3A7',
-    marginBottom: 14,
-  },
-  heroMini: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#B08900',
-    marginBottom: 6,
-  },
-  heroTitle: {
-    fontSize: 20,
-    lineHeight: 27,
-    fontWeight: '900',
-    color: '#221C0B',
-  },
-  heroText: {
-    marginTop: 6,
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: '700',
-    color: '#806A12',
-  },
-
-  tabsRow: {
-    paddingBottom: 4,
-    gap: 10,
-    marginBottom: 14,
-  },
-  tabButton: {
-    minHeight: 42,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EFE3B3',
-    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  tabButtonActive: {
-    backgroundColor: '#FDE68A',
-    borderColor: '#F3D35C',
-  },
-  tabButtonText: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#6E644B',
-  },
-  tabButtonTextActive: {
-    color: '#5A4700',
-  },
-  tabCount: {
-    marginLeft: 8,
-    minWidth: 24,
-    height: 24,
-    borderRadius: 999,
-    backgroundColor: '#F7F7F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-  },
-  tabCountActive: {
-    backgroundColor: '#FFF8D8',
-  },
-  tabCountText: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#7A715A',
-  },
-  tabCountTextActive: {
-    color: '#5A4700',
-  },
-
-  loaderWrap: {
-    paddingVertical: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  centerWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-
-  primaryButton: {
-    minHeight: 48,
-    borderRadius: 16,
-    backgroundColor: '#FDE68A',
-    borderWidth: 1,
-    borderColor: '#F3D35C',
-    alignItems: 'center',
-    justifyContent: 'center',
+  backPill: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
     paddingHorizontal: 16,
-    marginBottom: 14,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
-  primaryButtonText: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#5A4700',
+  backPillText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  screenTitle: {
+    marginLeft: 18,
+    flex: 1,
+    color: '#EAF0FF',
+    fontSize: 20,
+    fontWeight: '800',
   },
 
-  listWrap: {
+  scrollContent: {
+    paddingBottom: 20,
+  },
+
+  tabSwitchWrap: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 18,
+  },
+  tabSwitchBtn: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: UI.softBorder,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  tabSwitchBtnActive: {
+    backgroundColor: UI.gold,
+    borderColor: UI.goldBorder,
+  },
+  tabSwitchText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  tabSwitchTextActive: {
+    color: UI.goldDark,
+  },
+
+  formCard: {
+    backgroundColor: 'rgba(17,30,73,0.82)',
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 18,
+    marginBottom: 22,
+    shadowColor: '#000',
+    shadowOpacity: 0.30,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
+  },
+  formTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '800',
+    marginBottom: 16,
+  },
+
+  providerPicker: {
+    minHeight: 58,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: UI.softBorder,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    paddingHorizontal: 14,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  giftTypeIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    marginRight: 12,
+    backgroundColor: 'rgba(246,224,143,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(246,224,143,0.24)',
+  },
+  providerPickerText: {
+    flex: 1,
+    color: '#F8FAFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+
+  input: {
+    minHeight: 58,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: UI.softBorder,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    paddingHorizontal: 16,
+    color: '#FFFFFF',
+    fontSize: 17,
+    marginBottom: 14,
+  },
+
+  doubleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     gap: 14,
   },
-  itemCard: {
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EFE3B3',
-    padding: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  itemTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-    gap: 8,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F3E1A2',
-    backgroundColor: '#FFFBEF',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 999,
-    gap: 6,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#9A7B00',
-  },
-  statusSmall: {
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 999,
-  },
-  statusSmallText: {
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'capitalize',
-  },
-  statusSuccess: {
-    backgroundColor: '#ECFDF3',
-  },
-  statusSuccessText: {
-    color: '#027A48',
-  },
-  statusPending: {
-    backgroundColor: '#FFF8E8',
-  },
-  statusPendingText: {
-    color: '#B58103',
-  },
-  statusCancelled: {
-    backgroundColor: '#FEF3F2',
-  },
-  statusCancelledText: {
-    color: '#D92D20',
+  halfInput: {
+    flex: 1,
   },
 
-  itemTitle: {
-    fontSize: 17,
-    lineHeight: 24,
-    fontWeight: '900',
-    color: '#211C11',
-    marginBottom: 6,
-  },
-  itemSubtitle: {
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: '700',
-    color: '#6E644B',
-    marginBottom: 12,
-  },
-
-  largePreview: {
-    width: '100%',
-    height: 180,
-    borderRadius: 18,
-    backgroundColor: '#F8F8F8',
-    marginBottom: 12,
-  },
-
-  infoGrid: {
+  statusRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 10,
+    gap: 12,
     marginBottom: 14,
   },
-  infoBox: {
-    width: '48.5%',
-    borderRadius: 16,
-    backgroundColor: '#FFFCF2',
+  statusPill: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#F4E8BF',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+    borderColor: UI.softBorder,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  infoBoxWide: {
-    width: '100%',
-    borderRadius: 16,
-    backgroundColor: '#FFFCF2',
-    borderWidth: 1,
-    borderColor: '#F4E8BF',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+  statusPillActive: {
+    backgroundColor: 'rgba(117,192,107,0.14)',
+    borderColor: 'rgba(117,192,107,0.35)',
   },
-  infoLabel: {
-    fontSize: 11,
-    color: '#8A7B49',
-    fontWeight: '800',
-    marginBottom: 4,
+  statusPillInactive: {
+    backgroundColor: 'rgba(239,68,68,0.10)',
+    borderColor: 'rgba(239,68,68,0.28)',
   },
-  infoValue: {
+  statusPillText: {
+    color: 'rgba(255,255,255,0.72)',
     fontSize: 14,
-    color: '#241E0E',
-    fontWeight: '900',
-  },
-
-  pinBox: {
-    borderRadius: 16,
-    backgroundColor: '#FFF8D8',
-    borderWidth: 1,
-    borderColor: '#F1DA85',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 10,
-  },
-  pinLabel: {
-    fontSize: 11,
-    color: '#8E6F07',
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  pinValue: {
-    fontSize: 17,
-    color: '#3A2E00',
-    fontWeight: '900',
-    letterSpacing: 0.4,
-  },
-
-  notesBox: {
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EFE5C6',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    marginBottom: 12,
-  },
-  notesLabel: {
-    fontSize: 11,
-    color: '#8A7B49',
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  notesText: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#2A2412',
     fontWeight: '700',
   },
-
-  actionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 2,
+  statusPillTextActive: {
+    color: '#A8E09F',
   },
-  secondaryButton: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 14,
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  secondaryButtonTextBlue: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#1D4ED8',
-  },
-  dangerButton: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 14,
-    backgroundColor: '#FEF3F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  dangerButtonText: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#D92D20',
+  statusPillTextInactive: {
+    color: '#FF8C8C',
   },
 
-  emptyCard: {
-    marginTop: 8,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EFE3B3',
-    paddingVertical: 34,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#2C2410',
-    marginTop: 10,
-    textAlign: 'center',
-  },
-  emptyText: {
-    marginTop: 8,
-    textAlign: 'center',
-    color: '#7B7460',
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: '700',
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(20,16,8,0.38)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    maxHeight: '90%',
-    backgroundColor: '#FFFDF8',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 16,
-    borderTopWidth: 1,
-    borderColor: '#EFE3B3',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#221C0B',
+  previewImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 20,
     marginBottom: 14,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#8A7B49',
-    marginBottom: 6,
-    marginTop: 10,
-  },
-  inputLabelNoMargin: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#8A7B49',
-  },
-  input: {
-    minHeight: 48,
-    borderRadius: 16,
-    backgroundColor: '#FFFCF2',
-    borderWidth: 1,
-    borderColor: '#F4E8BF',
-    paddingHorizontal: 12,
-    color: '#241E0E',
-    fontWeight: '800',
-  },
-  textArea: {
-    minHeight: 110,
-    paddingTop: 12,
-    textAlignVertical: 'top',
-  },
-
-  switchRow: {
-    marginTop: 12,
-    minHeight: 48,
-    borderRadius: 16,
-    backgroundColor: '#FFFCF2',
-    borderWidth: 1,
-    borderColor: '#F4E8BF',
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
 
   uploadButton: {
-    minHeight: 46,
-    borderRadius: 14,
-    backgroundColor: '#FDE68A',
-    borderWidth: 1,
-    borderColor: '#F3D35C',
+    minHeight: 68,
+    borderRadius: 20,
+    backgroundColor: UI.gold,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 2,
+    gap: 12,
+    marginBottom: 12,
   },
   uploadButtonText: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#5A4700',
-  },
-  modalPreviewImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 18,
-    backgroundColor: '#F8F8F8',
-    marginTop: 12,
-    alignSelf: 'center',
-  },
-  modalPreviewImageWide: {
-    width: '100%',
-    height: 180,
-    borderRadius: 18,
-    backgroundColor: '#F8F8F8',
-    marginTop: 12,
+    color: UI.goldDark,
+    fontSize: 20,
+    fontWeight: '800',
   },
 
-  modalActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 18,
-    paddingBottom: 6,
-  },
-  modalCancelBtn: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+  addButton: {
+    minHeight: 68,
+    borderRadius: 20,
+    backgroundColor: UI.gold,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  modalCancelText: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#374151',
-  },
-  modalSaveBtn: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: 16,
-    backgroundColor: '#FDE68A',
-    borderWidth: 1,
-    borderColor: '#F3D35C',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalSaveText: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#5A4700',
-  },
-
-  choiceChip: {
-    minHeight: 38,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EFE3B3',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  choiceChipActive: {
-    backgroundColor: '#FDE68A',
-    borderColor: '#F3D35C',
-  },
-  choiceChipText: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#6E644B',
-    textTransform: 'capitalize',
-  },
-  choiceChipTextActive: {
-    color: '#5A4700',
-  },
-  statusSelectorRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
     marginTop: 2,
+  },
+  addButtonText: {
+    color: UI.goldDark,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+
+  cancelEditButton: {
+    marginTop: 12,
+    minHeight: 52,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  cancelEditButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  listTitle: {
+    color: '#FFFFFF',
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+
+  filterBar: {
+    minHeight: 58,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    marginBottom: 18,
+  },
+  filterItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 42,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    gap: 8,
+  },
+  filterItemActive: {
+    backgroundColor: 'rgba(246,224,143,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(246,224,143,0.55)',
+  },
+  filterItemText: {
+    color: 'rgba(255,255,255,0.70)',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  filterItemTextActive: {
+    color: '#FFF1BE',
+  },
+  filterCount: {
+    minWidth: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(246,224,143,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  filterCountText: {
+    color: '#F4D981',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  filterDivider: {
+    width: 1,
+    height: 26,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    marginHorizontal: 4,
+  },
+  sortItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 'auto',
+    paddingHorizontal: 8,
+  },
+
+  loaderWrap: {
+    paddingVertical: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  emptyCard: {
+    minHeight: 220,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  emptyTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 12,
+  },
+  emptyText: {
+    color: 'rgba(255,255,255,0.60)',
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+
+  cardListItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(17,30,73,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 24,
+    padding: 14,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.20,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  cardThumb: {
+    width: 96,
+    height: 136,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+  },
+
+  cardInfo: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingTop: 2,
+  },
+  inlineTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  miniGiftIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: 'rgba(246,224,143,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardItemTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    flex: 1,
+  },
+  cardItemPrice: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  cardItemNotes: {
+    color: 'rgba(255,255,255,0.62)',
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: 12,
+  },
+
+  availabilityBadge: {
+    alignSelf: 'flex-start',
+    minHeight: 34,
+    paddingHorizontal: 14,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  availabilityBadgeOn: {
+    backgroundColor: UI.greenBg,
+  },
+  availabilityBadgeOff: {
+    backgroundColor: UI.redBg,
+  },
+  availabilityBadgeText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  availabilityBadgeTextOn: {
+    color: '#AEDF88',
+  },
+  availabilityBadgeTextOff: {
+    color: '#FF9A9A',
+  },
+
+  actionsBox: {
+    width: 84,
+    minHeight: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    marginTop: 4,
+  },
+  actionBtn: {
+    flex: 1,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
 });
