@@ -454,15 +454,36 @@
   "buyCard": {
     "title": "Buy Card",
     "reviewYourOrder": "Review Your Order",
+
+    "mobileCard": "Mobile Card",
+    "giftCard": "Gift Card",
+    "topupCard": "Top-Up Card",
+
     "cardType": "Card Type",
     "provider": "Provider",
     "amount": "Amount",
     "priceIqd": "Price IQD",
     "yourBalance": "Your IQD Balance",
+
+    "confirmPurchaseTitle": "Confirm Purchase",
+    "purchaseConfirmMessage": "Do you want to buy",
+    "for": "for",
+    "confirm": "Confirm",
+
+    "walletNotFound": "Wallet not found.",
     "insufficientBalanceForPurchase": "Insufficient balance for purchase.",
+    "purchaseFailed": "Purchase failed.",
+
     "buyNow": "Buy Now",
     "cancel": "Cancel",
-    "giftCard": "Gift Card",
+
+    "orderCreatedTitle": "Order Sent Successfully",
+    "orderCreatedMessage": "Your order has been sent to admin. After review, the PIN code will appear in notifications.",
+
+    "purchaseDetails": "Purchase Details",
+    "product": "Product",
+    "openNotifications": "Open Notifications",
+
     "iqd": "IQD"
   },
   "cardPurchase": "Card Purchase",
