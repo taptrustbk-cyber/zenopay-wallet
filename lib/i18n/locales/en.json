@@ -334,6 +334,7 @@
   "backToDashboard": "Back to Dashboard",
   "insufficientBalanceForPurchase": "Insufficient balance for this purchase",
   "checkout": "Checkout",
+  "fillWithdrawForm": "Choose a payment method and enter your transfer details",
   "selectColor": "Select Color",
   "deliveryInformation": "Delivery Information",
   "deliveryNote": "Delivery Note",
