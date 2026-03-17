@@ -17,21 +17,22 @@ import i18n from '@/lib/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 
 type OrderStatus = 'all' | 'pending' | 'success' | 'cancelled';
+type OrderSource = 'sim' | 'gift';
 
-interface TopupOrderRow {
+interface NotificationOrderRow {
   id: string;
   user_id: string;
-  topup_card_id: string | null;
+  item_id: string | null;
   card_title: string | null;
   provider: string | null;
   amount_iqd: number | null;
-  price_usd: number | null;
   price_iqd: number | null;
   status: string | null;
   pin_code: string | null;
   notes: string | null;
   created_at: string | null;
   updated_at?: string | null;
+  source: OrderSource;
 }
 
 const providerConfig: Record<
@@ -88,29 +89,30 @@ const providerConfig: Record<
   },
 };
 
-function getProviderStyle(provider?: string | null) {
+function getProviderStyle(
+  provider?: string | null,
+  source?: OrderSource
+) {
   const key = String(provider || '').toLowerCase();
-  return (
-    providerConfig[key] || {
-      label: provider || i18n.t('notifications.unknownCard'),
-      color: '#9A7B00',
-      soft: '#FFFBEF',
-      border: '#F3E1A2',
-      icon: 'card-outline' as const,
-    }
-  );
+
+  if (providerConfig[key]) return providerConfig[key];
+
+  return {
+    label:
+      provider ||
+      (source === 'gift'
+        ? i18n.t('notifications.giftCardLabel') || 'Gift Card'
+        : i18n.t('notifications.unknownCard')),
+    color: source === 'gift' ? '#8B5CF6' : '#9A7B00',
+    soft: source === 'gift' ? '#F5F3FF' : '#FFFBEF',
+    border: source === 'gift' ? '#E9D5FF' : '#F3E1A2',
+    icon: source === 'gift' ? ('gift-outline' as const) : ('card-outline' as const),
+  };
 }
 
 function formatIQD(value?: number | null) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
-  }).format(Number(value || 0));
-}
-
-function formatUSD(value?: number | null) {
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
   }).format(Number(value || 0));
 }
 
@@ -131,11 +133,61 @@ function normalizeStatus(status?: string | null): Exclude<OrderStatus, 'all'> {
   return 'pending';
 }
 
+function mapTopupOrder(row: any): NotificationOrderRow {
+  return {
+    id: String(row?.id || ''),
+    user_id: String(row?.user_id || ''),
+    item_id: row?.topup_card_id ?? null,
+    card_title: row?.card_title ?? null,
+    provider: row?.provider ?? null,
+    amount_iqd:
+      row?.amount_iqd !== null && row?.amount_iqd !== undefined
+        ? Number(row.amount_iqd)
+        : null,
+    price_iqd:
+      row?.price_iqd !== null && row?.price_iqd !== undefined
+        ? Number(row.price_iqd)
+        : null,
+    status: row?.status ?? null,
+    pin_code: row?.pin_code ?? null,
+    notes: row?.notes ?? null,
+    created_at: row?.created_at ?? null,
+    updated_at: row?.updated_at ?? null,
+    source: 'sim',
+  };
+}
+
+function mapGiftOrder(row: any): NotificationOrderRow {
+  return {
+    id: String(row?.id || ''),
+    user_id: String(row?.user_id || ''),
+    item_id: row?.gift_card_id ?? row?.card_id ?? null,
+    card_title: row?.card_title ?? row?.gift_card_title ?? row?.title ?? null,
+    provider: row?.provider ?? row?.brand ?? row?.category ?? null,
+    amount_iqd:
+      row?.amount_iqd !== null && row?.amount_iqd !== undefined
+        ? Number(row.amount_iqd)
+        : row?.amount !== null && row?.amount !== undefined
+        ? Number(row.amount)
+        : null,
+    price_iqd:
+      row?.price_iqd !== null && row?.price_iqd !== undefined
+        ? Number(row.price_iqd)
+        : null,
+    status: row?.status ?? null,
+    pin_code: row?.pin_code ?? null,
+    notes: row?.notes ?? null,
+    created_at: row?.created_at ?? null,
+    updated_at: row?.updated_at ?? null,
+    source: 'gift',
+  };
+}
+
 export default function NotificationsScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const [orders, setOrders] = useState<TopupOrderRow[]>([]);
+  const [orders, setOrders] = useState<NotificationOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<OrderStatus>('all');
@@ -147,17 +199,38 @@ export default function NotificationsScreen() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('topup_orders')
-        .select(
-          'id,user_id,topup_card_id,card_title,provider,amount_iqd,price_usd,price_iqd,status,pin_code,notes,created_at,updated_at'
-        )
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const [topupRes, giftRes] = await Promise.all([
+        supabase
+          .from('topup_orders')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
 
-      if (error) throw error;
+        supabase
+          .from('gift_card_orders')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+      ]);
 
-      setOrders((data || []) as TopupOrderRow[]);
+      if (topupRes.error) throw topupRes.error;
+
+      const topupOrders = (topupRes.data || []).map(mapTopupOrder);
+
+      let giftOrders: NotificationOrderRow[] = [];
+      if (!giftRes.error) {
+        giftOrders = (giftRes.data || []).map(mapGiftOrder);
+      } else {
+        console.log('gift_card_orders not loaded:', giftRes.error?.message);
+      }
+
+      const merged = [...topupOrders, ...giftOrders].sort((a, b) => {
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bTime - aTime;
+      });
+
+      setOrders(merged);
     } catch (error: any) {
       console.log('notifications screen error:', error);
       Alert.alert(
@@ -229,6 +302,26 @@ export default function NotificationsScreen() {
     };
   };
 
+  const getTypeBadge = (source: OrderSource) => {
+    if (source === 'gift') {
+      return {
+        label: i18n.t('notifications.giftCardLabel') || 'Gift Card',
+        bg: '#F5F3FF',
+        border: '#E9D5FF',
+        text: '#7C3AED',
+        icon: 'gift-outline' as const,
+      };
+    }
+
+    return {
+      label: i18n.t('notifications.mobileCards') || 'Mobile Card',
+      bg: '#FFF8E8',
+      border: '#F3E1A2',
+      text: '#9A7B00',
+      icon: 'phone-portrait-outline' as const,
+    };
+  };
+
   const renderTab = (key: OrderStatus, label: string, count: number) => {
     const active = activeTab === key;
     return (
@@ -279,7 +372,9 @@ export default function NotificationsScreen() {
         }
       >
         <View style={styles.heroCard}>
-          <Text style={styles.heroMini}>{i18n.t('notifications.mobileCards')}</Text>
+          <Text style={styles.heroMini}>
+            {i18n.t('notifications.mobileCards')}
+          </Text>
           <Text style={styles.heroTitle}>{i18n.t('notifications.subtitle')}</Text>
           <Text style={styles.heroText}>{i18n.t('notifications.description')}</Text>
         </View>
@@ -308,29 +403,52 @@ export default function NotificationsScreen() {
         ) : (
           <View style={styles.listWrap}>
             {filteredOrders.map((order) => {
-              const provider = getProviderStyle(order.provider);
+              const provider = getProviderStyle(order.provider, order.source);
               const status = statusStyle(order.status);
               const hasPin = !!order.pin_code;
               const normalized = normalizeStatus(order.status);
+              const typeBadge = getTypeBadge(order.source);
 
               return (
-                <View key={order.id} style={styles.orderCard}>
+                <View key={`${order.source}-${order.id}`} style={styles.orderCard}>
                   <View style={styles.orderTopRow}>
-                    <View
-                      style={[
-                        styles.providerBadge,
-                        { backgroundColor: provider.soft, borderColor: provider.border },
-                      ]}
-                    >
-                      <Ionicons
-                        name={provider.icon}
-                        size={14}
-                        color={provider.color}
-                        style={{ marginRight: 6 }}
-                      />
-                      <Text style={[styles.providerBadgeText, { color: provider.color }]}>
-                        {provider.label}
-                      </Text>
+                    <View style={styles.leftBadgesWrap}>
+                      <View
+                        style={[
+                          styles.providerBadge,
+                          { backgroundColor: provider.soft, borderColor: provider.border },
+                        ]}
+                      >
+                        <Ionicons
+                          name={provider.icon}
+                          size={14}
+                          color={provider.color}
+                          style={{ marginRight: 6 }}
+                        />
+                        <Text style={[styles.providerBadgeText, { color: provider.color }]}>
+                          {provider.label}
+                        </Text>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.typeBadge,
+                          {
+                            backgroundColor: typeBadge.bg,
+                            borderColor: typeBadge.border,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={typeBadge.icon}
+                          size={13}
+                          color={typeBadge.text}
+                          style={{ marginRight: 5 }}
+                        />
+                        <Text style={[styles.typeBadgeText, { color: typeBadge.text }]}>
+                          {typeBadge.label}
+                        </Text>
+                      </View>
                     </View>
 
                     <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
@@ -356,12 +474,7 @@ export default function NotificationsScreen() {
                       <Text style={styles.infoValue}>{formatIQD(order.price_iqd)} IQD</Text>
                     </View>
 
-                    <View style={styles.infoBox}>
-                      <Text style={styles.infoLabel}>{i18n.t('notifications.priceUsd')}</Text>
-                      <Text style={styles.infoValue}>${formatUSD(order.price_usd)}</Text>
-                    </View>
-
-                    <View style={styles.infoBox}>
+                    <View style={styles.infoBoxWide}>
                       <Text style={styles.infoLabel}>{i18n.t('notifications.date')}</Text>
                       <Text style={styles.infoValueSmall}>{formatDate(order.created_at)}</Text>
                     </View>
@@ -616,10 +729,17 @@ const styles = StyleSheet.create({
   },
   orderTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 12,
     gap: 8,
+  },
+  leftBadgesWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    flex: 1,
   },
   providerBadge: {
     flexDirection: 'row',
@@ -631,6 +751,18 @@ const styles = StyleSheet.create({
   },
   providerBadgeText: {
     fontSize: 12,
+    fontWeight: '900',
+  },
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  typeBadgeText: {
+    fontSize: 11,
     fontWeight: '900',
   },
   statusBadge: {
@@ -663,6 +795,15 @@ const styles = StyleSheet.create({
   },
   infoBox: {
     width: '48.5%',
+    borderRadius: 16,
+    backgroundColor: '#FFFCF2',
+    borderWidth: 1,
+    borderColor: '#F4E8BF',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
+  infoBoxWide: {
+    width: '100%',
     borderRadius: 16,
     backgroundColor: '#FFFCF2',
     borderWidth: 1,
