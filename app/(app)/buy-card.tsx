@@ -79,13 +79,6 @@ const UI = {
   white: '#FFFFFF',
 };
 
-function formatUSD(value?: number | string | null) {
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0));
-}
-
 function formatIQD(value?: number | string | null) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
@@ -120,6 +113,8 @@ export default function BuyCardScreen() {
   const priceUsd = Number(params.price || 0);
   const amountRaw = Number(params.amount || 0);
   const passedIqdPrice = Number(params.iqd_price || 0);
+
+  // ✅ Use admin IQD price first. Old USD fallback only if old data still exists.
   const priceIqd = passedIqdPrice > 0 ? passedIqdPrice : Math.round(priceUsd * IQD_RATE);
 
   const [orderCreated, setOrderCreated] = useState(false);
@@ -162,8 +157,8 @@ export default function BuyCardScreen() {
 
   const hasEnoughBalance = useMemo(() => {
     const balance = Number(walletQuery.data?.balance || 0);
-    return balance >= priceUsd;
-  }, [walletQuery.data?.balance, priceUsd]);
+    return balance >= priceIqd;
+  }, [walletQuery.data?.balance, priceIqd]);
 
   const cardTypeLabel = useMemo(() => {
     if (type === 'gift') return i18n.t('buyCard.giftCard') || 'Gift Card';
@@ -178,13 +173,14 @@ export default function BuyCardScreen() {
 
       const currentBalance = Number(walletQuery.data.balance || 0);
 
-      if (currentBalance < priceUsd) {
+      // ✅ Balance now checked with IQD only
+      if (currentBalance < priceIqd) {
         throw new Error(
           i18n.t('buyCard.insufficientBalanceForPurchase') || 'Insufficient balance for purchase.'
         );
       }
 
-      const newBalance = currentBalance - priceUsd;
+      const newBalance = currentBalance - priceIqd;
 
       const { error: walletError } = await supabase
         .from('wallets')
@@ -201,7 +197,7 @@ export default function BuyCardScreen() {
         card_title: cardName,
         provider: provider || type,
         amount_iqd: amountRaw || 0,
-        price_usd: priceUsd,
+        price_usd: 0, // ✅ keep for old DB compatibility, but no USD used in app
         price_iqd: priceIqd,
         status: 'pending',
         pin_code: null,
@@ -222,8 +218,8 @@ export default function BuyCardScreen() {
       const { error: txError } = await supabase.from('transactions').insert({
         to_user_id: user.id,
         type: 'purchase',
-        amount: -priceUsd,
-        description: `Purchased ${cardName}`,
+        amount: -priceIqd,
+        description: `Purchased ${cardName} - ${formatIQD(priceIqd)} IQD`,
         status: 'completed',
       });
 
@@ -252,7 +248,7 @@ export default function BuyCardScreen() {
       i18n.t('buyCard.confirmPurchaseTitle') || 'Confirm Purchase',
       `${i18n.t('buyCard.purchaseConfirmMessage') || 'Do you want to buy'} ${cardName} ${
         i18n.t('buyCard.for') || 'for'
-      } $${formatUSD(priceUsd)}?`,
+      } ${formatIQD(priceIqd)} ${i18n.t('buyCard.iqd') || 'IQD'}?`,
       [
         {
           text: i18n.t('common.cancel') || 'Cancel',
@@ -346,13 +342,10 @@ export default function BuyCardScreen() {
             </View>
 
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>{i18n.t('buyCard.priceUsd') || 'Price USD'}</Text>
-              <Text style={styles.detailValue}>${formatUSD(priceUsd)}</Text>
-            </View>
-
-            <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>{i18n.t('buyCard.priceIqd') || 'Price IQD'}</Text>
-              <Text style={styles.detailValue}>{formatIQD(priceIqd)} IQD</Text>
+              <Text style={styles.detailValue}>
+                {formatIQD(priceIqd)} {i18n.t('buyCard.iqd') || 'IQD'}
+              </Text>
             </View>
           </View>
 
@@ -400,8 +393,9 @@ export default function BuyCardScreen() {
           </View>
 
           <Text style={styles.cardName}>{cardName}</Text>
-          <Text style={styles.cardPriceIqd}>{formatIQD(priceIqd)} IQD</Text>
-          <Text style={styles.cardPriceUsd}>${formatUSD(priceUsd)}</Text>
+          <Text style={styles.cardPriceIqd}>
+            {formatIQD(priceIqd)} {i18n.t('buyCard.iqd') || 'IQD'}
+          </Text>
         </View>
 
         <View style={styles.infoCard}>
@@ -421,13 +415,10 @@ export default function BuyCardScreen() {
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>{i18n.t('buyCard.priceUsd') || 'Price USD'}</Text>
-            <Text style={styles.infoValue}>${formatUSD(priceUsd)}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{i18n.t('buyCard.priceIqd') || 'Price IQD'}</Text>
-            <Text style={styles.infoValue}>{formatIQD(priceIqd)} IQD</Text>
+            <Text style={styles.infoValue}>
+              {formatIQD(priceIqd)} {i18n.t('buyCard.iqd') || 'IQD'}
+            </Text>
           </View>
         </View>
 
@@ -436,7 +427,9 @@ export default function BuyCardScreen() {
           {walletQuery.isLoading ? (
             <ActivityIndicator color={UI.goldDark} />
           ) : (
-            <Text style={styles.balanceAmount}>${formatUSD(walletQuery.data?.balance || 0)}</Text>
+            <Text style={styles.balanceAmount}>
+              {formatIQD(walletQuery.data?.balance || 0)} {i18n.t('buyCard.iqd') || 'IQD'}
+            </Text>
           )}
         </View>
 
@@ -580,12 +573,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '900',
     color: '#9B7600',
-  },
-  cardPriceUsd: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: UI.textSoft,
-    marginTop: 4,
   },
 
   infoCard: {
