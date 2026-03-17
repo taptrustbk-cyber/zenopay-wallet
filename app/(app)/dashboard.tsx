@@ -171,7 +171,7 @@ export default function DashboardScreen() {
           .insert({
             user_id: user.id,
             balance: 0,
-            currency: 'USD',
+            currency: 'IQD',
             is_locked: false,
           })
           .select()
@@ -238,8 +238,8 @@ export default function DashboardScreen() {
     return `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}v=${v}`;
   }, [avatarUrl, user?.id]);
 
-  const balanceText = walletQuery.data?.balance?.toFixed(2) || '0.00';
-  const currencyText = walletQuery.data?.currency || 'USD';
+  const balanceText = formatIQD(walletQuery.data?.balance);
+  const currencyText = walletQuery.data?.currency || 'IQD';
 
   if (!profile) {
     return (
@@ -299,10 +299,6 @@ export default function DashboardScreen() {
             <Text style={styles.balanceTitle}>{i18n.t('accountBalance')}</Text>
 
             <View style={styles.balanceRightRow}>
-              <View style={styles.dollarCircle}>
-                <Ionicons name="logo-usd" size={18} color="#FFFFFF" />
-              </View>
-
               <TouchableOpacity
                 onPress={() => setIsBalanceHidden(!isBalanceHidden)}
                 style={styles.eyeBtn}
@@ -622,15 +618,6 @@ const styles = StyleSheet.create({
   },
   balanceTitle: { color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: '800' },
   balanceRightRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-
-  dollarCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
   eyeBtn: {
     width: 36,
