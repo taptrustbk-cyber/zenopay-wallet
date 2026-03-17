@@ -451,6 +451,17 @@
   "sent": "Sent",
   "received": "Received",
   "active": "Active",
+  "buyCard": {
+    "title": "Buy Card",
+    "cardType": "Card Type",
+    "provider": "Provider",
+    "amount": "Amount",
+    "priceIqd": "Price IQD",
+    "yourBalance": "Your IQD Balance",
+    "insufficientBalance": "Insufficient balance for purchase.",
+    "giftCard": "Gift Card",
+    "iqd": "IQD"
+  },
   "cardPurchase": "Card Purchase",
   "permissionRequired": "Permission Required",
   "photoPermissionDenied": "Please allow photo access to upload documents.",
