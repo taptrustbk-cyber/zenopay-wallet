@@ -310,7 +310,76 @@
   "consulate": "کونسولخانە",
   "capital": "پایتەخت",
   "consulateInfo": "زانیارییێن کونسولخانێ",
+"withdraw": "وێدراو",
+  "withdrawRequest": "داخوازا وێدراوێ",
+  "withdrawHistory": "مێژووی وێدراوێ",
+  "withdrawAvailableBalance": "بالانسا بەردەست بۆ وێدراوێ",
+  "withdrawSuccessMessage": "داخوازا وێدراوێ تە بە سەرکەفتی هاتە هنارتن",
 
+  "accountBalance": "بالانسا هەژمارێ",
+  "balance": "بالانس",
+
+  "selectPaymentMethod": "هەلبژارتنا ڕێکا پارەدانێ",
+  "choosePaymentMethod": "ڕێکا پارەدانێ هەلبژێرە",
+  "noPaymentMethods": "هیچ ڕێکەکا پارەدانێ نینە",
+  "noPaymentMethodsDesc": "هێشتا ئەدمین هیچ ڕێکەکا پارەدانێ زیاد نەکریە",
+
+  "amount": "بڕ",
+  "withdrawalAmount": "بڕا وێدراوێ",
+  "enterAmount": "بڕی بنڤیسە",
+  "invalidAmount": "بڕ نادروستە",
+
+  "senderName": "ناڤێ نێرەر",
+  "enterSenderName": "ناڤێ نێرەر بنڤیسە",
+
+  "senderNumber": "ژمارا نێرەر",
+  "enterSenderNumber": "ژمارا نێرەر بنڤیسە",
+
+  "transferNote": "تێبینی (ئیختیاری)",
+  "writeAnyNote": "هەر تێبینیەکێ بنڤیسە",
+
+  "transactionImage": "وێنەی مامەڵەیێ",
+  "uploadTransactionImage": "وێنەی مامەڵەیێ بار بکە",
+  "uploadTransactionImageHelp": "وێنەی پسوڵە یان سکرینشۆتا گواستنەوەیێ زیاد بکە",
+  "changeImage": "گۆڕینا وێنەی",
+  "previewFullScreen": "پیشاندانا تەواو شاشەیێ",
+  "viewReceipt": "بینینا پسوڵەیێ",
+
+  "bankImage": "وێنەی بانکی",
+  "qrCode": "کۆدا QR",
+  "bankNumber": "ژمارا بانکی",
+  "paymentMethod": "ڕێکا پارەدانێ",
+
+  "status": "دۆخ",
+  "pending": "لە چاوەڕوانیێدایە",
+  "approved": "پەسەندکری",
+  "rejected": "هاتە ڕەتکرن",
+
+  "note": "تێبینی",
+  "reason": "هۆکار",
+
+  "date": "بەروار",
+  "trackYourRequests": "دۆخێ داخوازێن خۆ بەدواداچوون بکە",
+  "withdrawHistoryEmptyDesc": "هەمی داخوازێن وێدراوێ یێن تە ل ڤێرێ دەرکەڤن",
+  "noWithdrawalsYet": "هێشتا هیچ وێدراوێک نینە",
+
+  "submitWithdrawRequest": "هنارتنا داخوازا وێدراوێ",
+  "fillWithdrawForm": "ڕێکا پارەدانێ هەلبژێرە و زانیاریێن گواستنەوەیێ بنڤیسە",
+
+  "iqdShort": "د.ع",
+
+  "success": "سەرکەفتن",
+  "error": "خەلەت",
+
+  "failedToLoadBalance": "بارکرنا بالانسێ سەرکەفتی نەبوو",
+  "walletNotFound": "جزدان نەهاتە دۆزین",
+  "insufficientBalance": "بالانس نەبەسە",
+  "security": "پاراستن",
+  "contactSupport": "پەیوەندیێ بکە ب پشتیوانیێ",
+
+  "photoPermissionDenied": "ڕێگەدانا وێنەیان نەهاتە دان",
+
+  "back": "ڤەگەڕان",
   "cryptoTrade": "کارگێڕانا کریپتۆ",
   "tradeDescription": "کارگێڕانا کریپتۆکارەنسیان لە کاتا ڕاستەقینەدا",
   "buyCrypto": "کڕین",
