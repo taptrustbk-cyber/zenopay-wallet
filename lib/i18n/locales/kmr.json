@@ -15,10 +15,16 @@
     "something_wrong": "کێشەیەک چێبوو."
   },
 
+  "common.back": "ڤەگەڕان",
+  "common.cancel": "هەلوەشاندن",
+  "common.error": "هەڵە",
+
   "auth": {
     "loginRequired": "تکایە سەرەتا بچۆ ناڤ هەژمارێ.",
     "user_not_found": "بەکارهێنەر نەدۆزرایەوە"
   },
+
+  "auth.loginRequired": "تکایە سەرەتا بچۆ ناڤ هەژمارێ.",
 
   "notifications": {
     "title": "ئاگەهداریکرن",
@@ -76,6 +82,31 @@
     "purchaseDetails": "وردەکارییێن کرینێ",
     "openNotifications": "ئاگەهداریکرنان ڤەکە"
   },
+
+  "buyCard.title": "کرینا کارتێ",
+  "buyCard.mobileCard": "کارتێ موبایل",
+  "buyCard.giftCard": "کارتێ دیاریکێ",
+  "buyCard.topupCard": "کارتێ تەعبیە",
+  "buyCard.reviewYourOrder": "داواکارییا خۆ بپشکنە",
+  "buyCard.cardType": "جۆرێ کارتێ",
+  "buyCard.product": "بەرهەم",
+  "buyCard.provider": "دابینکەر",
+  "buyCard.amount": "بڕ",
+  "buyCard.priceUsd": "بهای دۆلار",
+  "buyCard.priceIqd": "بهای دینار",
+  "buyCard.yourBalance": "بالانسێ تە",
+  "buyCard.buyNow": "نوکە بکرە",
+  "buyCard.walletNotFound": "جزدان نەهاتیە دیتن.",
+  "buyCard.insufficientBalanceForPurchase": "بالانسێ تە بۆ ڤێ کرینێ نەبەسە.",
+  "buyCard.purchaseFailed": "کرین سەرکەفتی نەبوو.",
+  "buyCard.confirmPurchaseTitle": "پشتڕاستکرنا کرینێ",
+  "buyCard.purchaseConfirmMessage": "تو دڤێت بکرێ",
+  "buyCard.for": "ب بهای",
+  "buyCard.confirm": "پشتڕاستکرن",
+  "buyCard.orderCreatedTitle": "داواکاری ب سەرکەفتی هاتە فرێکرن",
+  "buyCard.orderCreatedMessage": "داواکارییا تە بۆ ئەدمین هاتە هنارتن. پشتی پشکنینێ، PIN code دێ ل ئاگەهداریکرناندا دیار ببیت.",
+  "buyCard.purchaseDetails": "وردەکارییێن کرینێ",
+  "buyCard.openNotifications": "ئاگەهداریکرنان ڤەکە",
 
   "cards": {
     "title": "کارت",
