@@ -218,8 +218,8 @@
   "accountBalance": "رصيد الحساب",
   "balance": "الرصيد",
 
-  "selectPaymentMethod": "اختر طريقة الدفع",
-  "choosePaymentMethod": "اختر طريقة الدفع",
+  "selectPaymentMethod": "اختر طريقة السحب",
+  "choosePaymentMethod": "اختر طريقة السحب",
   "noPaymentMethods": "لا توجد طرق دفع",
   "noPaymentMethodsDesc": "لم يقم المسؤول بإضافة طرق دفع بعد",
 
