@@ -209,6 +209,76 @@
   "note": "ملاحظة",
   "optionalNote": "ملاحظة اختيارية",
   "quantity": "الكمية",
+  "withdraw": "سحب",
+  "withdrawRequest": "طلب سحب",
+  "withdrawHistory": "سجل السحب",
+  "withdrawAvailableBalance": "الرصيد المتاح للسحب",
+  "withdrawSuccessMessage": "تم إرسال طلب السحب بنجاح",
+
+  "accountBalance": "رصيد الحساب",
+  "balance": "الرصيد",
+
+  "selectPaymentMethod": "اختر طريقة الدفع",
+  "choosePaymentMethod": "اختر طريقة الدفع",
+  "noPaymentMethods": "لا توجد طرق دفع",
+  "noPaymentMethodsDesc": "لم يقم المسؤول بإضافة طرق دفع بعد",
+
+  "amount": "المبلغ",
+  "withdrawalAmount": "مبلغ السحب",
+  "enterAmount": "أدخل المبلغ",
+  "invalidAmount": "المبلغ غير صحيح",
+
+  "senderName": "اسم المرسل",
+  "enterSenderName": "أدخل اسم المرسل",
+
+  "senderNumber": "رقم المرسل",
+  "enterSenderNumber": "أدخل رقم المرسل",
+
+  "transferNote": "ملاحظة (اختياري)",
+  "writeAnyNote": "اكتب أي ملاحظة",
+
+  "transactionImage": "صورة المعاملة",
+  "uploadTransactionImage": "ارفع صورة المعاملة",
+  "uploadTransactionImageHelp": "أضف الإيصال أو لقطة شاشة التحويل",
+  "changeImage": "تغيير الصورة",
+  "previewFullScreen": "عرض بملء الشاشة",
+  "viewReceipt": "عرض الإيصال",
+
+  "bankImage": "صورة البنك",
+  "qrCode": "رمز QR",
+  "bankNumber": "رقم البنك",
+  "paymentMethod": "طريقة الدفع",
+
+  "status": "الحالة",
+  "pending": "قيد الانتظار",
+  "approved": "تمت الموافقة",
+  "rejected": "مرفوض",
+
+  "note": "ملاحظة",
+  "reason": "السبب",
+
+  "date": "التاريخ",
+  "trackYourRequests": "تابع طلباتك المعلقة أو المقبولة أو المرفوضة",
+  "withdrawHistoryEmptyDesc": "ستظهر طلبات السحب هنا",
+  "noWithdrawalsYet": "لا توجد عمليات سحب بعد",
+
+  "submitWithdrawRequest": "إرسال طلب السحب",
+  "fillWithdrawForm": "اختر طريقة الدفع وأدخل تفاصيل التحويل",
+
+  "iqdShort": "د.ع",
+
+  "success": "نجاح",
+  "error": "خطأ",
+
+  "failedToLoadBalance": "فشل تحميل الرصيد",
+  "walletNotFound": "المحفظة غير موجودة",
+  "insufficientBalance": "الرصيد غير كافٍ",
+  "security": "الأمان",
+  "contactSupport": "تواصل مع الدعم",
+
+  "photoPermissionDenied": "تم رفض إذن الوصول إلى الصور",
+
+  "back": "رجوع",
   "unitPrice": "سعر القطعة",
   "totalPrice": "السعر الكلي",
   "remainingAfterPurchase": "المتبقي بعد الشراء",
