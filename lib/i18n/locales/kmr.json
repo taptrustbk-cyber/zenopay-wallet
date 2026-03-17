@@ -258,9 +258,6 @@
   "takeNewPhoto": "گرتنا وێنەکێ نوو",
   "selectExistingPhoto": "وێنەکێ ژ ئەلبومێ هەلبژێرە",
 
-  "ramadanOfferTitle": "ئۆفەرا ڕەمەزانێ",
-  "ramadanOfferMessage": "چێژێ ژ خەلاتێن تایبەت یێن ڕەمەزانێ وەربگرە. بۆ هەر سپاردنەکێ هەتا 1000$ ب ڕێکا USDT (TRC20) دێ خەلاتەکێ بانگەشەیی یێ 20$ وەرگری. خەلات ل دویف مەرجێن کەمپەینێ و ئەهلیەتێیە.",
-
   "accountBalance": "بالانسا هەژمارێ",
   "accountStatusActive": "ئەکاونتا تە چالاکە",
   "failedToLoadBalance": "سەرکەفتی نەبوو ل بارکرنا بالانسێ",
@@ -310,11 +307,11 @@
   "consulate": "کونسولخانە",
   "capital": "پایتەخت",
   "consulateInfo": "زانیارییێن کونسولخانێ",
-"withdraw": "وێدراو",
-  "withdrawRequest": "داخوازا وێدراوێ",
-  "withdrawHistory": "مێژووی وێدراوێ",
-  "withdrawAvailableBalance": "بالانسا بەردەست بۆ وێدراوێ",
-  "withdrawSuccessMessage": "داخوازا وێدراوێ تە بە سەرکەفتی هاتە هنارتن",
+"withdraw": "راکێشان",
+  "withdrawRequest": "داخوازا راکێشانێ",
+  "withdrawHistory": "مێژویا راکێشانێ",
+  "withdrawAvailableBalance": "بالانسا بەردەست بۆ راکێشانێ",
+  "withdrawSuccessMessage": "داخوازا راکێشانێ تە ب سەرکەفتی هاتە هنارتن",
 
   "accountBalance": "بالانسا هەژمارێ",
   "balance": "بالانس",
@@ -325,15 +322,15 @@
   "noPaymentMethodsDesc": "هێشتا ئەدمین هیچ ڕێکەکا پارەدانێ زیاد نەکریە",
 
   "amount": "بڕ",
-  "withdrawalAmount": "بڕا وێدراوێ",
+  "withdrawalAmount": "بڕا راکێشانێ",
   "enterAmount": "بڕی بنڤیسە",
   "invalidAmount": "بڕ نادروستە",
 
-  "senderName": "ناڤێ نێرەر",
-  "enterSenderName": "ناڤێ نێرەر بنڤیسە",
+  "senderName": "ناڤێ هژمارێ",
+  "enterSenderName": "ناڤێ هژمارێ بنڤیسە",
 
-  "senderNumber": "ژمارا نێرەر",
-  "enterSenderNumber": "ژمارا نێرەر بنڤیسە",
+  "senderNumber": "ژمارا هژمارێ",
+  "enterSenderNumber": "ژمارا هژمارێ بنڤیسە",
 
   "transferNote": "تێبینی (ئیختیاری)",
   "writeAnyNote": "هەر تێبینیەکێ بنڤیسە",
@@ -351,7 +348,7 @@
   "paymentMethod": "ڕێکا پارەدانێ",
 
   "status": "دۆخ",
-  "pending": "لە چاوەڕوانیێدایە",
+  "pending": "ل چاڤەرێ بونێدایە",
   "approved": "پەسەندکری",
   "rejected": "هاتە ڕەتکرن",
 
@@ -359,12 +356,12 @@
   "reason": "هۆکار",
 
   "date": "بەروار",
-  "trackYourRequests": "دۆخێ داخوازێن خۆ بەدواداچوون بکە",
-  "withdrawHistoryEmptyDesc": "هەمی داخوازێن وێدراوێ یێن تە ل ڤێرێ دەرکەڤن",
-  "noWithdrawalsYet": "هێشتا هیچ وێدراوێک نینە",
+  "trackYourRequests": "دۆخا داخوازێن خۆ دیفچونێ بو بکە",
+  "withdrawHistoryEmptyDesc": "هەمی داخوازێن راکێشانێ یێن تە ل ڤێرێ دەرکەڤن",
+  "noWithdrawalsYet": "هێشتا هیچ راکێشانەک نینە",
 
-  "submitWithdrawRequest": "هنارتنا داخوازا وێدراوێ",
-  "fillWithdrawForm": "ڕێکا پارەدانێ هەلبژێرە و زانیاریێن گواستنەوەیێ بنڤیسە",
+  "submitWithdrawRequest": "هنارتنا داخوازا راکێشانێ",
+  "fillWithdrawForm": "ڕێکا پارەدانێ هەلبژێرە و زانیاریێن هنارتنێ بنڤیسە",
 
   "iqdShort": "د.ع",
 
@@ -373,9 +370,9 @@
 
   "failedToLoadBalance": "بارکرنا بالانسێ سەرکەفتی نەبوو",
   "walletNotFound": "جزدان نەهاتە دۆزین",
-  "insufficientBalance": "بالانس نەبەسە",
+  "insufficientBalance": "بالانس تێرا ناکەت",
   "security": "پاراستن",
-  "contactSupport": "پەیوەندیێ بکە ب پشتیوانیێ",
+  "contactSupport": "پەیوەندیێ بکە بو پشتەڤانیێ",
 
   "photoPermissionDenied": "ڕێگەدانا وێنەیان نەهاتە دان",
 
