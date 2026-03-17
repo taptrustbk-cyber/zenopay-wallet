@@ -453,12 +453,15 @@
   "active": "Active",
   "buyCard": {
     "title": "Buy Card",
+    "reviewYourOrder": "Review Your Order",
     "cardType": "Card Type",
     "provider": "Provider",
     "amount": "Amount",
     "priceIqd": "Price IQD",
     "yourBalance": "Your IQD Balance",
-    "insufficientBalance": "Insufficient balance for purchase.",
+    "insufficientBalanceForPurchase": "Insufficient balance for purchase.",
+    "buyNow": "Buy Now",
+    "cancel": "Cancel",
     "giftCard": "Gift Card",
     "iqd": "IQD"
   },
