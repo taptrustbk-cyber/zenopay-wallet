@@ -254,11 +254,11 @@
   "contactUsAt": "پەیوەندی بکە لە",
   "save": "پاشەکەوتکردن",
   "settings": "ڕێکخستنەکان",
-"withdraw": "وێدراو",
-  "withdrawRequest": "داواکاری وێدراو",
-  "withdrawHistory": "مێژووی وێدراو",
-  "withdrawAvailableBalance": "باڵانسی بەردەست بۆ وێدراو",
-  "withdrawSuccessMessage": "داواکاری وێدراوەکەت بە سەرکەوتوویی نێردرا",
+"withdraw": "راکێشان",
+  "withdrawRequest": "داواکاری راکێشان",
+  "withdrawHistory": "مێژووی راکێشان",
+  "withdrawAvailableBalance": "باڵانسی بەردەست بۆ راکێشان",
+  "withdrawSuccessMessage": "داواکاری راکێشانەکەت بە سەرکەوتوویی نێردرا",
 
   "accountBalance": "باڵانسی هەژمار",
   "balance": "باڵانس",
@@ -269,15 +269,15 @@
   "noPaymentMethodsDesc": "هێشتا ئەدمین هیچ شێوازێکی پارەدانی زیاد نەکردووە",
 
   "amount": "بڕ",
-  "withdrawalAmount": "بڕی وێدراو",
+  "withdrawalAmount": "بڕی راکێشان",
   "enterAmount": "بڕ بنووسە",
   "invalidAmount": "بڕەکە دروست نییە",
 
-  "senderName": "ناوی نێرەر",
-  "enterSenderName": "ناوی نێرەر بنووسە",
+  "senderName": "ناوی هەژمار",
+  "enterSenderName": "ناوی هەژماری خوت بنووسە",
 
-  "senderNumber": "ژمارەی نێرەر",
-  "enterSenderNumber": "ژمارەی نێرەر بنووسە",
+  "senderNumber": "ژمارەی هەژمار",
+  "enterSenderNumber": "ژمارەی هەژماری خوت بنووسە",
 
   "transferNote": "تێبینی (ئیختیاری)",
   "writeAnyNote": "هەر تێبینییەک بنووسە",
@@ -304,10 +304,10 @@
 
   "date": "بەروار",
   "trackYourRequests": "دۆخی داواکارییەکانت بەدواداچوون بکە",
-  "withdrawHistoryEmptyDesc": "هەموو داواکارییەکانی وێدراو لێرە دەردەکەون",
-  "noWithdrawalsYet": "هێشتا هیچ وێدراوێک نییە",
+  "withdrawHistoryEmptyDesc": "هەموو داواکارییەکانی راکێشان لێرە دەردەکەون",
+  "noWithdrawalsYet": "هێشتا هیچ راکێشانێک نییە",
 
-  "submitWithdrawRequest": "ناردنی داواکاری وێدراو",
+  "submitWithdrawRequest": "ناردنی داواکاری راکێشان",
   "fillWithdrawForm": "شێوازی پارەدان هەڵبژێرە و زانیارییەکانی گواستنەوەکە بنووسە",
 
   "iqdShort": "د.ع",
