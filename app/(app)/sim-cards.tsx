@@ -102,9 +102,9 @@ function getProviderStyle(provider?: string | null) {
 }
 
 function formatIQD(value?: number | null) {
-  return new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: 0,
-  }).format(Number(value || 0));
+  const num = Number(value || 0);
+  const rounded = Math.round(num);
+  return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
 function getCurrentLang() {
