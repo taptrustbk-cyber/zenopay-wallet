@@ -1,6 +1,51 @@
 {
   "home": "Home",
   "send": "Send",
+    "common": {
+    "ok": "OK",
+    "back": "Back",
+    "cancel": "Cancel",
+    "error": "Error",
+    "failed": "Failed",
+    "success": "Success",
+    "failed_to_load": "Failed to load",
+    "something_wrong": "Something went wrong."
+  },
+  "auth": {
+    "user_not_found": "User not found",
+    "loginRequired": "Please login first."
+  },
+  "buyCard": {
+    "title": "Buy Card",
+    "mobileCard": "Mobile Card",
+    "giftCard": "Gift Card",
+    "topupCard": "Top-Up Card",
+    "reviewYourOrder": "Review your order",
+    "cardType": "Card Type",
+    "product": "Product",
+    "provider": "Provider",
+    "amount": "Amount",
+    "priceUsd": "Price USD",
+    "priceIqd": "Price IQD",
+    "yourBalance": "Your IQD Balance",
+    "buyNow": "Buy Now",
+    "walletNotFound": "Wallet not found.",
+    "insufficientBalanceForPurchase": "Insufficient balance for purchase.",
+    "purchaseFailed": "Purchase failed.",
+    "confirmPurchaseTitle": "Confirm Purchase",
+    "purchaseConfirmMessage": "Do you want to buy",
+    "for": "for",
+    "confirm": "Confirm",
+    "openNotifications": "Open Notifications",
+    "purchaseDetails": "Purchase Details",
+    "orderCreatedTitle": "Order Sent Successfully",
+    "orderCreatedMessage": "Your order has been sent to admin. After review, the PIN code will appear in notifications.",
+    "confirmBuy": "Confirm Purchase",
+    "insufficientBalance": "Insufficient IQD balance.",
+    "orderPlacedTitle": "Order placed",
+    "orderPlacedMessage": "Your card order has been created successfully.",
+    "orderFailed": "Could not create order."
+    },
   "common": {
     "error": "Error"
   },
