@@ -19,6 +19,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
+import { formatIQD } from '@/lib/format';
 
 type CardType = 'sim' | 'gift' | 'topup';
 
@@ -78,12 +79,6 @@ const UI = {
   black: '#111827',
   white: '#FFFFFF',
 };
-
-function formatIQD(value?: number | string | null) {
-  return new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: 0,
-  }).format(Number(value || 0));
-}
 
 function getProviderStyle(provider?: string | null) {
   const key = String(provider || '').toLowerCase();
@@ -173,7 +168,6 @@ export default function BuyCardScreen() {
 
       const currentBalance = Number(walletQuery.data.balance || 0);
 
-      // ✅ Balance now checked with IQD only
       if (currentBalance < priceIqd) {
         throw new Error(
           i18n.t('buyCard.insufficientBalanceForPurchase') || 'Insufficient balance for purchase.'
@@ -197,7 +191,7 @@ export default function BuyCardScreen() {
         card_title: cardName,
         provider: provider || type,
         amount_iqd: amountRaw || 0,
-        price_usd: 0, // ✅ keep for old DB compatibility, but no USD used in app
+        price_usd: 0,
         price_iqd: priceIqd,
         status: 'pending',
         pin_code: null,
