@@ -1,5 +1,11 @@
 {
   "home": "سەرەکی",
+  "receiveName": "ناوی وەرگر",
+  "receiveNumber": "ژمارەی وەرگر",
+  "transactionReceipt": "QR کۆدی بارکراو",
+  "noReceiptImageUploaded": "هیچ QR کۆدێک بارنەکراوە",
+  "qrCodeUploaded": "QR کۆد بارکراوە",
+  "viewFullScreen": "بینینی تەواو شاشە",
   "accountBalance": "بالانسی هەژمار",
   "depositPageSubtitle": "داواکارییەکی دانانی پارە دروست بکە بۆ زیادکردنی پارە",
   "depositAvailableBalance": "بالانسی ئێستای جزدان",
