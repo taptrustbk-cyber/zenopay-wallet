@@ -1,5 +1,13 @@
 {
   "home": "Home",
+  "receiveName": "Receive Name",
+  "receiveNumber": "Receive Number",
+  "enterReceiveName": "Enter receive name",
+  "enterReceiveNumber": "Enter receive number",
+  "uploadQrCodeTitle": "Upload QR Code",
+  "uploadQrCode": "Upload your QR code Payment",
+  "uploadQrCodeHelp": "Enter your account QR code here",
+  "createWithdrawRequestSub": "Create a withdraw request to send money",
    "accountBalance": "Account Balance",
   "depositPageSubtitle": "Create a deposit request to add money",
   "depositAvailableBalance": "Current wallet balance",
