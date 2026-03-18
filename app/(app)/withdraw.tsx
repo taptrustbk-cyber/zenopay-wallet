@@ -21,7 +21,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import {
   ChevronDown,
-  CircleAlert,
   Image as ImageIcon,
   Landmark,
   Receipt,
@@ -46,11 +45,19 @@ const UI = {
   text2: '#64748B',
   text3: '#94A3B8',
   border: '#E2E8F0',
+
   green: '#0EA772',
   green2: '#10B981',
   greenSoft: '#E9FBF4',
+
   blue: '#2563EB',
   blueSoft: '#EAF2FF',
+
+  purple: '#7C3AED',
+  purple2: '#8B5CF6',
+  purple3: '#A78BFA',
+  purpleSoft: '#F3E8FF',
+
   warning: '#F59E0B',
   warningSoft: '#FEF3C7',
   danger: '#EF4444',
@@ -241,7 +248,6 @@ export default function WithdrawScreen() {
     return paymentMethodsQuery.data?.find((m) => m.id === selectedMethodId) || null;
   }, [paymentMethodsQuery.data, selectedMethodId]);
 
-  const amountNumber = parseIQDInput(amount);
   const balanceText = formatIQD(walletQuery.data?.balance || 0);
 
   const pickReceiptImage = async () => {
@@ -314,17 +320,17 @@ export default function WithdrawScreen() {
       }
       if (!senderName.trim()) {
         throw new Error(
-          i18n.t('enterSenderName') || 'Please enter your account holder name'
+          i18n.t('enterReceiveName') || 'Please enter receiver name'
         );
       }
       if (!senderNumber.trim()) {
         throw new Error(
-          i18n.t('enterSenderNumber') || 'Please enter your account number or mobile'
+          i18n.t('enterReceiveNumber') || 'Please enter receiver number'
         );
       }
       if (!receiptImage) {
         throw new Error(
-          i18n.t('uploadTransactionImage') || 'Upload your receiver QR / account image'
+          i18n.t('uploadQrCode') || 'Upload your QR code payment'
         );
       }
 
@@ -461,8 +467,8 @@ export default function WithdrawScreen() {
                 walletQuery.refetch();
                 paymentMethodsQuery.refetch();
               }}
-              tintColor={UI.green}
-              colors={[UI.green]}
+              tintColor={UI.purple}
+              colors={[UI.purple]}
             />
           }
         >
@@ -493,7 +499,7 @@ export default function WithdrawScreen() {
                   {i18n.t('accountBalance') || 'Account Balance'}
                 </Text>
                 <Text style={styles.balanceSub}>
-                  {i18n.t('withdrawAvailableBalance') || 'Available balance for withdrawal'}
+                  {i18n.t('createWithdrawRequestSub') || 'Create a withdraw request to send money'}
                 </Text>
               </View>
 
@@ -530,7 +536,7 @@ export default function WithdrawScreen() {
                 </Text>
                 <Text style={styles.sectionSub}>
                   {i18n.t('fillWithdrawForm') ||
-                    'Choose payment method and enter your withdraw details'}
+                    'Choose payment method and enter your transfer details'}
                 </Text>
               </View>
             </View>
@@ -591,11 +597,11 @@ export default function WithdrawScreen() {
 
             <View style={styles.limitBox}>
               <Text style={styles.limitText}>
-                {(i18n.t('minimumWithdrawAmount') || 'Minimum') +
+                {(i18n.t('minimumWithdrawAmount') || 'Minimum withdraw amount') +
                   `: ${formatIQD(MIN_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`}
               </Text>
               <Text style={styles.limitText}>
-                {(i18n.t('maximumWithdrawAmount') || 'Maximum') +
+                {(i18n.t('maximumWithdrawAmount') || 'Maximum withdraw amount') +
                   `: ${formatIQD(MAX_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`}
               </Text>
             </View>
@@ -603,12 +609,12 @@ export default function WithdrawScreen() {
             <View style={styles.grid2}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.label}>
-                  {i18n.t('senderName') || 'Account Holder Name'}
+                  {i18n.t('receiveName') || 'Receive Name'}
                 </Text>
                 <TextInput
                   style={styles.input}
                   placeholder={
-                    i18n.t('enterSenderName') || 'Please enter your account holder name'
+                    i18n.t('enterReceiveName') || 'Enter receive name'
                   }
                   placeholderTextColor={UI.text3}
                   value={senderName}
@@ -618,12 +624,12 @@ export default function WithdrawScreen() {
 
               <View style={{ flex: 1 }}>
                 <Text style={styles.label}>
-                  {i18n.t('senderNumber') || 'Account Number / Mobile'}
+                  {i18n.t('receiveNumber') || 'Receive Number'}
                 </Text>
                 <TextInput
                   style={styles.input}
                   placeholder={
-                    i18n.t('enterSenderNumber') || 'Please enter your account number'
+                    i18n.t('enterReceiveNumber') || 'Enter receive number'
                   }
                   placeholderTextColor={UI.text3}
                   value={senderNumber}
@@ -645,7 +651,7 @@ export default function WithdrawScreen() {
             />
 
             <Text style={styles.label}>
-              {i18n.t('transactionImage') || 'Receiver QR / Account Image'}
+              {i18n.t('uploadQrCodeTitle') || 'Upload QR Code'}
             </Text>
             <TouchableOpacity style={styles.uploadCard} activeOpacity={0.92} onPress={pickReceiptImage}>
               {receiptImage ? (
@@ -663,11 +669,10 @@ export default function WithdrawScreen() {
                     <ImageIcon size={22} color={UI.green} />
                   </View>
                   <Text style={styles.uploadTitle}>
-                    {i18n.t('uploadTransactionImage') || 'Upload QR / account image'}
+                    {i18n.t('uploadQrCode') || 'Upload your QR code Payment'}
                   </Text>
                   <Text style={styles.uploadSub}>
-                    {i18n.t('uploadTransactionImageHelp') ||
-                      'Upload your QR code or account screenshot for admin'}
+                    {i18n.t('uploadQrCodeHelp') || 'Enter your account QR code here'}
                   </Text>
                 </View>
               )}
@@ -790,7 +795,7 @@ export default function WithdrawScreen() {
 
                       <View style={styles.historyMiniCard}>
                         <Text style={styles.historyMiniLabel}>
-                          {i18n.t('senderNumber') || 'Account Number'}
+                          {i18n.t('receiveNumber') || 'Receive Number'}
                         </Text>
                         <Text style={styles.historyMiniValue}>{w.sender_number || '-'}</Text>
                       </View>
@@ -798,7 +803,7 @@ export default function WithdrawScreen() {
 
                     <View style={styles.infoRow}>
                       <Text style={styles.infoLabel}>
-                        {i18n.t('senderName') || 'Account Holder Name'}
+                        {i18n.t('receiveName') || 'Receive Name'}
                       </Text>
                       <Text style={styles.infoValue}>{w.sender_name || '-'}</Text>
                     </View>
@@ -978,33 +983,33 @@ const styles = StyleSheet.create({
   },
 
   heroCard: {
-    borderRadius: 28,
-    padding: 18,
-    backgroundColor: UI.green,
+    borderRadius: 30,
+    padding: 20,
+    backgroundColor: UI.purple,
     overflow: 'hidden',
-    shadowColor: UI.green,
-    shadowOpacity: 0.22,
-    shadowRadius: 20,
+    shadowColor: UI.purple,
+    shadowOpacity: 0.24,
+    shadowRadius: 22,
     shadowOffset: { width: 0, height: 10 },
-    elevation: 5,
+    elevation: 6,
   },
   heroGlowOne: {
     position: 'absolute',
-    width: 180,
-    height: 180,
+    width: 280,
+    height: 280,
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.10)',
-    top: -60,
-    right: -20,
+    top: -70,
+    right: -70,
   },
   heroGlowTwo: {
     position: 'absolute',
-    width: 120,
-    height: 120,
+    width: 240,
+    height: 240,
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.08)',
-    bottom: -20,
-    left: -10,
+    bottom: -120,
+    left: -90,
   },
   balanceTopRow: {
     flexDirection: 'row',
@@ -1014,46 +1019,46 @@ const styles = StyleSheet.create({
   },
   balanceTitle: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '900',
   },
   balanceSub: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.76)',
     fontSize: 12,
     fontWeight: '700',
-    marginTop: 4,
+    marginTop: 6,
   },
   currencyChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.16)',
   },
   currencyChipText: {
     color: '#fff',
     fontWeight: '900',
-    fontSize: 12,
+    fontSize: 13,
   },
   balanceValueWrap: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 10,
-    marginTop: 18,
+    gap: 12,
+    marginTop: 26,
   },
   balanceValue: {
     color: '#fff',
-    fontSize: 39,
-    lineHeight: 42,
+    fontSize: 52,
+    lineHeight: 56,
     fontWeight: '900',
   },
   balanceCurrencyBig: {
     color: 'rgba(255,255,255,0.92)',
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '900',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   balanceErrorRow: {
     flexDirection: 'row',
