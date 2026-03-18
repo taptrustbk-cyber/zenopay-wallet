@@ -308,39 +308,53 @@ export default function WithdrawalsAdminScreen() {
       status: 'approved' | 'rejected' | 'pending';
       reject_reason?: string | null;
     }) => {
-      const payload: Record<string, any> = {
-        status,
-      };
-
-      if (status === 'rejected') {
-        payload.reject_reason = reject_reason?.trim() || 'Rejected by admin';
-      } else {
-        payload.reject_reason = null;
-      }
-
-      const { error } = await supabase
-        .from('withdraw_orders')
-        .update(payload)
-        .eq('id', order.id);
-
-      if (error) throw error;
-
       let emailResult:
         | { ok: boolean; message?: string; data?: any }
         | undefined;
 
       if (status === 'approved') {
+        const { error } = await supabase.rpc('admin_approve_withdraw', {
+          p_withdraw_id: order.id,
+        });
+
+        if (error) throw error;
+
         emailResult = await sendWithdrawStatusEmail(order, 'approved');
+        return { status, emailResult };
       }
 
       if (status === 'rejected') {
-        emailResult = await sendWithdrawStatusEmail(order, 'rejected', payload.reject_reason);
+        const reason = reject_reason?.trim() || 'Rejected by admin';
+
+        const { error } = await supabase.rpc('admin_reject_withdraw', {
+          p_withdraw_id: order.id,
+          p_reason: reason,
+        });
+
+        if (error) throw error;
+
+        emailResult = await sendWithdrawStatusEmail(order, 'rejected', reason);
+        return { status, emailResult };
       }
+
+      const { error } = await supabase
+        .from('withdraw_orders')
+        .update({
+          status: 'pending',
+          reject_reason: null,
+        })
+        .eq('id', order.id);
+
+      if (error) throw error;
 
       return { status, emailResult };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet'] });
+      queryClient.invalidateQueries({ queryKey: ['wallets'] });
+      queryClient.invalidateQueries({ queryKey: ['withdraw_orders'] });
+
       setSelectedRejectId(null);
       setRejectReason('');
 
@@ -349,6 +363,16 @@ export default function WithdrawalsAdminScreen() {
           'Updated, but email failed',
           result.emailResult.message || 'Withdrawal updated, but email was not sent.'
         );
+        return;
+      }
+
+      if (result?.status === 'approved') {
+        Alert.alert('Success', 'Withdrawal approved and wallet balance updated');
+        return;
+      }
+
+      if (result?.status === 'rejected') {
+        Alert.alert('Success', 'Withdrawal rejected successfully');
         return;
       }
 
