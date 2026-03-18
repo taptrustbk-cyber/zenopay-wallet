@@ -369,6 +369,7 @@ export default function WithdrawScreen() {
         amount: amountNum,
         currency: 'IQD',
         payment_method_id: selectedMethod.id,
+        destination: senderNumber.trim(),
         sender_name: senderName.trim(),
         sender_number: senderNumber.trim(),
         note: note.trim() || null,
