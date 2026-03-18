@@ -232,22 +232,69 @@ export default function WithdrawalsAdminScreen() {
     status: 'approved' | 'rejected' | 'pending',
     reason?: string
   ) => {
-    if (!order?.profiles?.email) return;
+    if (!order?.profiles?.email) {
+      return { ok: false, message: 'User email not found' };
+    }
 
-    const { error } = await supabase.functions.invoke('send-withdraw-status-email', {
-      body: {
-        to: order.profiles.email,
-        customer_name: order.profiles.full_name || 'User',
-        amount_iqd: Number(order.amount || 0),
-        payment_method: order.payment_method?.name || '',
-        order_id: order.id,
-        status,
-        reject_reason: reason || '',
-      },
-    });
+    try {
+      const supabaseUrl = (supabase as any)?.supabaseUrl;
+      const supabaseKey = (supabase as any)?.supabaseKey;
 
-    if (error) {
-      throw new Error(error.message || 'Failed to send status email');
+      if (!supabaseUrl || !supabaseKey) {
+        return { ok: false, message: 'Supabase URL or anon key not found on client' };
+      }
+
+      const fnUrl = `${supabaseUrl}/functions/v1/send-withdraw-status-email`;
+
+      const res = await fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          to: order.profiles.email,
+          customer_name: order.profiles.full_name || 'User',
+          amount_iqd: Number(order.amount || 0),
+          payment_method: order.payment_method?.name || '',
+          order_id: order.id,
+          status,
+          reject_reason: reason || '',
+        }),
+      });
+
+      const rawText = await res.text();
+      let parsed: any = null;
+
+      try {
+        parsed = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        parsed = rawText;
+      }
+
+      if (!res.ok) {
+        return {
+          ok: false,
+          message:
+            parsed?.error?.message ||
+            parsed?.error ||
+            parsed?.message ||
+            rawText ||
+            `Function failed with status ${res.status}`,
+          data: parsed,
+        };
+      }
+
+      return {
+        ok: true,
+        data: parsed,
+      };
+    } catch (err: any) {
+      return {
+        ok: false,
+        message: err?.message || 'Unexpected function error',
+      };
     }
   };
 
@@ -278,19 +325,34 @@ export default function WithdrawalsAdminScreen() {
 
       if (error) throw error;
 
+      let emailResult:
+        | { ok: boolean; message?: string; data?: any }
+        | undefined;
+
       if (status === 'approved') {
-        await sendWithdrawStatusEmail(order, 'approved');
+        emailResult = await sendWithdrawStatusEmail(order, 'approved');
       }
 
       if (status === 'rejected') {
-        await sendWithdrawStatusEmail(order, 'rejected', payload.reject_reason);
+        emailResult = await sendWithdrawStatusEmail(order, 'rejected', payload.reject_reason);
       }
+
+      return { status, emailResult };
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
       setSelectedRejectId(null);
       setRejectReason('');
-      Alert.alert('Success', `Withdrawal ${variables.status} successfully`);
+
+      if (result?.emailResult && !result.emailResult.ok) {
+        Alert.alert(
+          'Updated, but email failed',
+          result.emailResult.message || 'Withdrawal updated, but email was not sent.'
+        );
+        return;
+      }
+
+      Alert.alert('Success', `Withdrawal ${result?.status || ''} successfully`);
     },
     onError: (error: any) => {
       Alert.alert('Error', error?.message || 'Something went wrong');
