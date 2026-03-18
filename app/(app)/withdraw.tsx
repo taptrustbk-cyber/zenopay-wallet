@@ -19,16 +19,25 @@ import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import { ChevronDown, CircleAlert, Image as ImageIcon, Landmark, Receipt, Wallet2 } from 'lucide-react-native';
+import {
+  ChevronDown,
+  CircleAlert,
+  Image as ImageIcon,
+  Landmark,
+  Receipt,
+  Wallet2,
+} from 'lucide-react-native';
 import { decode } from 'base64-arraybuffer';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext'; // keep (not breaking)
+import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 import { Wallet } from '@/lib/types';
 
-const AVATAR_BUCKET = 'withdraw-receipts';
+const RECEIPT_BUCKET = 'withdraw-receipts';
+const MIN_WITHDRAW_IQD = 1000;
+const MAX_WITHDRAW_IQD = 1000000;
 
 const UI = {
   bg: '#F4F7FB',
@@ -60,6 +69,7 @@ type PaymentMethod = {
   logo_url?: string | null;
   is_active?: boolean | null;
   sort_order?: number | null;
+  method_type?: 'withdraw' | 'deposit' | null;
 };
 
 type WithdrawOrderItem = {
@@ -84,7 +94,18 @@ type WithdrawOrderItem = {
 function formatIQD(value: number | string | null | undefined) {
   const num = Number(value || 0);
   if (Number.isNaN(num)) return '0';
-  return num.toLocaleString('de-DE'); // 1.000.000
+  return num.toLocaleString('de-DE');
+}
+
+function parseIQDInput(value: string) {
+  const onlyDigits = String(value || '').replace(/[^\d]/g, '');
+  return onlyDigits ? Number(onlyDigits) : 0;
+}
+
+function formatIQDInput(value: string) {
+  const onlyDigits = String(value || '').replace(/[^\d]/g, '');
+  if (!onlyDigits) return '';
+  return Number(onlyDigits).toLocaleString('de-DE');
 }
 
 function getStatusMeta(status?: string) {
@@ -115,7 +136,7 @@ export default function WithdrawScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { theme } = useTheme(); // keep
+  const { theme } = useTheme();
 
   const [showMethodModal, setShowMethodModal] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
@@ -161,14 +182,15 @@ export default function WithdrawScreen() {
   });
 
   const paymentMethodsQuery = useQuery({
-    queryKey: ['payment_methods'],
+    queryKey: ['payment_methods', 'withdraw'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('payment_methods')
         .select(
-          'id, name, account_name, account_number, instructions, qr_image, logo_url, is_active, sort_order'
+          'id, name, account_name, account_number, instructions, qr_image, logo_url, is_active, sort_order, method_type'
         )
         .eq('is_active', true)
+        .eq('method_type', 'withdraw')
         .order('sort_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true });
 
@@ -219,6 +241,7 @@ export default function WithdrawScreen() {
     return paymentMethodsQuery.data?.find((m) => m.id === selectedMethodId) || null;
   }, [paymentMethodsQuery.data, selectedMethodId]);
 
+  const amountNumber = parseIQDInput(amount);
   const balanceText = formatIQD(walletQuery.data?.balance || 0);
 
   const pickReceiptImage = async () => {
@@ -226,14 +249,17 @@ export default function WithdrawScreen() {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permission.granted) {
-        Alert.alert(i18n.t('error'), i18n.t('photoPermissionDenied') || 'Photo permission denied');
+        Alert.alert(
+          i18n.t('error') || 'Error',
+          i18n.t('photoPermissionDenied') || 'Photo permission denied'
+        );
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
-        quality: 0.85,
+        quality: 0.9,
         aspect: [4, 5],
       });
 
@@ -241,7 +267,7 @@ export default function WithdrawScreen() {
         setReceiptImage(result.assets[0].uri);
       }
     } catch (error: any) {
-      Alert.alert(i18n.t('error'), error?.message || 'Failed to pick image');
+      Alert.alert(i18n.t('error') || 'Error', error?.message || 'Failed to pick image');
     }
   };
 
@@ -265,37 +291,69 @@ export default function WithdrawScreen() {
     const fileName = `${user?.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
-      .from(AVATAR_BUCKET)
+      .from(RECEIPT_BUCKET)
       .upload(fileName, decode(base64), {
-        contentType: ext === 'png' ? 'image/png' : 'image/jpeg',
+        contentType: ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg',
         upsert: false,
       });
 
-    if (uploadError) throw new Error(uploadError.message || 'Failed to upload receipt');
+    if (uploadError) throw new Error(uploadError.message || 'Failed to upload image');
 
-    const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(fileName);
-
+    const { data } = supabase.storage.from(RECEIPT_BUCKET).getPublicUrl(fileName);
     return data.publicUrl;
   };
 
   const withdrawMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('User ID not found');
-      if (!selectedMethod) throw new Error(i18n.t('selectPaymentMethod') || 'Select payment method');
-      if (!amount.trim()) throw new Error(i18n.t('enterAmount') || 'Enter amount');
-      if (!senderName.trim()) throw new Error(i18n.t('enterSenderName') || 'Enter sender name');
-      if (!senderNumber.trim()) throw new Error(i18n.t('enterSenderNumber') || 'Enter sender number');
-      if (!receiptImage) throw new Error(i18n.t('uploadTransactionImage') || 'Upload transaction image');
+      if (!selectedMethod) {
+        throw new Error(i18n.t('selectPaymentMethod') || 'Select payment method');
+      }
+      if (!amount.trim()) {
+        throw new Error(i18n.t('enterAmount') || 'Enter amount');
+      }
+      if (!senderName.trim()) {
+        throw new Error(
+          i18n.t('enterSenderName') || 'Please enter your account holder name'
+        );
+      }
+      if (!senderNumber.trim()) {
+        throw new Error(
+          i18n.t('enterSenderNumber') || 'Please enter your account number or mobile'
+        );
+      }
+      if (!receiptImage) {
+        throw new Error(
+          i18n.t('uploadTransactionImage') || 'Upload your receiver QR / account image'
+        );
+      }
 
-      const amountNum = Number(String(amount).replace(/[^\d]/g, ''));
+      const amountNum = parseIQDInput(amount);
+
       if (Number.isNaN(amountNum) || amountNum <= 0) {
         throw new Error(i18n.t('invalidAmount') || 'Invalid amount');
       }
 
-      if (!walletQuery.data) throw new Error(i18n.t('walletNotFound') || 'Wallet not found');
+      if (amountNum < MIN_WITHDRAW_IQD) {
+        throw new Error(
+          `${i18n.t('minimumWithdrawAmount') || 'Minimum withdraw amount is'} ${formatIQD(MIN_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`
+        );
+      }
+
+      if (amountNum > MAX_WITHDRAW_IQD) {
+        throw new Error(
+          `${i18n.t('maximumWithdrawAmount') || 'Maximum withdraw amount is'} ${formatIQD(MAX_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`
+        );
+      }
+
+      if (!walletQuery.data) {
+        throw new Error(i18n.t('walletNotFound') || 'Wallet not found');
+      }
 
       if (walletQuery.data.is_locked) {
-        throw new Error(`${i18n.t('security') || 'Security'}: ${i18n.t('contactSupport') || 'Contact support'}`);
+        throw new Error(
+          `${i18n.t('security') || 'Security'}: ${i18n.t('contactSupport') || 'Contact support'}`
+        );
       }
 
       if (amountNum > Number(walletQuery.data.balance || 0)) {
@@ -337,97 +395,43 @@ export default function WithdrawScreen() {
       );
     },
     onError: (error: any) => {
-      Alert.alert(i18n.t('error') || 'Error', error?.message || 'Failed to submit withdrawal request');
+      Alert.alert(
+        i18n.t('error') || 'Error',
+        error?.message || 'Failed to submit withdrawal request'
+      );
     },
   });
 
-  const renderMethodCard = (method: PaymentMethod, isInsideModal = false) => {
+  const renderMethodListItem = (method: PaymentMethod) => {
     const selected = selectedMethodId === method.id;
 
     return (
       <TouchableOpacity
         key={method.id}
-        style={[
-          styles.methodCard,
-          selected && styles.methodCardActive,
-          isInsideModal && { marginBottom: 12 },
-        ]}
+        style={[styles.methodListItem, selected && styles.methodListItemActive]}
         activeOpacity={0.92}
         onPress={() => {
           setSelectedMethodId(method.id);
-          if (isInsideModal) setShowMethodModal(false);
+          setShowMethodModal(false);
         }}
       >
-        <View style={styles.methodTopRow}>
-          <View style={styles.methodLeft}>
-            <View style={[styles.methodLogoWrap, selected && styles.methodLogoWrapActive]}>
-              {method.logo_url ? (
-                <Image source={{ uri: method.logo_url }} style={styles.methodLogo} resizeMode="cover" />
-              ) : (
-                <Landmark size={22} color={selected ? UI.green : UI.blue} />
-              )}
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <Text style={styles.methodName}>{method.name}</Text>
-
-              {!!method.account_name ? (
-                <Text style={styles.methodMeta} numberOfLines={1}>
-                  {method.account_name}
-                </Text>
-              ) : null}
-
-              {!!method.account_number ? (
-                <Text style={styles.methodNumber} numberOfLines={1}>
-                  {method.account_number}
-                </Text>
-              ) : null}
-            </View>
+        <View style={styles.methodListLeft}>
+          <View style={[styles.methodLogoWrap, selected && styles.methodLogoWrapActive]}>
+            {method.logo_url ? (
+              <Image source={{ uri: method.logo_url }} style={styles.methodLogo} resizeMode="cover" />
+            ) : (
+              <Landmark size={22} color={selected ? UI.green : UI.blue} />
+            )}
           </View>
 
-          <View style={[styles.radioOuter, selected && styles.radioOuterActive]}>
-            {selected ? <View style={styles.radioInner} /> : null}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.methodName}>{method.name}</Text>
           </View>
         </View>
 
-        {!!method.instructions ? (
-          <View style={styles.instructionsBox}>
-            <CircleAlert size={16} color={UI.blue} />
-            <Text style={styles.instructionsText}>{method.instructions}</Text>
-          </View>
-        ) : null}
-
-        {(!!method.qr_image || !!method.logo_url) ? (
-          <View style={styles.previewImagesRow}>
-            {!!method.logo_url ? (
-              <TouchableOpacity
-                style={styles.previewImageCard}
-                activeOpacity={0.92}
-                onPress={() => {
-                  setViewerImage(method.logo_url || null);
-                  setShowImageViewer(true);
-                }}
-              >
-                <Image source={{ uri: method.logo_url }} style={styles.previewImage} resizeMode="cover" />
-                <Text style={styles.previewLabel}>{i18n.t('bankImage') || 'Bank Image'}</Text>
-              </TouchableOpacity>
-            ) : null}
-
-            {!!method.qr_image ? (
-              <TouchableOpacity
-                style={styles.previewImageCard}
-                activeOpacity={0.92}
-                onPress={() => {
-                  setViewerImage(method.qr_image || null);
-                  setShowImageViewer(true);
-                }}
-              >
-                <Image source={{ uri: method.qr_image }} style={styles.previewImage} resizeMode="cover" />
-                <Text style={styles.previewLabel}>{i18n.t('qrCode') || 'QR Code'}</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        ) : null}
+        <View style={[styles.radioOuter, selected && styles.radioOuterActive]}>
+          {selected ? <View style={styles.radioInner} /> : null}
+        </View>
       </TouchableOpacity>
     );
   };
@@ -462,13 +466,17 @@ export default function WithdrawScreen() {
           }
         >
           <View style={styles.header}>
-            <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => router.back()}
+              activeOpacity={0.85}
+            >
               <Ionicons name="chevron-back" size={22} color={UI.text} />
-              <Text style={styles.headerBack}>{i18n.t('back')}</Text>
+              <Text style={styles.headerBack}>{i18n.t('back') || 'Back'}</Text>
             </TouchableOpacity>
 
             <View style={styles.headerTitleWrap}>
-              <Text style={styles.headerTitle}>{i18n.t('withdraw')}</Text>
+              <Text style={styles.headerTitle}>{i18n.t('withdraw') || 'Withdraw'}</Text>
             </View>
 
             <View style={styles.headerRightSpace} />
@@ -480,7 +488,9 @@ export default function WithdrawScreen() {
 
             <View style={styles.balanceTopRow}>
               <View>
-                <Text style={styles.balanceTitle}>{i18n.t('accountBalance')}</Text>
+                <Text style={styles.balanceTitle}>
+                  {i18n.t('accountBalance') || 'Account Balance'}
+                </Text>
                 <Text style={styles.balanceSub}>
                   {i18n.t('withdrawAvailableBalance') || 'Available balance for withdrawal'}
                 </Text>
@@ -499,7 +509,9 @@ export default function WithdrawScreen() {
             ) : walletQuery.isError ? (
               <View style={styles.balanceErrorRow}>
                 <Ionicons name="alert-circle" size={22} color="#fff" />
-                <Text style={styles.balanceErrorText}>{i18n.t('failedToLoadBalance')}</Text>
+                <Text style={styles.balanceErrorText}>
+                  {i18n.t('failedToLoadBalance') || 'Failed to load balance'}
+                </Text>
               </View>
             ) : (
               <View style={styles.balanceValueWrap}>
@@ -512,14 +524,19 @@ export default function WithdrawScreen() {
           <View style={styles.formCard}>
             <View style={styles.sectionHead}>
               <View>
-                <Text style={styles.sectionTitle}>{i18n.t('withdrawRequest') || 'Withdraw Request'}</Text>
+                <Text style={styles.sectionTitle}>
+                  {i18n.t('withdrawRequest') || 'Withdraw Request'}
+                </Text>
                 <Text style={styles.sectionSub}>
-                  {i18n.t('fillWithdrawForm') || 'Choose payment method and enter your transfer details'}
+                  {i18n.t('fillWithdrawForm') ||
+                    'Choose payment method and enter your withdraw details'}
                 </Text>
               </View>
             </View>
 
-            <Text style={styles.label}>{i18n.t('selectPaymentMethod') || 'Select Payment Method'}</Text>
+            <Text style={styles.label}>
+              {i18n.t('selectPaymentMethod') || 'Select Payment Method'}
+            </Text>
 
             <TouchableOpacity
               style={styles.selector}
@@ -530,7 +547,10 @@ export default function WithdrawScreen() {
                 <View style={styles.selectedMethodInline}>
                   <View style={styles.selectedMethodLogo}>
                     {selectedMethod.logo_url ? (
-                      <Image source={{ uri: selectedMethod.logo_url }} style={styles.selectedMethodLogoImg} />
+                      <Image
+                        source={{ uri: selectedMethod.logo_url }}
+                        style={styles.selectedMethodLogoImg}
+                      />
                     ) : (
                       <Landmark size={18} color={UI.green} />
                     )}
@@ -538,9 +558,6 @@ export default function WithdrawScreen() {
 
                   <View style={{ flex: 1 }}>
                     <Text style={styles.selectorText}>{selectedMethod.name}</Text>
-                    {!!selectedMethod.account_number ? (
-                      <Text style={styles.selectorSubText}>{selectedMethod.account_number}</Text>
-                    ) : null}
                   </View>
                 </View>
               ) : (
@@ -552,9 +569,9 @@ export default function WithdrawScreen() {
               <ChevronDown size={20} color={UI.text2} />
             </TouchableOpacity>
 
-            {selectedMethod ? renderMethodCard(selectedMethod) : null}
-
-            <Text style={styles.label}>{i18n.t('withdrawalAmount') || 'Withdrawal Amount'}</Text>
+            <Text style={styles.label}>
+              {i18n.t('withdrawalAmount') || 'Withdrawal Amount'}
+            </Text>
             <View style={styles.amountWrap}>
               <TextInput
                 style={styles.amountInput}
@@ -562,8 +579,7 @@ export default function WithdrawScreen() {
                 placeholderTextColor={UI.text3}
                 value={amount}
                 onChangeText={(text) => {
-                  const onlyDigits = text.replace(/[^\d]/g, '');
-                  setAmount(onlyDigits ? formatIQD(onlyDigits) : '');
+                  setAmount(formatIQDInput(text));
                 }}
                 keyboardType="number-pad"
               />
@@ -572,12 +588,27 @@ export default function WithdrawScreen() {
               </View>
             </View>
 
+            <View style={styles.limitBox}>
+              <Text style={styles.limitText}>
+                {(i18n.t('minimumWithdrawAmount') || 'Minimum') +
+                  `: ${formatIQD(MIN_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`}
+              </Text>
+              <Text style={styles.limitText}>
+                {(i18n.t('maximumWithdrawAmount') || 'Maximum') +
+                  `: ${formatIQD(MAX_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`}
+              </Text>
+            </View>
+
             <View style={styles.grid2}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.label}>{i18n.t('senderName') || 'Sender Name'}</Text>
+                <Text style={styles.label}>
+                  {i18n.t('senderName') || 'Account Holder Name'}
+                </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder={i18n.t('enterSenderName') || 'Enter sender name'}
+                  placeholder={
+                    i18n.t('enterSenderName') || 'Please enter your account holder name'
+                  }
                   placeholderTextColor={UI.text3}
                   value={senderName}
                   onChangeText={setSenderName}
@@ -585,10 +616,14 @@ export default function WithdrawScreen() {
               </View>
 
               <View style={{ flex: 1 }}>
-                <Text style={styles.label}>{i18n.t('senderNumber') || 'Sender Number'}</Text>
+                <Text style={styles.label}>
+                  {i18n.t('senderNumber') || 'Account Number / Mobile'}
+                </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder={i18n.t('enterSenderNumber') || 'Enter sender number'}
+                  placeholder={
+                    i18n.t('enterSenderNumber') || 'Please enter your account number'
+                  }
                   placeholderTextColor={UI.text3}
                   value={senderNumber}
                   onChangeText={setSenderNumber}
@@ -608,13 +643,17 @@ export default function WithdrawScreen() {
               textAlignVertical="top"
             />
 
-            <Text style={styles.label}>{i18n.t('transactionImage') || 'Transaction Image'}</Text>
+            <Text style={styles.label}>
+              {i18n.t('transactionImage') || 'Receiver QR / Account Image'}
+            </Text>
             <TouchableOpacity style={styles.uploadCard} activeOpacity={0.92} onPress={pickReceiptImage}>
               {receiptImage ? (
                 <>
                   <Image source={{ uri: receiptImage }} style={styles.uploadPreview} resizeMode="cover" />
                   <View style={styles.uploadOverlay}>
-                    <Text style={styles.uploadOverlayText}>{i18n.t('changeImage') || 'Change Image'}</Text>
+                    <Text style={styles.uploadOverlayText}>
+                      {i18n.t('changeImage') || 'Change Image'}
+                    </Text>
                   </View>
                 </>
               ) : (
@@ -622,9 +661,12 @@ export default function WithdrawScreen() {
                   <View style={styles.uploadIconWrap}>
                     <ImageIcon size={22} color={UI.green} />
                   </View>
-                  <Text style={styles.uploadTitle}>{i18n.t('uploadTransactionImage') || 'Upload transaction image'}</Text>
+                  <Text style={styles.uploadTitle}>
+                    {i18n.t('uploadTransactionImage') || 'Upload QR / account image'}
+                  </Text>
                   <Text style={styles.uploadSub}>
-                    {i18n.t('uploadTransactionImageHelp') || 'Add your receipt or transfer screenshot'}
+                    {i18n.t('uploadTransactionImageHelp') ||
+                      'Upload your QR code or account screenshot for admin'}
                   </Text>
                 </View>
               )}
@@ -640,7 +682,9 @@ export default function WithdrawScreen() {
                 }}
               >
                 <Ionicons name="expand-outline" size={18} color={UI.blue} />
-                <Text style={styles.previewBigBtnText}>{i18n.t('previewFullScreen') || 'Preview Full Screen'}</Text>
+                <Text style={styles.previewBigBtnText}>
+                  {i18n.t('previewFullScreen') || 'Preview Full Screen'}
+                </Text>
               </TouchableOpacity>
             ) : null}
 
@@ -658,7 +702,9 @@ export default function WithdrawScreen() {
               ) : (
                 <>
                   <Ionicons name="paper-plane-outline" size={18} color="#fff" />
-                  <Text style={styles.primaryButtonText}>{i18n.t('submitWithdrawRequest') || 'Submit Withdraw Request'}</Text>
+                  <Text style={styles.primaryButtonText}>
+                    {i18n.t('submitWithdrawRequest') || 'Submit Withdraw Request'}
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -667,9 +713,12 @@ export default function WithdrawScreen() {
           <View style={styles.historyCardWrap}>
             <View style={styles.historyHeader}>
               <View>
-                <Text style={styles.historyTitle}>{i18n.t('withdrawHistory') || 'Withdraw History'}</Text>
+                <Text style={styles.historyTitle}>
+                  {i18n.t('withdrawHistory') || 'Withdraw History'}
+                </Text>
                 <Text style={styles.historySub}>
-                  {i18n.t('trackYourRequests') || 'Track your pending, approved, or rejected requests'}
+                  {i18n.t('trackYourRequests') ||
+                    'Track your pending, approved, or rejected requests'}
                 </Text>
               </View>
             </View>
@@ -683,9 +732,12 @@ export default function WithdrawScreen() {
             ) : !withdrawHistoryQuery.data || withdrawHistoryQuery.data.length === 0 ? (
               <View style={styles.emptyBox}>
                 <Receipt size={28} color={UI.text3} />
-                <Text style={styles.emptyTitle}>{i18n.t('noWithdrawalsYet') || 'No withdrawals yet'}</Text>
+                <Text style={styles.emptyTitle}>
+                  {i18n.t('noWithdrawalsYet') || 'No withdrawals yet'}
+                </Text>
                 <Text style={styles.emptySub}>
-                  {i18n.t('withdrawHistoryEmptyDesc') || 'Your withdraw requests will appear here'}
+                  {i18n.t('withdrawHistoryEmptyDesc') ||
+                    'Your withdraw requests will appear here'}
                 </Text>
               </View>
             ) : (
@@ -709,7 +761,8 @@ export default function WithdrawScreen() {
                         </View>
                         <View>
                           <Text style={styles.historyMethodName}>
-                            {w.payment_method?.name || (i18n.t('paymentMethod') || 'Payment Method')}
+                            {w.payment_method?.name ||
+                              (i18n.t('paymentMethod') || 'Payment Method')}
                           </Text>
                           <Text style={styles.historyDate}>
                             {new Date(w.created_at).toLocaleDateString()}
@@ -718,39 +771,42 @@ export default function WithdrawScreen() {
                       </View>
 
                       <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-                        <Text style={[styles.statusBadgeText, { color: status.text }]}>{status.label}</Text>
+                        <Text style={[styles.statusBadgeText, { color: status.text }]}>
+                          {status.label}
+                        </Text>
                       </View>
                     </View>
 
                     <View style={styles.historyGrid}>
                       <View style={styles.historyMiniCard}>
-                        <Text style={styles.historyMiniLabel}>{i18n.t('amount') || 'Amount'}</Text>
+                        <Text style={styles.historyMiniLabel}>
+                          {i18n.t('amount') || 'Amount'}
+                        </Text>
                         <Text style={styles.historyMiniValue}>
                           {formatIQD(w.amount)} {i18n.t('iqdShort') || 'IQD'}
                         </Text>
                       </View>
 
                       <View style={styles.historyMiniCard}>
-                        <Text style={styles.historyMiniLabel}>{i18n.t('senderNumber') || 'Sender Number'}</Text>
+                        <Text style={styles.historyMiniLabel}>
+                          {i18n.t('senderNumber') || 'Account Number'}
+                        </Text>
                         <Text style={styles.historyMiniValue}>{w.sender_number || '-'}</Text>
                       </View>
                     </View>
 
                     <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>{i18n.t('senderName') || 'Sender Name'}</Text>
+                      <Text style={styles.infoLabel}>
+                        {i18n.t('senderName') || 'Account Holder Name'}
+                      </Text>
                       <Text style={styles.infoValue}>{w.sender_name || '-'}</Text>
                     </View>
 
-                    {!!w.payment_method?.account_number ? (
-                      <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>{i18n.t('bankNumber') || 'Bank Number'}</Text>
-                        <Text style={styles.infoValue}>{w.payment_method.account_number}</Text>
-                      </View>
-                    ) : null}
-
                     {!!w.note ? (
                       <View style={styles.noteBoxHistory}>
-                        <Text style={styles.noteTitleHistory}>{i18n.t('note') || 'Note'}</Text>
+                        <Text style={styles.noteTitleHistory}>
+                          {i18n.t('note') || 'Note'}
+                        </Text>
                         <Text style={styles.noteTextHistory}>{w.note}</Text>
                       </View>
                     ) : null}
@@ -764,11 +820,15 @@ export default function WithdrawScreen() {
                           setShowImageViewer(true);
                         }}
                       >
-                        <Image source={{ uri: w.receipt_image }} style={styles.historyReceiptImg} resizeMode="cover" />
+                        <Image
+                          source={{ uri: w.receipt_image }}
+                          style={styles.historyReceiptImg}
+                          resizeMode="cover"
+                        />
                         <View style={styles.historyReceiptOverlay}>
                           <Ionicons name="expand-outline" size={18} color="#fff" />
                           <Text style={styles.historyReceiptOverlayText}>
-                            {i18n.t('viewReceipt') || 'View Receipt'}
+                            {i18n.t('viewReceipt') || 'View Image'}
                           </Text>
                         </View>
                       </TouchableOpacity>
@@ -776,7 +836,9 @@ export default function WithdrawScreen() {
 
                     {String(w.status || '').toLowerCase() === 'rejected' && !!w.reject_reason ? (
                       <View style={styles.rejectBox}>
-                        <Text style={styles.rejectLabel}>{i18n.t('reason') || 'Reason'}:</Text>
+                        <Text style={styles.rejectLabel}>
+                          {i18n.t('reason') || 'Reason'}:
+                        </Text>
                         <Text style={styles.rejectText}>{w.reject_reason}</Text>
                       </View>
                     ) : null}
@@ -824,11 +886,12 @@ export default function WithdrawScreen() {
                       {i18n.t('noPaymentMethods') || 'No payment methods'}
                     </Text>
                     <Text style={styles.emptySub}>
-                      {i18n.t('noPaymentMethodsDesc') || 'Admin has not added any payment methods yet'}
+                      {i18n.t('noPaymentMethodsDesc') ||
+                        'Admin has not added any payment methods yet'}
                     </Text>
                   </View>
                 ) : (
-                  paymentMethodsQuery.data.map((method) => renderMethodCard(method, true))
+                  paymentMethodsQuery.data.map((method) => renderMethodListItem(method))
                 )}
               </ScrollView>
             </View>
@@ -1074,32 +1137,25 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: UI.text,
   },
-  selectorSubText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: UI.text2,
-    marginTop: 2,
-  },
 
-  methodCard: {
-    marginBottom: 14,
+  methodListItem: {
+    marginBottom: 12,
     borderRadius: 22,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: UI.border,
-    backgroundColor: '#FCFDFE',
-    padding: 14,
-  },
-  methodCardActive: {
-    borderColor: UI.green,
-    backgroundColor: '#F5FFFA',
-  },
-  methodTopRow: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
   },
-  methodLeft: {
+  methodListItemActive: {
+    borderColor: UI.green,
+    backgroundColor: '#F5FFFA',
+  },
+  methodListLeft: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1122,30 +1178,20 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   methodName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '900',
     color: UI.text,
   },
-  methodMeta: {
-    marginTop: 2,
-    fontSize: 12,
-    fontWeight: '700',
-    color: UI.text2,
-  },
-  methodNumber: {
-    marginTop: 2,
-    fontSize: 13,
-    fontWeight: '900',
-    color: UI.blue,
-  },
+
   radioOuter: {
-    width: 22,
-    height: 22,
+    width: 24,
+    height: 24,
     borderRadius: 999,
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: '#CBD5E1',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#fff',
   },
   radioOuterActive: {
     borderColor: UI.green,
@@ -1157,54 +1203,10 @@ const styles = StyleSheet.create({
     backgroundColor: UI.green,
   },
 
-  instructionsBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginTop: 12,
-    backgroundColor: UI.blueSoft,
-    borderRadius: 14,
-    padding: 12,
-  },
-  instructionsText: {
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '700',
-    color: UI.blue,
-  },
-
-  previewImagesRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
-  },
-  previewImageCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: UI.border,
-    borderRadius: 16,
-    padding: 8,
-  },
-  previewImage: {
-    width: '100%',
-    height: 110,
-    borderRadius: 12,
-    backgroundColor: '#F1F5F9',
-  },
-  previewLabel: {
-    textAlign: 'center',
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '800',
-    color: UI.text2,
-  },
-
   amountWrap: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   amountInput: {
     flex: 1,
@@ -1237,6 +1239,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
     color: UI.green,
+  },
+
+  limitBox: {
+    marginBottom: 14,
+    backgroundColor: UI.warningSoft,
+    borderRadius: 14,
+    padding: 12,
+  },
+  limitText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#92400E',
+    lineHeight: 18,
   },
 
   grid2: {
