@@ -467,17 +467,11 @@ export default function WithdrawScreen() {
               <Text style={styles.headerBack}>{i18n.t('back')}</Text>
             </TouchableOpacity>
 
-            <Text style={styles.headerTitle}>{i18n.t('withdraw')}</Text>
+            <View style={styles.headerTitleWrap}>
+              <Text style={styles.headerTitle}>{i18n.t('withdraw')}</Text>
+            </View>
 
-            <TouchableOpacity
-              style={styles.headerHistoryBtn}
-              activeOpacity={0.85}
-              onPress={() => {
-                // keep simple on same page
-              }}
-            >
-              <Receipt size={18} color={UI.blue} />
-            </TouchableOpacity>
+            <View style={styles.headerRightSpace} />
           </View>
 
           <View style={styles.heroCard}>
@@ -884,34 +878,39 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     marginBottom: 14,
+    position: 'relative',
+    minHeight: 44,
   },
   headerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
     width: 90,
+    zIndex: 2,
   },
   headerBack: {
     fontSize: 14,
     fontWeight: '800',
     color: UI.text,
   },
+  headerTitleWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none',
+  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '900',
     color: UI.text,
+    textAlign: 'center',
   },
-  headerHistoryBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: UI.card,
-    borderWidth: 1,
-    borderColor: UI.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+  headerRightSpace: {
+    width: 90,
+    marginLeft: 'auto',
   },
 
   heroCard: {
