@@ -1,5 +1,7 @@
 {
   "home": "سەرەکی",
+  "minimumWithdrawAmount": "کەمترین بڕی راکێشان",
+  "maximumWithdrawAmount": "زۆرترین بڕی راکێشان",
   "one_card_inline": "کارتی ڤێرتواڵەکەت چالاکە. تەنها دەتوانی یەک کارت هەبیت.",
   "unknownUser": "بەکارهێنەری نەناسراو",
   "iqdShort": "د.ع",
