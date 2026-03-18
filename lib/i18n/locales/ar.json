@@ -1,5 +1,7 @@
 {
   "home": "الرئيسية",
+  "minimumWithdrawAmount": "الحد الأدنى للسحب",
+  "maximumWithdrawAmount": "الحد الأقصى للسحب",
   "one_card_inline": "بطاقتك الافتراضية فعالة. يمكنك امتلاك بطاقة واحدة فقط.",
   "unknownUser": "مستخدم غير معروف",
   "iqdShort": "د.ع",
