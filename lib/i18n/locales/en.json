@@ -1,5 +1,7 @@
 {
   "home": "Home",
+  "minimumWithdrawAmount": "Minimum withdrawal amount",
+  "maximumWithdrawAmount": "Maximum withdrawal amount",
   "send": "Send",
   "common": {
     "ok": "OK",
