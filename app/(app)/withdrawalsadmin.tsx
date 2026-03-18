@@ -227,87 +227,31 @@ export default function WithdrawalsAdminScreen() {
     };
   }, [withdrawalsQuery.data]);
 
-  const sendApprovedEmail = async (order: WithdrawAdminItem) => {
-    if (!order?.profiles?.email) return;
+  const sendWithdrawStatusEmail = async (
+  order: WithdrawAdminItem,
+  status: 'approved' | 'rejected' | 'pending',
+  reason?: string
+) => {
+  if (!order?.profiles?.email) return;
 
-    await supabase.functions.invoke('send-withdraw-approved-email', {
-      body: {
-        to: order.profiles.email,
-        customer_name: order.profiles.full_name || 'User',
-        amount_iqd: Number(order.amount || 0),
-        payment_method: order.payment_method?.name || '',
-        order_id: order.id,
-        status: 'approved',
-      },
-    });
-  };
-
-  const sendRejectedEmail = async (order: WithdrawAdminItem, reason?: string) => {
-    if (!order?.profiles?.email) return;
-
-    await supabase.functions.invoke('send-withdraw-rejected-email', {
-      body: {
-        to: order.profiles.email,
-        customer_name: order.profiles.full_name || 'User',
-        amount_iqd: Number(order.amount || 0),
-        payment_method: order.payment_method?.name || '',
-        order_id: order.id,
-        status: 'rejected',
-        reject_reason: reason || '',
-      },
-    });
-  };
-
-  const updateWithdrawMutation = useMutation({
-    mutationFn: async ({
-      order,
+  const { error } = await supabase.functions.invoke('send-withdraw-status-email', {
+    body: {
+      to: order.profiles.email,
+      customer_name: order.profiles.full_name || 'User',
+      amount_iqd: Number(order.amount || 0),
+      payment_method: order.payment_method?.name || '',
+      order_id: order.id,
       status,
-      reject_reason,
-    }: {
-      order: WithdrawAdminItem;
-      status: 'approved' | 'rejected' | 'pending';
-      reject_reason?: string | null;
-    }) => {
-      const payload: Record<string, any> = {
-        status,
-      };
-
-      if (status === 'rejected') {
-        payload.reject_reason = reject_reason?.trim() || 'Rejected by admin';
-      } else {
-        payload.reject_reason = null;
-      }
-
-      const { error } = await supabase
-        .from('withdraw_orders')
-        .update(payload)
-        .eq('id', order.id);
-
-      if (error) throw error;
-
-      if (status === 'approved') {
-        try {
-          await sendApprovedEmail(order);
-        } catch {}
-      }
-
-      if (status === 'rejected') {
-        try {
-          await sendRejectedEmail(order, payload.reject_reason);
-        } catch {}
-      }
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
-      setSelectedRejectId(null);
-      setRejectReason('');
-      Alert.alert('Success', `Withdrawal ${variables.status} successfully`);
-    },
-    onError: (error: any) => {
-      Alert.alert('Error', error?.message || 'Something went wrong');
+      reject_reason: reason || '',
     },
   });
 
+  if (error) {
+    throw new Error(error.message || 'Failed to send status email');
+  }
+};
+
+  
   const pendingActionId =
     updateWithdrawMutation.variables?.order?.id && updateWithdrawMutation.isPending
       ? updateWithdrawMutation.variables.order.id
