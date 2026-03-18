@@ -319,16 +319,11 @@ export default function WithdrawScreen() {
         throw new Error(i18n.t('enterAmount') || 'Enter amount');
       }
       if (!senderName.trim()) {
-        throw new Error(
-          i18n.t('enterReceiveName') || 'Please enter receiver name'
-        );
+        throw new Error(i18n.t('enterReceiveName') || 'Please enter receiver name');
       }
       if (!senderNumber.trim()) {
-        throw new Error(
-          i18n.t('enterReceiveNumber') || 'Please enter receiver number'
-        );
+        throw new Error(i18n.t('enterReceiveNumber') || 'Please enter receiver number');
       }
-     
 
       const amountNum = parseIQDInput(amount);
 
@@ -363,21 +358,10 @@ export default function WithdrawScreen() {
           `${i18n.t('insufficientBalance') || 'Insufficient balance'}\n${formatIQD(walletQuery.data.balance || 0)} ${i18n.t('iqdShort') || 'IQD'}`
         );
       }
-     const { error } = await supabase.from('withdraw_orders').insert({
-  user_id: user.id,
-  amount: amountNum,
-  currency: 'IQD',
-  payment_method_id: selectedMethod.id,
-  destination: senderNumber.trim(),
-  sender_name: senderName.trim(),
-  sender_number: senderNumber.trim(),
-  note: note.trim() || null,
-  receipt_image: receiptUrl,
-  status: 'pending',
-});
+
       const receiptUrl = receiptImage
-  ? await uploadReceiptToStorage(receiptImage)
-  : null;
+        ? await uploadReceiptToStorage(receiptImage)
+        : null;
 
       const { error } = await supabase.from('withdraw_orders').insert({
         user_id: user.id,
@@ -622,9 +606,7 @@ export default function WithdrawScreen() {
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder={
-                    i18n.t('enterReceiveName') || 'Enter receive name'
-                  }
+                  placeholder={i18n.t('enterReceiveName') || 'Enter receive name'}
                   placeholderTextColor={UI.text3}
                   value={senderName}
                   onChangeText={setSenderName}
@@ -637,9 +619,7 @@ export default function WithdrawScreen() {
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder={
-                    i18n.t('enterReceiveNumber') || 'Enter receive number'
-                  }
+                  placeholder={i18n.t('enterReceiveNumber') || 'Enter receive number'}
                   placeholderTextColor={UI.text3}
                   value={senderNumber}
                   onChangeText={setSenderNumber}
@@ -660,9 +640,13 @@ export default function WithdrawScreen() {
             />
 
             <Text style={styles.label}>
-              {i18n.t('uploadQrCodeTitle') || 'Upload QR Code'}
+              {i18n.t('uploadQrCodeTitle') || 'Upload QR Code (optional)'}
             </Text>
-            <TouchableOpacity style={styles.uploadCard} activeOpacity={0.92} onPress={pickReceiptImage}>
+            <TouchableOpacity
+              style={styles.uploadCard}
+              activeOpacity={0.92}
+              onPress={pickReceiptImage}
+            >
               {receiptImage ? (
                 <>
                   <Image source={{ uri: receiptImage }} style={styles.uploadPreview} resizeMode="cover" />
