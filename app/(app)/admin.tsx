@@ -18,6 +18,7 @@ import {
   CreditCard,
   ClipboardList,
   Gift,
+  Landmark,
 } from 'lucide-react-native';
 
 export const options = { headerShown: false };
@@ -176,6 +177,14 @@ export default function AdminScreen() {
             onPress={() => router.push('/admin-gift-card' as any)}
             icon={<Gift size={18} color={UI.gold} />}
             tone="gold"
+          />
+
+          <MenuItem
+            label="Payment Methods"
+            subLabel="Banks, QR codes and withdraw methods"
+            onPress={() => router.push('/admin-payment-methods' as any)}
+            icon={<Landmark size={18} color={UI.blue} />}
+            tone="blue"
           />
 
           <MenuItem
