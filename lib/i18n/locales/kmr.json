@@ -1,5 +1,7 @@
 {
   "home": "مال",
+  "minimumWithdrawAmount": "کەمترین بڕی راکێشان",
+  "maximumWithdrawAmount": "زۆرترین بڕی راکێشان",
   "send": "هنارتن",
   "one_card_inline": "کارتا ڤێرتواڵا تە چالاکە. تۆ تنێ دشی ئێک کارت دروست بکەی.",
   "unknownUser": "بەکارهێنەرێ نەناس",
