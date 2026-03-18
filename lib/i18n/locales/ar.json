@@ -1,5 +1,11 @@
 {
   "home": "الرئيسية",
+  "receiveName": "اسم المستلم",
+  "receiveNumber": "رقم المستلم",
+  "transactionReceipt": "رمز QR المرفوع",
+  "noReceiptImageUploaded": "لم يتم رفع رمز QR",
+  "qrCodeUploaded": "تم رفع رمز QR",
+  "viewFullScreen": "عرض بالحجم الكامل",
   "depositMoney": "إيداع الأموال",
   "accountBalance": "رصيد الحساب",
   "depositPageSubtitle": "أنشئ طلب إيداع لإضافة الأموال",
