@@ -328,11 +328,7 @@ export default function WithdrawScreen() {
           i18n.t('enterReceiveNumber') || 'Please enter receiver number'
         );
       }
-      if (!receiptImage) {
-        throw new Error(
-          i18n.t('uploadQrCode') || 'Upload your QR code payment'
-        );
-      }
+     
 
       const amountNum = parseIQDInput(amount);
 
@@ -367,8 +363,21 @@ export default function WithdrawScreen() {
           `${i18n.t('insufficientBalance') || 'Insufficient balance'}\n${formatIQD(walletQuery.data.balance || 0)} ${i18n.t('iqdShort') || 'IQD'}`
         );
       }
-
-      const receiptUrl = await uploadReceiptToStorage(receiptImage);
+     const { error } = await supabase.from('withdraw_orders').insert({
+  user_id: user.id,
+  amount: amountNum,
+  currency: 'IQD',
+  payment_method_id: selectedMethod.id,
+  destination: senderNumber.trim(),
+  sender_name: senderName.trim(),
+  sender_number: senderNumber.trim(),
+  note: note.trim() || null,
+  receipt_image: receiptUrl,
+  status: 'pending',
+});
+      const receiptUrl = receiptImage
+  ? await uploadReceiptToStorage(receiptImage)
+  : null;
 
       const { error } = await supabase.from('withdraw_orders').insert({
         user_id: user.id,
