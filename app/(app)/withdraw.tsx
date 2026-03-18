@@ -263,11 +263,10 @@ export default function WithdrawScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.9,
-        aspect: [4, 5],
-      });
+  mediaTypes: ['images'],
+  allowsEditing: false,
+  quality: 1,
+});
 
       if (!result.canceled && result.assets?.[0]?.uri) {
         setReceiptImage(result.assets[0].uri);
@@ -649,7 +648,7 @@ export default function WithdrawScreen() {
             >
               {receiptImage ? (
                 <>
-                  <Image source={{ uri: receiptImage }} style={styles.uploadPreview} resizeMode="cover" />
+                  <Image source={{ uri: receiptImage }} style={styles.uploadPreview} resizeMode="contain" />
                   <View style={styles.uploadOverlay}>
                     <Text style={styles.uploadOverlayText}>
                       {i18n.t('changeImage') || 'Change Image'}
@@ -1314,9 +1313,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   uploadPreview: {
-    width: '100%',
-    height: '100%',
-  },
+  width: '100%',
+  height: '100%',
+  backgroundColor: '#F8FAFC', // 👈 ئەمە زیاد بکە
+},
   uploadOverlay: {
     position: 'absolute',
     left: 10,
