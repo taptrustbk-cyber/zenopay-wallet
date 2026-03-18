@@ -11,6 +11,10 @@ import {
   Modal,
   TextInput,
   RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
@@ -86,7 +90,7 @@ type WithdrawAdminItem = {
     country?: string | null;
   } | null;
   payment_method?: {
-    id?: string;
+    id?: string | null;
     name?: string | null;
     account_name?: string | null;
     account_number?: string | null;
@@ -355,6 +359,7 @@ export default function WithdrawalsAdminScreen() {
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
       queryClient.invalidateQueries({ queryKey: ['withdraw_orders'] });
 
+      Keyboard.dismiss();
       setSelectedRejectId(null);
       setRejectReason('');
 
@@ -403,7 +408,11 @@ export default function WithdrawalsAdminScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerLeftBtn} onPress={() => router.push('/admin')} activeOpacity={0.9}>
+        <TouchableOpacity
+          style={styles.headerLeftBtn}
+          onPress={() => router.push('/admin')}
+          activeOpacity={0.9}
+        >
           <Home size={18} color={UI.text} />
         </TouchableOpacity>
 
@@ -412,7 +421,11 @@ export default function WithdrawalsAdminScreen() {
           <Text style={styles.headerSub}>Manage all withdrawal requests</Text>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={() => signOut()} activeOpacity={0.9}>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={() => signOut()}
+          activeOpacity={0.9}
+        >
           <LogOut size={16} color="#fff" />
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
@@ -420,6 +433,7 @@ export default function WithdrawalsAdminScreen() {
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={withdrawalsQuery.isRefetching}
@@ -521,7 +535,7 @@ export default function WithdrawalsAdminScreen() {
                 <View style={styles.detailRow}>
                   <View style={styles.detailLeft}>
                     <User size={15} color={UI.blue} />
-                    <Text style={styles.detailLabel}>Sender Name</Text>
+                    <Text style={styles.detailLabel}>Receive Name</Text>
                   </View>
                   <Text style={styles.detailValue}>{order.sender_name || '-'}</Text>
                 </View>
@@ -529,7 +543,7 @@ export default function WithdrawalsAdminScreen() {
                 <View style={styles.detailRow}>
                   <View style={styles.detailLeft}>
                     <Phone size={15} color={UI.blue} />
-                    <Text style={styles.detailLabel}>Sender Number</Text>
+                    <Text style={styles.detailLabel}>Receive Number</Text>
                   </View>
                   <Text style={styles.detailValue}>{order.sender_number || '-'}</Text>
                 </View>
@@ -561,7 +575,7 @@ export default function WithdrawalsAdminScreen() {
 
                 {!!order.receipt_image ? (
                   <View style={styles.imageSection}>
-                    <Text style={styles.sectionSmallTitle}>Transaction Receipt</Text>
+                    <Text style={styles.sectionSmallTitle}>QR Code Uploaded</Text>
 
                     <TouchableOpacity
                       style={styles.receiptWrap}
@@ -571,7 +585,11 @@ export default function WithdrawalsAdminScreen() {
                         setViewerVisible(true);
                       }}
                     >
-                      <Image source={{ uri: order.receipt_image }} style={styles.receiptImg} resizeMode="cover" />
+                      <Image
+                        source={{ uri: order.receipt_image }}
+                        style={styles.receiptImg}
+                        resizeMode="cover"
+                      />
                       <View style={styles.receiptOverlay}>
                         <Eye size={16} color="#fff" />
                         <Text style={styles.receiptOverlayText}>View Full Screen</Text>
@@ -581,7 +599,7 @@ export default function WithdrawalsAdminScreen() {
                 ) : (
                   <View style={styles.noImageBox}>
                     <ImageIcon size={18} color={UI.text3} />
-                    <Text style={styles.noImageText}>No receipt image uploaded</Text>
+                    <Text style={styles.noImageText}>No QR code uploaded</Text>
                   </View>
                 )}
 
@@ -597,12 +615,13 @@ export default function WithdrawalsAdminScreen() {
                     style={[styles.actionBtn, styles.pendingBtn]}
                     activeOpacity={0.9}
                     disabled={isUpdatingThis}
-                    onPress={() =>
+                    onPress={() => {
+                      Keyboard.dismiss();
                       updateWithdrawMutation.mutate({
                         order,
                         status: 'pending',
-                      })
-                    }
+                      });
+                    }}
                   >
                     {isUpdatingThis && updateWithdrawMutation.variables?.status === 'pending' ? (
                       <ActivityIndicator color="#fff" size="small" />
@@ -618,12 +637,13 @@ export default function WithdrawalsAdminScreen() {
                     style={[styles.actionBtn, styles.approveBtn]}
                     activeOpacity={0.9}
                     disabled={isUpdatingThis}
-                    onPress={() =>
+                    onPress={() => {
+                      Keyboard.dismiss();
                       updateWithdrawMutation.mutate({
                         order,
                         status: 'approved',
-                      })
-                    }
+                      });
+                    }}
                   >
                     {isUpdatingThis && updateWithdrawMutation.variables?.status === 'approved' ? (
                       <ActivityIndicator color="#fff" size="small" />
@@ -640,6 +660,7 @@ export default function WithdrawalsAdminScreen() {
                     activeOpacity={0.9}
                     disabled={isUpdatingThis}
                     onPress={() => {
+                      Keyboard.dismiss();
                       setSelectedRejectId(order.id);
                       setRejectReason(order.reject_reason || '');
                     }}
@@ -659,62 +680,84 @@ export default function WithdrawalsAdminScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => {
+          Keyboard.dismiss();
           setSelectedRejectId(null);
           setRejectReason('');
         }}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.rejectModal}>
-            <Text style={styles.rejectModalTitle}>Reject withdrawal</Text>
-            <Text style={styles.rejectModalSub}>Write reason for user email and admin record</Text>
-
-            <TextInput
-              value={rejectReason}
-              onChangeText={setRejectReason}
-              placeholder="Write reject reason..."
-              placeholderTextColor={UI.text3}
-              multiline
-              textAlignVertical="top"
-              style={styles.rejectInput}
-            />
-
-            <View style={styles.rejectModalActions}>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.modalCancelBtn]}
-                activeOpacity={0.9}
-                onPress={() => {
-                  setSelectedRejectId(null);
-                  setRejectReason('');
-                }}
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => Keyboard.dismiss()}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalKeyboardWrap}
+          >
+            <Pressable style={styles.rejectModal} onPress={() => {}}>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.rejectModalScroll}
               >
-                <Text style={styles.modalCancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
+                <Text style={styles.rejectModalTitle}>Reject withdrawal</Text>
+                <Text style={styles.rejectModalSub}>
+                  Write reason for user email and admin record
+                </Text>
 
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.modalRejectBtn]}
-                activeOpacity={0.9}
-                disabled={updateWithdrawMutation.isPending}
-                onPress={() => {
-                  const order = withdrawalsQuery.data?.find((x) => x.id === selectedRejectId);
-                  if (!order) return;
+                <TextInput
+                  value={rejectReason}
+                  onChangeText={setRejectReason}
+                  placeholder="Write reject reason..."
+                  placeholderTextColor={UI.text3}
+                  multiline
+                  textAlignVertical="top"
+                  style={styles.rejectInput}
+                  returnKeyType="done"
+                  blurOnSubmit
+                  onSubmitEditing={() => Keyboard.dismiss()}
+                />
 
-                  updateWithdrawMutation.mutate({
-                    order,
-                    status: 'rejected',
-                    reject_reason: rejectReason,
-                  });
-                }}
-              >
-                {updateWithdrawMutation.isPending &&
-                updateWithdrawMutation.variables?.status === 'rejected' ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.modalRejectBtnText}>Confirm Reject</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+                <View style={styles.rejectModalActions}>
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.modalCancelBtn]}
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setSelectedRejectId(null);
+                      setRejectReason('');
+                    }}
+                  >
+                    <Text style={styles.modalCancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.modalRejectBtn]}
+                    activeOpacity={0.9}
+                    disabled={updateWithdrawMutation.isPending}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      const order = withdrawalsQuery.data?.find((x) => x.id === selectedRejectId);
+                      if (!order) return;
+
+                      updateWithdrawMutation.mutate({
+                        order,
+                        status: 'rejected',
+                        reject_reason: rejectReason,
+                      });
+                    }}
+                  >
+                    {updateWithdrawMutation.isPending &&
+                    updateWithdrawMutation.variables?.status === 'rejected' ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={styles.modalRejectBtnText}>Confirm Reject</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
       </Modal>
 
       <Modal
@@ -1159,12 +1202,22 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
 
+  modalKeyboardWrap: {
+    width: '100%',
+    justifyContent: 'flex-end',
+  },
+
   rejectModal: {
     backgroundColor: UI.card,
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
     padding: 18,
     paddingBottom: 28,
+    maxHeight: '86%',
+  },
+
+  rejectModalScroll: {
+    paddingBottom: 6,
   },
 
   rejectModalTitle: {
