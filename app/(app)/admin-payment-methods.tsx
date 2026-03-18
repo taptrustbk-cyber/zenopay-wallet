@@ -14,6 +14,8 @@ import {
   Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -33,12 +35,16 @@ import {
   Save,
   X,
   ArrowUpDown,
+  Upload,
+  Wallet,
+  ArrowDownToLine,
 } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export const options = { headerShown: false };
 
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
+const PAYMENT_METHODS_BUCKET = 'payment-method-assets';
 
 const UI = {
   bg: '#F8FAFC',
@@ -61,8 +67,13 @@ const UI = {
   amber: '#F59E0B',
   amberSoft: '#FEF3C7',
 
+  purple: '#7C3AED',
+  purpleSoft: '#EDE9FE',
+
   shadow: 'rgba(15, 23, 42, 0.08)',
 };
+
+type MethodType = 'withdraw' | 'deposit';
 
 type PaymentMethodItem = {
   id: string;
@@ -74,6 +85,7 @@ type PaymentMethodItem = {
   logo_url?: string | null;
   is_active?: boolean | null;
   sort_order?: number | null;
+  method_type?: MethodType | null;
   created_at?: string | null;
 };
 
@@ -84,6 +96,8 @@ export default function AdminPaymentMethodsScreen() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  const [activeTab, setActiveTab] = useState<MethodType>('withdraw');
 
   const [modalVisible, setModalVisible] = useState(false);
   const [viewerVisible, setViewerVisible] = useState(false);
@@ -99,6 +113,10 @@ export default function AdminPaymentMethodsScreen() {
   const [qrImage, setQrImage] = useState('');
   const [sortOrder, setSortOrder] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [methodType, setMethodType] = useState<MethodType>('withdraw');
+
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingQr, setUploadingQr] = useState(false);
 
   const isAdmin = !!user && ADMIN_EMAILS.includes(user.email || '');
 
@@ -117,6 +135,7 @@ export default function AdminPaymentMethodsScreen() {
           logo_url,
           is_active,
           sort_order,
+          method_type,
           created_at
         `)
         .order('sort_order', { ascending: true, nullsFirst: false })
@@ -128,10 +147,19 @@ export default function AdminPaymentMethodsScreen() {
     enabled: isAdmin,
   });
 
+  const filteredMethods = useMemo(() => {
+    const all = methodsQuery.data || [];
+    return all.filter((item) => (item.method_type || 'withdraw') === activeTab);
+  }, [methodsQuery.data, activeTab]);
+
   const stats = useMemo(() => {
     const list = methodsQuery.data || [];
+    const withdrawList = list.filter((x) => (x.method_type || 'withdraw') === 'withdraw');
+    const depositList = list.filter((x) => (x.method_type || 'withdraw') === 'deposit');
+
     return {
-      all: list.length,
+      withdrawAll: withdrawList.length,
+      depositAll: depositList.length,
       active: list.filter((x) => x.is_active).length,
       inactive: list.filter((x) => !x.is_active).length,
     };
@@ -147,10 +175,12 @@ export default function AdminPaymentMethodsScreen() {
     setQrImage('');
     setSortOrder('');
     setIsActive(true);
+    setMethodType(activeTab);
   };
 
   const openCreateModal = () => {
     resetForm();
+    setMethodType(activeTab);
     setModalVisible(true);
   };
 
@@ -168,12 +198,94 @@ export default function AdminPaymentMethodsScreen() {
         : String(item.sort_order)
     );
     setIsActive(!!item.is_active);
+    setMethodType((item.method_type || 'withdraw') as MethodType);
     setModalVisible(true);
+  };
+
+  const uploadImageToBucket = async (localUri: string, folder: 'logos' | 'qrs') => {
+    const ext = localUri.split('.').pop()?.toLowerCase() || 'jpg';
+    const fileName = `${folder}/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${ext}`;
+
+    const base64 = await FileSystem.readAsStringAsync(localUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    const contentType =
+      ext === 'png'
+        ? 'image/png'
+        : ext === 'webp'
+        ? 'image/webp'
+        : 'image/jpeg';
+
+    const { error: uploadError } = await supabase.storage
+      .from(PAYMENT_METHODS_BUCKET)
+      .upload(fileName, decode(base64), {
+        contentType,
+        upsert: true,
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage.from(PAYMENT_METHODS_BUCKET).getPublicUrl(fileName);
+
+    return data.publicUrl;
+  };
+
+  const pickAndUploadImage = async (type: 'logo' | 'qr') => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permission needed', 'Please allow photo library permission.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.9,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      const localUri = result.assets[0].uri;
+
+      if (type === 'logo') setUploadingLogo(true);
+      else setUploadingQr(true);
+
+      const publicUrl = await uploadImageToBucket(
+        localUri,
+        type === 'logo' ? 'logos' : 'qrs'
+      );
+
+      if (type === 'logo') setLogoUrl(publicUrl);
+      else setQrImage(publicUrl);
+
+      Alert.alert('Success', type === 'logo' ? 'Bank image uploaded' : 'QR image uploaded');
+    } catch (error: any) {
+      Alert.alert('Upload Error', error?.message || 'Failed to upload image');
+    } finally {
+      if (type === 'logo') setUploadingLogo(false);
+      else setUploadingQr(false);
+    }
   };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error('Bank / payment method name is required');
+
+      if (!logoUrl?.trim()) {
+        throw new Error('Bank image is required');
+      }
+
+      if (methodType === 'deposit' && !accountName.trim()) {
+        throw new Error('Account name is required for deposit');
+      }
+
+      if (methodType === 'deposit' && !accountNumber.trim()) {
+        throw new Error('Account number is required for deposit');
+      }
 
       const payload = {
         name: name.trim(),
@@ -184,6 +296,7 @@ export default function AdminPaymentMethodsScreen() {
         qr_image: qrImage.trim() || null,
         sort_order: sortOrder.trim() ? Number(sortOrder) : 0,
         is_active: !!isActive,
+        method_type: methodType,
       };
 
       if (editingItem?.id) {
@@ -203,7 +316,10 @@ export default function AdminPaymentMethodsScreen() {
       queryClient.invalidateQueries({ queryKey: ['admin-payment-methods'] });
       setModalVisible(false);
       resetForm();
-      Alert.alert('Success', editingItem ? 'Payment method updated' : 'Payment method created');
+      Alert.alert(
+        'Success',
+        editingItem ? 'Payment method updated' : 'Payment method created'
+      );
     },
     onError: (error: any) => {
       Alert.alert('Error', error?.message || 'Failed to save payment method');
@@ -212,10 +328,7 @@ export default function AdminPaymentMethodsScreen() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('payment_methods')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('payment_methods').delete().eq('id', id);
 
       if (error) throw error;
     },
@@ -276,7 +389,7 @@ export default function AdminPaymentMethodsScreen() {
 
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={styles.headerTitle}>Payment Methods</Text>
-          <Text style={styles.headerSub}>Manage banks and withdraw methods</Text>
+          <Text style={styles.headerSub}>Manage Withdraw and Deposit methods</Text>
         </View>
 
         <TouchableOpacity
@@ -300,33 +413,79 @@ export default function AdminPaymentMethodsScreen() {
           />
         }
       >
-        <View style={styles.topActions}>
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{stats.all}</Text>
-              <Text style={styles.statLabel}>All</Text>
-            </View>
-
-            <View style={styles.statCard}>
-              <Text style={[styles.statValue, { color: UI.green }]}>{stats.active}</Text>
-              <Text style={styles.statLabel}>Active</Text>
-            </View>
-
-            <View style={styles.statCard}>
-              <Text style={[styles.statValue, { color: UI.red }]}>{stats.inactive}</Text>
-              <Text style={styles.statLabel}>Inactive</Text>
-            </View>
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{stats.withdrawAll}</Text>
+            <Text style={styles.statLabel}>Withdraw</Text>
           </View>
 
+          <View style={styles.statCard}>
+            <Text style={[styles.statValue, { color: UI.purple }]}>{stats.depositAll}</Text>
+            <Text style={styles.statLabel}>Deposit</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <Text style={[styles.statValue, { color: UI.green }]}>{stats.active}</Text>
+            <Text style={styles.statLabel}>Active</Text>
+          </View>
+        </View>
+
+        <View style={styles.tabRow}>
           <TouchableOpacity
-            style={styles.addBtn}
-            activeOpacity={0.92}
-            onPress={openCreateModal}
+            style={[
+              styles.tabBtn,
+              activeTab === 'withdraw' && { backgroundColor: UI.blue, borderColor: UI.blue },
+            ]}
+            activeOpacity={0.9}
+            onPress={() => setActiveTab('withdraw')}
           >
-            <Plus size={16} color="#fff" />
-            <Text style={styles.addBtnText}>Add Method</Text>
+            <ArrowDownToLine
+              size={16}
+              color={activeTab === 'withdraw' ? '#fff' : UI.text}
+            />
+            <Text
+              style={[
+                styles.tabBtnText,
+                { color: activeTab === 'withdraw' ? '#fff' : UI.text },
+              ]}
+            >
+              Withdraw
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.tabBtn,
+              activeTab === 'deposit' && { backgroundColor: UI.purple, borderColor: UI.purple },
+            ]}
+            activeOpacity={0.9}
+            onPress={() => setActiveTab('deposit')}
+          >
+            <Wallet size={16} color={activeTab === 'deposit' ? '#fff' : UI.text} />
+            <Text
+              style={[
+                styles.tabBtnText,
+                { color: activeTab === 'deposit' ? '#fff' : UI.text },
+              ]}
+            >
+              Deposit
+            </Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          style={[
+            styles.addBtn,
+            { backgroundColor: activeTab === 'withdraw' ? UI.blue : UI.purple },
+          ]}
+          activeOpacity={0.92}
+          onPress={openCreateModal}
+        >
+          <Plus size={16} color="#fff" />
+          <Text style={styles.addBtnText}>
+            {activeTab === 'withdraw' ? 'Add Withdraw Bank' : 'Add Deposit Method'}
+          </Text>
+        </TouchableOpacity>
 
         {methodsQuery.isLoading ? (
           <View style={styles.loaderWrap}>
@@ -338,14 +497,22 @@ export default function AdminPaymentMethodsScreen() {
               {(methodsQuery.error as any)?.message || 'Failed to load payment methods'}
             </Text>
           </View>
-        ) : !methodsQuery.data || methodsQuery.data.length === 0 ? (
+        ) : filteredMethods.length === 0 ? (
           <View style={styles.emptyBox}>
             <Landmark size={28} color={UI.text3} />
-            <Text style={styles.emptyTitle}>No payment methods</Text>
-            <Text style={styles.emptySub}>Add your first bank or payment method</Text>
+            <Text style={styles.emptyTitle}>
+              {activeTab === 'withdraw'
+                ? 'No withdraw banks'
+                : 'No deposit methods'}
+            </Text>
+            <Text style={styles.emptySub}>
+              {activeTab === 'withdraw'
+                ? 'Add bank name and bank image for withdraw page'
+                : 'Add bank details and QR for deposit / receive page'}
+            </Text>
           </View>
         ) : (
-          methodsQuery.data.map((item) => (
+          filteredMethods.map((item) => (
             <View key={item.id} style={styles.card}>
               <View style={styles.topRow}>
                 <View style={styles.cardLeft}>
@@ -360,7 +527,9 @@ export default function AdminPaymentMethodsScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cardTitle}>{item.name || 'Unknown'}</Text>
                     <Text style={styles.cardSubtitle}>
-                      {item.account_name || 'No account name'}
+                      {item.method_type === 'deposit'
+                        ? item.account_name || 'No account name'
+                        : 'Withdraw bank'}
                     </Text>
                   </View>
                 </View>
@@ -389,8 +558,10 @@ export default function AdminPaymentMethodsScreen() {
 
               <View style={styles.infoGrid}>
                 <View style={styles.infoMiniCard}>
-                  <Text style={styles.infoMiniLabel}>Account Number</Text>
-                  <Text style={styles.infoMiniValue}>{item.account_number || '-'}</Text>
+                  <Text style={styles.infoMiniLabel}>Type</Text>
+                  <Text style={styles.infoMiniValue}>
+                    {(item.method_type || 'withdraw').toUpperCase()}
+                  </Text>
                 </View>
 
                 <View style={styles.infoMiniCard}>
@@ -403,9 +574,38 @@ export default function AdminPaymentMethodsScreen() {
                 </View>
               </View>
 
+              {item.method_type === 'deposit' ? (
+                <View style={styles.infoGrid}>
+                  <View style={styles.infoMiniCard}>
+                    <Text style={styles.infoMiniLabel}>Account Name</Text>
+                    <Text style={styles.infoMiniValue}>{item.account_name || '-'}</Text>
+                  </View>
+
+                  <View style={styles.infoMiniCard}>
+                    <Text style={styles.infoMiniLabel}>Account Number</Text>
+                    <Text style={styles.infoMiniValue}>{item.account_number || '-'}</Text>
+                  </View>
+                </View>
+              ) : null}
+
               {!!item.instructions ? (
-                <View style={styles.noteBox}>
-                  <Text style={styles.noteTitle}>Instructions</Text>
+                <View
+                  style={[
+                    styles.noteBox,
+                    {
+                      backgroundColor:
+                        item.method_type === 'deposit' ? UI.purpleSoft : UI.blueSoft,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.noteTitle,
+                      { color: item.method_type === 'deposit' ? UI.purple : UI.blue },
+                    ]}
+                  >
+                    Instructions
+                  </Text>
                   <Text style={styles.noteText}>{item.instructions}</Text>
                 </View>
               ) : null}
@@ -434,28 +634,30 @@ export default function AdminPaymentMethodsScreen() {
                   )}
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.previewCard}
-                  activeOpacity={0.92}
-                  onPress={() => {
-                    if (!item.qr_image) return;
-                    setViewerImage(item.qr_image);
-                    setViewerVisible(true);
-                  }}
-                >
-                  <View style={styles.previewTop}>
-                    <QrCode size={16} color={UI.green} />
-                    <Text style={styles.previewTitle}>QR Image</Text>
-                  </View>
-
-                  {isLikelyUrl(item.qr_image) ? (
-                    <Image source={{ uri: item.qr_image! }} style={styles.previewImg} />
-                  ) : (
-                    <View style={styles.previewEmpty}>
-                      <Text style={styles.previewEmptyText}>No QR</Text>
+                {item.method_type === 'deposit' ? (
+                  <TouchableOpacity
+                    style={styles.previewCard}
+                    activeOpacity={0.92}
+                    onPress={() => {
+                      if (!item.qr_image) return;
+                      setViewerImage(item.qr_image);
+                      setViewerVisible(true);
+                    }}
+                  >
+                    <View style={styles.previewTop}>
+                      <QrCode size={16} color={UI.green} />
+                      <Text style={styles.previewTitle}>QR Image</Text>
                     </View>
-                  )}
-                </TouchableOpacity>
+
+                    {isLikelyUrl(item.qr_image) ? (
+                      <Image source={{ uri: item.qr_image! }} style={styles.previewImg} />
+                    ) : (
+                      <View style={styles.previewEmpty}>
+                        <Text style={styles.previewEmptyText}>No QR</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ) : null}
               </View>
 
               <View style={styles.actionsWrap}>
@@ -492,18 +694,14 @@ export default function AdminPaymentMethodsScreen() {
                   style={[styles.actionBtn, styles.deleteBtn]}
                   activeOpacity={0.9}
                   onPress={() => {
-                    Alert.alert(
-                      'Delete',
-                      `Delete "${item.name}"?`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Delete',
-                          style: 'destructive',
-                          onPress: () => deleteMutation.mutate(item.id),
-                        },
-                      ]
-                    );
+                    Alert.alert('Delete', `Delete "${item.name}"?`, [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: () => deleteMutation.mutate(item.id),
+                      },
+                    ]);
                   }}
                 >
                   <Trash2 size={16} color="#fff" />
@@ -528,7 +726,11 @@ export default function AdminPaymentMethodsScreen() {
           <View style={styles.formModal}>
             <View style={styles.modalHead}>
               <Text style={styles.formTitle}>
-                {editingItem ? 'Edit Payment Method' : 'Add Payment Method'}
+                {editingItem
+                  ? 'Edit Payment Method'
+                  : methodType === 'withdraw'
+                  ? 'Add Withdraw Bank'
+                  : 'Add Deposit Method'}
               </Text>
 
               <TouchableOpacity
@@ -544,63 +746,147 @@ export default function AdminPaymentMethodsScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.label}>Method Name</Text>
+              <Text style={styles.label}>Section Type</Text>
+              <View style={styles.segmentRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.segmentBtn,
+                    methodType === 'withdraw' && styles.segmentBtnActiveBlue,
+                  ]}
+                  activeOpacity={0.9}
+                  onPress={() => setMethodType('withdraw')}
+                >
+                  <Text
+                    style={[
+                      styles.segmentBtnText,
+                      methodType === 'withdraw' && styles.segmentBtnTextActive,
+                    ]}
+                  >
+                    Withdraw
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.segmentBtn,
+                    methodType === 'deposit' && styles.segmentBtnActivePurple,
+                  ]}
+                  activeOpacity={0.9}
+                  onPress={() => setMethodType('deposit')}
+                >
+                  <Text
+                    style={[
+                      styles.segmentBtnText,
+                      methodType === 'deposit' && styles.segmentBtnTextActive,
+                    ]}
+                  >
+                    Deposit
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.label}>Bank / Method Name</Text>
               <TextInput
                 style={styles.input}
-                placeholder="FIB / FastPay / Zain Cash / Rafidain"
+                placeholder="FIB / FastPay / Zain Cash / Qi Card"
                 placeholderTextColor={UI.text3}
                 value={name}
                 onChangeText={setName}
               />
 
-              <Text style={styles.label}>Account Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="ZenoPay"
-                placeholderTextColor={UI.text3}
-                value={accountName}
-                onChangeText={setAccountName}
-              />
+              {methodType === 'deposit' ? (
+                <>
+                  <Text style={styles.label}>Account Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="ZenoPay"
+                    placeholderTextColor={UI.text3}
+                    value={accountName}
+                    onChangeText={setAccountName}
+                  />
 
-              <Text style={styles.label}>Account Number</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="0770 000 0000"
-                placeholderTextColor={UI.text3}
-                value={accountNumber}
-                onChangeText={setAccountNumber}
-              />
+                  <Text style={styles.label}>Account Number</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="0770 000 0000"
+                    placeholderTextColor={UI.text3}
+                    value={accountNumber}
+                    onChangeText={setAccountNumber}
+                  />
 
-              <Text style={styles.label}>Instructions</Text>
-              <TextInput
-                style={[styles.input, styles.bigInput]}
-                placeholder="Write payment instructions..."
-                placeholderTextColor={UI.text3}
-                value={instructions}
-                onChangeText={setInstructions}
-                multiline
-                textAlignVertical="top"
-              />
+                  <Text style={styles.label}>Instructions</Text>
+                  <TextInput
+                    style={[styles.input, styles.bigInput]}
+                    placeholder="Write deposit instructions..."
+                    placeholderTextColor={UI.text3}
+                    value={instructions}
+                    onChangeText={setInstructions}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                </>
+              ) : (
+                <>
+                  <Text style={styles.label}>Withdraw Note (optional)</Text>
+                  <TextInput
+                    style={[styles.input, styles.bigInput]}
+                    placeholder="Optional note for withdraw page..."
+                    placeholderTextColor={UI.text3}
+                    value={instructions}
+                    onChangeText={setInstructions}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                </>
+              )}
 
-              <Text style={styles.label}>Bank Image URL</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="https://..."
-                placeholderTextColor={UI.text3}
-                value={logoUrl}
-                onChangeText={setLogoUrl}
-                autoCapitalize="none"
-              />
+              <Text style={styles.label}>Bank Image</Text>
+              <TouchableOpacity
+                style={styles.uploadBtn}
+                activeOpacity={0.92}
+                disabled={uploadingLogo}
+                onPress={() => pickAndUploadImage('logo')}
+              >
+                {uploadingLogo ? (
+                  <ActivityIndicator color={UI.blue} />
+                ) : (
+                  <>
+                    <Upload size={16} color={UI.blue} />
+                    <Text style={styles.uploadBtnText}>Upload Bank Image</Text>
+                  </>
+                )}
+              </TouchableOpacity>
 
-              <Text style={styles.label}>QR Image URL</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="https://..."
-                placeholderTextColor={UI.text3}
-                value={qrImage}
-                onChangeText={setQrImage}
-                autoCapitalize="none"
-              />
+              {isLikelyUrl(logoUrl) ? (
+                <Image source={{ uri: logoUrl }} style={styles.uploadPreview} />
+              ) : null}
+
+              {methodType === 'deposit' ? (
+                <>
+                  <Text style={styles.label}>QR Image</Text>
+                  <TouchableOpacity
+                    style={styles.uploadBtn}
+                    activeOpacity={0.92}
+                    disabled={uploadingQr}
+                    onPress={() => pickAndUploadImage('qr')}
+                  >
+                    {uploadingQr ? (
+                      <ActivityIndicator color={UI.purple} />
+                    ) : (
+                      <>
+                        <Upload size={16} color={UI.purple} />
+                        <Text style={[styles.uploadBtnText, { color: UI.purple }]}>
+                          Upload QR Image
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  {isLikelyUrl(qrImage) ? (
+                    <Image source={{ uri: qrImage }} style={styles.uploadPreview} />
+                  ) : null}
+                </>
+              ) : null}
 
               <Text style={styles.label}>Sort Order</Text>
               <View style={styles.sortWrap}>
@@ -616,12 +902,19 @@ export default function AdminPaymentMethodsScreen() {
               </View>
 
               <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Active on withdraw page</Text>
+                <Text style={styles.switchLabel}>
+                  {methodType === 'withdraw'
+                    ? 'Active on withdraw page'
+                    : 'Active on deposit page'}
+                </Text>
                 <Switch value={isActive} onValueChange={setIsActive} />
               </View>
 
               <TouchableOpacity
-                style={styles.saveBtn}
+                style={[
+                  styles.saveBtn,
+                  { backgroundColor: methodType === 'withdraw' ? UI.blue : UI.purple },
+                ]}
                 activeOpacity={0.92}
                 disabled={saveMutation.isPending}
                 onPress={() => saveMutation.mutate()}
@@ -670,6 +963,26 @@ export default function AdminPaymentMethodsScreen() {
       </Modal>
     </SafeAreaView>
   );
+}
+
+function decode(base64: string) {
+  const chars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  let str = '';
+  let output = [];
+
+  for (
+    let bc = 0, bs: any, buffer: any, idx = 0;
+    (buffer = base64.charAt(idx++));
+    ~buffer &&
+    ((bs = bc % 4 ? bs * 64 + buffer : buffer), bc++ % 4)
+      ? output.push(255 & (bs >> ((-2 * bc) & 6)))
+      : 0
+  ) {
+    buffer = chars.indexOf(buffer);
+  }
+
+  return new Uint8Array(output);
 }
 
 const styles = StyleSheet.create({
@@ -728,14 +1041,10 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
 
-  topActions: {
-    gap: 14,
-    marginBottom: 14,
-  },
-
   statsRow: {
     flexDirection: 'row',
     gap: 10,
+    marginBottom: 14,
   },
 
   statCard: {
@@ -761,14 +1070,38 @@ const styles = StyleSheet.create({
     color: UI.text2,
   },
 
+  tabRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+
+  tabBtn: {
+    flex: 1,
+    borderRadius: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: UI.border,
+    backgroundColor: UI.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  tabBtnText: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+
   addBtn: {
-    backgroundColor: UI.blue,
     borderRadius: 16,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 8,
+    marginBottom: 14,
   },
 
   addBtnText: {
@@ -816,6 +1149,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: UI.text2,
     textAlign: 'center',
+    lineHeight: 18,
   },
 
   card: {
@@ -919,7 +1253,6 @@ const styles = StyleSheet.create({
 
   noteBox: {
     marginTop: 12,
-    backgroundColor: UI.blueSoft,
     borderRadius: 16,
     padding: 12,
   },
@@ -927,7 +1260,6 @@ const styles = StyleSheet.create({
   noteTitle: {
     fontSize: 12,
     fontWeight: '900',
-    color: UI.blue,
     marginBottom: 4,
   },
 
@@ -1083,6 +1415,33 @@ const styles = StyleSheet.create({
     minHeight: 100,
   },
 
+  uploadBtn: {
+    borderWidth: 1,
+    borderColor: UI.border,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    backgroundColor: '#F8FAFC',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+
+  uploadBtnText: {
+    color: UI.blue,
+    fontWeight: '900',
+    fontSize: 14,
+  },
+
+  uploadPreview: {
+    width: '100%',
+    height: 160,
+    borderRadius: 16,
+    marginTop: 10,
+    backgroundColor: '#E5E7EB',
+  },
+
   sortWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1118,7 +1477,6 @@ const styles = StyleSheet.create({
 
   saveBtn: {
     marginTop: 12,
-    backgroundColor: UI.blue,
     borderRadius: 16,
     paddingVertical: 15,
     alignItems: 'center',
@@ -1131,6 +1489,39 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '900',
     fontSize: 14,
+  },
+
+  segmentRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 6,
+  },
+
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: UI.cardSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  segmentBtnActiveBlue: {
+    backgroundColor: UI.blue,
+  },
+
+  segmentBtnActivePurple: {
+    backgroundColor: UI.purple,
+  },
+
+  segmentBtnText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: UI.text,
+  },
+
+  segmentBtnTextActive: {
+    color: '#fff',
   },
 
   viewerOverlay: {
