@@ -1,5 +1,11 @@
 {
-  "home": "مال",
+  "home": "سەرەکی",
+   "receiveName": "ناڤێ وەرگر",
+  "receiveNumber": "ژمارا وەرگر",
+  "transactionReceipt": "QR code هاتیە بارکرن",
+  "noReceiptImageUploaded": "هیچ QR code نەهاتیە بارکرن",
+  "qrCodeUploaded": "QR code هاتیە بارکرن",
+  "viewFullScreen": "دیتنا تەواو شاشە",
   "depositMoney": "دانانا پارەی",
   "accountBalance": "بالانسا هەژمارێ",
   "depositPageSubtitle": "داخوازا دانانا پارەی دروست بکە بۆ زیادکرنا پارەی",
