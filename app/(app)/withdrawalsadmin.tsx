@@ -228,30 +228,75 @@ export default function WithdrawalsAdminScreen() {
   }, [withdrawalsQuery.data]);
 
   const sendWithdrawStatusEmail = async (
-  order: WithdrawAdminItem,
-  status: 'approved' | 'rejected' | 'pending',
-  reason?: string
-) => {
-  if (!order?.profiles?.email) return;
+    order: WithdrawAdminItem,
+    status: 'approved' | 'rejected' | 'pending',
+    reason?: string
+  ) => {
+    if (!order?.profiles?.email) return;
 
-  const { error } = await supabase.functions.invoke('send-withdraw-status-email', {
-    body: {
-      to: order.profiles.email,
-      customer_name: order.profiles.full_name || 'User',
-      amount_iqd: Number(order.amount || 0),
-      payment_method: order.payment_method?.name || '',
-      order_id: order.id,
+    const { error } = await supabase.functions.invoke('send-withdraw-status-email', {
+      body: {
+        to: order.profiles.email,
+        customer_name: order.profiles.full_name || 'User',
+        amount_iqd: Number(order.amount || 0),
+        payment_method: order.payment_method?.name || '',
+        order_id: order.id,
+        status,
+        reject_reason: reason || '',
+      },
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Failed to send status email');
+    }
+  };
+
+  const updateWithdrawMutation = useMutation({
+    mutationFn: async ({
+      order,
       status,
-      reject_reason: reason || '',
+      reject_reason,
+    }: {
+      order: WithdrawAdminItem;
+      status: 'approved' | 'rejected' | 'pending';
+      reject_reason?: string | null;
+    }) => {
+      const payload: Record<string, any> = {
+        status,
+      };
+
+      if (status === 'rejected') {
+        payload.reject_reason = reject_reason?.trim() || 'Rejected by admin';
+      } else {
+        payload.reject_reason = null;
+      }
+
+      const { error } = await supabase
+        .from('withdraw_orders')
+        .update(payload)
+        .eq('id', order.id);
+
+      if (error) throw error;
+
+      if (status === 'approved') {
+        await sendWithdrawStatusEmail(order, 'approved');
+      }
+
+      if (status === 'rejected') {
+        await sendWithdrawStatusEmail(order, 'rejected', payload.reject_reason);
+      }
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
+      setSelectedRejectId(null);
+      setRejectReason('');
+      Alert.alert('Success', `Withdrawal ${variables.status} successfully`);
+    },
+    onError: (error: any) => {
+      Alert.alert('Error', error?.message || 'Something went wrong');
     },
   });
 
-  if (error) {
-    throw new Error(error.message || 'Failed to send status email');
-  }
-};
-
-  
   const pendingActionId =
     updateWithdrawMutation.variables?.order?.id && updateWithdrawMutation.isPending
       ? updateWithdrawMutation.variables.order.id
