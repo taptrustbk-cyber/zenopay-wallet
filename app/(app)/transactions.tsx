@@ -45,7 +45,6 @@ const UI = {
   amberSoft: '#FFF4D9',
   blue: '#2563EB',
   blueSoft: '#EAF1FF',
-  shadow: '#0F172A',
 };
 
 interface TransactionData {
@@ -83,19 +82,16 @@ type TxUi = {
   iconName: keyof typeof Ionicons.glyphMap;
   isOutgoing: boolean;
 
-  partyName: string;
-  partyEmail?: string;
-  partyAvatar?: string | null;
-  partyCity?: string | null;
+  displayName: string;
+  displaySecondary?: string;
+  displayEmail?: string;
+  displayCity?: string;
+  displayAvatar?: string | null;
+  displayImage?: string | null;
 
   transactionTypeLabel: string;
   note?: string;
-
-  verified?: boolean;
-  imageUri?: string | null;
-  useRemoteImage?: boolean;
-  appLabel?: string;
-
+  verified: boolean;
   kind:
     | 'send'
     | 'receive'
@@ -111,8 +107,8 @@ type TxUi = {
 };
 
 const APP_NAME = 'Zenopay';
-const APP_FAKE_PROFILE_NAME = 'Zenopay';
-const APP_DEFAULT_ICON: keyof typeof Ionicons.glyphMap = 'shield-checkmark-outline';
+const APP_SYSTEM_NAME = 'Zenopay';
+const APP_SYSTEM_ICON: keyof typeof Ionicons.glyphMap = 'shield-checkmark-outline';
 
 const safe = (v?: string | null) => (v && String(v).trim().length ? String(v).trim() : null);
 
@@ -122,7 +118,7 @@ const tOr = (key: string, fallback: string) => {
   return v === key ? fallback : v;
 };
 
-const languageUsesArabicIQD = () => {
+const isArabicMoneyLang = () => {
   const lang = String(i18n.language || '').toLowerCase();
   return ['ar', 'cbk', 'kmr'].includes(lang);
 };
@@ -131,9 +127,7 @@ const formatIQD = (value: number | null | undefined) => {
   const num = Number(value || 0);
   const abs = Math.abs(num);
   const formatted = abs.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-  if (languageUsesArabicIQD()) return `${formatted} د.غ`;
-  return `${formatted} IQD`;
+  return isArabicMoneyLang() ? `${formatted} د.غ` : `${formatted} IQD`;
 };
 
 const formatFullDate = (dateStr: string) => {
@@ -148,7 +142,7 @@ const formatFullDate = (dateStr: string) => {
 const formatTime = (dateStr: string) => {
   const d = new Date(dateStr);
   return d.toLocaleTimeString(undefined, {
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
   });
 };
@@ -164,9 +158,9 @@ const formatListDate = (dateStr: string) => {
 
 const statusLabel = (raw: string) => {
   const s = String(raw || 'completed').toLowerCase();
-  if (s === 'completed' || s === 'success' || s === 'paid' || s === 'approved') return 'completed';
-  if (s === 'pending' || s === 'processing') return 'pending';
-  if (s === 'failed' || s === 'rejected' || s === 'cancelled' || s === 'canceled') return 'failed';
+  if (['completed', 'success', 'paid', 'approved'].includes(s)) return 'completed';
+  if (['pending', 'processing'].includes(s)) return 'pending';
+  if (['failed', 'rejected', 'cancelled', 'canceled'].includes(s)) return 'failed';
   return s;
 };
 
@@ -182,10 +176,10 @@ const makeShortTransactionId = (id?: string | null) => {
 
 const getStatusColors = (raw: string) => {
   const s = String(raw || 'completed').toLowerCase();
-  if (s === 'completed' || s === 'success' || s === 'paid' || s === 'approved') {
+  if (['completed', 'success', 'paid', 'approved'].includes(s)) {
     return { bg: UI.greenSoft, color: UI.green };
   }
-  if (s === 'pending' || s === 'processing') {
+  if (['pending', 'processing'].includes(s)) {
     return { bg: UI.amberSoft, color: UI.amber };
   }
   return { bg: UI.redSoft, color: UI.red };
@@ -208,8 +202,8 @@ const enrichFromRows = (
     const txId = safe(
       row?.transaction_id ||
         row?.tx_id ||
-        row?.payment_transaction_id ||
-        row?.wallet_transaction_id
+        row?.wallet_transaction_id ||
+        row?.payment_transaction_id
     );
 
     if (!txId) return;
@@ -221,23 +215,23 @@ const enrichFromRows = (
         'gift_card_name',
         'mobile_name',
         'model_name',
-        'title',
-        'name',
         'network_name',
         'operator_name',
+        'provider',
         'brand_name',
+        'title',
+        'name',
       ]) || null;
 
     const subtitle =
       pickFirstText(row, [
-        'network',
-        'operator',
         'brand',
         'category',
         'provider',
+        'network',
+        'operator',
         'type',
         'card_type',
-        'gift_type',
         'model',
       ]) || null;
 
@@ -247,8 +241,8 @@ const enrichFromRows = (
         'image',
         'logo_url',
         'logo',
-        'card_image',
         'product_image',
+        'card_image',
         'thumbnail_url',
         'photo_url',
         'icon_url',
@@ -267,25 +261,27 @@ export default function TransactionsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   useTheme();
-  const isRTL = I18nManager.isRTL;
+
   const myId = user?.id || '';
+  const isRTL = I18nManager.isRTL;
 
   const [searchText, setSearchText] = useState('');
   const [selectedTx, setSelectedTx] = useState<TransactionData | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
 
   const transactionsQuery = useQuery({
-    queryKey: ['transactions-screen-modern-rich', myId],
+    queryKey: ['transactions-screen-final-fixed', myId],
+    enabled: !!myId,
+    staleTime: 0,
+    gcTime: 0,
     queryFn: async () => {
       if (!myId) throw new Error('User ID not found');
 
-      let data: any[] | null = null;
-      let error: any = null;
+      let txs: TransactionData[] = [];
 
       const q1 = await supabase
         .from('transactions')
-        .select(
-          `
+        .select(`
           id,
           user_id,
           type,
@@ -296,19 +292,16 @@ export default function TransactionsScreen() {
           sender_id,
           receiver_id,
           balance_after
-        `
-        )
+        `)
         .or(`user_id.eq.${myId},sender_id.eq.${myId},receiver_id.eq.${myId}`)
         .order('created_at', { ascending: false });
 
-      data = q1.data;
-      error = q1.error;
+      if (q1.error) {
+        console.log('transactions q1 error', q1.error);
 
-      if (error) {
         const q2 = await supabase
           .from('transactions')
-          .select(
-            `
+          .select(`
             id,
             user_id,
             type,
@@ -319,57 +312,24 @@ export default function TransactionsScreen() {
             sender_id,
             receiver_id,
             balance_after
-          `
-          )
+          `)
           .eq('user_id', myId)
           .order('created_at', { ascending: false });
 
-        data = q2.data;
-        error = q2.error;
-      }
-
-      if (error) {
-        console.log('Transaction fetch error:', JSON.stringify(error));
-        throw new Error('Failed to fetch transactions');
-      }
-
-      let txs = (data || []) as TransactionData[];
-
-      if (txs.length === 0) {
-        const { data: wData, error: wErr } = await supabase
-          .from('wallets')
-          .select('balance, updated_at, created_at')
-          .eq('user_id', myId)
-          .maybeSingle();
-
-        if (!wErr) {
-          const bal = Number((wData as any)?.balance ?? 0);
-          if (bal > 0) {
-            const when =
-              (wData as any)?.updated_at || (wData as any)?.created_at || new Date().toISOString();
-
-            const synthetic: TransactionData = {
-              id: `initial_deposit_${myId}`,
-              user_id: myId,
-              type: 'deposit',
-              status: 'completed',
-              amount: bal,
-              description: 'Deposit from Zenopay',
-              created_at: when,
-              sender_id: null,
-              receiver_id: null,
-              balance_after: bal,
-            };
-
-            txs = [synthetic];
-          }
+        if (q2.error) {
+          console.log('transactions q2 error', q2.error);
+          throw new Error('Failed to fetch transactions');
         }
+
+        txs = (q2.data || []) as TransactionData[];
+      } else {
+        txs = (q1.data || []) as TransactionData[];
       }
 
       const ids = Array.from(
         new Set(
           txs
-            .flatMap((t) => [t.sender_id, t.receiver_id, t.user_id])
+            .flatMap((t) => [t.user_id, t.sender_id, t.receiver_id])
             .filter((x): x is string => !!x)
         )
       );
@@ -385,43 +345,21 @@ export default function TransactionsScreen() {
       >();
 
       if (ids.length) {
-        const { data: p1 } = await supabase
+        const byId = await supabase
           .from('profiles')
-          .select('id, user_id, full_name, email, avatar_url, city')
+          .select('id, full_name, email, avatar_url, city')
           .in('id', ids);
 
-        (p1 || []).forEach((p: any) => {
-          const key1 = safe(p.id);
-          const key2 = safe(p.user_id);
-          const val = {
-            full_name: safe(p.full_name),
-            email: safe(p.email),
-            avatar_url: safe(p.avatar_url),
-            city: safe(p.city),
-          };
-          if (key1) profileMap.set(String(key1), val);
-          if (key2) profileMap.set(String(key2), val);
-        });
-
-        const missing = ids.filter((id) => !profileMap.has(id));
-
-        if (missing.length) {
-          const { data: p2 } = await supabase
-            .from('profiles')
-            .select('id, user_id, full_name, email, avatar_url, city')
-            .in('user_id', missing);
-
-          (p2 || []).forEach((p: any) => {
-            const key1 = safe(p.id);
-            const key2 = safe(p.user_id);
-            const val = {
+        if (!byId.error) {
+          (byId.data || []).forEach((p: any) => {
+            const key = safe(p.id);
+            if (!key) return;
+            profileMap.set(String(key), {
               full_name: safe(p.full_name),
               email: safe(p.email),
               avatar_url: safe(p.avatar_url),
               city: safe(p.city),
-            };
-            if (key1) profileMap.set(String(key1), val);
-            if (key2) profileMap.set(String(key2), val);
+            });
           });
         }
       }
@@ -464,36 +402,33 @@ export default function TransactionsScreen() {
         },
       ];
 
-      for (const attempt of tableAttempts) {
+      for (const t of tableAttempts) {
         try {
-          const { data: rows, error: tableError } = await supabase
-            .from(attempt.table)
-            .select(attempt.select);
-
-          if (!tableError && rows?.length) {
-            enrichFromRows(rows, attempt.table, metaMap);
+          const res = await supabase.from(t.table).select(t.select);
+          if (!res.error && res.data?.length) {
+            enrichFromRows(res.data, t.table, metaMap);
           }
         } catch (e) {
-          console.log(`Optional transaction meta table skipped: ${attempt.table}`, e);
+          console.log(`skip optional table ${t.table}`, e);
         }
       }
 
-      return txs.map((t) => {
-        const s = t.sender_id ? profileMap.get(t.sender_id) : null;
-        const r = t.receiver_id ? profileMap.get(t.receiver_id) : null;
-        const meta = metaMap.get(t.id);
+      return txs.map((tx) => {
+        const sender = tx.sender_id ? profileMap.get(tx.sender_id) : null;
+        const receiver = tx.receiver_id ? profileMap.get(tx.receiver_id) : null;
+        const meta = metaMap.get(tx.id);
 
         return {
-          ...t,
-          sender_name: s?.full_name ?? null,
-          sender_email: s?.email ?? null,
-          sender_avatar: s?.avatar_url ?? null,
-          sender_city: s?.city ?? null,
+          ...tx,
+          sender_name: sender?.full_name ?? null,
+          sender_email: sender?.email ?? null,
+          sender_avatar: sender?.avatar_url ?? null,
+          sender_city: sender?.city ?? null,
 
-          receiver_name: r?.full_name ?? null,
-          receiver_email: r?.email ?? null,
-          receiver_avatar: r?.avatar_url ?? null,
-          receiver_city: r?.city ?? null,
+          receiver_name: receiver?.full_name ?? null,
+          receiver_email: receiver?.email ?? null,
+          receiver_avatar: receiver?.avatar_url ?? null,
+          receiver_city: receiver?.city ?? null,
 
           meta_title: meta?.title ?? null,
           meta_subtitle: meta?.subtitle ?? null,
@@ -502,23 +437,22 @@ export default function TransactionsScreen() {
         };
       });
     },
-    enabled: !!myId,
-    staleTime: 0,
-    gcTime: 0,
   });
 
   const getTxUi = useCallback(
     (tx: TransactionData): TxUi => {
       const type = String(tx.type || '').toLowerCase();
       const desc = safe(tx.description);
+      const descLower = String(desc || '').toLowerCase();
 
       const senderName = safe(tx.sender_name);
-      const receiverName = safe(tx.receiver_name);
       const senderEmail = safe(tx.sender_email);
-      const receiverEmail = safe(tx.receiver_email);
       const senderAvatar = safe(tx.sender_avatar);
-      const receiverAvatar = safe(tx.receiver_avatar);
       const senderCity = safe(tx.sender_city);
+
+      const receiverName = safe(tx.receiver_name);
+      const receiverEmail = safe(tx.receiver_email);
+      const receiverAvatar = safe(tx.receiver_avatar);
       const receiverCity = safe(tx.receiver_city);
 
       const metaTitle = safe(tx.meta_title);
@@ -530,31 +464,29 @@ export default function TransactionsScreen() {
 
       const isOutgoingBySender = tx.sender_id === myId;
       const isOutgoingByAmount = Number(tx.amount || 0) < 0;
-      const descLower = (desc || '').toLowerCase();
 
       const isVirtualCard =
         type.includes('virtual') ||
         type === 'virtual_card_create' ||
         type === 'create_virtual_card' ||
-        type === 'purchase_virtual_card' ||
-        descLower.includes('virtual card') ||
-        descLower.includes('zenopay card');
+        descLower.includes('virtual card');
 
       if (isVirtualCard) {
         return {
-          title: tOr('transactions_virtualCardCreated', 'Zenopay Card Created'),
-          subtitleLine1: tOr('transactions_virtualCardCreatedSubtitle', 'Virtual card created successfully'),
+          title: tOr('transactions_moneySent', 'Money Sent'),
+          subtitleLine1: tOr('transactions_virtualCardCreated', 'Virtual Card Created'),
           subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'card-outline',
           isOutgoing: true,
-          partyName: APP_FAKE_PROFILE_NAME,
-          partyEmail: undefined,
-          partyAvatar: null,
-          partyCity: null,
+          displayName: tOr('transactions_virtualCardCreated', 'Virtual Card Created'),
+          displaySecondary: undefined,
+          displayEmail: undefined,
+          displayCity: undefined,
+          displayAvatar: null,
+          displayImage: null,
           transactionTypeLabel: tOr('transactions_typeVirtualCard', 'Virtual Card'),
-          note: desc || tOr('transactions_noteVirtualCard', 'Zenopay virtual card has been created.'),
-          verified: true,
-          appLabel: APP_NAME,
+          note: desc || tOr('transactions_noteVirtualCard', 'Virtual card created successfully'),
+          verified: false,
           kind: 'virtual_card',
         };
       }
@@ -572,10 +504,12 @@ export default function TransactionsScreen() {
                 : makeShortTransactionId(tx.id),
             iconName: 'arrow-up-outline',
             isOutgoing: true,
-            partyName: receiverLabel,
-            partyEmail: receiverEmail || undefined,
-            partyAvatar: receiverAvatar || null,
-            partyCity: receiverCity || null,
+            displayName: receiverLabel,
+            displaySecondary: undefined,
+            displayEmail: receiverEmail || undefined,
+            displayCity: receiverCity || undefined,
+            displayAvatar: receiverAvatar || null,
+            displayImage: null,
             transactionTypeLabel: tOr('transactions_typeP2PTransfer', 'P2P Transfer'),
             note: desc || `${tOr('transactions_moneySentTo', 'Money sent to')} ${receiverLabel}`,
             verified: false,
@@ -592,10 +526,12 @@ export default function TransactionsScreen() {
               : makeShortTransactionId(tx.id),
           iconName: 'arrow-down-outline',
           isOutgoing: false,
-          partyName: senderLabel,
-          partyEmail: senderEmail || undefined,
-          partyAvatar: senderAvatar || null,
-          partyCity: senderCity || null,
+          displayName: senderLabel,
+          displaySecondary: undefined,
+          displayEmail: senderEmail || undefined,
+          displayCity: senderCity || undefined,
+          displayAvatar: senderAvatar || null,
+          displayImage: null,
           transactionTypeLabel: tOr('transactions_typeP2PTransfer', 'P2P Transfer'),
           note: desc || `${tOr('transactions_moneyReceivedFrom', 'Money received from')} ${senderLabel}`,
           verified: false,
@@ -617,14 +553,15 @@ export default function TransactionsScreen() {
           subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'download-outline',
           isOutgoing: false,
-          partyName: APP_FAKE_PROFILE_NAME,
-          partyEmail: undefined,
-          partyAvatar: null,
-          partyCity: null,
+          displayName: APP_SYSTEM_NAME,
+          displaySecondary: undefined,
+          displayEmail: undefined,
+          displayCity: undefined,
+          displayAvatar: null,
+          displayImage: null,
           transactionTypeLabel: tOr('transactions_typeDeposit', 'Deposit'),
           note: desc || tOr('transactions_depositFromZenopay', 'Deposit from Zenopay'),
           verified: true,
-          appLabel: APP_NAME,
           kind: 'deposit',
         };
       }
@@ -641,14 +578,15 @@ export default function TransactionsScreen() {
           subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'cash-outline',
           isOutgoing: true,
-          partyName: APP_FAKE_PROFILE_NAME,
-          partyEmail: undefined,
-          partyAvatar: null,
-          partyCity: null,
+          displayName: APP_SYSTEM_NAME,
+          displaySecondary: undefined,
+          displayEmail: undefined,
+          displayCity: undefined,
+          displayAvatar: null,
+          displayImage: null,
           transactionTypeLabel: tOr('transactions_typeWithdraw', 'Withdraw'),
           note: desc || tOr('transactions_noteWithdraw', 'Withdraw processed by Zenopay'),
           verified: true,
-          appLabel: APP_NAME,
           kind: 'withdraw',
         };
       }
@@ -660,16 +598,15 @@ export default function TransactionsScreen() {
           subtitleLine2: metaSubtitle || makeShortTransactionId(tx.id),
           iconName: 'gift-outline',
           isOutgoing: true,
-          partyName: APP_FAKE_PROFILE_NAME,
-          partyEmail: undefined,
-          partyAvatar: null,
-          partyCity: null,
+          displayName: metaTitle || tOr('transactions_giftCardPurchase', 'Gift Card Purchase'),
+          displaySecondary: metaSubtitle || undefined,
+          displayEmail: undefined,
+          displayCity: undefined,
+          displayAvatar: null,
+          displayImage: metaImage || null,
           transactionTypeLabel: tOr('transactions_typeGiftCard', 'Gift Card'),
           note: desc || metaTitle || tOr('transactions_noteGiftCard', 'Gift card purchased successfully'),
-          verified: true,
-          appLabel: APP_NAME,
-          imageUri: metaImage || null,
-          useRemoteImage: !!metaImage,
+          verified: false,
           kind: 'giftcard',
         };
       }
@@ -687,16 +624,15 @@ export default function TransactionsScreen() {
           subtitleLine2: metaSubtitle || makeShortTransactionId(tx.id),
           iconName: 'cellular-outline',
           isOutgoing: true,
-          partyName: APP_FAKE_PROFILE_NAME,
-          partyEmail: undefined,
-          partyAvatar: null,
-          partyCity: null,
+          displayName: metaTitle || tOr('transactions_simCardPurchase', 'SIM Card Purchase'),
+          displaySecondary: metaSubtitle || undefined,
+          displayEmail: undefined,
+          displayCity: undefined,
+          displayAvatar: null,
+          displayImage: metaImage || null,
           transactionTypeLabel: tOr('transactions_typeSimCard', 'SIM Card'),
           note: desc || metaTitle || tOr('transactions_noteSimCard', 'SIM card purchased successfully'),
-          verified: true,
-          appLabel: APP_NAME,
-          imageUri: metaImage || null,
-          useRemoteImage: !!metaImage,
+          verified: false,
           kind: 'sim',
         };
       }
@@ -708,16 +644,15 @@ export default function TransactionsScreen() {
           subtitleLine2: metaSubtitle || makeShortTransactionId(tx.id),
           iconName: 'phone-portrait-outline',
           isOutgoing: true,
-          partyName: APP_FAKE_PROFILE_NAME,
-          partyEmail: undefined,
-          partyAvatar: null,
-          partyCity: null,
+          displayName: metaTitle || tOr('transactions_mobileShopPurchase', 'Mobile Shop Purchase'),
+          displaySecondary: metaSubtitle || undefined,
+          displayEmail: undefined,
+          displayCity: undefined,
+          displayAvatar: null,
+          displayImage: metaImage || null,
           transactionTypeLabel: tOr('transactions_typeMobileShop', 'Mobile Shop'),
           note: desc || metaTitle || tOr('transactions_noteMobileShop', 'Mobile shop purchase completed'),
-          verified: true,
-          appLabel: APP_NAME,
-          imageUri: metaImage || null,
-          useRemoteImage: !!metaImage,
+          verified: false,
           kind: 'mobile',
         };
       }
@@ -729,16 +664,15 @@ export default function TransactionsScreen() {
           subtitleLine2: metaSubtitle || makeShortTransactionId(tx.id),
           iconName: 'pricetag-outline',
           isOutgoing: true,
-          partyName: APP_FAKE_PROFILE_NAME,
-          partyEmail: undefined,
-          partyAvatar: null,
-          partyCity: null,
+          displayName: metaTitle || tOr('transactions_purchase', 'Purchase'),
+          displaySecondary: metaSubtitle || undefined,
+          displayEmail: undefined,
+          displayCity: undefined,
+          displayAvatar: null,
+          displayImage: metaImage || null,
           transactionTypeLabel: tOr('transactions_typePurchase', 'Purchase'),
           note: desc || metaTitle || tOr('transactions_notePurchase', 'Purchase completed'),
-          verified: true,
-          appLabel: APP_NAME,
-          imageUri: metaImage || null,
-          useRemoteImage: !!metaImage,
+          verified: false,
           kind: 'purchase',
         };
       }
@@ -753,14 +687,15 @@ export default function TransactionsScreen() {
         subtitleLine2: makeShortTransactionId(tx.id),
         iconName: isOutgoing ? 'arrow-up-outline' : 'arrow-down-outline',
         isOutgoing,
-        partyName: APP_FAKE_PROFILE_NAME,
-        partyEmail: undefined,
-        partyAvatar: null,
-        partyCity: null,
+        displayName: desc || tOr('transactions_transaction', 'Transaction'),
+        displaySecondary: undefined,
+        displayEmail: undefined,
+        displayCity: undefined,
+        displayAvatar: null,
+        displayImage: null,
         transactionTypeLabel: tOr('transactions_typeTransaction', 'Transaction'),
         note: desc || tOr('transactions_transactionDetailsText', 'Transaction details'),
-        verified: true,
-        appLabel: APP_NAME,
+        verified: false,
         kind: 'other',
       };
     },
@@ -770,7 +705,6 @@ export default function TransactionsScreen() {
   const filteredTransactions = useMemo(() => {
     const all = transactionsQuery.data || [];
     const q = searchText.trim().toLowerCase();
-
     if (!q) return all;
 
     return all.filter((tx) => {
@@ -779,7 +713,6 @@ export default function TransactionsScreen() {
 
       const bucket = [
         tx.id,
-        shortId,
         tx.type,
         tx.status,
         tx.description,
@@ -791,13 +724,13 @@ export default function TransactionsScreen() {
         tx.receiver_city,
         tx.meta_title,
         tx.meta_subtitle,
+        shortId,
         ui.title,
         ui.subtitleLine1,
         ui.subtitleLine2,
-        ui.partyName,
-        ui.partyEmail,
-        ui.partyCity,
-        ui.transactionTypeLabel,
+        ui.displayName,
+        ui.displayEmail,
+        ui.displayCity,
       ]
         .filter(Boolean)
         .join(' ')
@@ -824,9 +757,6 @@ export default function TransactionsScreen() {
       const amount = Math.abs(Number(tx.amount || 0));
       const fee = 0;
       const total = amount + fee;
-      const partyEmail = ui.partyEmail || '';
-      const partyCity = ui.partyCity || '';
-      const note = ui.note || '';
       const dateText = formatFullDate(tx.created_at);
       const timeText = formatTime(tx.created_at);
       const shortId = makeShortTransactionId(tx.id);
@@ -837,115 +767,32 @@ export default function TransactionsScreen() {
           <meta charset="utf-8" />
           <style>
             * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
-            body {
-              margin: 0;
-              padding: 28px;
-              background: #f5f8fc;
-              color: #1E2A4A;
-            }
-            .sheet {
-              background: #ffffff;
-              border-radius: 20px;
-              padding: 24px;
-              border: 1px solid #dce7f2;
-            }
-            .top {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              margin-bottom: 24px;
-            }
-            .logoWrap {
-              display: flex;
-              align-items: center;
-              gap: 14px;
-            }
+            body { margin: 0; padding: 28px; background: #f5f8fc; color: #1E2A4A; }
+            .sheet { background: #fff; border-radius: 20px; padding: 24px; border: 1px solid #dce7f2; }
+            .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+            .logoWrap { display: flex; align-items: center; gap: 14px; }
             .logo {
-              width: 60px;
-              height: 60px;
-              border-radius: 18px;
+              width: 60px; height: 60px; border-radius: 18px;
               background: linear-gradient(135deg, #4F7CFF, #27D69B);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-size: 28px;
-              font-weight: 700;
+              display: flex; align-items: center; justify-content: center;
+              color: white; font-size: 28px; font-weight: 700;
             }
-            .title {
-              font-size: 42px;
-              font-weight: 800;
-              margin: 0;
-              color: #1E2A4A;
-            }
-            .dateBox {
-              text-align: right;
-              font-size: 15px;
-              color: #6F7A96;
-              line-height: 1.8;
-            }
+            .title { font-size: 42px; font-weight: 800; margin: 0; color: #1E2A4A; }
+            .dateBox { text-align: right; font-size: 15px; color: #6F7A96; line-height: 1.8; }
             .row {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              padding: 16px 0;
-              border-top: 1px solid #edf2f7;
-              gap: 16px;
+              display: flex; justify-content: space-between; align-items: center;
+              padding: 16px 0; border-top: 1px solid #edf2f7; gap: 16px;
             }
-            .label {
-              font-size: 14px;
-              color: #6F7A96;
-              margin-bottom: 6px;
-            }
-            .value {
-              font-size: 17px;
-              font-weight: 700;
-              color: #1E2A4A;
-              word-break: break-word;
-            }
-            .amount {
-              color: ${ui.isOutgoing ? '#FF4D7E' : '#27D69B'};
-              font-size: 24px;
-              font-weight: 800;
-            }
+            .label { font-size: 14px; color: #6F7A96; margin-bottom: 6px; }
+            .value { font-size: 17px; font-weight: 700; color: #1E2A4A; word-break: break-word; }
+            .amount { color: ${ui.isOutgoing ? '#FF4D7E' : '#27D69B'}; font-size: 24px; font-weight: 800; }
             .badge {
-              display: inline-block;
-              padding: 10px 18px;
-              border-radius: 999px;
-              color: white;
-              background: #4F7CFF;
-              font-size: 15px;
-              font-weight: 700;
-            }
-            .partyBox {
-              display: flex;
-              align-items: center;
-              gap: 12px;
-            }
-            .partyAvatar {
-              width: 52px;
-              height: 52px;
-              border-radius: 16px;
-              background: #e9f0ff;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: #315EE8;
-              font-weight: 800;
-              font-size: 20px;
-            }
-            .small {
-              font-size: 14px;
-              color: #6F7A96;
+              display: inline-block; padding: 10px 18px; border-radius: 999px; color: white;
+              background: #4F7CFF; font-size: 15px; font-weight: 700;
             }
             .note {
-              margin-top: 18px;
-              border-radius: 16px;
-              background: #f8fbff;
-              border: 1px solid #e5edf7;
-              padding: 16px;
-              color: #51607d;
-              line-height: 1.7;
+              margin-top: 18px; border-radius: 16px; background: #f8fbff; border: 1px solid #e5edf7;
+              padding: 16px; color: #51607d; line-height: 1.7;
             }
           </style>
         </head>
@@ -956,7 +803,7 @@ export default function TransactionsScreen() {
                 <div class="logo">Z</div>
                 <div>
                   <p class="title">INVOICE</p>
-                  <div class="small">${APP_NAME}</div>
+                  <div>${APP_NAME}</div>
                 </div>
               </div>
               <div class="dateBox">
@@ -981,22 +828,24 @@ export default function TransactionsScreen() {
                 <div class="label">${tOr('transactions_transactionType', 'Transaction Type')}</div>
                 <div class="value">${ui.transactionTypeLabel}</div>
               </div>
-              <div>
-                <span class="badge">${ui.transactionTypeLabel}</span>
-              </div>
+              <div><span class="badge">${ui.transactionTypeLabel}</span></div>
             </div>
 
             <div class="row">
               <div>
-                <div class="label">${ui.isOutgoing ? tOr('transactions_sentTo', 'Sent To') : tOr('transactions_receivedFrom', 'Received From')}</div>
-                <div class="partyBox">
-                  <div class="partyAvatar">${ui.partyName?.slice(0, 1)?.toUpperCase() || 'Z'}</div>
-                  <div>
-                    <div class="value">${ui.partyName}</div>
-                    <div class="small">${partyEmail}</div>
-                    <div class="small">${partyCity}</div>
-                  </div>
-                </div>
+                <div class="label">${
+                  ui.kind === 'send'
+                    ? tOr('transactions_sentTo', 'Sent To')
+                    : ui.kind === 'receive' || ui.kind === 'deposit'
+                    ? tOr('transactions_receivedFrom', 'Received From')
+                    : ui.kind === 'withdraw'
+                    ? tOr('transactions_sentTo', 'Sent To')
+                    : tOr('transactions_item', 'Item')
+                }</div>
+                <div class="value">${ui.displayName}</div>
+                ${ui.displayEmail ? `<div>${ui.displayEmail}</div>` : ''}
+                ${ui.displayCity ? `<div>${ui.displayCity}</div>` : ''}
+                ${ui.displaySecondary ? `<div>${ui.displaySecondary}</div>` : ''}
               </div>
             </div>
 
@@ -1024,30 +873,30 @@ export default function TransactionsScreen() {
             ${
               tx.balance_after !== null && tx.balance_after !== undefined
                 ? `
-              <div class="row">
-                <div>
-                  <div class="label">${tOr('transactions_balanceAfter', 'Balance After')}</div>
-                  <div class="value">${formatIQD(tx.balance_after)}</div>
-                </div>
-              </div>
-            `
+                  <div class="row">
+                    <div>
+                      <div class="label">${tOr('transactions_balanceAfter', 'Balance After')}</div>
+                      <div class="value">${formatIQD(tx.balance_after)}</div>
+                    </div>
+                  </div>
+                `
                 : ''
             }
 
             ${
-              note
+              ui.note
                 ? `
-              <div class="note">
-                <strong>${tOr('transactions_note', 'Note')}:</strong><br/>
-                ${String(note).replace(/\n/g, '<br/>')}
-              </div>
-            `
+                  <div class="note">
+                    <strong>${tOr('transactions_note', 'Note')}:</strong><br/>
+                    ${String(ui.note).replace(/\n/g, '<br/>')}
+                  </div>
+                `
                 : ''
             }
           </div>
         </body>
       </html>
-    `;
+      `;
     },
     [getTxUi]
   );
@@ -1076,7 +925,7 @@ export default function TransactionsScreen() {
         UTI: 'com.adobe.pdf',
       });
     } catch (e) {
-      console.log('PDF share error', e);
+      console.log('share pdf error', e);
       Alert.alert(
         tOr('common_error', 'Error'),
         tOr('transactions_couldNotSharePdf', 'Could not share PDF')
@@ -1086,30 +935,16 @@ export default function TransactionsScreen() {
     }
   }, [selectedTx, buildTransactionHtml]);
 
-  const renderAvatarOrIcon = (ui: TxUi) => {
-    if (ui.kind === 'send' || ui.kind === 'receive') {
-      if (ui.partyAvatar) {
-        return <Image source={{ uri: ui.partyAvatar }} style={styles.txAvatarImage} />;
-      }
-
-      return (
-        <View
-          style={[
-            styles.txIconBox,
-            { backgroundColor: ui.isOutgoing ? UI.redSoft : UI.greenSoft },
-          ]}
-        >
-          <Ionicons
-            name="person-outline"
-            size={22}
-            color={ui.isOutgoing ? UI.red : UI.green}
-          />
-        </View>
-      );
+  const renderLeadingVisual = (ui: TxUi) => {
+    if ((ui.kind === 'send' || ui.kind === 'receive') && ui.displayAvatar) {
+      return <Image source={{ uri: ui.displayAvatar }} style={styles.txAvatarImage} />;
     }
 
-    if (ui.useRemoteImage && ui.imageUri) {
-      return <Image source={{ uri: ui.imageUri }} style={styles.txAvatarImage} />;
+    if (
+      ['purchase', 'giftcard', 'mobile', 'sim', 'topup'].includes(ui.kind) &&
+      ui.displayImage
+    ) {
+      return <Image source={{ uri: ui.displayImage }} style={styles.txAvatarImage} />;
     }
 
     return (
@@ -1129,7 +964,7 @@ export default function TransactionsScreen() {
         <Ionicons
           name={
             ui.kind === 'deposit' || ui.kind === 'withdraw'
-              ? APP_DEFAULT_ICON
+              ? APP_SYSTEM_ICON
               : ui.iconName
           }
           size={22}
@@ -1159,25 +994,19 @@ export default function TransactionsScreen() {
       >
         <View style={[styles.txTopRow, isRTL && styles.txTopRowRTL]}>
           <View style={[styles.txMainLeft, isRTL && styles.txMainLeftRTL]}>
-            {renderAvatarOrIcon(ui)}
+            {renderLeadingVisual(ui)}
 
             <View style={[styles.txInfo, isRTL && styles.txInfoRTL]}>
-              <View style={styles.txTitleRow}>
-                <Text
-                  style={[
-                    styles.txTitle,
-                    { color: ui.isOutgoing ? UI.red : UI.green },
-                    isRTL && styles.textRTL,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {ui.title}
-                </Text>
-
-                {ui.verified && (
-                  <Ionicons name="checkmark-circle" size={16} color={UI.blue} />
-                )}
-              </View>
+              <Text
+                style={[
+                  styles.txTitle,
+                  { color: ui.isOutgoing ? UI.red : UI.green },
+                  isRTL && styles.textRTL,
+                ]}
+                numberOfLines={1}
+              >
+                {ui.title}
+              </Text>
 
               <Text
                 style={[styles.txSubtitleMain, isRTL && styles.textRTL]}
@@ -1186,25 +1015,7 @@ export default function TransactionsScreen() {
                 {ui.subtitleLine1}
               </Text>
 
-              {!!ui.partyEmail && (ui.kind === 'send' || ui.kind === 'receive') && (
-                <Text
-                  style={[styles.txSubtitleSmall, isRTL && styles.textRTL]}
-                  numberOfLines={1}
-                >
-                  {ui.partyEmail}
-                </Text>
-              )}
-
-              {!!ui.partyCity && (ui.kind === 'send' || ui.kind === 'receive') && (
-                <Text
-                  style={[styles.txSubtitleTiny, isRTL && styles.textRTL]}
-                  numberOfLines={1}
-                >
-                  {ui.partyCity}
-                </Text>
-              )}
-
-              {!ui.partyEmail && !!ui.subtitleLine2 && (
+              {!!ui.subtitleLine2 && (
                 <Text
                   style={[styles.txSubtitleSmall, isRTL && styles.textRTL]}
                   numberOfLines={1}
@@ -1266,14 +1077,11 @@ export default function TransactionsScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
         <Stack.Screen options={{ headerShown: false }} />
-
         <View style={styles.header}>
           <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
             <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
           </TouchableOpacity>
-
           <Text style={styles.headerTitle}>{tOr('transactions_title', 'Transactions')}</Text>
-
           <View style={{ width: 46 }} />
         </View>
 
@@ -1290,7 +1098,11 @@ export default function TransactionsScreen() {
             {tOr('transactions_couldNotLoadTransactions', 'Could not load transactions')}
           </Text>
 
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => transactionsQuery.refetch()} activeOpacity={0.9}>
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={() => transactionsQuery.refetch()}
+            activeOpacity={0.9}
+          >
             <Ionicons name="refresh" size={18} color="#fff" />
             <Text style={styles.primaryBtnText}>{tOr('common_retry', 'Retry')}</Text>
           </TouchableOpacity>
@@ -1404,9 +1216,7 @@ export default function TransactionsScreen() {
                   >
                     <Ionicons name="share-social-outline" size={20} color={UI.text} />
                     <Text style={styles.invoiceActionText}>
-                      {pdfLoading
-                        ? tOr('transactions_pleaseWait', 'Please wait...')
-                        : tOr('transactions_sharePdf', 'Share PDF')}
+                      {pdfLoading ? tOr('transactions_pleaseWait', 'Please wait...') : tOr('transactions_sharePdf', 'Share PDF')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1436,28 +1246,36 @@ export default function TransactionsScreen() {
 
                 <View style={styles.detailPartySection}>
                   <Text style={styles.detailLabel}>
-                    {selectedUi.isOutgoing
+                    {selectedUi.kind === 'send'
                       ? tOr('transactions_sentTo', 'Sent To')
-                      : tOr('transactions_receivedFrom', 'Received From')}
+                      : selectedUi.kind === 'receive' || selectedUi.kind === 'deposit'
+                      ? tOr('transactions_receivedFrom', 'Received From')
+                      : selectedUi.kind === 'withdraw'
+                      ? tOr('transactions_sentTo', 'Sent To')
+                      : tOr('transactions_item', 'Item')}
                   </Text>
 
                   <View style={styles.detailPartyBox}>
-                    {(selectedUi.kind === 'send' || selectedUi.kind === 'receive') && selectedUi.partyAvatar ? (
-                      <Image source={{ uri: selectedUi.partyAvatar }} style={styles.partyAvatarImage} />
-                    ) : selectedUi.useRemoteImage && selectedUi.imageUri ? (
-                      <Image source={{ uri: selectedUi.imageUri }} style={styles.partyAvatarImage} />
+                    {(selectedUi.kind === 'send' || selectedUi.kind === 'receive') && selectedUi.displayAvatar ? (
+                      <Image source={{ uri: selectedUi.displayAvatar }} style={styles.partyAvatarImage} />
+                    ) : selectedUi.displayImage ? (
+                      <Image source={{ uri: selectedUi.displayImage }} style={styles.partyAvatarImage} />
                     ) : (
                       <View style={styles.partyFallbackAvatar}>
                         <Ionicons
                           name={
-                            selectedUi.verified
-                              ? APP_DEFAULT_ICON
+                            selectedUi.kind === 'deposit' || selectedUi.kind === 'withdraw'
+                              ? APP_SYSTEM_ICON
                               : selectedUi.kind === 'send' || selectedUi.kind === 'receive'
                               ? 'person-outline'
                               : selectedUi.iconName
                           }
                           size={26}
-                          color={selectedUi.verified ? UI.blue : UI.primaryDark}
+                          color={
+                            selectedUi.kind === 'deposit' || selectedUi.kind === 'withdraw'
+                              ? UI.blue
+                              : UI.primaryDark
+                          }
                         />
                       </View>
                     )}
@@ -1470,7 +1288,7 @@ export default function TransactionsScreen() {
                             { color: selectedUi.isOutgoing ? UI.red : UI.green },
                           ]}
                         >
-                          {selectedUi.partyName}
+                          {selectedUi.displayName}
                         </Text>
 
                         {selectedUi.verified && (
@@ -1478,16 +1296,16 @@ export default function TransactionsScreen() {
                         )}
                       </View>
 
-                      {!!selectedUi.partyEmail && (
-                        <Text style={styles.partyEmail}>{selectedUi.partyEmail}</Text>
+                      {!!selectedUi.displaySecondary && (
+                        <Text style={styles.partySecondary}>{selectedUi.displaySecondary}</Text>
                       )}
 
-                      {!!selectedUi.partyCity && (
-                        <Text style={styles.partyCity}>{selectedUi.partyCity}</Text>
+                      {!!selectedUi.displayEmail && (
+                        <Text style={styles.partyEmail}>{selectedUi.displayEmail}</Text>
                       )}
 
-                      {selectedUi.verified && !selectedUi.partyEmail && (
-                        <Text style={styles.partyEmail}>{APP_NAME}</Text>
+                      {!!selectedUi.displayCity && (
+                        <Text style={styles.partyCity}>{selectedUi.displayCity}</Text>
                       )}
                     </View>
                   </View>
@@ -1545,12 +1363,7 @@ export default function TransactionsScreen() {
   );
 }
 
-function renderDetailRow(
-  label: string,
-  value: string,
-  mono?: boolean,
-  valueColor?: string
-) {
+function renderDetailRow(label: string, value: string, mono?: boolean, valueColor?: string) {
   return (
     <View style={styles.detailRow}>
       <Text style={styles.detailLabel}>{label}</Text>
@@ -1681,8 +1494,8 @@ const styles = StyleSheet.create({
 
   txMainRight: {
     alignItems: 'flex-end',
-    maxWidth: 130,
-    minWidth: 90,
+    maxWidth: 140,
+    minWidth: 100,
   },
 
   txMainRightRTL: {
@@ -1716,13 +1529,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
 
-  txTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
-
   txTitle: {
     fontSize: 15,
     fontWeight: '900',
@@ -1742,13 +1548,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: UI.text2,
-  },
-
-  txSubtitleTiny: {
-    marginTop: 3,
-    fontSize: 12,
-    fontWeight: '700',
-    color: UI.text3,
   },
 
   txAmount: {
@@ -1795,7 +1594,6 @@ const styles = StyleSheet.create({
   statusPillText: {
     fontSize: 13,
     fontWeight: '900',
-    textTransform: 'capitalize',
   },
 
   modalContainer: {
@@ -1990,6 +1788,13 @@ const styles = StyleSheet.create({
   partyName: {
     fontSize: 17,
     fontWeight: '900',
+  },
+
+  partySecondary: {
+    marginTop: 6,
+    fontSize: 14,
+    fontWeight: '700',
+    color: UI.text2,
   },
 
   partyEmail: {
