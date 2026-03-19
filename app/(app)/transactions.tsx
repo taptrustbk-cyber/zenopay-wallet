@@ -24,7 +24,6 @@ import i18n from '@/lib/i18n';
 import { Stack, useRouter } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
 
 const UI = {
   bg: '#F4F8FC',
@@ -44,6 +43,8 @@ const UI = {
   redSoft: '#FFEAF1',
   amber: '#F59E0B',
   amberSoft: '#FFF4D9',
+  blue: '#2563EB',
+  blueSoft: '#EAF1FF',
   shadow: '#0F172A',
 };
 
@@ -62,10 +63,17 @@ interface TransactionData {
   sender_name?: string | null;
   sender_email?: string | null;
   sender_avatar?: string | null;
+  sender_city?: string | null;
 
   receiver_name?: string | null;
   receiver_email?: string | null;
   receiver_avatar?: string | null;
+  receiver_city?: string | null;
+
+  meta_title?: string | null;
+  meta_subtitle?: string | null;
+  meta_image?: string | null;
+  meta_source?: string | null;
 }
 
 type TxUi = {
@@ -74,11 +82,20 @@ type TxUi = {
   subtitleLine2?: string;
   iconName: keyof typeof Ionicons.glyphMap;
   isOutgoing: boolean;
+
   partyName: string;
   partyEmail?: string;
   partyAvatar?: string | null;
+  partyCity?: string | null;
+
   transactionTypeLabel: string;
   note?: string;
+
+  verified?: boolean;
+  imageUri?: string | null;
+  useRemoteImage?: boolean;
+  appLabel?: string;
+
   kind:
     | 'send'
     | 'receive'
@@ -95,7 +112,7 @@ type TxUi = {
 
 const APP_NAME = 'Zenopay';
 const APP_FAKE_PROFILE_NAME = 'Zenopay';
-const APP_DEFAULT_ICON = 'shield-checkmark-outline';
+const APP_DEFAULT_ICON: keyof typeof Ionicons.glyphMap = 'shield-checkmark-outline';
 
 const safe = (v?: string | null) => (v && String(v).trim().length ? String(v).trim() : null);
 
@@ -105,16 +122,17 @@ const tOr = (key: string, fallback: string) => {
   return v === key ? fallback : v;
 };
 
+const languageUsesArabicIQD = () => {
+  const lang = String(i18n.language || '').toLowerCase();
+  return ['ar', 'cbk', 'kmr'].includes(lang);
+};
+
 const formatIQD = (value: number | null | undefined) => {
   const num = Number(value || 0);
   const abs = Math.abs(num);
   const formatted = abs.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
-  const lang = i18n.language;
-
-  if (lang === 'ar') return `${formatted} د.غ`;
-  if (lang === 'ku') return `${formatted} د.ع`;
-
+  if (languageUsesArabicIQD()) return `${formatted} د.غ`;
   return `${formatted} IQD`;
 };
 
@@ -173,6 +191,78 @@ const getStatusColors = (raw: string) => {
   return { bg: UI.redSoft, color: UI.red };
 };
 
+const pickFirstText = (obj: any, keys: string[]) => {
+  for (const key of keys) {
+    const value = safe(obj?.[key]);
+    if (value) return value;
+  }
+  return null;
+};
+
+const enrichFromRows = (
+  rows: any[] | null | undefined,
+  tableName: string,
+  map: Map<string, { title?: string | null; subtitle?: string | null; image?: string | null; source?: string | null }>
+) => {
+  (rows || []).forEach((row) => {
+    const txId = safe(
+      row?.transaction_id ||
+        row?.tx_id ||
+        row?.payment_transaction_id ||
+        row?.wallet_transaction_id
+    );
+
+    if (!txId) return;
+
+    const title =
+      pickFirstText(row, [
+        'product_name',
+        'card_name',
+        'gift_card_name',
+        'mobile_name',
+        'model_name',
+        'title',
+        'name',
+        'network_name',
+        'operator_name',
+        'brand_name',
+      ]) || null;
+
+    const subtitle =
+      pickFirstText(row, [
+        'network',
+        'operator',
+        'brand',
+        'category',
+        'provider',
+        'type',
+        'card_type',
+        'gift_type',
+        'model',
+      ]) || null;
+
+    const image =
+      pickFirstText(row, [
+        'image_url',
+        'image',
+        'logo_url',
+        'logo',
+        'card_image',
+        'product_image',
+        'thumbnail_url',
+        'photo_url',
+        'icon_url',
+      ]) || null;
+
+    map.set(txId, {
+      title,
+      subtitle,
+      image,
+      source: tableName,
+    });
+  });
+};
+
 export default function TransactionsScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -185,7 +275,7 @@ export default function TransactionsScreen() {
   const [pdfLoading, setPdfLoading] = useState(false);
 
   const transactionsQuery = useQuery({
-    queryKey: ['transactions-screen-clean', myId],
+    queryKey: ['transactions-screen-modern-rich', myId],
     queryFn: async () => {
       if (!myId) throw new Error('User ID not found');
 
@@ -231,7 +321,7 @@ export default function TransactionsScreen() {
             balance_after
           `
           )
-          .in('user_id', [myId])
+          .eq('user_id', myId)
           .order('created_at', { ascending: false });
 
         data = q2.data;
@@ -277,65 +367,138 @@ export default function TransactionsScreen() {
       }
 
       const ids = Array.from(
-        new Set(txs.flatMap((t) => [t.sender_id, t.receiver_id]).filter((x): x is string => !!x))
+        new Set(
+          txs
+            .flatMap((t) => [t.sender_id, t.receiver_id, t.user_id])
+            .filter((x): x is string => !!x)
+        )
       );
 
-      if (!ids.length) return txs;
-
-      const map = new Map<
+      const profileMap = new Map<
         string,
-        { full_name: string | null; email: string | null; avatar_url: string | null }
+        {
+          full_name: string | null;
+          email: string | null;
+          avatar_url: string | null;
+          city: string | null;
+        }
       >();
 
-      const { data: p1 } = await supabase
-        .from('profiles')
-        .select('id, user_id, full_name, email, avatar_url')
-        .in('id', ids);
-
-      (p1 || []).forEach((p: any) => {
-        const key1 = safe(p.id);
-        const key2 = safe(p.user_id);
-        const val = {
-          full_name: safe(p.full_name),
-          email: safe(p.email),
-          avatar_url: safe(p.avatar_url),
-        };
-        if (key1) map.set(String(key1), val);
-        if (key2) map.set(String(key2), val);
-      });
-
-      const missing = ids.filter((id) => !map.has(id));
-
-      if (missing.length) {
-        const { data: p2 } = await supabase
+      if (ids.length) {
+        const { data: p1 } = await supabase
           .from('profiles')
-          .select('id, user_id, full_name, email, avatar_url')
-          .in('user_id', missing);
+          .select('id, user_id, full_name, email, avatar_url, city')
+          .in('id', ids);
 
-        (p2 || []).forEach((p: any) => {
+        (p1 || []).forEach((p: any) => {
           const key1 = safe(p.id);
           const key2 = safe(p.user_id);
           const val = {
             full_name: safe(p.full_name),
             email: safe(p.email),
             avatar_url: safe(p.avatar_url),
+            city: safe(p.city),
           };
-          if (key1) map.set(String(key1), val);
-          if (key2) map.set(String(key2), val);
+          if (key1) profileMap.set(String(key1), val);
+          if (key2) profileMap.set(String(key2), val);
         });
+
+        const missing = ids.filter((id) => !profileMap.has(id));
+
+        if (missing.length) {
+          const { data: p2 } = await supabase
+            .from('profiles')
+            .select('id, user_id, full_name, email, avatar_url, city')
+            .in('user_id', missing);
+
+          (p2 || []).forEach((p: any) => {
+            const key1 = safe(p.id);
+            const key2 = safe(p.user_id);
+            const val = {
+              full_name: safe(p.full_name),
+              email: safe(p.email),
+              avatar_url: safe(p.avatar_url),
+              city: safe(p.city),
+            };
+            if (key1) profileMap.set(String(key1), val);
+            if (key2) profileMap.set(String(key2), val);
+          });
+        }
+      }
+
+      const metaMap = new Map<
+        string,
+        { title?: string | null; subtitle?: string | null; image?: string | null; source?: string | null }
+      >();
+
+      const tableAttempts = [
+        {
+          table: 'topup_orders',
+          select:
+            'transaction_id, tx_id, card_name, network_name, operator_name, provider, image_url, logo_url, card_image, image',
+        },
+        {
+          table: 'sim_card_orders',
+          select:
+            'transaction_id, tx_id, card_name, network_name, operator_name, provider, image_url, logo_url, card_image, image',
+        },
+        {
+          table: 'gift_card_orders',
+          select:
+            'transaction_id, tx_id, gift_card_name, card_name, brand_name, category, image_url, logo_url, card_image, image',
+        },
+        {
+          table: 'shop_orders',
+          select:
+            'transaction_id, tx_id, product_name, mobile_name, model_name, brand_name, image_url, logo_url, product_image, image, thumbnail_url',
+        },
+        {
+          table: 'mobile_shop_orders',
+          select:
+            'transaction_id, tx_id, product_name, mobile_name, model_name, brand_name, image_url, logo_url, product_image, image, thumbnail_url',
+        },
+        {
+          table: 'notifications',
+          select:
+            'transaction_id, tx_id, title, name, type, image_url, logo_url, image, icon_url',
+        },
+      ];
+
+      for (const attempt of tableAttempts) {
+        try {
+          const { data: rows, error: tableError } = await supabase
+            .from(attempt.table)
+            .select(attempt.select);
+
+          if (!tableError && rows?.length) {
+            enrichFromRows(rows, attempt.table, metaMap);
+          }
+        } catch (e) {
+          console.log(`Optional transaction meta table skipped: ${attempt.table}`, e);
+        }
       }
 
       return txs.map((t) => {
-        const s = t.sender_id ? map.get(t.sender_id) : null;
-        const r = t.receiver_id ? map.get(t.receiver_id) : null;
+        const s = t.sender_id ? profileMap.get(t.sender_id) : null;
+        const r = t.receiver_id ? profileMap.get(t.receiver_id) : null;
+        const meta = metaMap.get(t.id);
+
         return {
           ...t,
           sender_name: s?.full_name ?? null,
           sender_email: s?.email ?? null,
           sender_avatar: s?.avatar_url ?? null,
+          sender_city: s?.city ?? null,
+
           receiver_name: r?.full_name ?? null,
           receiver_email: r?.email ?? null,
           receiver_avatar: r?.avatar_url ?? null,
+          receiver_city: r?.city ?? null,
+
+          meta_title: meta?.title ?? null,
+          meta_subtitle: meta?.subtitle ?? null,
+          meta_image: meta?.image ?? null,
+          meta_source: meta?.source ?? null,
         };
       });
     },
@@ -355,13 +518,18 @@ export default function TransactionsScreen() {
       const receiverEmail = safe(tx.receiver_email);
       const senderAvatar = safe(tx.sender_avatar);
       const receiverAvatar = safe(tx.receiver_avatar);
+      const senderCity = safe(tx.sender_city);
+      const receiverCity = safe(tx.receiver_city);
+
+      const metaTitle = safe(tx.meta_title);
+      const metaSubtitle = safe(tx.meta_subtitle);
+      const metaImage = safe(tx.meta_image);
 
       const senderLabel = senderName || senderEmail || tOr('transactions_unknownUser', 'Unknown user');
       const receiverLabel = receiverName || receiverEmail || tOr('transactions_unknownUser', 'Unknown user');
 
       const isOutgoingBySender = tx.sender_id === myId;
       const isOutgoingByAmount = Number(tx.amount || 0) < 0;
-
       const descLower = (desc || '').toLowerCase();
 
       const isVirtualCard =
@@ -382,8 +550,11 @@ export default function TransactionsScreen() {
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
+          partyCity: null,
           transactionTypeLabel: tOr('transactions_typeVirtualCard', 'Virtual Card'),
           note: desc || tOr('transactions_noteVirtualCard', 'Zenopay virtual card has been created.'),
+          verified: true,
+          appLabel: APP_NAME,
           kind: 'virtual_card',
         };
       }
@@ -404,8 +575,10 @@ export default function TransactionsScreen() {
             partyName: receiverLabel,
             partyEmail: receiverEmail || undefined,
             partyAvatar: receiverAvatar || null,
-            transactionTypeLabel: tOr('transactions_typeP2PTransfer', 'P2P-Transfer'),
+            partyCity: receiverCity || null,
+            transactionTypeLabel: tOr('transactions_typeP2PTransfer', 'P2P Transfer'),
             note: desc || `${tOr('transactions_moneySentTo', 'Money sent to')} ${receiverLabel}`,
+            verified: false,
             kind: 'send',
           };
         }
@@ -422,8 +595,10 @@ export default function TransactionsScreen() {
           partyName: senderLabel,
           partyEmail: senderEmail || undefined,
           partyAvatar: senderAvatar || null,
-          transactionTypeLabel: tOr('transactions_typeP2PTransfer', 'P2P-Transfer'),
+          partyCity: senderCity || null,
+          transactionTypeLabel: tOr('transactions_typeP2PTransfer', 'P2P Transfer'),
           note: desc || `${tOr('transactions_moneyReceivedFrom', 'Money received from')} ${senderLabel}`,
+          verified: false,
           kind: 'receive',
         };
       }
@@ -445,8 +620,11 @@ export default function TransactionsScreen() {
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
+          partyCity: null,
           transactionTypeLabel: tOr('transactions_typeDeposit', 'Deposit'),
           note: desc || tOr('transactions_depositFromZenopay', 'Deposit from Zenopay'),
+          verified: true,
+          appLabel: APP_NAME,
           kind: 'deposit',
         };
       }
@@ -466,8 +644,11 @@ export default function TransactionsScreen() {
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
+          partyCity: null,
           transactionTypeLabel: tOr('transactions_typeWithdraw', 'Withdraw'),
           note: desc || tOr('transactions_noteWithdraw', 'Withdraw processed by Zenopay'),
+          verified: true,
+          appLabel: APP_NAME,
           kind: 'withdraw',
         };
       }
@@ -475,31 +656,47 @@ export default function TransactionsScreen() {
       if (type.includes('gift') || type === 'gift_card_purchase' || type === 'purchase_giftcard') {
         return {
           title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions_giftCardPurchase', 'Gift Card Purchase'),
-          subtitleLine2: makeShortTransactionId(tx.id),
+          subtitleLine1: metaTitle || tOr('transactions_giftCardPurchase', 'Gift Card Purchase'),
+          subtitleLine2: metaSubtitle || makeShortTransactionId(tx.id),
           iconName: 'gift-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
+          partyCity: null,
           transactionTypeLabel: tOr('transactions_typeGiftCard', 'Gift Card'),
-          note: desc || tOr('transactions_noteGiftCard', 'Gift card purchased successfully'),
+          note: desc || metaTitle || tOr('transactions_noteGiftCard', 'Gift card purchased successfully'),
+          verified: true,
+          appLabel: APP_NAME,
+          imageUri: metaImage || null,
+          useRemoteImage: !!metaImage,
           kind: 'giftcard',
         };
       }
 
-      if (type.includes('sim') || type === 'sim_card_purchase' || type === 'purchase_sim') {
+      if (
+        type.includes('sim') ||
+        type === 'sim_card_purchase' ||
+        type === 'purchase_sim' ||
+        type === 'topup_purchase' ||
+        type === 'card_topup'
+      ) {
         return {
           title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions_simCardPurchase', 'SIM Card Purchase'),
-          subtitleLine2: makeShortTransactionId(tx.id),
+          subtitleLine1: metaTitle || tOr('transactions_simCardPurchase', 'SIM Card Purchase'),
+          subtitleLine2: metaSubtitle || makeShortTransactionId(tx.id),
           iconName: 'cellular-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
+          partyCity: null,
           transactionTypeLabel: tOr('transactions_typeSimCard', 'SIM Card'),
-          note: desc || tOr('transactions_noteSimCard', 'SIM card purchased successfully'),
+          note: desc || metaTitle || tOr('transactions_noteSimCard', 'SIM card purchased successfully'),
+          verified: true,
+          appLabel: APP_NAME,
+          imageUri: metaImage || null,
+          useRemoteImage: !!metaImage,
           kind: 'sim',
         };
       }
@@ -507,52 +704,47 @@ export default function TransactionsScreen() {
       if (type.includes('mobile') || type === 'purchase_mobile' || type === 'mobile_shop_purchase') {
         return {
           title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions_mobileShopPurchase', 'Mobile Shop Purchase'),
-          subtitleLine2: makeShortTransactionId(tx.id),
+          subtitleLine1: metaTitle || tOr('transactions_mobileShopPurchase', 'Mobile Shop Purchase'),
+          subtitleLine2: metaSubtitle || makeShortTransactionId(tx.id),
           iconName: 'phone-portrait-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
+          partyCity: null,
           transactionTypeLabel: tOr('transactions_typeMobileShop', 'Mobile Shop'),
-          note: desc || tOr('transactions_noteMobileShop', 'Mobile shop purchase completed'),
+          note: desc || metaTitle || tOr('transactions_noteMobileShop', 'Mobile shop purchase completed'),
+          verified: true,
+          appLabel: APP_NAME,
+          imageUri: metaImage || null,
+          useRemoteImage: !!metaImage,
           kind: 'mobile',
-        };
-      }
-
-      if (type.includes('topup_purchase') || type === 'card_topup' || type === 'topup_purchase') {
-        return {
-          title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions_topUpCharge', 'Top-Up Charge'),
-          subtitleLine2: makeShortTransactionId(tx.id),
-          iconName: 'flash-outline',
-          isOutgoing: true,
-          partyName: APP_FAKE_PROFILE_NAME,
-          partyEmail: undefined,
-          partyAvatar: null,
-          transactionTypeLabel: tOr('transactions_typeTopup', 'Top-Up'),
-          note: desc || tOr('transactions_noteTopup', 'Top-up purchase completed'),
-          kind: 'topup',
         };
       }
 
       if (type.includes('purchase') || type === 'buy' || type === 'order') {
         return {
           title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions_purchase', 'Purchase'),
-          subtitleLine2: makeShortTransactionId(tx.id),
+          subtitleLine1: metaTitle || tOr('transactions_purchase', 'Purchase'),
+          subtitleLine2: metaSubtitle || makeShortTransactionId(tx.id),
           iconName: 'pricetag-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
+          partyCity: null,
           transactionTypeLabel: tOr('transactions_typePurchase', 'Purchase'),
-          note: desc || tOr('transactions_notePurchase', 'Purchase completed'),
+          note: desc || metaTitle || tOr('transactions_notePurchase', 'Purchase completed'),
+          verified: true,
+          appLabel: APP_NAME,
+          imageUri: metaImage || null,
+          useRemoteImage: !!metaImage,
           kind: 'purchase',
         };
       }
 
       const isOutgoing = isOutgoingBySender || isOutgoingByAmount;
+
       return {
         title: isOutgoing
           ? tOr('transactions_moneySent', 'Money Sent')
@@ -564,8 +756,11 @@ export default function TransactionsScreen() {
         partyName: APP_FAKE_PROFILE_NAME,
         partyEmail: undefined,
         partyAvatar: null,
+        partyCity: null,
         transactionTypeLabel: tOr('transactions_typeTransaction', 'Transaction'),
         note: desc || tOr('transactions_transactionDetailsText', 'Transaction details'),
+        verified: true,
+        appLabel: APP_NAME,
         kind: 'other',
       };
     },
@@ -588,11 +783,20 @@ export default function TransactionsScreen() {
         tx.type,
         tx.status,
         tx.description,
+        tx.sender_name,
+        tx.sender_email,
+        tx.sender_city,
+        tx.receiver_name,
+        tx.receiver_email,
+        tx.receiver_city,
+        tx.meta_title,
+        tx.meta_subtitle,
         ui.title,
         ui.subtitleLine1,
         ui.subtitleLine2,
         ui.partyName,
         ui.partyEmail,
+        ui.partyCity,
         ui.transactionTypeLabel,
       ]
         .filter(Boolean)
@@ -621,6 +825,7 @@ export default function TransactionsScreen() {
       const fee = 0;
       const total = amount + fee;
       const partyEmail = ui.partyEmail || '';
+      const partyCity = ui.partyCity || '';
       const note = ui.note || '';
       const dateText = formatFullDate(tx.created_at);
       const timeText = formatTime(tx.created_at);
@@ -789,6 +994,7 @@ export default function TransactionsScreen() {
                   <div>
                     <div class="value">${ui.partyName}</div>
                     <div class="small">${partyEmail}</div>
+                    <div class="small">${partyCity}</div>
                   </div>
                 </div>
               </div>
@@ -846,39 +1052,12 @@ export default function TransactionsScreen() {
     [getTxUi]
   );
 
-  const handleDownloadPdf = useCallback(async () => {
-    if (!selectedTx) return;
-    try {
-      setPdfLoading(true);
-      const html = buildTransactionHtml(selectedTx);
-      const { uri } = await Print.printToFileAsync({ html });
-      const fileName = `transaction-${makeShortTransactionId(selectedTx.id)}.pdf`;
-      const newPath = `${FileSystem.documentDirectory}${fileName}`;
-      if (Platform.OS === 'ios') {
-  await Sharing.shareAsync(uri);
-} else {
-  await FileSystem.copyAsync({ from: uri, to: newPath });
-}
-
-      Alert.alert(
-        tOr('transactions_success', 'Success'),
-        tOr('transactions_pdfSavedSuccessfully', 'PDF saved successfully')
-      );
-    } catch (e) {
-      console.log('PDF save error', e);
-      Alert.alert(
-        tOr('common_error', 'Error'),
-        tOr('transactions_couldNotSavePdf', 'Could not save PDF')
-      );
-    } finally {
-      setPdfLoading(false);
-    }
-  }, [selectedTx, buildTransactionHtml]);
-
   const handleSharePdf = useCallback(async () => {
     if (!selectedTx) return;
+
     try {
       setPdfLoading(true);
+
       const html = buildTransactionHtml(selectedTx);
       const { uri } = await Print.printToFileAsync({ html });
 
@@ -907,6 +1086,65 @@ export default function TransactionsScreen() {
     }
   }, [selectedTx, buildTransactionHtml]);
 
+  const renderAvatarOrIcon = (ui: TxUi) => {
+    if (ui.kind === 'send' || ui.kind === 'receive') {
+      if (ui.partyAvatar) {
+        return <Image source={{ uri: ui.partyAvatar }} style={styles.txAvatarImage} />;
+      }
+
+      return (
+        <View
+          style={[
+            styles.txIconBox,
+            { backgroundColor: ui.isOutgoing ? UI.redSoft : UI.greenSoft },
+          ]}
+        >
+          <Ionicons
+            name="person-outline"
+            size={22}
+            color={ui.isOutgoing ? UI.red : UI.green}
+          />
+        </View>
+      );
+    }
+
+    if (ui.useRemoteImage && ui.imageUri) {
+      return <Image source={{ uri: ui.imageUri }} style={styles.txAvatarImage} />;
+    }
+
+    return (
+      <View
+        style={[
+          styles.txIconBox,
+          {
+            backgroundColor:
+              ui.kind === 'deposit' || ui.kind === 'withdraw'
+                ? UI.blueSoft
+                : ui.isOutgoing
+                ? UI.redSoft
+                : UI.greenSoft,
+          },
+        ]}
+      >
+        <Ionicons
+          name={
+            ui.kind === 'deposit' || ui.kind === 'withdraw'
+              ? APP_DEFAULT_ICON
+              : ui.iconName
+          }
+          size={22}
+          color={
+            ui.kind === 'deposit' || ui.kind === 'withdraw'
+              ? UI.blue
+              : ui.isOutgoing
+              ? UI.red
+              : UI.green
+          }
+        />
+      </View>
+    );
+  };
+
   const renderTransaction = ({ item }: { item: TransactionData }) => {
     const ui = getTxUi(item);
     const statusColors = getStatusColors(item.status);
@@ -921,34 +1159,25 @@ export default function TransactionsScreen() {
       >
         <View style={[styles.txTopRow, isRTL && styles.txTopRowRTL]}>
           <View style={[styles.txMainLeft, isRTL && styles.txMainLeftRTL]}>
-            {ui.partyAvatar ? (
-              <Image source={{ uri: ui.partyAvatar }} style={styles.txAvatarImage} />
-            ) : (
-              <View
-                style={[
-                  styles.txIconBox,
-                  { backgroundColor: ui.isOutgoing ? UI.redSoft : UI.greenSoft },
-                ]}
-              >
-                <Ionicons
-                  name={ui.iconName}
-                  size={22}
-                  color={ui.isOutgoing ? UI.red : UI.green}
-                />
-              </View>
-            )}
+            {renderAvatarOrIcon(ui)}
 
             <View style={[styles.txInfo, isRTL && styles.txInfoRTL]}>
-              <Text
-                style={[
-                  styles.txTitle,
-                  { color: ui.isOutgoing ? UI.red : UI.green },
-                  isRTL && styles.textRTL,
-                ]}
-                numberOfLines={1}
-              >
-                {ui.title}
-              </Text>
+              <View style={styles.txTitleRow}>
+                <Text
+                  style={[
+                    styles.txTitle,
+                    { color: ui.isOutgoing ? UI.red : UI.green },
+                    isRTL && styles.textRTL,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {ui.title}
+                </Text>
+
+                {ui.verified && (
+                  <Ionicons name="checkmark-circle" size={16} color={UI.blue} />
+                )}
+              </View>
 
               <Text
                 style={[styles.txSubtitleMain, isRTL && styles.textRTL]}
@@ -957,12 +1186,30 @@ export default function TransactionsScreen() {
                 {ui.subtitleLine1}
               </Text>
 
-              {!!ui.partyEmail && ui.partyEmail !== ui.subtitleLine1 && (
+              {!!ui.partyEmail && (ui.kind === 'send' || ui.kind === 'receive') && (
                 <Text
                   style={[styles.txSubtitleSmall, isRTL && styles.textRTL]}
                   numberOfLines={1}
                 >
                   {ui.partyEmail}
+                </Text>
+              )}
+
+              {!!ui.partyCity && (ui.kind === 'send' || ui.kind === 'receive') && (
+                <Text
+                  style={[styles.txSubtitleTiny, isRTL && styles.textRTL]}
+                  numberOfLines={1}
+                >
+                  {ui.partyCity}
+                </Text>
+              )}
+
+              {!ui.partyEmail && !!ui.subtitleLine2 && (
+                <Text
+                  style={[styles.txSubtitleSmall, isRTL && styles.textRTL]}
+                  numberOfLines={1}
+                >
+                  {ui.subtitleLine2}
                 </Text>
               )}
             </View>
@@ -993,9 +1240,7 @@ export default function TransactionsScreen() {
 
           <View style={[styles.statusPill, { backgroundColor: statusColors.bg }]}>
             <Text style={[styles.statusPillText, { color: statusColors.color }]}>
-              {ui.isOutgoing
-                ? tOr('transactions_debit', 'Debit')
-                : tOr('transactions_credit', 'Credit')}
+              {tOr(`transactions_status_${statusLabel(item.status)}`, statusLabel(item.status))}
             </Text>
           </View>
         </View>
@@ -1154,26 +1399,14 @@ export default function TransactionsScreen() {
                   <TouchableOpacity
                     style={styles.invoiceActionBtn}
                     activeOpacity={0.9}
-                    onPress={handleDownloadPdf}
-                    disabled={pdfLoading}
-                  >
-                    <Ionicons name="download-outline" size={20} color={UI.text} />
-                    <Text style={styles.invoiceActionText}>
-                      {pdfLoading
-                        ? tOr('transactions_pleaseWait', 'Please wait...')
-                        : tOr('transactions_downloadPdf', 'Download PDF')}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.invoiceActionBtn}
-                    activeOpacity={0.9}
                     onPress={handleSharePdf}
                     disabled={pdfLoading}
                   >
                     <Ionicons name="share-social-outline" size={20} color={UI.text} />
                     <Text style={styles.invoiceActionText}>
-                      {tOr('transactions_sharePdf', 'Share PDF')}
+                      {pdfLoading
+                        ? tOr('transactions_pleaseWait', 'Please wait...')
+                        : tOr('transactions_sharePdf', 'Share PDF')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1209,18 +1442,22 @@ export default function TransactionsScreen() {
                   </Text>
 
                   <View style={styles.detailPartyBox}>
-                    {selectedUi.partyAvatar ? (
+                    {(selectedUi.kind === 'send' || selectedUi.kind === 'receive') && selectedUi.partyAvatar ? (
                       <Image source={{ uri: selectedUi.partyAvatar }} style={styles.partyAvatarImage} />
+                    ) : selectedUi.useRemoteImage && selectedUi.imageUri ? (
+                      <Image source={{ uri: selectedUi.imageUri }} style={styles.partyAvatarImage} />
                     ) : (
                       <View style={styles.partyFallbackAvatar}>
                         <Ionicons
                           name={
-                            selectedUi.partyName === APP_FAKE_PROFILE_NAME
-                              ? (APP_DEFAULT_ICON as any)
-                              : 'person-outline'
+                            selectedUi.verified
+                              ? APP_DEFAULT_ICON
+                              : selectedUi.kind === 'send' || selectedUi.kind === 'receive'
+                              ? 'person-outline'
+                              : selectedUi.iconName
                           }
                           size={26}
-                          color={UI.primaryDark}
+                          color={selectedUi.verified ? UI.blue : UI.primaryDark}
                         />
                       </View>
                     )}
@@ -1236,13 +1473,21 @@ export default function TransactionsScreen() {
                           {selectedUi.partyName}
                         </Text>
 
-                        {selectedUi.partyName === APP_FAKE_PROFILE_NAME && (
-                          <Ionicons name="checkmark-circle" size={18} color={UI.green} />
+                        {selectedUi.verified && (
+                          <Ionicons name="checkmark-circle" size={18} color={UI.blue} />
                         )}
                       </View>
 
                       {!!selectedUi.partyEmail && (
                         <Text style={styles.partyEmail}>{selectedUi.partyEmail}</Text>
+                      )}
+
+                      {!!selectedUi.partyCity && (
+                        <Text style={styles.partyCity}>{selectedUi.partyCity}</Text>
+                      )}
+
+                      {selectedUi.verified && !selectedUi.partyEmail && (
+                        <Text style={styles.partyEmail}>{APP_NAME}</Text>
                       )}
                     </View>
                   </View>
@@ -1436,7 +1681,7 @@ const styles = StyleSheet.create({
 
   txMainRight: {
     alignItems: 'flex-end',
-    maxWidth: 120,
+    maxWidth: 130,
     minWidth: 90,
   },
 
@@ -1471,6 +1716,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
 
+  txTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+
   txTitle: {
     fontSize: 15,
     fontWeight: '900',
@@ -1490,6 +1742,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: UI.text2,
+  },
+
+  txSubtitleTiny: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: '700',
+    color: UI.text3,
   },
 
   txAmount: {
@@ -1536,6 +1795,7 @@ const styles = StyleSheet.create({
   statusPillText: {
     fontSize: 13,
     fontWeight: '900',
+    textTransform: 'capitalize',
   },
 
   modalContainer: {
@@ -1737,6 +1997,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: UI.text2,
+  },
+
+  partyCity: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '700',
+    color: UI.text3,
   },
 
   noteBox: {
