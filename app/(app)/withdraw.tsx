@@ -26,7 +26,6 @@ import {
   Receipt,
   Wallet2,
 } from 'lucide-react-native';
-import { decode } from 'base64-arraybuffer';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -263,10 +262,10 @@ export default function WithdrawScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-  mediaTypes: ['images'],
-  allowsEditing: false,
-  quality: 1,
-});
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 1,
+      });
 
       if (!result.canceled && result.assets?.[0]?.uri) {
         setReceiptImage(result.assets[0].uri);
@@ -277,28 +276,28 @@ export default function WithdrawScreen() {
   };
 
   const uploadReceiptToStorage = async (uri: string) => {
+    if (!user?.id) throw new Error('User ID not found');
+
     const response = await fetch(uri);
     const blob = await response.blob();
-
-    const reader = new FileReader();
-
-    const base64: string = await new Promise((resolve, reject) => {
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        const pureBase64 = result.split(',')[1];
-        resolve(pureBase64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    const arrayBuffer = await blob.arrayBuffer();
 
     const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `${user?.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+    const contentType =
+      ext === 'png'
+        ? 'image/png'
+        : ext === 'webp'
+        ? 'image/webp'
+        : ext === 'heic'
+        ? 'image/heic'
+        : 'image/jpeg';
 
     const { error: uploadError } = await supabase.storage
       .from(RECEIPT_BUCKET)
-      .upload(fileName, decode(base64), {
-        contentType: ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg',
+      .upload(fileName, arrayBuffer, {
+        contentType,
         upsert: false,
       });
 
@@ -1313,10 +1312,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   uploadPreview: {
-  width: '100%',
-  height: '100%',
-  backgroundColor: '#F8FAFC', // 👈 ئەمە زیاد بکە
-},
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F8FAFC',
+  },
   uploadOverlay: {
     position: 'absolute',
     left: 10,
