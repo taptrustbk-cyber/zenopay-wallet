@@ -72,7 +72,7 @@ const COLORS = {
   bg: '#F7F8FC',
   card: '#FFFFFF',
   border: '#E5E7EB',
-  text: '#111827',
+  text: '#0F172A',
   textSecondary: '#6B7280',
   yellow: '#F5C400',
   yellowSoft: '#FFF7CC',
@@ -95,9 +95,16 @@ const t = (key: string, fallback: string) => {
   return String(value);
 };
 
+const formatNumberWithDots = (value?: number | null) => {
+  const number = Math.max(0, Number(value || 0));
+  const rounded = Math.round(number);
+  return String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
 const formatIQD = (value?: number | null) => {
-  const number = Number(value || 0);
-  return `${new Intl.NumberFormat('en-US').format(number)} ${t('iqdShort', 'IQD')}`;
+  const formatted = formatNumberWithDots(value);
+  const currency = t('iqdShort', 'IQD');
+  return isRTL ? `${currency} ${formatted}` : `${formatted} ${currency}`;
 };
 
 const getBrandLabel = (brand: BrandKey) => {
@@ -172,13 +179,40 @@ const getMonthsCount = (product?: MobileProduct | null) => {
   return Number(product?.months_count ?? 1);
 };
 
+const getInstallmentContractPrice = (product?: MobileProduct | null) => {
+  if (!product) return 0;
+  return getMonthlyPrice(product) * getMonthsCount(product);
+};
+
+const ProductImage = ({
+  uri,
+  style,
+  resizeMode = 'contain',
+  iconSize = 34,
+}: {
+  uri?: string | null;
+  style: any;
+  resizeMode?: 'cover' | 'contain' | 'stretch' | 'repeat' | 'center';
+  iconSize?: number;
+}) => {
+  if (!uri) {
+    return (
+      <View style={[style, styles.imagePlaceholder]}>
+        <Ionicons name="phone-portrait-outline" size={iconSize} color={COLORS.textSecondary} />
+      </View>
+    );
+  }
+
+  return <Image key={uri} source={{ uri }} style={style} resizeMode={resizeMode} />;
+};
+
 const FALLBACK_PRODUCTS: MobileProduct[] = [
   {
     id: 'fallback-1',
     brand: 'apple',
     name: 'iPhone 16 Pro Max',
-    image_url: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?q=80&w=1200&auto=format&fit=crop',
-    logo_url: 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg',
+    image_url: null,
+    logo_url: null,
     price_iqd: 1890000,
     cash_price_iqd: 1890000,
     monthly_price_iqd: 189000,
@@ -198,8 +232,8 @@ const FALLBACK_PRODUCTS: MobileProduct[] = [
     id: 'fallback-2',
     brand: 'samsung',
     name: 'Galaxy S25 Ultra',
-    image_url: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?q=80&w=1200&auto=format&fit=crop',
-    logo_url: 'https://upload.wikimedia.org/wikipedia/commons/2/24/Samsung_Logo.svg',
+    image_url: null,
+    logo_url: null,
     price_iqd: 1799000,
     cash_price_iqd: 1799000,
     monthly_price_iqd: 179900,
@@ -219,8 +253,8 @@ const FALLBACK_PRODUCTS: MobileProduct[] = [
     id: 'fallback-3',
     brand: 'xiaomi',
     name: 'Xiaomi 14 Ultra',
-    image_url: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?q=80&w=1200&auto=format&fit=crop',
-    logo_url: 'https://upload.wikimedia.org/wikipedia/commons/2/29/Xiaomi_logo.svg',
+    image_url: null,
+    logo_url: null,
     price_iqd: 1449000,
     cash_price_iqd: 1449000,
     monthly_price_iqd: 144900,
@@ -372,8 +406,8 @@ export default function MobileShopScreen() {
     return (productsQuery.data || FALLBACK_PRODUCTS).filter((item) => item.is_active !== false);
   }, [productsQuery.data]);
 
-  const featuredProducts = React.useMemo(() => {
-    return allProducts.slice(0, 3);
+  const featuredProduct = React.useMemo(() => {
+    return allProducts[0] || null;
   }, [allProducts]);
 
   const filteredProducts = React.useMemo(() => {
@@ -386,14 +420,14 @@ export default function MobileShopScreen() {
         quickFilter === 'all'
           ? true
           : quickFilter === 'new'
-          ? !!item.is_new
-          : quickFilter === 'discount'
-          ? String(item.badge || '').toLowerCase().includes('discount') ||
-            String(item.badge || '').toLowerCase().includes('offer')
-          : quickFilter === 'special'
-          ? String(item.badge || '').toLowerCase().includes('special') ||
-            String(item.badge || '').toLowerCase().includes('preorder')
-          : true;
+            ? !!item.is_new
+            : quickFilter === 'discount'
+              ? String(item.badge || '').toLowerCase().includes('discount') ||
+                String(item.badge || '').toLowerCase().includes('offer')
+              : quickFilter === 'special'
+                ? String(item.badge || '').toLowerCase().includes('special') ||
+                  String(item.badge || '').toLowerCase().includes('preorder')
+                : true;
 
       const text = [
         item.name,
@@ -425,14 +459,14 @@ export default function MobileShopScreen() {
   const selectedCashPrice = getCashPrice(selectedProduct);
   const selectedMonthlyPrice = getMonthlyPrice(selectedProduct);
   const selectedMonthsCount = getMonthsCount(selectedProduct);
-  const quantity = Math.max(1, Number(form.quantity || 1));
+  const selectedInstallmentContractUnit = getInstallmentContractPrice(selectedProduct);
 
+  const quantity = Math.max(1, Number(form.quantity || 1));
   const selectedCashTotal = selectedCashPrice * quantity;
   const selectedFirstInstallment = selectedMonthlyPrice * quantity;
-  const selectedInstallmentContractTotal = selectedMonthlyPrice * selectedMonthsCount * quantity;
+  const selectedInstallmentContractTotal = selectedInstallmentContractUnit * quantity;
 
   const payableNow = purchaseMode === 'cash' ? selectedCashTotal : selectedFirstInstallment;
-
   const walletBalanceAfterPayment = Math.max(0, walletBalance - payableNow);
 
   const remainingPurchaseAmount =
@@ -506,13 +540,13 @@ export default function MobileShopScreen() {
       const cashUnitPrice = getCashPrice(selectedProduct);
       const monthlyUnitPrice = getMonthlyPrice(selectedProduct);
       const monthsCount = getMonthsCount(selectedProduct);
+      const installmentUnitContractPrice = getInstallmentContractPrice(selectedProduct);
 
       const cashTotalPrice = cashUnitPrice * quantity;
       const firstInstallmentPayment = monthlyUnitPrice * quantity;
-      const installmentContractTotal = monthlyUnitPrice * monthsCount * quantity;
+      const installmentContractTotal = installmentUnitContractPrice * quantity;
 
       const currentBalance = Number(walletQuery.data || 0);
-
       const amountToPayNow = purchaseMode === 'cash' ? cashTotalPrice : firstInstallmentPayment;
 
       const remainingAmount =
@@ -555,7 +589,7 @@ export default function MobileShopScreen() {
         product_logo_url: selectedProduct.logo_url || null,
 
         unit_cash_price_iqd: cashUnitPrice,
-        unit_price_iqd: cashUnitPrice,
+        unit_price_iqd: purchaseMode === 'cash' ? cashUnitPrice : installmentUnitContractPrice,
         unit_monthly_price_iqd: monthlyUnitPrice,
         months_count: monthsCount,
         quantity,
@@ -621,7 +655,7 @@ export default function MobileShopScreen() {
         }\n${t('paidAmount', 'Paid amount')}: ${formatIQD(result.paidNow)}\n${t('walletBalanceAfterPayment', 'Wallet Balance After Payment')}: ${formatIQD(result.nextBalance)}${
           result.purchaseMode === 'installment'
             ? `\n${t('remainingInstallmentAmount', 'Remaining Installment Amount')}: ${formatIQD(result.remainingAmount)}`
-            : `\n${t('remainingPurchaseAmount', 'Remaining Purchase Amount')}: ${formatIQD(0)}`
+            : ''
         }`,
         [
           {
@@ -661,20 +695,6 @@ export default function MobileShopScreen() {
     router.push('/terms-conditions' as any);
   };
 
-  const topBar = (
-    <View style={styles.topBar}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.topIconBtn}>
-        <Ionicons name={isRTL ? 'arrow-forward' : 'arrow-back'} size={22} color="#fff" />
-      </TouchableOpacity>
-
-      <Text style={styles.topTitle}>{t('zenopayMobileShop', 'Zenopay Mobile Shop')}</Text>
-
-      <TouchableOpacity onPress={() => setMenuOpen(true)} style={styles.topMenuBtn}>
-        <Ionicons name="ellipsis-horizontal" size={20} color="#7A5B00" />
-      </TouchableOpacity>
-    </View>
-  );
-
   const brandTabs: { key: BrandKey; label: string }[] = [
     { key: 'all', label: t('all', 'All') },
     { key: 'apple', label: t('brandApple', 'Apple') },
@@ -696,12 +716,12 @@ export default function MobileShopScreen() {
       item.badge === 'new'
         ? t('new', 'New')
         : item.badge === 'special'
-        ? t('specialOffer', 'Special Offer')
-        : item.badge === 'discount'
-        ? t('discount', 'Discount')
-        : item.badge === 'preorder'
-        ? t('preorder', 'Pre-order')
-        : item.badge || (item.is_new ? t('new', 'New') : t('available', 'Available'));
+          ? t('specialOffer', 'Special Offer')
+          : item.badge === 'discount'
+            ? t('discount', 'Discount')
+            : item.badge === 'preorder'
+              ? t('preorder', 'Pre-order')
+              : item.badge || (item.is_new ? t('new', 'New') : t('available', 'Available'));
 
     return (
       <TouchableOpacity activeOpacity={0.94} style={styles.productCard} onPress={() => openCheckout(item)}>
@@ -715,15 +735,7 @@ export default function MobileShopScreen() {
           </TouchableOpacity>
         </View>
 
-        <Image
-          source={{
-            uri:
-              item.image_url ||
-              'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=1200&auto=format&fit=crop',
-          }}
-          style={styles.productImage}
-          resizeMode="contain"
-        />
+        <ProductImage uri={item.image_url} style={styles.productImage} resizeMode="contain" />
 
         <View style={styles.brandRow}>
           <Text style={styles.brandText}>{getBrandLabel(item.brand)}</Text>
@@ -746,9 +758,12 @@ export default function MobileShopScreen() {
         </View>
 
         <Text style={styles.priceText}>{formatIQD(getCashPrice(item))}</Text>
-        <Text style={styles.monthlyText}>
-          {formatIQD(item.monthly_price_iqd)} / {t('monthly', 'monthly')}
-        </Text>
+
+        {getMonthlyPrice(item) > 0 ? (
+          <Text style={styles.monthlyText}>
+            {formatIQD(getMonthlyPrice(item))} / {t('monthly', 'monthly')}
+          </Text>
+        ) : null}
 
         <View style={styles.shopTagWrap}>
           <Text style={styles.shopTag}>{t('zenopayShop', 'zenopay shop')}</Text>
@@ -761,7 +776,17 @@ export default function MobileShopScreen() {
     <View style={styles.container}>
       <ScreenHeaderOff />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        {topBar}
+        <LinearGradient colors={['#D8B100', '#F5C400', '#FFD84A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.topBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.topIconBtn}>
+            <Ionicons name={isRTL ? 'arrow-forward' : 'arrow-back'} size={22} color="#fff" />
+          </TouchableOpacity>
+
+          <Text style={styles.topTitle}>{t('zenopayMobileShop', 'Zenopay Mobile Shop')}</Text>
+
+          <TouchableOpacity onPress={() => setMenuOpen(true)} style={styles.topMenuBtn}>
+            <Ionicons name="ellipsis-horizontal" size={20} color="#7A5B00" />
+          </TouchableOpacity>
+        </LinearGradient>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -837,38 +862,27 @@ export default function MobileShopScreen() {
               <Text style={styles.heroSmall}>{t('zenopayWallet', 'Zenopay Wallet')}</Text>
               <Text style={styles.heroTitle}>{t('latestMobileSeries', 'Latest Mobile Series')}</Text>
               <Text style={styles.heroSub}>
-                {t('startingFrom', 'Starting from')} {featuredProducts[0] ? formatIQD(getCashPrice(featuredProducts[0])) : formatIQD(0)}
+                {t('startingFrom', 'Starting from')} {featuredProduct ? formatIQD(getCashPrice(featuredProduct)) : formatIQD(0)}
               </Text>
 
               <TouchableOpacity
                 style={styles.heroButton}
                 onPress={() => {
-                  if (featuredProducts[0]) openCheckout(featuredProducts[0]);
+                  if (featuredProduct) openCheckout(featuredProduct);
                 }}
               >
                 <Text style={styles.heroButtonText}>{t('buyNow', 'Buy Now')}</Text>
               </TouchableOpacity>
             </View>
 
-            <Image
-              source={{
-                uri:
-                  featuredProducts[0]?.image_url ||
-                  'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=1200&auto=format&fit=crop',
-              }}
-              style={styles.heroImage}
-              resizeMode="contain"
-            />
+            <View style={styles.heroImageWrap}>
+              <ProductImage uri={featuredProduct?.image_url} style={styles.heroImage} resizeMode="contain" iconSize={42} />
+            </View>
           </LinearGradient>
 
           <View style={styles.walletCard}>
-            <View>
-              <Text style={styles.walletLabel}>{t('yourWalletBalance', 'Your Wallet Balance')}</Text>
-              <Text style={styles.walletValue}>{walletQuery.isLoading ? '...' : formatIQD(walletBalance)}</Text>
-            </View>
-            <TouchableOpacity onPress={() => router.push('/(app)/dashboard' as any)} style={styles.walletButton}>
-              <Text style={styles.walletButtonText}>{t('openDashboard', 'Open Dashboard')}</Text>
-            </TouchableOpacity>
+            <Text style={styles.walletLabelCenter}>{t('yourWalletBalance', 'Your Wallet Balance')}</Text>
+            <Text style={styles.walletValueCenter}>{walletQuery.isLoading ? '...' : formatIQD(walletBalance)}</Text>
           </View>
 
           <View style={styles.sectionHeader}>
@@ -943,25 +957,24 @@ export default function MobileShopScreen() {
                 {selectedProduct ? (
                   <>
                     <View style={styles.selectedCard}>
-                      <Image
-                        source={{
-                          uri:
-                            selectedProduct.image_url ||
-                            'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=1200&auto=format&fit=crop',
-                        }}
-                        style={styles.selectedImage}
-                        resizeMode="contain"
-                      />
+                      <ProductImage uri={selectedProduct.image_url} style={styles.selectedImage} resizeMode="contain" />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.selectedName}>{selectedProduct.name}</Text>
                         <Text style={styles.selectedSub}>
                           {[selectedProduct.storage, selectedProduct.ram, selectedProduct.color].filter(Boolean).join(' • ')}
                         </Text>
+
                         <Text style={styles.selectedPrice}>
                           {purchaseMode === 'cash'
                             ? formatIQD(selectedCashPrice)
-                            : `${formatIQD(selectedMonthlyPrice)} / ${t('monthly', 'monthly')}`}
+                            : formatIQD(selectedInstallmentContractUnit)}
                         </Text>
+
+                        {purchaseMode === 'installment' ? (
+                          <Text style={styles.selectedInstallmentHint}>
+                            {formatIQD(selectedMonthlyPrice)} / {t('monthly', 'monthly')}
+                          </Text>
+                        ) : null}
                       </View>
                     </View>
 
@@ -998,18 +1011,36 @@ export default function MobileShopScreen() {
                     </View>
 
                     <View style={styles.priceModeInfo}>
-                      <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>{t('cashPrice', 'Cash Price')}</Text>
-                        <Text style={styles.summaryValue}>{formatIQD(selectedCashPrice)}</Text>
-                      </View>
-                      <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>{t('monthlyInstallment', 'Monthly Installment')}</Text>
-                        <Text style={styles.summaryValue}>{formatIQD(selectedMonthlyPrice)}</Text>
-                      </View>
-                      <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>{t('numberOfMonths', 'Number of Months')}</Text>
-                        <Text style={styles.summaryValue}>{selectedMonthsCount}</Text>
-                      </View>
+                      {purchaseMode === 'cash' ? (
+                        <>
+                          <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>{t('cashPrice', 'Cash Price')}</Text>
+                            <Text style={styles.summaryValue}>{formatIQD(selectedCashPrice)}</Text>
+                          </View>
+
+                          <View style={styles.summaryRowLast}>
+                            <Text style={styles.summaryLabel}>{t('payNow', 'Pay Now')}</Text>
+                            <Text style={styles.summaryValue}>{formatIQD(selectedCashTotal)}</Text>
+                          </View>
+                        </>
+                      ) : (
+                        <>
+                          <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>{t('installmentTotalPrice', 'Installment Total Price')}</Text>
+                            <Text style={styles.summaryValue}>{formatIQD(selectedInstallmentContractTotal)}</Text>
+                          </View>
+
+                          <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>{t('monthlyInstallment', 'Monthly Installment')}</Text>
+                            <Text style={styles.summaryValue}>{formatIQD(selectedFirstInstallment)}</Text>
+                          </View>
+
+                          <View style={styles.summaryRowLast}>
+                            <Text style={styles.summaryLabel}>{t('numberOfMonths', 'Number of Months')}</Text>
+                            <Text style={styles.summaryValue}>{selectedMonthsCount}</Text>
+                          </View>
+                        </>
+                      )}
                     </View>
 
                     <View style={styles.balanceBox}>
@@ -1144,26 +1175,21 @@ export default function MobileShopScreen() {
                             <Text style={styles.summaryValue}>{formatIQD(selectedCashTotal)}</Text>
                           </View>
 
-                          <View style={styles.summaryRow}>
+                          <View style={styles.summaryRowLast}>
                             <Text style={styles.summaryLabel}>{t('walletBalanceAfterPayment', 'Wallet Balance After Payment')}</Text>
                             <Text style={styles.summaryValue}>{formatIQD(walletBalanceAfterPayment)}</Text>
-                          </View>
-
-                          <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>{t('remainingPurchaseAmount', 'Remaining Purchase Amount')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(0)}</Text>
                           </View>
                         </>
                       ) : (
                         <>
                           <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>{t('firstMonthPayment', 'First Month Payment')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(selectedFirstInstallment)}</Text>
+                            <Text style={styles.summaryLabel}>{t('installmentTotalPrice', 'Installment Total Price')}</Text>
+                            <Text style={styles.summaryValue}>{formatIQD(selectedInstallmentContractTotal)}</Text>
                           </View>
 
                           <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>{t('installmentContractTotal', 'Installment Contract Total')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(selectedInstallmentContractTotal)}</Text>
+                            <Text style={styles.summaryLabel}>{t('firstMonthPayment', 'First Month Payment')}</Text>
+                            <Text style={styles.summaryValue}>{formatIQD(selectedFirstInstallment)}</Text>
                           </View>
 
                           <View style={styles.summaryRow}>
@@ -1176,7 +1202,7 @@ export default function MobileShopScreen() {
                             <Text style={styles.summaryValue}>{formatIQD(walletBalanceAfterPayment)}</Text>
                           </View>
 
-                          <View style={styles.summaryRow}>
+                          <View style={styles.summaryRowLast}>
                             <Text style={styles.summaryLabel}>{t('remainingInstallmentAmount', 'Remaining Installment Amount')}</Text>
                             <Text style={styles.summaryValue}>{formatIQD(remainingPurchaseAmount)}</Text>
                           </View>
@@ -1221,11 +1247,12 @@ const styles = StyleSheet.create({
   },
   topBar: {
     height: 64,
-    backgroundColor: COLORS.yellow,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 14,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
   },
   topIconBtn: {
     width: 38,
@@ -1368,6 +1395,7 @@ const styles = StyleSheet.create({
   },
   heroLeft: {
     flex: 1,
+    paddingEnd: 8,
   },
   heroSmall: {
     color: '#7A5B00',
@@ -1401,9 +1429,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
   },
+  heroImageWrap: {
+    width: 134,
+    height: 134,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heroImage: {
     width: 126,
-    height: 132,
+    height: 126,
   },
   walletCard: {
     marginTop: 16,
@@ -1412,34 +1448,23 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  walletLabel: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  walletValue: {
-    color: COLORS.text,
-    fontSize: 22,
-    fontWeight: '900',
-  },
-  walletButton: {
-    height: 38,
-    borderRadius: 19,
-    paddingHorizontal: 14,
-    backgroundColor: '#EEF2FF',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  walletButtonText: {
-    color: '#3730A3',
-    fontSize: 12,
-    fontWeight: '800',
+  walletLabelCenter: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  walletValueCenter: {
+    color: COLORS.text,
+    fontSize: 24,
+    fontWeight: '900',
+    textAlign: 'center',
   },
   sectionHeader: {
     marginTop: 20,
@@ -1502,6 +1527,12 @@ const styles = StyleSheet.create({
     height: 125,
     marginBottom: 8,
     borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+  },
+  imagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
   },
   brandRow: {
     flexDirection: 'row',
@@ -1693,6 +1724,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
   },
+  selectedInstallmentHint: {
+    marginTop: 4,
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
   descriptionBox: {
     backgroundColor: COLORS.white,
     borderRadius: 16,
@@ -1758,19 +1795,24 @@ const styles = StyleSheet.create({
   balanceBox: {
     backgroundColor: COLORS.yellowSoft,
     borderRadius: 16,
-    padding: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
     marginBottom: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   balanceBoxLabel: {
     color: COLORS.yellowDark,
     fontSize: 12,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 6,
+    textAlign: 'center',
   },
   balanceBoxValue: {
     color: COLORS.black,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
+    textAlign: 'center',
   },
   fieldWrap: {
     marginBottom: 12,
@@ -1831,7 +1873,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   summaryRow: {
-    marginBottom: 10,
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF2F7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  summaryRowLast: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
