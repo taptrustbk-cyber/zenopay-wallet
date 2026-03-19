@@ -45,6 +45,8 @@ const UI = {
   amberSoft: '#FFF4D9',
   blue: '#2563EB',
   blueSoft: '#EAF1FF',
+  purple: '#7C3AED',
+  purpleSoft: '#F3E8FF',
 };
 
 interface TransactionData {
@@ -57,6 +59,7 @@ interface TransactionData {
   direction?: string | null;
   status: string;
   amount: number;
+  amount_iqd?: number | null;
   fee_amount?: number | null;
   balance_before?: number | null;
   balance_after?: number | null;
@@ -107,6 +110,24 @@ type TxUi = {
   transactionTypeLabel: string;
   note?: string;
 
+  detailImage?: string | null;
+  detailBrand?: string | null;
+  detailModel?: string | null;
+  detailStorage?: string | null;
+  detailRam?: string | null;
+  detailColor?: string | null;
+  detailPurchaseMode?: string | null;
+  detailMonthsCount?: number | null;
+  detailMonthlyPrice?: number | null;
+  detailPaidNow?: number | null;
+  detailRemaining?: number | null;
+  detailContractTotal?: number | null;
+  detailCashTotal?: number | null;
+  detailQuantity?: number | null;
+  detailOrderId?: string | null;
+  detailDescription?: string | null;
+  detailTitleOverride?: string | null;
+
   kind:
     | 'send'
     | 'receive'
@@ -117,6 +138,7 @@ type TxUi = {
     | 'topup'
     | 'giftcard'
     | 'mobile'
+    | 'mobile_refund'
     | 'sim'
     | 'other';
 };
@@ -174,7 +196,7 @@ const statusLabel = (raw: string) => {
   const s = String(raw || 'completed').toLowerCase();
   if (['completed', 'success', 'paid', 'approved'].includes(s)) return 'completed';
   if (['pending', 'processing'].includes(s)) return 'pending';
-  if (['failed', 'rejected', 'cancelled', 'canceled'].includes(s)) return 'failed';
+  if (['failed', 'rejected', 'cancelled', 'canceled', 'refunded'].includes(s)) return s === 'refunded' ? 'refunded' : 'failed';
   return s;
 };
 
@@ -196,7 +218,21 @@ const getStatusColors = (raw: string) => {
   if (['pending', 'processing'].includes(s)) {
     return { bg: UI.amberSoft, color: UI.amber };
   }
+  if (['refunded'].includes(s)) {
+    return { bg: UI.blueSoft, color: UI.blue };
+  }
   return { bg: UI.redSoft, color: UI.red };
+};
+
+const toNum = (v: any, fallback = 0) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const upperFirst = (v?: string | null) => {
+  const s = String(v || '').trim();
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
 export default function TransactionsScreen() {
@@ -230,6 +266,7 @@ export default function TransactionsScreen() {
           direction,
           status,
           amount,
+          amount_iqd,
           fee_amount,
           balance_before,
           balance_after,
@@ -285,13 +322,45 @@ export default function TransactionsScreen() {
         tOr('transactions_unknownUser', 'Unknown user');
 
       const isOutgoingBySender = tx.sender_id === myId;
-      const isOutgoingByAmount = Number(tx.amount || 0) < 0;
+      const isOutgoingByAmount = Number(tx.amount || 0) < 0 || String(tx.direction || '').toLowerCase() === 'out';
       const displayTitle = safe(tx.display_title);
       const displaySubtitle = safe(tx.display_subtitle);
       const displayImage = safe(tx.display_image_url);
       const pinCode = safe(tx.pin_code);
       const providerName = safe(tx.provider_name);
       const paymentMethodName = safe(tx.payment_method_name);
+
+      const metaProductName =
+        safe(meta.product_name) ||
+        safe(meta.mobile_name) ||
+        safe(meta.name);
+
+      const metaProductBrand =
+        safe(meta.product_brand) ||
+        safe(meta.brand);
+
+      const metaImage =
+        safe(meta.product_image_url) ||
+        safe(meta.image_url) ||
+        safe(meta.image);
+
+      const metaStorage = safe(meta.storage);
+      const metaRam = safe(meta.ram);
+      const metaColor = safe(meta.color);
+      const metaPurchaseMode = safe(meta.purchase_mode);
+      const metaMonthsCount = toNum(meta.months_count, 0);
+      const metaMonthlyPrice = toNum(meta.unit_monthly_price_iqd, 0);
+      const metaPaidNow =
+        toNum(meta.paid_amount_iqd, NaN) ||
+        toNum(meta.refund_amount_iqd, NaN) ||
+        toNum(tx.amount_iqd, NaN) ||
+        toNum(tx.amount, 0);
+      const metaRemaining = toNum(meta.remaining_amount_iqd, 0);
+      const metaContractTotal = toNum(meta.installment_total_contract_iqd, 0);
+      const metaCashTotal = toNum(meta.cash_total_price_iqd, 0);
+      const metaQuantity = toNum(meta.quantity, 1);
+      const metaDescription = safe(meta.description_snapshot) || desc;
+      const metaOrderId = safe(meta.order_id) || safe(tx.reference_id);
 
       if (type === 'send' || type === 'receive' || type === 'transfer' || type === 'p2p') {
         const isOutgoing = isOutgoingBySender || isOutgoingByAmount;
@@ -381,23 +450,106 @@ export default function TransactionsScreen() {
         };
       }
 
-      if (type === 'purchase_mobile' || type === 'mobile_shop_purchase') {
+      if (
+        type === 'mobile_purchase' ||
+        type === 'purchase_mobile' ||
+        type === 'mobile_shop_purchase'
+      ) {
+        const modelName = metaProductName || displayTitle || tOr('transactions_mobileShopPurchase', 'Mobile Shop Purchase');
+        const purchaseModeLabel =
+          metaPurchaseMode === 'installment'
+            ? tOr('transactions_installment', 'Installment')
+            : tOr('transactions_cash', 'Cash');
+
+        const subtitleParts = [
+          metaProductBrand ? upperFirst(metaProductBrand) : null,
+          metaPurchaseMode ? purchaseModeLabel : null,
+        ].filter(Boolean);
+
         return {
           title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: displayTitle || tOr('transactions_mobileShopPurchase', 'Mobile Shop Purchase'),
-          subtitleLine2: displaySubtitle || makeShortTransactionId(tx.id),
+          subtitleLine1: modelName,
+          subtitleLine2: subtitleParts.join(' • ') || displaySubtitle || makeShortTransactionId(tx.id),
           iconName: 'phone-portrait-outline',
           isOutgoing: true,
           verified: false,
-          displayName: displayTitle || tOr('transactions_mobileShopPurchase', 'Mobile Shop Purchase'),
-          displaySecondary: displaySubtitle || undefined,
+          displayName: modelName,
+          displaySecondary: subtitleParts.join(' • ') || displaySubtitle || undefined,
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
-          displayImage,
+          displayImage: metaImage || displayImage || null,
+          detailImage: metaImage || displayImage || null,
+          detailBrand: metaProductBrand || null,
+          detailModel: modelName,
+          detailStorage: metaStorage || null,
+          detailRam: metaRam || null,
+          detailColor: metaColor || null,
+          detailPurchaseMode: metaPurchaseMode || 'cash',
+          detailMonthsCount: metaMonthsCount || null,
+          detailMonthlyPrice: metaMonthlyPrice || null,
+          detailPaidNow: metaPaidNow || Math.abs(Number(tx.amount || 0)),
+          detailRemaining: metaRemaining || 0,
+          detailContractTotal: metaContractTotal || null,
+          detailCashTotal: metaCashTotal || null,
+          detailQuantity: metaQuantity || 1,
+          detailOrderId: metaOrderId || null,
+          detailDescription: metaDescription || null,
+          detailTitleOverride: tOr('transactions_typeMobileShop', 'Mobile Shop'),
           transactionTypeLabel: tOr('transactions_typeMobileShop', 'Mobile Shop'),
-          note: desc || displayTitle || tOr('transactions_noteMobileShop', 'Mobile shop purchase completed'),
+          note:
+            desc ||
+            `${modelName}${metaPurchaseMode ? ` • ${purchaseModeLabel}` : ''}`,
           kind: 'mobile',
+        };
+      }
+
+      if (type === 'mobile_refund') {
+        const modelName = metaProductName || displayTitle || tOr('transactions_mobileOrderRefund', 'Mobile Order Refund');
+        const purchaseModeLabel =
+          metaPurchaseMode === 'installment'
+            ? tOr('transactions_installment', 'Installment')
+            : tOr('transactions_cash', 'Cash');
+
+        const subtitleParts = [
+          tOr('transactions_refund', 'Refund'),
+          metaProductBrand ? upperFirst(metaProductBrand) : null,
+          metaPurchaseMode ? purchaseModeLabel : null,
+        ].filter(Boolean);
+
+        return {
+          title: tOr('transactions_youReceivedMoney', 'You Received Money'),
+          subtitleLine1: modelName,
+          subtitleLine2: subtitleParts.join(' • ') || makeShortTransactionId(tx.id),
+          iconName: 'refresh-outline',
+          isOutgoing: false,
+          verified: true,
+          displayName: modelName,
+          displaySecondary: subtitleParts.join(' • '),
+          displayEmail: undefined,
+          displayCity: undefined,
+          displayAvatar: null,
+          displayImage: metaImage || displayImage || null,
+          detailImage: metaImage || displayImage || null,
+          detailBrand: metaProductBrand || null,
+          detailModel: modelName,
+          detailStorage: metaStorage || null,
+          detailRam: metaRam || null,
+          detailColor: metaColor || null,
+          detailPurchaseMode: metaPurchaseMode || null,
+          detailMonthsCount: metaMonthsCount || null,
+          detailMonthlyPrice: metaMonthlyPrice || null,
+          detailPaidNow: toNum(meta.refund_amount_iqd, 0) || Math.abs(Number(tx.amount || 0)),
+          detailRemaining: 0,
+          detailContractTotal: metaContractTotal || null,
+          detailCashTotal: metaCashTotal || null,
+          detailQuantity: metaQuantity || 1,
+          detailOrderId: metaOrderId || null,
+          detailDescription: metaDescription || null,
+          detailTitleOverride: tOr('transactions_typeMobileRefund', 'Mobile Refund'),
+          transactionTypeLabel: tOr('transactions_typeMobileRefund', 'Mobile Refund'),
+          note: desc || tOr('transactions_noteMobileRefund', 'Paid amount refunded to your wallet'),
+          kind: 'mobile_refund',
         };
       }
 
@@ -420,7 +572,7 @@ export default function TransactionsScreen() {
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
-          displayImage,
+          displayImage: displayImage || null,
           transactionTypeLabel: tOr('transactions_typeSimCard', 'Top-Up Card'),
           note: desc || displayTitle || providerName || tOr('transactions_noteSimCard', 'Card purchased successfully'),
           kind: 'sim',
@@ -440,7 +592,7 @@ export default function TransactionsScreen() {
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
-          displayImage,
+          displayImage: displayImage || null,
           transactionTypeLabel: tOr('transactions_typeGiftCard', 'Gift Card'),
           note: desc || displayTitle || tOr('transactions_noteGiftCard', 'Gift card purchased successfully'),
           kind: 'giftcard',
@@ -481,7 +633,7 @@ export default function TransactionsScreen() {
         displayEmail: undefined,
         displayCity: undefined,
         displayAvatar: null,
-        displayImage,
+        displayImage: displayImage || null,
         transactionTypeLabel: tOr('transactions_typePurchase', 'Purchase'),
         note: desc || tOr('transactions_notePurchase', 'Purchase completed'),
         kind: 'purchase',
@@ -498,6 +650,7 @@ export default function TransactionsScreen() {
     return all.filter((tx) => {
       const ui = getTxUi(tx);
       const shortId = makeShortTransactionId(tx.id).toLowerCase();
+      const meta = tx.metadata || {};
 
       const bucket = [
         tx.id,
@@ -519,6 +672,18 @@ export default function TransactionsScreen() {
         ui.displayName,
         ui.displaySecondary,
         ui.displayEmail,
+        ui.detailBrand,
+        ui.detailModel,
+        ui.detailStorage,
+        ui.detailRam,
+        ui.detailColor,
+        ui.detailPurchaseMode,
+        meta.product_name,
+        meta.product_brand,
+        meta.storage,
+        meta.ram,
+        meta.color,
+        meta.purchase_mode,
         shortId,
       ]
         .filter(Boolean)
@@ -550,6 +715,95 @@ export default function TransactionsScreen() {
       const timeText = formatTime(tx.created_at);
       const shortId = makeShortTransactionId(tx.id);
 
+      const mobileExtra =
+        ui.kind === 'mobile' || ui.kind === 'mobile_refund'
+          ? `
+            ${ui.detailImage ? `<div class="imageWrap"><img src="${ui.detailImage}" class="productImage" /></div>` : ''}
+            <div class="row">
+              <div>
+                <div class="label">Product</div>
+                <div class="value">${ui.detailModel || '-'}</div>
+              </div>
+            </div>
+            ${ui.detailBrand ? `
+            <div class="row">
+              <div>
+                <div class="label">Brand</div>
+                <div class="value">${ui.detailBrand}</div>
+              </div>
+            </div>` : ''}
+            ${ui.detailPurchaseMode ? `
+            <div class="row">
+              <div>
+                <div class="label">Purchase Mode</div>
+                <div class="value">${upperFirst(ui.detailPurchaseMode)}</div>
+              </div>
+            </div>` : ''}
+            ${
+              ui.detailStorage || ui.detailRam || ui.detailColor
+                ? `
+            <div class="row">
+              <div>
+                <div class="label">Specs</div>
+                <div class="value">
+                  ${[ui.detailStorage, ui.detailRam, ui.detailColor].filter(Boolean).join(' • ')}
+                </div>
+              </div>
+            </div>`
+                : ''
+            }
+            ${ui.detailQuantity ? `
+            <div class="row">
+              <div>
+                <div class="label">Quantity</div>
+                <div class="value">${ui.detailQuantity}</div>
+              </div>
+            </div>` : ''}
+            ${ui.detailCashTotal ? `
+            <div class="row">
+              <div>
+                <div class="label">Cash Total</div>
+                <div class="value">${formatIQD(ui.detailCashTotal)}</div>
+              </div>
+            </div>` : ''}
+            ${ui.detailMonthsCount ? `
+            <div class="row">
+              <div>
+                <div class="label">Months</div>
+                <div class="value">${ui.detailMonthsCount}</div>
+              </div>
+            </div>` : ''}
+            ${ui.detailMonthlyPrice ? `
+            <div class="row">
+              <div>
+                <div class="label">Monthly Installment</div>
+                <div class="value">${formatIQD(ui.detailMonthlyPrice)}</div>
+              </div>
+            </div>` : ''}
+            ${ui.detailContractTotal ? `
+            <div class="row">
+              <div>
+                <div class="label">Installment Contract Total</div>
+                <div class="value">${formatIQD(ui.detailContractTotal)}</div>
+              </div>
+            </div>` : ''}
+            ${ui.detailPaidNow !== null && ui.detailPaidNow !== undefined ? `
+            <div class="row">
+              <div>
+                <div class="label">${ui.kind === 'mobile_refund' ? 'Refund Amount' : 'Paid Now'}</div>
+                <div class="value">${formatIQD(ui.detailPaidNow)}</div>
+              </div>
+            </div>` : ''}
+            ${ui.kind !== 'mobile_refund' && ui.detailRemaining !== null && ui.detailRemaining !== undefined ? `
+            <div class="row">
+              <div>
+                <div class="label">Remaining Amount</div>
+                <div class="value">${formatIQD(ui.detailRemaining)}</div>
+              </div>
+            </div>` : ''}
+          `
+          : '';
+
       return `
       <html>
         <head>
@@ -573,6 +827,20 @@ export default function TransactionsScreen() {
             .note {
               margin-top: 18px; border-radius: 16px; background: #f8fbff; border: 1px solid #e5edf7;
               padding: 16px; color: #51607d; line-height: 1.7;
+            }
+            .imageWrap {
+              margin-top: 18px;
+              margin-bottom: 6px;
+              padding: 16px;
+              border-radius: 18px;
+              background: #f8fbff;
+              border: 1px solid #e5edf7;
+              text-align: center;
+            }
+            .productImage {
+              width: 170px;
+              height: 170px;
+              object-fit: contain;
             }
           </style>
         </head>
@@ -608,6 +876,8 @@ export default function TransactionsScreen() {
                 ${ui.displayCity ? `<div>${ui.displayCity}</div>` : ''}
               </div>
             </div>
+
+            ${mobileExtra}
 
             <div class="row">
               <div>
@@ -711,6 +981,10 @@ export default function TransactionsScreen() {
             backgroundColor:
               ui.kind === 'deposit' || ui.kind === 'withdraw'
                 ? UI.blueSoft
+                : ui.kind === 'mobile'
+                ? UI.purpleSoft
+                : ui.kind === 'mobile_refund'
+                ? UI.blueSoft
                 : ui.isOutgoing
                 ? UI.redSoft
                 : UI.greenSoft,
@@ -727,11 +1001,121 @@ export default function TransactionsScreen() {
           color={
             ui.kind === 'deposit' || ui.kind === 'withdraw'
               ? UI.blue
+              : ui.kind === 'mobile'
+              ? UI.purple
+              : ui.kind === 'mobile_refund'
+              ? UI.blue
               : ui.isOutgoing
               ? UI.red
               : UI.green
           }
         />
+      </View>
+    );
+  };
+
+  const renderDetailExtraSection = (ui: TxUi) => {
+    if (ui.kind !== 'mobile' && ui.kind !== 'mobile_refund') return null;
+
+    const purchaseModeLabel =
+      ui.detailPurchaseMode === 'installment'
+        ? tOr('transactions_installment', 'Installment')
+        : ui.detailPurchaseMode === 'cash'
+        ? tOr('transactions_cash', 'Cash')
+        : ui.detailPurchaseMode
+        ? upperFirst(ui.detailPurchaseMode)
+        : '';
+
+    return (
+      <View style={styles.mobileExtraCard}>
+        {!!ui.detailImage && (
+          <View style={styles.mobileDetailImageWrap}>
+            <Image source={{ uri: ui.detailImage }} style={styles.mobileDetailImage} resizeMode="contain" />
+          </View>
+        )}
+
+        <Text style={styles.mobileSectionTitle}>
+          {ui.kind === 'mobile_refund'
+            ? tOr('transactions_refundDetails', 'Refund Details')
+            : tOr('transactions_mobileDetails', 'Mobile Details')}
+        </Text>
+
+        {ui.detailModel
+          ? renderDetailRow(tOr('transactions_product', 'Product'), ui.detailModel, false, UI.text)
+          : null}
+
+        {ui.detailBrand
+          ? renderDetailRow(tOr('transactions_brand', 'Brand'), ui.detailBrand, false, UI.primaryDark)
+          : null}
+
+        {purchaseModeLabel
+          ? renderDetailRow(tOr('transactions_purchaseType', 'Purchase Type'), purchaseModeLabel, false, ui.detailPurchaseMode === 'installment' ? UI.purple : UI.blue)
+          : null}
+
+        {ui.detailQuantity
+          ? renderDetailRow(tOr('transactions_quantity', 'Quantity'), String(ui.detailQuantity), false, UI.text)
+          : null}
+
+        {ui.detailStorage
+          ? renderDetailRow(tOr('transactions_storage', 'Storage'), ui.detailStorage, false, UI.text)
+          : null}
+
+        {ui.detailRam
+          ? renderDetailRow(tOr('transactions_ram', 'RAM'), ui.detailRam, false, UI.text)
+          : null}
+
+        {ui.detailColor
+          ? renderDetailRow(tOr('transactions_color', 'Color'), ui.detailColor, false, UI.text)
+          : null}
+
+        {ui.detailCashTotal
+          ? renderDetailRow(tOr('transactions_cashPrice', 'Cash Price'), formatIQD(ui.detailCashTotal), false, UI.blue)
+          : null}
+
+        {ui.detailMonthsCount
+          ? renderDetailRow(tOr('transactions_months', 'Months'), String(ui.detailMonthsCount), false, UI.purple)
+          : null}
+
+        {ui.detailMonthlyPrice
+          ? renderDetailRow(tOr('transactions_monthlyInstallment', 'Monthly Installment'), formatIQD(ui.detailMonthlyPrice), false, UI.purple)
+          : null}
+
+        {ui.detailContractTotal
+          ? renderDetailRow(tOr('transactions_installmentContractTotal', 'Installment Contract Total'), formatIQD(ui.detailContractTotal), false, UI.purple)
+          : null}
+
+        {ui.detailPaidNow !== null && ui.detailPaidNow !== undefined
+          ? renderDetailRow(
+              ui.kind === 'mobile_refund'
+                ? tOr('transactions_refundAmount', 'Refund Amount')
+                : tOr('transactions_paidNow', 'Paid Now'),
+              formatIQD(ui.detailPaidNow),
+              false,
+              ui.kind === 'mobile_refund' ? UI.blue : UI.green
+            )
+          : null}
+
+        {ui.kind !== 'mobile_refund' &&
+        ui.detailRemaining !== null &&
+        ui.detailRemaining !== undefined
+          ? renderDetailRow(
+              tOr('transactions_remainingAmount', 'Remaining Amount'),
+              formatIQD(ui.detailRemaining),
+              false,
+              UI.amber
+            )
+          : null}
+
+        {ui.detailOrderId
+          ? renderDetailRow(tOr('transactions_orderId', 'Order ID'), ui.detailOrderId, false, UI.text)
+          : null}
+
+        {!!ui.detailDescription && (
+          <View style={styles.noteBox}>
+            <Text style={styles.noteTitle}>{tOr('transactions_description', 'Description')}</Text>
+            <Text style={styles.noteText}>{ui.detailDescription}</Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -756,7 +1140,14 @@ export default function TransactionsScreen() {
               <Text
                 style={[
                   styles.txTitle,
-                  { color: ui.isOutgoing ? UI.red : UI.green },
+                  {
+                    color:
+                      ui.kind === 'mobile_refund'
+                        ? UI.blue
+                        : ui.isOutgoing
+                        ? UI.red
+                        : UI.green,
+                  },
                   isRTL && styles.textRTL,
                 ]}
                 numberOfLines={1}
@@ -786,7 +1177,14 @@ export default function TransactionsScreen() {
             <Text
               style={[
                 styles.txAmount,
-                { color: ui.isOutgoing ? UI.red : UI.green },
+                {
+                  color:
+                    ui.kind === 'mobile_refund'
+                      ? UI.blue
+                      : ui.isOutgoing
+                      ? UI.red
+                      : UI.green,
+                },
                 isRTL && styles.textRTL,
               ]}
               numberOfLines={1}
@@ -958,9 +1356,27 @@ export default function TransactionsScreen() {
               <View style={styles.invoiceTopCard}>
                 <View style={styles.invoiceTopLeft}>
                   <View style={styles.invoiceLogoBox}>
-                    <Ionicons name="receipt-outline" size={34} color={UI.primaryDark} />
+                    <Ionicons
+                      name={
+                        selectedUi.kind === 'mobile'
+                          ? 'phone-portrait-outline'
+                          : selectedUi.kind === 'mobile_refund'
+                          ? 'refresh-outline'
+                          : 'receipt-outline'
+                      }
+                      size={34}
+                      color={
+                        selectedUi.kind === 'mobile'
+                          ? UI.purple
+                          : selectedUi.kind === 'mobile_refund'
+                          ? UI.blue
+                          : UI.primaryDark
+                      }
+                    />
                   </View>
-                  <Text style={styles.invoiceTitle}>INVOICE</Text>
+                  <Text style={styles.invoiceTitle}>
+                    {selectedUi.detailTitleOverride || 'INVOICE'}
+                  </Text>
                 </View>
 
                 <View style={styles.invoiceActionColumn}>
@@ -995,7 +1411,19 @@ export default function TransactionsScreen() {
                   <Text style={styles.detailLabel}>
                     {tOr('transactions_transactionType', 'Transaction Type')}
                   </Text>
-                  <View style={styles.typeBadge}>
+                  <View
+                    style={[
+                      styles.typeBadge,
+                      {
+                        backgroundColor:
+                          selectedUi.kind === 'mobile'
+                            ? UI.purple
+                            : selectedUi.kind === 'mobile_refund'
+                            ? UI.blue
+                            : UI.red,
+                      },
+                    ]}
+                  >
                     <Text style={styles.typeBadgeText}>{selectedUi.transactionTypeLabel}</Text>
                   </View>
                 </View>
@@ -1008,6 +1436,8 @@ export default function TransactionsScreen() {
                       ? tOr('transactions_receivedFrom', 'Received From')
                       : selectedUi.kind === 'withdraw'
                       ? tOr('transactions_sentTo', 'Sent To')
+                      : selectedUi.kind === 'mobile_refund'
+                      ? tOr('transactions_refundItem', 'Refund Item')
                       : tOr('transactions_item', 'Item')}
                   </Text>
 
@@ -1030,6 +1460,10 @@ export default function TransactionsScreen() {
                           color={
                             selectedUi.kind === 'deposit' || selectedUi.kind === 'withdraw'
                               ? UI.blue
+                              : selectedUi.kind === 'mobile'
+                              ? UI.purple
+                              : selectedUi.kind === 'mobile_refund'
+                              ? UI.blue
                               : UI.primaryDark
                           }
                         />
@@ -1041,7 +1475,14 @@ export default function TransactionsScreen() {
                         <Text
                           style={[
                             styles.partyName,
-                            { color: selectedUi.isOutgoing ? UI.red : UI.green },
+                            {
+                              color:
+                                selectedUi.kind === 'mobile_refund'
+                                  ? UI.blue
+                                  : selectedUi.isOutgoing
+                                  ? UI.red
+                                  : UI.green,
+                            },
                           ]}
                         >
                           {selectedUi.displayName}
@@ -1067,6 +1508,8 @@ export default function TransactionsScreen() {
                   </View>
                 </View>
 
+                {renderDetailExtraSection(selectedUi)}
+
                 {selectedTx.pin_code
                   ? renderDetailRow('PIN Code', selectedTx.pin_code, false, UI.primaryDark)
                   : null}
@@ -1079,7 +1522,11 @@ export default function TransactionsScreen() {
                   tOr('transactions_transactionAmount', 'Transaction Amount'),
                   formatIQD(Math.abs(Number(selectedTx.amount || 0))),
                   false,
-                  selectedUi.isOutgoing ? UI.red : UI.green
+                  selectedUi.kind === 'mobile_refund'
+                    ? UI.blue
+                    : selectedUi.isOutgoing
+                    ? UI.red
+                    : UI.green
                 )}
 
                 {renderDetailRow(
@@ -1093,7 +1540,11 @@ export default function TransactionsScreen() {
                   tOr('transactions_transactionTotalAmount', 'Transaction Total Amount'),
                   formatIQD(Math.abs(Number(selectedTx.amount || 0)) + Number(selectedTx.fee_amount || 0)),
                   false,
-                  selectedUi.isOutgoing ? UI.red : UI.green
+                  selectedUi.kind === 'mobile_refund'
+                    ? UI.blue
+                    : selectedUi.isOutgoing
+                    ? UI.red
+                    : UI.green
                 )}
 
                 {selectedTx.balance_after !== null &&
@@ -1137,7 +1588,7 @@ function renderDetailRow(label: string, value: string, mono?: boolean, valueColo
           mono && styles.detailValueMono,
           valueColor ? { color: valueColor } : null,
         ]}
-        numberOfLines={2}
+        numberOfLines={3}
       >
         {value}
       </Text>
@@ -1501,7 +1952,6 @@ const styles = StyleSheet.create({
   },
 
   typeBadge: {
-    backgroundColor: UI.red,
     borderRadius: 14,
     paddingHorizontal: 18,
     paddingVertical: 12,
@@ -1573,6 +2023,38 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: UI.text3,
+  },
+
+  mobileExtraCard: {
+    paddingTop: 18,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF3F8',
+  },
+
+  mobileDetailImageWrap: {
+    width: '100%',
+    height: 220,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: UI.border,
+    backgroundColor: UI.soft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+
+  mobileDetailImage: {
+    width: '90%',
+    height: '90%',
+  },
+
+  mobileSectionTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: UI.text,
+    marginBottom: 4,
   },
 
   noteBox: {
