@@ -826,7 +826,7 @@ export default function WithdrawScreen() {
                         <View style={styles.historyReceiptOverlay}>
                           <Ionicons name="expand-outline" size={18} color="#fff" />
                           <Text style={styles.historyReceiptOverlayText}>
-                            {i18n.t('viewReceipt') || 'View Image'}
+                            {i18n.t('viewQrCode') || 'View QR Code'}
                           </Text>
                         </View>
                       </TouchableOpacity>
