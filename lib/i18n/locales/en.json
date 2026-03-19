@@ -1,5 +1,6 @@
 {
   "home": "Home",
+  "transactions_purchaseProduct": "Purchase Product",
   "sendMoneySubtitle": "Secure Iraqi Dinar transfer",
   "sendMoneyFormSubtitle": "Enter receiver email, amount, and note",
   "accountBalance": "Account Balance",
