@@ -467,7 +467,7 @@ export default function TransactionsScreen() {
         ].filter(Boolean);
 
         return {
-          title: tOr('transactions_moneySent', 'Money Sent'),
+          title: tOr('transactions_purchaseProduct', 'Purchase Product'),
           subtitleLine1: modelName,
           subtitleLine2: subtitleParts.join(' • ') || displaySubtitle || makeShortTransactionId(tx.id),
           iconName: 'phone-portrait-outline',
