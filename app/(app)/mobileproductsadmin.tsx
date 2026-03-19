@@ -112,7 +112,7 @@ const emptyForm = (): ProductForm => ({
 
 const formatIQD = (value: any) => {
   const n = Number(value || 0);
-  return `${new Intl.NumberFormat('en-US').format(n)} د.ع`;
+  return `${String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} د.ع`;
 };
 
 const toNumber = (value: any, fallback = 0) => {
@@ -160,13 +160,13 @@ const initialsFromName = (name?: string | null) => {
 };
 
 const productImageFromRow = (row: any) =>
-  row?.image_url || row?.image || row?.photo_url || row?.thumbnail || row?.product_image || null;
+  row?.image_url || row?.image || row?.photo_url || row?.thumbnail || row?.product_image || row?.product_image_url || null;
 
 const productNameFromRow = (row: any) =>
   row?.name || row?.title || row?.product_name || row?.mobile_name || row?.model || 'Unnamed Product';
 
 const productBrandFromRow = (row: any) =>
-  row?.brand || row?.company || row?.manufacturer || 'other';
+  row?.brand || row?.company || row?.manufacturer || row?.product_brand || 'other';
 
 const productPriceFromRow = (row: any) =>
   row?.price_iqd ?? row?.price ?? row?.sale_price ?? row?.amount ?? row?.product_price ?? 0;
@@ -236,9 +236,7 @@ const decodeBase64ToUint8Array = (base64: string) => {
     bc++ % 4)
       ? (output += String.fromCharCode(255 & ((bs as number) >> ((-2 * bc) & 6))))
       : 0
-  ) {
-    // noop
-  }
+  ) {}
 
   const bytes = new Uint8Array(output.length);
   for (let i = 0; i < output.length; i++) {
@@ -394,6 +392,7 @@ export default function MobileProductsAdminScreen() {
       queryClient.invalidateQueries({ queryKey: ['admin-mobile-shop-products'] }),
       queryClient.invalidateQueries({ queryKey: ['admin-mobile-shop-orders'] }),
       queryClient.invalidateQueries({ queryKey: ['admin-mobile-order-profiles'] }),
+      queryClient.invalidateQueries({ queryKey: ['transactions'] }),
     ]);
   };
 
@@ -439,7 +438,7 @@ export default function MobileProductsAdminScreen() {
     setReviewMessage(
       action === 'approved'
         ? 'Your mobile order has been approved.'
-        : 'Your mobile order has been rejected.'
+        : 'Your mobile order has been rejected and your paid amount has been refunded to your wallet.'
     );
     setReviewModalOpen(true);
   };
@@ -627,31 +626,17 @@ export default function MobileProductsAdminScreen() {
     }) => {
       if (!order?.id) throw new Error('Order not found');
 
-      const adminStatus = action;
-      const status = action === 'approved' ? 'approved' : 'rejected';
-      const paymentStatus =
-        action === 'approved'
-          ? (order?.payment_status || 'pending')
-          : 'cancelled';
-
-      const updatePayload: any = {
-        admin_status: adminStatus,
-        admin_note: message.trim() || null,
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: user?.id || null,
-        status,
-        payment_status: paymentStatus,
-      };
-
-      const { error: updateError } = await supabase
-        .from('shop_orders')
-        .update(updatePayload)
-        .eq('id', order.id);
-
-      if (updateError) throw updateError;
-
       const customerEmail = order?.customer_email || order?.profile?.email || null;
       const customerName = order?.customer_full_name || order?.profile?.full_name || 'Customer';
+
+      const { data: reviewData, error: reviewError } = await supabase.rpc('admin_review_mobile_order', {
+        p_order_id: order.id,
+        p_action: action,
+        p_admin_note: message.trim() || null,
+        p_admin_user_id: user?.id || null,
+      });
+
+      if (reviewError) throw reviewError;
 
       if (customerEmail) {
         const { error: emailError } = await supabase.functions.invoke(
@@ -661,32 +646,42 @@ export default function MobileProductsAdminScreen() {
               to: customerEmail,
               customer_name: customerName,
               order_id: order.id,
-              order_status: adminStatus,
+              order_status: action,
               message: message.trim() || '',
               product_name: order?.product_name || orderProductName(order),
               purchase_mode: orderPurchaseMode(order),
               total_price_iqd: orderTotal(order),
               paid_now_iqd: orderPaidNow(order),
-              remaining_amount_iqd: orderRemaining(order),
+              remaining_amount_iqd: action === 'rejected' ? 0 : orderRemaining(order),
             },
           }
         );
 
         if (emailError) {
-          throw new Error(emailError.message || 'Order updated, but email sending failed');
+          throw new Error(emailError.message || 'Order reviewed, but email sending failed');
         }
       }
 
-      return adminStatus;
+      return {
+        action,
+        reviewData,
+      };
     },
     onSuccess: async (result) => {
-      await queryClient.invalidateQueries({ queryKey: ['admin-mobile-shop-orders'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-mobile-shop-orders'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-mobile-order-profiles'] }),
+        queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+        queryClient.invalidateQueries({ queryKey: ['mobile-shop-wallet-balance'] }),
+      ]);
+
       closeReviewModal();
+
       Alert.alert(
         'Success',
-        result === 'approved'
-          ? 'Order approved and email sent successfully'
-          : 'Order rejected and email sent successfully'
+        result.action === 'approved'
+          ? 'Order approved, transaction created, and email sent successfully'
+          : 'Order rejected, wallet refunded, refund transaction created, and email sent successfully'
       );
     },
     onError: (error: any) => {
@@ -716,7 +711,7 @@ export default function MobileProductsAdminScreen() {
       return { bg: UI.greenSoft, color: UI.green, text: s.toUpperCase() };
     }
 
-    if (s === 'rejected' || s === 'cancelled' || s === 'failed' || s === 'inactive') {
+    if (s === 'rejected' || s === 'cancelled' || s === 'failed' || s === 'inactive' || s === 'refunded') {
       return { bg: UI.redSoft, color: UI.red, text: s.toUpperCase() };
     }
 
@@ -1022,7 +1017,10 @@ export default function MobileProductsAdminScreen() {
                 const displayName = (profile?.full_name || order?.customer_full_name || '').trim() || 'Unknown Name';
                 const displayEmail = profile?.email || order?.customer_email || 'N/A';
                 const avatar = profile?.avatar_url;
+
                 const productName = product ? productNameFromRow(product) : orderProductName(order);
+                const productBrand = product?.brand || order?.product_brand || 'N/A';
+                const productImage = productImageFromRow(product) || order?.product_image_url || null;
                 const total = orderTotal(order);
                 const qty = orderQty(order);
                 const paidNow = orderPaidNow(order);
@@ -1030,6 +1028,13 @@ export default function MobileProductsAdminScreen() {
                 const purchaseMode = orderPurchaseMode(order);
                 const adminNote = orderAdminNote(order);
                 const adminStatus = orderAdminStatus(order);
+                const monthly = Number(order?.unit_monthly_price_iqd ?? productMonthlyFromRow(product) ?? 0);
+                const months = Number(order?.months_count ?? productMonthsFromRow(product) ?? 1);
+                const installmentTotal = Number(
+                  order?.installment_total_contract_iqd ??
+                  (monthly * months) ??
+                  0
+                );
 
                 return (
                   <View key={order.id} style={styles.card}>
@@ -1054,6 +1059,28 @@ export default function MobileProductsAdminScreen() {
                       </View>
                     </View>
 
+                    <View style={styles.orderProductCard}>
+                      <View style={styles.orderProductImageWrap}>
+                        {isLikelyUrl(productImage) ? (
+                          <Image source={{ uri: productImage }} style={styles.orderProductImage} resizeMode="cover" />
+                        ) : (
+                          <View style={styles.orderProductImageFallback}>
+                            <Smartphone size={24} color={UI.blue} />
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.orderProductTitle}>{productName}</Text>
+                        <Text style={styles.orderProductSub}>{String(productBrand).toUpperCase()}</Text>
+                        <Text style={styles.orderProductMeta}>
+                          {[order?.storage || product?.storage, order?.ram || product?.ram, order?.color || product?.color]
+                            .filter(Boolean)
+                            .join(' • ') || 'N/A'}
+                        </Text>
+                      </View>
+                    </View>
+
                     <View style={styles.row}>
                       <Text style={styles.rowLabel}>Order ID</Text>
                       <Text style={styles.rowValue}>{order.id}</Text>
@@ -1067,15 +1094,8 @@ export default function MobileProductsAdminScreen() {
                     </View>
 
                     <View style={styles.row}>
-                      <Text style={styles.rowLabel}>Product</Text>
-                      <Text style={styles.rowValue}>{productName}</Text>
-                    </View>
-
-                    <View style={styles.row}>
                       <Text style={styles.rowLabel}>Brand</Text>
-                      <Text style={styles.rowValue}>
-                        {product?.brand || order?.product_brand || 'N/A'}
-                      </Text>
+                      <Text style={styles.rowValue}>{productBrand}</Text>
                     </View>
 
                     <View style={styles.row}>
@@ -1092,6 +1112,25 @@ export default function MobileProductsAdminScreen() {
                       <Text style={styles.rowLabel}>Paid Now</Text>
                       <Text style={[styles.rowValue, { color: UI.green }]}>{formatIQD(paidNow)}</Text>
                     </View>
+
+                    {purchaseMode === 'installment' ? (
+                      <>
+                        <View style={styles.row}>
+                          <Text style={styles.rowLabel}>Monthly Installment</Text>
+                          <Text style={[styles.rowValue, { color: UI.purple }]}>{formatIQD(monthly)}</Text>
+                        </View>
+
+                        <View style={styles.row}>
+                          <Text style={styles.rowLabel}>Months Count</Text>
+                          <Text style={styles.rowValue}>{months}</Text>
+                        </View>
+
+                        <View style={styles.row}>
+                          <Text style={styles.rowLabel}>Installment Total</Text>
+                          <Text style={[styles.rowValue, { color: UI.purple }]}>{formatIQD(installmentTotal)}</Text>
+                        </View>
+                      </>
+                    ) : null}
 
                     <View style={styles.row}>
                       <Text style={styles.rowLabel}>Remaining Amount</Text>
@@ -1144,7 +1183,7 @@ export default function MobileProductsAdminScreen() {
 
                     {!!orderNotes(order) && (
                       <View style={styles.noteBox}>
-                        <Text style={styles.noteTitle}>Notes</Text>
+                        <Text style={styles.noteTitle}>Customer Notes</Text>
                         <Text style={styles.noteText}>{orderNotes(order)}</Text>
                       </View>
                     )}
@@ -1160,6 +1199,7 @@ export default function MobileProductsAdminScreen() {
                       <TouchableOpacity
                         style={[styles.reviewBtn, { backgroundColor: UI.greenSoft, borderColor: UI.green }]}
                         onPress={() => openReviewModal(order, 'approved')}
+                        disabled={reviewOrderMutation.isPending}
                       >
                         <CheckCircle2 size={16} color={UI.green} />
                         <Text style={[styles.reviewBtnText, { color: UI.green }]}>Approve</Text>
@@ -1168,6 +1208,7 @@ export default function MobileProductsAdminScreen() {
                       <TouchableOpacity
                         style={[styles.reviewBtn, { backgroundColor: UI.redSoft, borderColor: UI.red }]}
                         onPress={() => openReviewModal(order, 'rejected')}
+                        disabled={reviewOrderMutation.isPending}
                       >
                         <Ban size={16} color={UI.red} />
                         <Text style={[styles.reviewBtnText, { color: UI.red }]}>Reject</Text>
@@ -1472,6 +1513,9 @@ export default function MobileProductsAdminScreen() {
                 <Text style={styles.reviewInfoSub}>
                   Email: {selectedOrderForReview?.customer_email || selectedOrderForReview?.profile?.email || 'N/A'}
                 </Text>
+                <Text style={styles.reviewInfoSub}>
+                  Paid Now: {formatIQD(orderPaidNow(selectedOrderForReview))}
+                </Text>
               </View>
 
               <View style={styles.actionTypeRow}>
@@ -1540,7 +1584,7 @@ export default function MobileProductsAdminScreen() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <Text style={styles.submitReviewBtnText}>
-                    {reviewAction === 'approved' ? 'Approve & Send Email' : 'Reject & Send Email'}
+                    {reviewAction === 'approved' ? 'Approve & Send Email' : 'Reject Refund & Send Email'}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -1759,6 +1803,54 @@ const styles = StyleSheet.create({
   avatarFallbackText: {
     fontWeight: '900',
     color: UI.blue,
+  },
+
+  orderProductCard: {
+    marginBottom: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: UI.border,
+    backgroundColor: UI.card2,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  orderProductImageWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
+  orderProductImage: {
+    width: '100%',
+    height: '100%',
+  },
+  orderProductImageFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: UI.blueSoft,
+  },
+  orderProductTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: UI.text,
+    marginBottom: 4,
+  },
+  orderProductSub: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: UI.blue,
+    marginBottom: 4,
+  },
+  orderProductMeta: {
+    fontSize: 12,
+    color: UI.text2,
+    fontWeight: '700',
   },
 
   cardTitle: {
