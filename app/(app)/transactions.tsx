@@ -108,9 +108,7 @@ const tOr = (key: string, fallback: string) => {
 const formatIQD = (value: number | null | undefined) => {
   const num = Number(value || 0);
   const abs = Math.abs(num);
-  const formatted = abs
-    .toFixed(0)
-    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const formatted = abs.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return `${formatted} IQD`;
 };
 
@@ -154,9 +152,7 @@ const makeShortTransactionId = (id?: string | null) => {
     .toUpperCase();
 
   if (!base) return 'TX000001';
-
   if (base.length >= 8) return base.slice(0, 8);
-
   return `${base}${'X'.repeat(8 - base.length)}`.slice(0, 8);
 };
 
@@ -354,8 +350,8 @@ export default function TransactionsScreen() {
       const senderAvatar = safe(tx.sender_avatar);
       const receiverAvatar = safe(tx.receiver_avatar);
 
-      const senderLabel = senderName || senderEmail || tOr('transactions.unknownUser', 'Unknown user');
-      const receiverLabel = receiverName || receiverEmail || tOr('transactions.unknownUser', 'Unknown user');
+      const senderLabel = senderName || senderEmail || tOr('transactions_unknownUser', 'Unknown user');
+      const receiverLabel = receiverName || receiverEmail || tOr('transactions_unknownUser', 'Unknown user');
 
       const isOutgoingBySender = tx.sender_id === myId;
       const isOutgoingByAmount = Number(tx.amount || 0) < 0;
@@ -372,16 +368,16 @@ export default function TransactionsScreen() {
 
       if (isVirtualCard) {
         return {
-          title: tOr('transactions.virtualCardCreated', 'Zenopay Card Created'),
-          subtitleLine1: tOr('transactions.virtualCardCreatedSubtitle', 'Virtual card created successfully'),
+          title: tOr('transactions_virtualCardCreated', 'Zenopay Card Created'),
+          subtitleLine1: tOr('transactions_virtualCardCreatedSubtitle', 'Virtual card created successfully'),
           subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'card-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: tOr('transactions.typeVirtualCard', 'Virtual Card'),
-          note: desc || tOr('transactions.noteVirtualCard', 'Zenopay virtual card has been created.'),
+          transactionTypeLabel: tOr('transactions_typeVirtualCard', 'Virtual Card'),
+          note: desc || tOr('transactions_noteVirtualCard', 'Zenopay virtual card has been created.'),
           kind: 'virtual_card',
         };
       }
@@ -391,31 +387,37 @@ export default function TransactionsScreen() {
 
         if (isOutgoing) {
           return {
-            title: tOr('transactions.moneySent', 'Money Sent'),
+            title: tOr('transactions_moneySent', 'Money Sent'),
             subtitleLine1: receiverLabel,
-            subtitleLine2: receiverEmail && receiverEmail !== receiverLabel ? receiverEmail : makeShortTransactionId(tx.id),
+            subtitleLine2:
+              receiverEmail && receiverEmail !== receiverLabel
+                ? receiverEmail
+                : makeShortTransactionId(tx.id),
             iconName: 'arrow-up-outline',
             isOutgoing: true,
             partyName: receiverLabel,
             partyEmail: receiverEmail || undefined,
             partyAvatar: receiverAvatar || null,
-            transactionTypeLabel: tOr('transactions.typeP2PTransfer', 'P2P-Transfer'),
-            note: desc || `${tOr('transactions.moneySentTo', 'Money sent to')} ${receiverLabel}`,
+            transactionTypeLabel: tOr('transactions_typeP2PTransfer', 'P2P-Transfer'),
+            note: desc || `${tOr('transactions_moneySentTo', 'Money sent to')} ${receiverLabel}`,
             kind: 'send',
           };
         }
 
         return {
-          title: tOr('transactions.youReceivedMoney', 'You Received Money'),
+          title: tOr('transactions_youReceivedMoney', 'You Received Money'),
           subtitleLine1: senderLabel,
-          subtitleLine2: senderEmail && senderEmail !== senderLabel ? senderEmail : makeShortTransactionId(tx.id),
+          subtitleLine2:
+            senderEmail && senderEmail !== senderLabel
+              ? senderEmail
+              : makeShortTransactionId(tx.id),
           iconName: 'arrow-down-outline',
           isOutgoing: false,
           partyName: senderLabel,
           partyEmail: senderEmail || undefined,
           partyAvatar: senderAvatar || null,
-          transactionTypeLabel: tOr('transactions.typeP2PTransfer', 'P2P-Transfer'),
-          note: desc || `${tOr('transactions.moneyReceivedFrom', 'Money received from')} ${senderLabel}`,
+          transactionTypeLabel: tOr('transactions_typeP2PTransfer', 'P2P-Transfer'),
+          note: desc || `${tOr('transactions_moneyReceivedFrom', 'Money received from')} ${senderLabel}`,
           kind: 'receive',
         };
       }
@@ -429,16 +431,16 @@ export default function TransactionsScreen() {
         type === 'add_balance'
       ) {
         return {
-          title: tOr('transactions.youReceivedMoney', 'You Received Money'),
-          subtitleLine1: tOr('transactions.depositFromZenopay', 'Deposit from Zenopay'),
+          title: tOr('transactions_youReceivedMoney', 'You Received Money'),
+          subtitleLine1: tOr('transactions_depositFromZenopay', 'Deposit from Zenopay'),
           subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'download-outline',
           isOutgoing: false,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: tOr('transactions.typeDeposit', 'Deposit'),
-          note: desc || tOr('transactions.depositFromZenopay', 'Deposit from Zenopay'),
+          transactionTypeLabel: tOr('transactions_typeDeposit', 'Deposit'),
+          note: desc || tOr('transactions_depositFromZenopay', 'Deposit from Zenopay'),
           kind: 'deposit',
         };
       }
@@ -450,96 +452,96 @@ export default function TransactionsScreen() {
         type === 'withdraw_balance'
       ) {
         return {
-          title: tOr('transactions.moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions.withdrawToZenopay', 'Withdraw to Zenopay'),
+          title: tOr('transactions_moneySent', 'Money Sent'),
+          subtitleLine1: tOr('transactions_withdrawToZenopay', 'Withdraw to Zenopay'),
           subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'cash-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: tOr('transactions.typeWithdraw', 'Withdraw'),
-          note: desc || tOr('transactions.noteWithdraw', 'Withdraw processed by Zenopay'),
+          transactionTypeLabel: tOr('transactions_typeWithdraw', 'Withdraw'),
+          note: desc || tOr('transactions_noteWithdraw', 'Withdraw processed by Zenopay'),
           kind: 'withdraw',
         };
       }
 
       if (type.includes('gift') || type === 'gift_card_purchase' || type === 'purchase_giftcard') {
         return {
-          title: tOr('transactions.moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions.giftCardPurchase', 'Gift Card Purchase'),
+          title: tOr('transactions_moneySent', 'Money Sent'),
+          subtitleLine1: tOr('transactions_giftCardPurchase', 'Gift Card Purchase'),
           subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'gift-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: tOr('transactions.typeGiftCard', 'Gift Card'),
-          note: desc || tOr('transactions.noteGiftCard', 'Gift card purchased successfully'),
+          transactionTypeLabel: tOr('transactions_typeGiftCard', 'Gift Card'),
+          note: desc || tOr('transactions_noteGiftCard', 'Gift card purchased successfully'),
           kind: 'giftcard',
         };
       }
 
       if (type.includes('sim') || type === 'sim_card_purchase' || type === 'purchase_sim') {
         return {
-          title: tOr('transactions.moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions.simCardPurchase', 'SIM Card Purchase'),
+          title: tOr('transactions_moneySent', 'Money Sent'),
+          subtitleLine1: tOr('transactions_simCardPurchase', 'SIM Card Purchase'),
           subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'cellular-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: tOr('transactions.typeSimCard', 'SIM Card'),
-          note: desc || tOr('transactions.noteSimCard', 'SIM card purchased successfully'),
+          transactionTypeLabel: tOr('transactions_typeSimCard', 'SIM Card'),
+          note: desc || tOr('transactions_noteSimCard', 'SIM card purchased successfully'),
           kind: 'sim',
         };
       }
 
       if (type.includes('mobile') || type === 'purchase_mobile' || type === 'mobile_shop_purchase') {
         return {
-          title: tOr('transactions.moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions.mobileShopPurchase', 'Mobile Shop Purchase'),
+          title: tOr('transactions_moneySent', 'Money Sent'),
+          subtitleLine1: tOr('transactions_mobileShopPurchase', 'Mobile Shop Purchase'),
           subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'phone-portrait-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: tOr('transactions.typeMobileShop', 'Mobile Shop'),
-          note: desc || tOr('transactions.noteMobileShop', 'Mobile shop purchase completed'),
+          transactionTypeLabel: tOr('transactions_typeMobileShop', 'Mobile Shop'),
+          note: desc || tOr('transactions_noteMobileShop', 'Mobile shop purchase completed'),
           kind: 'mobile',
         };
       }
 
       if (type.includes('topup_purchase') || type === 'card_topup' || type === 'topup_purchase') {
         return {
-          title: tOr('transactions.moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions.topUpCharge', 'Top-Up Charge'),
+          title: tOr('transactions_moneySent', 'Money Sent'),
+          subtitleLine1: tOr('transactions_topUpCharge', 'Top-Up Charge'),
           subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'flash-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: tOr('transactions.typeTopup', 'Top-Up'),
-          note: desc || tOr('transactions.noteTopup', 'Top-up purchase completed'),
+          transactionTypeLabel: tOr('transactions_typeTopup', 'Top-Up'),
+          note: desc || tOr('transactions_noteTopup', 'Top-up purchase completed'),
           kind: 'topup',
         };
       }
 
       if (type.includes('purchase') || type === 'buy' || type === 'order') {
         return {
-          title: tOr('transactions.moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions.purchase', 'Purchase'),
+          title: tOr('transactions_moneySent', 'Money Sent'),
+          subtitleLine1: tOr('transactions_purchase', 'Purchase'),
           subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'pricetag-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: tOr('transactions.typePurchase', 'Purchase'),
-          note: desc || tOr('transactions.notePurchase', 'Purchase completed'),
+          transactionTypeLabel: tOr('transactions_typePurchase', 'Purchase'),
+          note: desc || tOr('transactions_notePurchase', 'Purchase completed'),
           kind: 'purchase',
         };
       }
@@ -547,17 +549,17 @@ export default function TransactionsScreen() {
       const isOutgoing = isOutgoingBySender || isOutgoingByAmount;
       return {
         title: isOutgoing
-          ? tOr('transactions.moneySent', 'Money Sent')
-          : tOr('transactions.youReceivedMoney', 'You Received Money'),
-        subtitleLine1: desc || tOr('transactions.transaction', 'Transaction'),
+          ? tOr('transactions_moneySent', 'Money Sent')
+          : tOr('transactions_youReceivedMoney', 'You Received Money'),
+        subtitleLine1: desc || tOr('transactions_transaction', 'Transaction'),
         subtitleLine2: makeShortTransactionId(tx.id),
         iconName: isOutgoing ? 'arrow-up-outline' : 'arrow-down-outline',
         isOutgoing,
         partyName: APP_FAKE_PROFILE_NAME,
         partyEmail: undefined,
         partyAvatar: null,
-        transactionTypeLabel: tOr('transactions.typeTransaction', 'Transaction'),
-        note: desc || tOr('transactions.transactionDetails', 'Transaction details'),
+        transactionTypeLabel: tOr('transactions_typeTransaction', 'Transaction'),
+        note: desc || tOr('transactions_transactionDetailsText', 'Transaction details'),
         kind: 'other',
       };
     },
@@ -606,18 +608,19 @@ export default function TransactionsScreen() {
     return getTxUi(selectedTx);
   }, [selectedTx, getTxUi]);
 
-  const buildTransactionHtml = useCallback((tx: TransactionData) => {
-    const ui = getTxUi(tx);
-    const amount = Math.abs(Number(tx.amount || 0));
-    const fee = 0;
-    const total = amount + fee;
-    const partyEmail = ui.partyEmail || '';
-    const note = ui.note || '';
-    const dateText = formatFullDate(tx.created_at);
-    const timeText = formatTime(tx.created_at);
-    const shortId = makeShortTransactionId(tx.id);
+  const buildTransactionHtml = useCallback(
+    (tx: TransactionData) => {
+      const ui = getTxUi(tx);
+      const amount = Math.abs(Number(tx.amount || 0));
+      const fee = 0;
+      const total = amount + fee;
+      const partyEmail = ui.partyEmail || '';
+      const note = ui.note || '';
+      const dateText = formatFullDate(tx.created_at);
+      const timeText = formatTime(tx.created_at);
+      const shortId = makeShortTransactionId(tx.id);
 
-    return `
+      return `
       <html>
         <head>
           <meta charset="utf-8" />
@@ -753,18 +756,18 @@ export default function TransactionsScreen() {
 
             <div class="row">
               <div>
-                <div class="label">${tOr('transactions.transactionId', 'Transaction ID')}</div>
+                <div class="label">${tOr('transactions_transactionId', 'Transaction ID')}</div>
                 <div class="value">${shortId}</div>
               </div>
               <div style="text-align:right;">
-                <div class="label">${tOr('transactions.status', 'Status')}</div>
-                <div class="value">${tOr(`transactions.status_${statusLabel(tx.status)}`, statusLabel(tx.status))}</div>
+                <div class="label">${tOr('transactions_status', 'Status')}</div>
+                <div class="value">${tOr(`transactions_status_${statusLabel(tx.status)}`, statusLabel(tx.status))}</div>
               </div>
             </div>
 
             <div class="row">
               <div>
-                <div class="label">${tOr('transactions.transactionType', 'Transaction Type')}</div>
+                <div class="label">${tOr('transactions_transactionType', 'Transaction Type')}</div>
                 <div class="value">${ui.transactionTypeLabel}</div>
               </div>
               <div>
@@ -774,7 +777,7 @@ export default function TransactionsScreen() {
 
             <div class="row">
               <div>
-                <div class="label">${ui.isOutgoing ? tOr('transactions.sentTo', 'Sent To') : tOr('transactions.receivedFrom', 'Received From')}</div>
+                <div class="label">${ui.isOutgoing ? tOr('transactions_sentTo', 'Sent To') : tOr('transactions_receivedFrom', 'Received From')}</div>
                 <div class="partyBox">
                   <div class="partyAvatar">${ui.partyName?.slice(0, 1)?.toUpperCase() || 'Z'}</div>
                   <div>
@@ -787,21 +790,21 @@ export default function TransactionsScreen() {
 
             <div class="row">
               <div>
-                <div class="label">${tOr('transactions.transactionAmount', 'Transaction Amount')}</div>
+                <div class="label">${tOr('transactions_transactionAmount', 'Transaction Amount')}</div>
                 <div class="amount">${formatIQD(amount)}</div>
               </div>
             </div>
 
             <div class="row">
               <div>
-                <div class="label">${tOr('transactions.transactionFee', 'Transaction Fee')}</div>
+                <div class="label">${tOr('transactions_transactionFee', 'Transaction Fee')}</div>
                 <div class="value">${formatIQD(fee)}</div>
               </div>
             </div>
 
             <div class="row">
               <div>
-                <div class="label">${tOr('transactions.transactionTotalAmount', 'Transaction Total Amount')}</div>
+                <div class="label">${tOr('transactions_transactionTotalAmount', 'Transaction Total Amount')}</div>
                 <div class="amount">${formatIQD(total)}</div>
               </div>
             </div>
@@ -811,7 +814,7 @@ export default function TransactionsScreen() {
                 ? `
               <div class="row">
                 <div>
-                  <div class="label">${tOr('transactions.balanceAfter', 'Balance After')}</div>
+                  <div class="label">${tOr('transactions_balanceAfter', 'Balance After')}</div>
                   <div class="value">${formatIQD(tx.balance_after)}</div>
                 </div>
               </div>
@@ -823,7 +826,7 @@ export default function TransactionsScreen() {
               note
                 ? `
               <div class="note">
-                <strong>${tOr('transactions.note', 'Note')}:</strong><br/>
+                <strong>${tOr('transactions_note', 'Note')}:</strong><br/>
                 ${String(note).replace(/\n/g, '<br/>')}
               </div>
             `
@@ -833,7 +836,9 @@ export default function TransactionsScreen() {
         </body>
       </html>
     `;
-  }, [getTxUi]);
+    },
+    [getTxUi]
+  );
 
   const handleDownloadPdf = useCallback(async () => {
     if (!selectedTx) return;
@@ -846,14 +851,14 @@ export default function TransactionsScreen() {
       await FileSystem.copyAsync({ from: uri, to: newPath });
 
       Alert.alert(
-        tOr('transactions.success', 'Success'),
-        tOr('transactions.pdfSavedSuccessfully', 'PDF saved successfully')
+        tOr('transactions_success', 'Success'),
+        tOr('transactions_pdfSavedSuccessfully', 'PDF saved successfully')
       );
     } catch (e) {
       console.log('PDF save error', e);
       Alert.alert(
-        tOr('common.error', 'Error'),
-        tOr('transactions.couldNotSavePdf', 'Could not save PDF')
+        tOr('common_error', 'Error'),
+        tOr('transactions_couldNotSavePdf', 'Could not save PDF')
       );
     } finally {
       setPdfLoading(false);
@@ -870,22 +875,22 @@ export default function TransactionsScreen() {
       const available = await Sharing.isAvailableAsync();
       if (!available) {
         Alert.alert(
-          tOr('transactions.notAvailable', 'Not available'),
-          tOr('transactions.sharingNotAvailable', 'Sharing is not available on this device')
+          tOr('transactions_notAvailable', 'Not available'),
+          tOr('transactions_sharingNotAvailable', 'Sharing is not available on this device')
         );
         return;
       }
 
       await Sharing.shareAsync(uri, {
         mimeType: 'application/pdf',
-        dialogTitle: tOr('transactions.shareTransactionPdf', 'Share transaction PDF'),
+        dialogTitle: tOr('transactions_shareTransactionPdf', 'Share transaction PDF'),
         UTI: 'com.adobe.pdf',
       });
     } catch (e) {
       console.log('PDF share error', e);
       Alert.alert(
-        tOr('common.error', 'Error'),
-        tOr('transactions.couldNotSharePdf', 'Could not share PDF')
+        tOr('common_error', 'Error'),
+        tOr('transactions_couldNotSharePdf', 'Could not share PDF')
       );
     } finally {
       setPdfLoading(false);
@@ -979,8 +984,8 @@ export default function TransactionsScreen() {
           <View style={[styles.statusPill, { backgroundColor: statusColors.bg }]}>
             <Text style={[styles.statusPillText, { color: statusColors.color }]}>
               {ui.isOutgoing
-                ? tOr('transactions.debit', 'Debit')
-                : tOr('transactions.credit', 'Credit')}
+                ? tOr('transactions_debit', 'Debit')
+                : tOr('transactions_credit', 'Credit')}
             </Text>
           </View>
         </View>
@@ -995,7 +1000,7 @@ export default function TransactionsScreen() {
         <View style={styles.loaderContainer}>
           <ActivityIndicator color={UI.primary} size="large" />
           <Text style={styles.loadingText}>
-            {tOr('transactions.loadingTransactions', 'Loading transactions...')}
+            {tOr('transactions_loadingTransactions', 'Loading transactions...')}
           </Text>
         </View>
       </SafeAreaView>
@@ -1012,7 +1017,7 @@ export default function TransactionsScreen() {
             <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>{tOr('transactions.title', 'Transactions')}</Text>
+          <Text style={styles.headerTitle}>{tOr('transactions_title', 'Transactions')}</Text>
 
           <View style={{ width: 46 }} />
         </View>
@@ -1023,16 +1028,16 @@ export default function TransactionsScreen() {
           </View>
 
           <Text style={styles.errorTitle}>
-            {tOr('transactions.failedToLoad', 'Failed to load')}
+            {tOr('transactions_failedToLoad', 'Failed to load')}
           </Text>
 
           <Text style={styles.errorMessage}>
-            {tOr('transactions.couldNotLoadTransactions', 'Could not load transactions')}
+            {tOr('transactions_couldNotLoadTransactions', 'Could not load transactions')}
           </Text>
 
           <TouchableOpacity style={styles.primaryBtn} onPress={() => transactionsQuery.refetch()} activeOpacity={0.9}>
             <Ionicons name="refresh" size={18} color="#fff" />
-            <Text style={styles.primaryBtnText}>{tOr('common.retry', 'Retry')}</Text>
+            <Text style={styles.primaryBtnText}>{tOr('common_retry', 'Retry')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -1048,7 +1053,7 @@ export default function TransactionsScreen() {
           <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>{tOr('transactions.title', 'Transactions')}</Text>
+        <Text style={styles.headerTitle}>{tOr('transactions_title', 'Transactions')}</Text>
 
         <TouchableOpacity activeOpacity={0.85} onPress={() => refetch()} style={styles.headerBtn}>
           <Ionicons name="refresh-outline" size={22} color={UI.primaryDark} />
@@ -1072,7 +1077,7 @@ export default function TransactionsScreen() {
           <>
             <View style={styles.historyOnlyBox}>
               <Text style={styles.historyOnlyBoxText}>
-                {tOr('transactions.transactionHistory', 'Transaction History')}
+                {tOr('transactions_transactionHistory', 'Transaction History')}
               </Text>
             </View>
 
@@ -1080,7 +1085,7 @@ export default function TransactionsScreen() {
               <TextInput
                 value={searchText}
                 onChangeText={setSearchText}
-                placeholder={tOr('transactions.searchByTransactionId', 'Search transaction by transaction id')}
+                placeholder={tOr('transactions_searchByTransactionId', 'Search transaction by transaction id')}
                 placeholderTextColor={UI.text2}
                 style={styles.searchInput}
               />
@@ -1094,10 +1099,10 @@ export default function TransactionsScreen() {
               <Ionicons name="receipt-outline" size={44} color={UI.text2} />
             </View>
             <Text style={styles.emptyTitle}>
-              {tOr('transactions.noTransactions', 'No transactions')}
+              {tOr('transactions_noTransactions', 'No transactions')}
             </Text>
             <Text style={styles.emptySubtitle}>
-              {tOr('transactions.transactionsWillAppearHere', 'Your transactions will appear here.')}
+              {tOr('transactions_transactionsWillAppearHere', 'Your transactions will appear here.')}
             </Text>
           </View>
         }
@@ -1119,7 +1124,7 @@ export default function TransactionsScreen() {
             </TouchableOpacity>
 
             <Text style={styles.modalTitle}>
-              {tOr('transactions.transactionDetails', 'Transaction Details')}
+              {tOr('transactions_transactionDetails', 'Transaction Details')}
             </Text>
 
             <View style={{ width: 46 }} />
@@ -1145,8 +1150,8 @@ export default function TransactionsScreen() {
                     <Ionicons name="download-outline" size={20} color={UI.text} />
                     <Text style={styles.invoiceActionText}>
                       {pdfLoading
-                        ? tOr('transactions.pleaseWait', 'Please wait...')
-                        : tOr('transactions.downloadPdf', 'Download PDF')}
+                        ? tOr('transactions_pleaseWait', 'Please wait...')
+                        : tOr('transactions_downloadPdf', 'Download PDF')}
                     </Text>
                   </TouchableOpacity>
 
@@ -1158,7 +1163,7 @@ export default function TransactionsScreen() {
                   >
                     <Ionicons name="share-social-outline" size={20} color={UI.text} />
                     <Text style={styles.invoiceActionText}>
-                      {tOr('transactions.sharePdf', 'Share PDF')}
+                      {tOr('transactions_sharePdf', 'Share PDF')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1171,7 +1176,7 @@ export default function TransactionsScreen() {
                 </View>
 
                 {renderDetailRow(
-                  tOr('transactions.transactionId', 'Transaction ID'),
+                  tOr('transactions_transactionId', 'Transaction ID'),
                   makeShortTransactionId(selectedTx.id),
                   false,
                   UI.green
@@ -1179,7 +1184,7 @@ export default function TransactionsScreen() {
 
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>
-                    {tOr('transactions.transactionType', 'Transaction Type')}
+                    {tOr('transactions_transactionType', 'Transaction Type')}
                   </Text>
                   <View style={styles.typeBadge}>
                     <Text style={styles.typeBadgeText}>{selectedUi.transactionTypeLabel}</Text>
@@ -1189,8 +1194,8 @@ export default function TransactionsScreen() {
                 <View style={styles.detailPartySection}>
                   <Text style={styles.detailLabel}>
                     {selectedUi.isOutgoing
-                      ? tOr('transactions.sentTo', 'Sent To')
-                      : tOr('transactions.receivedFrom', 'Received From')}
+                      ? tOr('transactions_sentTo', 'Sent To')
+                      : tOr('transactions_receivedFrom', 'Received From')}
                   </Text>
 
                   <View style={styles.detailPartyBox}>
@@ -1234,21 +1239,21 @@ export default function TransactionsScreen() {
                 </View>
 
                 {renderDetailRow(
-                  tOr('transactions.transactionAmount', 'Transaction Amount'),
+                  tOr('transactions_transactionAmount', 'Transaction Amount'),
                   formatIQD(Math.abs(Number(selectedTx.amount || 0))),
                   false,
                   selectedUi.isOutgoing ? UI.red : UI.green
                 )}
 
                 {renderDetailRow(
-                  tOr('transactions.transactionFee', 'Transaction Fee'),
+                  tOr('transactions_transactionFee', 'Transaction Fee'),
                   formatIQD(0),
                   false,
                   UI.green
                 )}
 
                 {renderDetailRow(
-                  tOr('transactions.transactionTotalAmount', 'Transaction Total Amount'),
+                  tOr('transactions_transactionTotalAmount', 'Transaction Total Amount'),
                   formatIQD(Math.abs(Number(selectedTx.amount || 0))),
                   false,
                   selectedUi.isOutgoing ? UI.red : UI.green
@@ -1257,22 +1262,22 @@ export default function TransactionsScreen() {
                 {selectedTx.balance_after !== null &&
                   selectedTx.balance_after !== undefined &&
                   renderDetailRow(
-                    tOr('transactions.balanceAfter', 'Balance After'),
+                    tOr('transactions_balanceAfter', 'Balance After'),
                     formatIQD(selectedTx.balance_after),
                     false,
                     UI.primaryDark
                   )}
 
                 {renderDetailRow(
-                  tOr('transactions.status', 'Status'),
-                  tOr(`transactions.status_${statusLabel(selectedTx.status)}`, statusLabel(selectedTx.status)),
+                  tOr('transactions_status', 'Status'),
+                  tOr(`transactions_status_${statusLabel(selectedTx.status)}`, statusLabel(selectedTx.status)),
                   false,
                   getStatusColors(selectedTx.status).color
                 )}
 
                 {!!selectedUi.note && (
                   <View style={styles.noteBox}>
-                    <Text style={styles.noteTitle}>{tOr('transactions.note', 'Note')}</Text>
+                    <Text style={styles.noteTitle}>{tOr('transactions_note', 'Note')}</Text>
                     <Text style={styles.noteText}>{selectedUi.note}</Text>
                   </View>
                 )}
