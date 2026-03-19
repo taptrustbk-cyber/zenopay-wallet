@@ -854,7 +854,11 @@ export default function TransactionsScreen() {
       const { uri } = await Print.printToFileAsync({ html });
       const fileName = `transaction-${makeShortTransactionId(selectedTx.id)}.pdf`;
       const newPath = `${FileSystem.documentDirectory}${fileName}`;
-      await FileSystem.copyAsync({ from: uri, to: newPath });
+      if (Platform.OS === 'ios') {
+  await Sharing.shareAsync(uri);
+} else {
+  await FileSystem.copyAsync({ from: uri, to: newPath });
+}
 
       Alert.alert(
         tOr('transactions_success', 'Success'),
