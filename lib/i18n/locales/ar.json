@@ -1,6 +1,8 @@
 {
   "home": "الرئيسية",
   "common_error": "خطأ",
+  "deposit": "إيداع",
+  "transactions": "التحويلات",
   "transactions_title": "التحويلات",
   "transactions_transactionHistory": "سجل التحويلات",
   "transactions_searchByTransactionId": "ابحث برقم العملية",
