@@ -32,7 +32,7 @@
   "uploadTransactionImage": "ارفع صورة المعاملة",
   "uploadTransactionImageHelp": "أضف صورة الإيصال أو لقطة التحويل",
   "changeImage": "تغيير الصورة",
-  "previewFullScreen": "عرض بالحجم الكامل",
+  "previewFullScreen": "عرض بملء الشاشة",
   "createDepositRequest": "إنشاء طلب إيداع",
   "depositHistory": "سجل الإيداع",
   "trackYourRequests": "تابع طلباتك المعلقة أو المقبولة أو المرفوضة",
@@ -42,7 +42,7 @@
   "note": "ملاحظة",
   "viewReceipt": "عرض الإيصال",
   "reason": "السبب",
-  "approved": "مقبول",
+  "approved": "تمت الموافقة",
   "rejected": "مرفوض",
   "pending": "قيد الانتظار",
   "error": "خطأ",
@@ -50,7 +50,7 @@
   "done": "تم",
   "invalidAmount": "المبلغ غير صالح",
   "depositSuccessMessage": "تم إرسال طلب الإيداع بنجاح.",
-  "photoPermissionDenied": "تم رفض إذن الصور",
+  "photoPermissionDenied": "تم رفض إذن الوصول إلى الصور",
   "noPaymentMethods": "لا توجد طرق دفع",
   "noPaymentMethodsDesc": "لم يقم المسؤول بإضافة أي طريقة دفع بعد",
   "failedToLoadBalance": "فشل تحميل الرصيد",
@@ -59,9 +59,9 @@
   "maximumWithdrawAmount": "الحد الأقصى للسحب",
   "one_card_inline": "بطاقتك الافتراضية فعالة. يمكنك امتلاك بطاقة واحدة فقط.",
   "unknownUser": "مستخدم غير معروف",
-  "iqdShort": "د.ع",
-
+  "send": "إرسال",
   "common": {
+    "ok": "موافق",
     "back": "رجوع",
     "cancel": "إلغاء",
     "error": "خطأ",
@@ -70,12 +70,10 @@
     "failed_to_load": "فشل التحميل",
     "something_wrong": "حدث خطأ ما."
   },
-
   "auth": {
     "loginRequired": "يرجى تسجيل الدخول أولاً.",
     "user_not_found": "المستخدم غير موجود"
   },
-
   "notifications": {
     "title": "الإشعارات",
     "mobileCards": "طلبات بطاقات الموبايل",
@@ -105,7 +103,6 @@
     "loadFailed": "تعذر تحميل الإشعارات.",
     "unknownCard": "بطاقة غير معروفة"
   },
-
   "buyCard": {
     "title": "شراء بطاقة",
     "mobileCard": "بطاقة موبايل",
@@ -127,12 +124,18 @@
     "purchaseConfirmMessage": "هل تريد شراء",
     "for": "بسعر",
     "confirm": "تأكيد",
+    "cancel": "إلغاء",
     "orderCreatedTitle": "تم إرسال الطلب بنجاح",
     "orderCreatedMessage": "تم إرسال طلبك إلى الإدارة. بعد المراجعة سيظهر رمز PIN في الإشعارات.",
     "purchaseDetails": "تفاصيل الشراء",
-    "openNotifications": "فتح الإشعارات"
+    "openNotifications": "فتح الإشعارات",
+    "confirmBuy": "تأكيد الشراء",
+    "insufficientBalance": "رصيدك غير كافٍ.",
+    "orderPlacedTitle": "تم إنشاء الطلب",
+    "orderPlacedMessage": "تم إنشاء طلب البطاقة بنجاح.",
+    "orderFailed": "تعذر إنشاء الطلب.",
+    "iqd": "د.ع"
   },
-
   "cards": {
     "title": "البطاقات",
     "available_balance": "الرصيد المتاح",
@@ -143,8 +146,8 @@
     "failed_cards": "فشل تحميل البطاقات",
     "empty": "لا توجد بطاقات بعد. أنشئ أول بطاقة بالأسفل.",
     "card_holder": "اسم حامل البطاقة",
-    "exp": "انتهاء",
-    "last4": "آخر 4",
+    "exp": "الانتهاء",
+    "last4": "آخر 4 أرقام",
     "created": "تاريخ الإنشاء",
     "preview_hint": "هذا عرض للتصميم فقط. يتم إصدار بيانات البطاقة الحقيقية بأمان بعد الشراء.",
     "create_new": "إنشاء بطاقة جديدة",
@@ -167,20 +170,17 @@
     "create_failed": "تعذر إنشاء البطاقة.",
     "created_success": "تم إنشاء البطاقة. تم خصم 25$ من رصيدك."
   },
-
   "market": {
     "topup": "بطاقات الشحن",
     "gift": "بطاقات الهدايا",
     "mobile": "متجر الموبايل",
     "travel": "حجز السفر"
   },
-
   "portfolio": {
     "title": "المحفظة",
     "subtitle": "تتبع استثماراتك",
     "items": "عناصر المحفظة"
   },
-
   "mobileShopAdBadge": "خطة شراء بالتقسيط متوفرة!",
   "mobileShopAdTitle": "اشترِ هاتفاً جديداً بسعر ممتاز جداً",
   "mobileShopAdCash": "نقداً",
@@ -190,7 +190,6 @@
   "mobileShopAdInstallmentPrice": "القسط يبدأ من 50,000 دينار",
   "mobileShopAdButton": "اشترِ الآن",
   "mobileShopAdDiscount": "خصم",
-
   "purchaseSuccess": "تم الشراء بنجاح",
   "mobilePurchasedSuccess": "تمت عملية شراء الموبايل بنجاح وتم إرسالها إلى لوحة الإدارة.",
   "insufficientFirstMonthBalance": "ليس لديك رصيد كافٍ لدفعة الشهر الأول. يرجى إيداع رصيد ثم المحاولة مرة أخرى.",
@@ -198,7 +197,6 @@
   "remainingPurchaseAmount": "المبلغ المتبقي للشراء",
   "walletBalanceAfterPayment": "رصيد المحفظة بعد الدفع",
   "remainingInstallmentAmount": "المبلغ المتبقي من التقسيط",
-
   "all": "الكل",
   "brandApple": "آبل",
   "brandSamsung": "سامسونج",
@@ -216,12 +214,10 @@
   "numberOfMonths": "عدد الأشهر",
   "purchaseType": "نوع الشراء",
   "payNow": "ادفع الآن",
-  "buyCashWithWallet": "شراء باستخدام رصيد المحفظة",
-
+  "buyCashWithWallet": "اشترِ باستخدام رصيد المحفظة",
   "unknownCity": "غير معروف",
   "locationUnavailable": "الموقع",
   "detectingLocation": "جارٍ تحديد الموقع...",
-
   "zenopayMobileShop": "متجر Zenopay للموبايلات",
   "mobileShopHome": "الرئيسية",
   "searchMobiles": "ابحث عن موديل موبايل",
@@ -246,8 +242,7 @@
   "monthly": "شهرياً",
   "zenopayShop": "متجر zenopay",
   "noProductsFound": "لا توجد منتجات",
-  "tryAnotherSearchOrBrand": "جرّب بحثاً أو ماركة أخرى",
-
+  "tryAnotherSearchOrBrand": "جرّب بحثاً أو علامة تجارية أخرى",
   "privacyPolicy": "سياسة الخصوصية",
   "termsConditions": "الشروط والأحكام",
   "balance": "الرصيد",
@@ -263,7 +258,6 @@
   "enterFullName": "أدخل الاسم الكامل",
   "email": "البريد الإلكتروني",
   "enterEmail": "أدخل البريد الإلكتروني",
-  "note": "ملاحظة",
   "optionalNote": "ملاحظة اختيارية",
   "quantity": "الكمية",
   "withdraw": "سحب",
@@ -271,145 +265,32 @@
   "withdrawHistory": "سجل السحب",
   "withdrawAvailableBalance": "الرصيد المتاح للسحب",
   "withdrawSuccessMessage": "تم إرسال طلب السحب بنجاح",
-
-  "accountBalance": "رصيد الحساب",
-  "balance": "الرصيد",
-
-  "selectPaymentMethod": "اختر طريقة السحب",
-  "choosePaymentMethod": "اختر طريقة السحب",
-  "noPaymentMethods": "لا توجد طرق دفع",
-  "noPaymentMethodsDesc": "لم يقم المسؤول بإضافة طرق دفع بعد",
-
-  "amount": "المبلغ",
   "withdrawalAmount": "مبلغ السحب",
-  "enterAmount": "أدخل المبلغ",
-  "invalidAmount": "المبلغ غير صحيح",
-
-  "senderName": "اسم المرسل",
-  "enterSenderName": "أدخل اسم المرسل",
-
-  "senderNumber": "رقم المرسل",
-  "enterSenderNumber": "أدخل رقم المرسل",
-
-  "transferNote": "ملاحظة (اختياري)",
-  "writeAnyNote": "اكتب أي ملاحظة",
-
-  "transactionImage": "صورة المعاملة",
-  "uploadTransactionImage": "ارفع صورة المعاملة",
-  "uploadTransactionImageHelp": "أضف الإيصال أو لقطة شاشة التحويل",
-  "changeImage": "تغيير الصورة",
-  "previewFullScreen": "عرض بملء الشاشة",
-  "viewReceipt": "عرض الإيصال",
-
-  "bankImage": "صورة البنك",
-  "qrCode": "رمز QR",
-  "bankNumber": "رقم البنك",
-  "paymentMethod": "طريقة الدفع",
-
-  "status": "الحالة",
-  "pending": "قيد الانتظار",
-  "approved": "تمت الموافقة",
-  "rejected": "مرفوض",
-
-  "note": "ملاحظة",
-  "reason": "السبب",
-
-  "date": "التاريخ",
-  "trackYourRequests": "تابع طلباتك المعلقة أو المقبولة أو المرفوضة",
   "withdrawHistoryEmptyDesc": "ستظهر طلبات السحب هنا",
   "noWithdrawalsYet": "لا توجد عمليات سحب بعد",
-
   "submitWithdrawRequest": "إرسال طلب السحب",
   "fillWithdrawForm": "اختر طريقة الدفع وأدخل تفاصيل التحويل",
-
-  "iqdShort": "د.ع",
-
-  "success": "نجاح",
-  "error": "خطأ",
-
-  "failedToLoadBalance": "فشل تحميل الرصيد",
+  "bankImage": "صورة البنك",
+  "status": "الحالة",
   "walletNotFound": "المحفظة غير موجودة",
   "insufficientBalance": "الرصيد غير كافٍ",
   "security": "الأمان",
   "contactSupport": "تواصل مع الدعم",
-
-  "photoPermissionDenied": "تم رفض إذن الوصول إلى الصور",
-
-  "back": "رجوع",
-  "unitPrice": "سعر القطعة",
-  "totalPrice": "السعر الكلي",
-  "remainingAfterPurchase": "المتبقي بعد الشراء",
-  "buyWithWalletBalance": "اشترِ برصيد المحفظة",
-  "loginRequired": "يرجى تسجيل الدخول أولاً",
-  "selectProductFirst": "يرجى اختيار منتج أولاً",
-  "fillAllRequiredFields": "يرجى تعبئة جميع الحقول المطلوبة",
-  "insufficientBalanceDeposit": "ليس لديك رصيد كافٍ. يرجى إيداع رصيد ثم المحاولة مرة أخرى.",
-  "productOutOfStock": "هذا المنتج غير متوفر حالياً",
-  "walletTableNotFound": "لم يتم العثور على جدول المحفظة",
-  "paidAmount": "المبلغ المدفوع",
-  "remainingBalance": "الرصيد المتبقي",
-
-  "done": "تم",
-  "error": "خطأ",
-  "purchaseFailed": "فشلت عملية الشراء",
-  "accountSuccessfullyConfirmed": "تم تأكيد حسابك بنجاح.",
-  "remove": "إزالة",
-  "stillNotConfirmedPleaseCheckEmail": "لم يتم تأكيد بريدك الإلكتروني بعد. يُرجى التحقق من بريدك الإلكتروني.",
-  "zenopayAgentDeposit": "إيداع بواسطة وكيل زينوباي",
-  "adminTopUp": "إيداع بواسطة وكيل زينوباي",
-  "fullNamePlaceholder": "أدخل اسمك الكامل",
-  "dateOfBirthPlaceholder": "اختر تاريخ الميلاد",
-  "phoneNumberPlaceholder": "أدخل رقم الهاتف",
-  "countryPlaceholder": "اختر الدولة",
-  "to": "إلى",
-  "create_btn": "إنشاء بطاقة افتراضية",
-  "virtual_info": "هذه بطاقة افتراضية داخلية لاستخدام محفظة زينوباي فقط.",
-  "send": "إرسال",
-  "Cards": "البطاقات",
-  "sendMoney": "إرسال المال",
-
-  "tcPlatformNoticeTitle": "تنبيه المنصة",
-  "tcPlatformNoticeIntro": "Zenopay هي منصة محفظة رقمية. نحن لسنا بنكًا ولا نقوم بإصدار بطاقات Visa أو Mastercard.",
-  "tcPlatformNotice2Title": "2. بطاقة افتراضية داخلية",
-  "tcPlatformNotice2Item1": "بطاقة Zenopay هي بطاقة افتراضية داخلية تعمل فقط داخل نظام Zenopay.",
-  "tcPlatformNotice3Title": "3. ليست وديعة بنكية",
-  "tcPlatformNotice3Item1": "الأموال المخزنة في Zenopay ليست ودائع بنكية ولا تشملها أي حماية لتأمين الودائع.",
-  "tcPlatformNotice4Title": "4. الرسوم",
-  "tcPlatformNotice4Item1": "رسوم إنشاء البطاقة: 25 دولار",
-  "tcPlatformNotice5Title": "5. مسؤولية المستخدم",
-  "tcPlatformNotice5Item1": "المستخدم مسؤول عن طريقة استخدام حسابه.",
-  "tcPlatformNotice5Item2": "يجب على المستخدم التأكد من صحة معلوماته.",
-  "tcPlatformNotice6Title": "6. إيقاف الحساب",
-  "tcPlatformNotice6Desc": "تحتفظ Zenopay بالحق في إيقاف الحسابات في حال وجود نشاط مشبوه.",
-
-  "deposit": "إيداع",
-  "depositMoney": "إيداع المال",
-  "mobileCards": "بطاقات الهاتف",
-  "welcomeBack": "مرحباً بعودتك!",
-  "supportChat": "دردشة الدعم",
-
-  "typeMessage": "اكتب رسالة...",
-  "needHelp": "تحتاج مساعدة؟",
-  "pleaseLoginToYourAccount": "يرجى تسجيل الدخول إلى حسابك",
-  "rememberMe": "تذكرني؟",
-  "createNewAccount": "إنشاء حساب جديد",
-  "contactUsAt": "تواصل معنا على",
-
-  "withdraw": "سحب",
-  "transactions": "المعاملات",
-  "retry": "إعادة المحاولة",
   "tapToChangePhoto": "اضغط لتغيير الصورة",
-  "forgotEmailContact": "تحدث إلى فريق الدعم",
-  "resetHelpText": "إذا نسيت كلمة مرورك، يمكنك التحدث إلى فريق الدعم",
   "changePhoto": "تغيير الصورة",
   "profilePhoto": "صورة الملف الشخصي",
   "selectExistingPhoto": "اختيار من المعرض",
   "takeNewPhoto": "التقاط صورة جديدة",
+  "welcomeBack": "مرحباً بعودتك!",
+  "supportChat": "دردشة الدعم",
+  "pleaseLoginToYourAccount": "يرجى تسجيل الدخول إلى حسابك",
+  "rememberMe": "تذكرني؟",
+  "createNewAccount": "إنشاء حساب جديد",
+  "contactUsAt": "تواصل معنا على",
+  "forgotEmailContact": "تحدث إلى فريق الدعم",
+  "resetHelpText": "إذا نسيت بريدك الإلكتروني، يمكنك التحدث إلى فريق الدعم.",
   "save": "حفظ",
-  "back": "رجوع",
   "settings": "الإعدادات",
-
-  "success": "نجاح",
   "logout": "تسجيل الخروج",
   "confirm": "تأكيد",
   "cancel": "إلغاء",
@@ -417,18 +298,12 @@
   "submit": "إرسال",
   "submitting": "جاري الإرسال...",
   "update": "تحديث",
-
   "ramadanOfferTitle": "عرض رمضان",
   "ramadanOfferMessage": "استمتع بمكافآت رمضان الخاصة. احصل على مكافأة ترويجية بقيمة 20$ لكل إيداع حتى 1000$ عبر USDT (TRC20). تخضع المكافأة لشروط الحملة والأهلية.",
-
-  "accountBalance": "رصيد الحساب",
   "accountStatusActive": "الحساب نشط",
-  "failedToLoadBalance": "فشل تحميل الرصيد",
   "yourBalance": "رصيدك",
-
   "marketShop": "متجر السوق",
-  "marketShopSubtitle": "اشتر البطاقات، بطاقات الهدايا، الهواتف والسفر بأمان",
-
+  "marketShopSubtitle": "اشترِ البطاقات وبطاقات الهدايا والهواتف والسفر بأمان",
   "simCards": "بطاقات SIM",
   "giftCards": "بطاقات الهدايا",
   "mobileShop": "متجر الموبايل",
@@ -438,10 +313,8 @@
   "onlineGiftCards": "بطاقات هدايا إلكترونية",
   "selectGiftCard": "اختر بطاقة هدية أدناه",
   "selectBrand": "اختر علامة تجارية أدناه",
-
   "travelBookingInfo": "احجز الفنادق والرحلات الجوية وتأجير السيارات وتذاكر القطار من خلال شركائنا الموثوقين.",
   "travelBookingSafe": "سيتم توجيهك إلى منصات الحجز الخارجية الآمنة.",
-
   "confirmPurchase": "تأكيد الشراء",
   "purchaseConfirmMessage": "هل أنت متأكد أنك تريد شراء",
   "for": "مقابل",
@@ -449,32 +322,24 @@
   "saveThisPin": "احفظ رمز PIN هذا بشكل آمن",
   "purchaseDetails": "تفاصيل الشراء",
   "product": "المنتج",
-  "amount": "المبلغ",
+  "zenopayAgentDeposit": "إيداع بواسطة وكيل Zenopay",
+  "adminTopUp": "إيداع بواسطة وكيل Zenopay",
   "backToDashboard": "العودة إلى لوحة التحكم",
-  "loginSubWelcome": "يرجى تسجيل الدخول إلى حسابك",
   "insufficientBalanceForPurchase": "رصيد غير كافٍ لهذا الشراء",
-
   "checkout": "الدفع",
   "selectColor": "اختر اللون",
   "deliveryInformation": "معلومات التوصيل",
-  "txStatusCompleted": "مكتمل",
-  "from": "من",
   "deliveryNote": "ملاحظة التوصيل",
-  "afterConfirmOpenApp": "بعد الضغط على رابط التأكيد في بريدك، سيتم فتح Zenopay تلقائياً.",
-  "openEmailWebHint": "اضغط على رابط التأكيد في بريدك، ثم ارجع إلى التطبيق.",
   "optional": "اختياري",
   "enterDeliveryNote": "أضف أي تعليمات للتوصيل",
   "deliveryEstimate": "التسليم المتوقع: 3-7 أيام عمل",
   "placeOrder": "تأكيد الطلب",
   "orderPlaced": "تم تقديم الطلب!",
   "orderPlacedMessage": "تم تقديم طلبك بنجاح.",
-  "insufficientBalance": "رصيد غير كافٍ. يرجى إيداع الأموال.",
   "fillAllFields": "يرجى ملء جميع الحقول المطلوبة",
-
   "consulate": "القنصلية",
   "capital": "العاصمة",
   "consulateInfo": "معلومات القنصلية",
-
   "cryptoTrade": "تداول العملات الرقمية",
   "tradeDescription": "تداول العملات الرقمية في الوقت الفعلي",
   "buyCrypto": "شراء",
@@ -485,10 +350,11 @@
   "hot": "ساخن",
   "gainers": "الرابحون",
   "losers": "الخاسرون",
+  "txStatusCompleted": "مكتمل",
+  "from": "من",
   "loadingPrices": "جاري تحميل الأسعار...",
   "failedToLoadPrices": "فشل تحميل الأسعار",
   "permissionRequired": "مطلوب إذن",
-  "photoPermissionDenied": "يرجى السماح بالوصول للصور لرفع المستندات.",
   "failedPickImage": "فشل اختيار الصورة. حاول مرة أخرى.",
   "kycSubmitFailed": "فشل إرسال مستندات التحقق. حاول مرة أخرى.",
   "tapToUpload": "اضغط للرفع",
@@ -501,20 +367,17 @@
   "noCryptoFound": "لم يتم العثور على عملات رقمية",
   "liveCharts": "الرسوم البيانية المباشرة",
   "chartComingSoon": "الرسم البياني قريباً",
-
   "portfolioSubtitle": "تتبع استثماراتك",
   "portfolioItems": "عناصر المحفظة",
   "loadingPortfolio": "جاري تحميل المحفظة...",
   "failedToLoad": "فشل التحميل",
-  "portfolioSyncInfo": "تتم مزامنة المحفظة مع المحفظة",
+  "portfolioSyncInfo": "تتم مزامنة المحفظة مع رصيد المحفظة",
   "value": "القيمة",
   "updateFailed": "فشل التحديث",
   "invalidValue": "قيمة غير صالحة",
   "noPortfolioItems": "لا توجد عناصر في المحفظة",
-
   "cannotOpenLink": "لا يمكن فتح هذا الرابط",
   "failedToOpenLink": "فشل فتح الرابط",
-
   "kycVerificationRequired": "التحقق من الهوية مطلوب",
   "kycPendingMessage": "مستنداتك قيد المراجعة",
   "resetLinkSent": "تم إرسال رابط إعادة التعيين",
@@ -545,19 +408,15 @@
   "kycApprovedInfo": "تمت الموافقة على حسابك",
   "docsSecure": "المستندات آمنة",
   "infoSecure": "معلوماتك آمنة",
-
   "signOut": "تسجيل الخروج",
   "language": "اللغة",
   "support": "الدعم",
   "profile": "الملف الشخصي",
   "darkMode": "الوضع الداكن",
   "lightMode": "الوضع الفاتح",
-  "security": "الأمان",
   "adminPanel": "لوحة الإدارة",
-
   "internetSim": "الإنترنت وبطاقات SIM",
   "selectSimCard": "اختر بطاقة أدناه",
-
   "login": "تسجيل الدخول",
   "signup": "إنشاء حساب",
   "createAccount": "إنشاء حساب",
@@ -573,7 +432,6 @@
   "backToLogin": "العودة لتسجيل الدخول",
   "backToLogin2": "الذهاب لتسجيل الدخول",
   "userNotFound": "المستخدم غير موجود",
-
   "verifyYourEmail": "تحقق من بريدك الإلكتروني",
   "pleaseConfirmEmail": "يرجى تأكيد عنوان بريدك الإلكتروني",
   "checkEmailInbox": "تحقق من صندوق الوارد للحصول على رابط التحقق",
@@ -593,12 +451,10 @@
   "verificationEmailResent": "تم إعادة إرسال بريد التحقق",
   "emailNotVerifiedYet": "البريد الإلكتروني لم يتم التحقق منه بعد",
   "pleaseWait": "يرجى الانتظار",
-
   "accountCreatedSuccessfully": "تم إنشاء الحساب بنجاح",
   "noEmailFound": "لم يتم العثور على بريد إلكتروني",
   "openEmailAppHint": "بعد الضغط على تأكيد داخل بريدك الإلكتروني، سيتم فتح التطبيق تلقائياً.",
   "continueToLogin": "متابعة لتسجيل الدخول",
-
   "dateOfBirth": "تاريخ الميلاد",
   "dateOfBirthLabel": "تاريخ الميلاد",
   "pleaseSelectDOB": "يرجى اختيار تاريخ ميلادك",
@@ -610,20 +466,17 @@
   "address": "العنوان",
   "phoneLabel": "الهاتف",
   "phonePlaceholder": "أدخل رقم الهاتف",
-
   "accountApproved": "تمت الموافقة على الحساب!",
   "accountActive": "الحساب نشط",
   "fullAccessInfo": "لديك الآن وصول كامل",
   "readyToActivate": "جاهز للتفعيل",
   "waitingActivation": "في انتظار التفعيل",
-
   "accountUnderReview": "الحساب قيد المراجعة",
   "pendingAdminReview": "في انتظار مراجعة المسؤول",
-  "reviewTakes1To6Hours": "تستغرق المراجعة من 1-12 ساعات",
+  "reviewTakes1To6Hours": "تستغرق المراجعة من 1-12 ساعة",
   "waitForApproval2": "انتظر الموافقة",
   "readyWait": "يرجى الانتظار",
   "securityWaitInfo": "للأمان، نراجع جميع الحسابات الجديدة",
-
   "updateProfile": "تحديث الملف الشخصي",
   "profileUpdated": "تم تحديث الملف الشخصي بنجاح",
   "currentPassword": "كلمة المرور الحالية",
@@ -635,7 +488,6 @@
   "passwordTooShort": "يجب أن تكون كلمة المرور 6 أحرف على الأقل",
   "currentPasswordIncorrect": "كلمة المرور الحالية غير صحيحة",
   "passwordChangeError": "فشل تغيير كلمة المرور",
-
   "dangerZone": "منطقة الخطر",
   "deleteAccount": "حذف الحساب",
   "deleteAccountDesc": "حذف حسابك نهائياً",
@@ -645,17 +497,13 @@
   "deletingAccount": "جاري حذف الحساب...",
   "accountDeleted": "تم حذف الحساب بنجاح",
   "accountDeleteError": "فشل حذف الحساب",
-
   "emailNotification": "إشعارات البريد الإلكتروني",
   "emailNotificationDesc": "تلقي التحديثات عبر البريد الإلكتروني",
-
   "loadingTransactions": "جاري تحميل المعاملات...",
   "errorLoadingTransactions": "خطأ في تحميل المعاملات",
   "noTransactions": "لا توجد معاملات بعد",
   "transactionsWillAppear": "ستظهر معاملاتك هنا",
   "date": "التاريخ",
-  "status": "الحالة",
-  "reason": "السبب",
   "sent": "مرسل",
   "received": "مستلم",
   "active": "نشط",
@@ -664,36 +512,21 @@
   "moneyTransfer": "تحويل مالي",
   "moneyReceived": "استلام مالي",
   "transactionSuccess": "المعاملة ناجحة",
-
   "sendToAddress": "إرسال إلى عنوان",
   "walletAddress": "عنوان المحفظة",
   "enterWalletAddress": "أدخل عنوان المحفظة",
   "recipientEmail": "البريد الإلكتروني للمستلم",
-  "enterAmount": "أدخل المبلغ",
-  "invalidAmount": "مبلغ غير صالح",
   "network": "الشبكة",
-  "selectPaymentMethod": "اختر طريقة الدفع",
-
-  "depositSuccessMessage": "الإيداع ناجح",
   "transactionID": "معرف المعاملة",
   "enterTransactionID": "أدخل معرف المعاملة",
-
-  "withdrawHistory": "سجل السحب",
-  "noWithdrawalsYet": "لا توجد عمليات سحب بعد",
-  "withdrawalAmount": "مبلغ السحب",
-  "withdrawSuccessMessage": "تم إرسال طلب السحب",
-
   "orderSubmitted": "تم إرسال الطلب",
-  "contactSupport": "اتصل بالدعم",
   "approveAccountPrompt": "الموافقة على هذا الحساب؟",
-
   "hours": "ساعات",
   "minute": "دقيقة",
   "minutes": "دقائق",
   "second": "ثانية",
   "seconds": "ثواني",
   "timeRemaining": "الوقت المتبقي",
-
   "ppLastUpdated": "آخر تحديث: يناير 2025",
   "ppIntro": "محفظة ZenoPay (\"نحن\" أو \"الخاصة بنا\" أو \"لنا\") ملتزمة بحماية خصوصيتك. تشرح سياسة الخصوصية هذه كيفية جمع معلوماتك واستخدامها والكشف عنها وحمايتها عند استخدام تطبيق الجوال والخدمات الخاصة بنا.",
   "ppNewSection1Title": "1. المعلومات التي نجمعها",
@@ -750,7 +583,6 @@
   "ppNewSection11Desc2": "البريد الإلكتروني: info@zenopay.bond",
   "ppNewSection12Title": "12. الموافقة",
   "ppNewSection12Desc": "باستخدام محفظة ZenoPay، فإنك توافق على سياسة الخصوصية هذه وتوافق على شروطها.",
-
   "tcNewLastUpdated": "آخر تحديث: يناير 2025",
   "tcNewIntro": "مرحباً بك في محفظة ZenoPay. من خلال الوصول إلى أو استخدام تطبيق الجوال والخدمات الخاصة بنا، فإنك توافق على الالتزام بهذه الشروط والأحكام. يرجى قراءتها بعناية.",
   "tcNewSection1Title": "1. قبول الشروط",
