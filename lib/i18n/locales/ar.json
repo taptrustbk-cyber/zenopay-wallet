@@ -1,5 +1,6 @@
 {
   "home": "الرئيسية",
+  "common_error": "خطأ",
   "transactions_title": "التحويلات",
   "transactions_transactionHistory": "سجل التحويلات",
   "transactions_searchByTransactionId": "ابحث برقم العملية",
