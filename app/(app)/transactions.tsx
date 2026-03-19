@@ -50,29 +50,43 @@ const UI = {
 interface TransactionData {
   id: string;
   user_id?: string | null;
+  sender_id?: string | null;
+  receiver_id?: string | null;
+
   type: string;
+  direction?: string | null;
   status: string;
   amount: number;
-  description: string | null;
-  created_at: string;
-  sender_id: string | null;
-  receiver_id: string | null;
-  balance_after: number | null;
+  fee_amount?: number | null;
+  balance_before?: number | null;
+  balance_after?: number | null;
+  description?: string | null;
 
-  sender_name?: string | null;
+  reference_id?: string | null;
+  source_table?: string | null;
+  source_order_id?: string | null;
+  source_product_id?: string | null;
+
+  display_title?: string | null;
+  display_subtitle?: string | null;
+  display_image_url?: string | null;
+  pin_code?: string | null;
+  provider_name?: string | null;
+  payment_method_name?: string | null;
+
+  sender_full_name?: string | null;
   sender_email?: string | null;
-  sender_avatar?: string | null;
+  sender_avatar_url?: string | null;
   sender_city?: string | null;
 
-  receiver_name?: string | null;
+  receiver_full_name?: string | null;
   receiver_email?: string | null;
-  receiver_avatar?: string | null;
+  receiver_avatar_url?: string | null;
   receiver_city?: string | null;
 
-  meta_title?: string | null;
-  meta_subtitle?: string | null;
-  meta_image?: string | null;
-  meta_source?: string | null;
+  metadata?: Record<string, any> | null;
+  created_at: string;
+  updated_at?: string | null;
 }
 
 type TxUi = {
@@ -81,6 +95,7 @@ type TxUi = {
   subtitleLine2?: string;
   iconName: keyof typeof Ionicons.glyphMap;
   isOutgoing: boolean;
+  verified: boolean;
 
   displayName: string;
   displaySecondary?: string;
@@ -91,7 +106,7 @@ type TxUi = {
 
   transactionTypeLabel: string;
   note?: string;
-  verified: boolean;
+
   kind:
     | 'send'
     | 'receive'
@@ -106,7 +121,6 @@ type TxUi = {
     | 'other';
 };
 
-const APP_NAME = 'Zenopay';
 const APP_SYSTEM_NAME = 'Zenopay';
 const APP_SYSTEM_ICON: keyof typeof Ionicons.glyphMap = 'shield-checkmark-outline';
 
@@ -185,78 +199,6 @@ const getStatusColors = (raw: string) => {
   return { bg: UI.redSoft, color: UI.red };
 };
 
-const pickFirstText = (obj: any, keys: string[]) => {
-  for (const key of keys) {
-    const value = safe(obj?.[key]);
-    if (value) return value;
-  }
-  return null;
-};
-
-const enrichFromRows = (
-  rows: any[] | null | undefined,
-  tableName: string,
-  map: Map<string, { title?: string | null; subtitle?: string | null; image?: string | null; source?: string | null }>
-) => {
-  (rows || []).forEach((row) => {
-    const txId = safe(
-      row?.transaction_id ||
-        row?.tx_id ||
-        row?.wallet_transaction_id ||
-        row?.payment_transaction_id
-    );
-
-    if (!txId) return;
-
-    const title =
-      pickFirstText(row, [
-        'product_name',
-        'card_name',
-        'gift_card_name',
-        'mobile_name',
-        'model_name',
-        'network_name',
-        'operator_name',
-        'provider',
-        'brand_name',
-        'title',
-        'name',
-      ]) || null;
-
-    const subtitle =
-      pickFirstText(row, [
-        'brand',
-        'category',
-        'provider',
-        'network',
-        'operator',
-        'type',
-        'card_type',
-        'model',
-      ]) || null;
-
-    const image =
-      pickFirstText(row, [
-        'image_url',
-        'image',
-        'logo_url',
-        'logo',
-        'product_image',
-        'card_image',
-        'thumbnail_url',
-        'photo_url',
-        'icon_url',
-      ]) || null;
-
-    map.set(txId, {
-      title,
-      subtitle,
-      image,
-      source: tableName,
-    });
-  });
-};
-
 export default function TransactionsScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -270,172 +212,59 @@ export default function TransactionsScreen() {
   const [pdfLoading, setPdfLoading] = useState(false);
 
   const transactionsQuery = useQuery({
-    queryKey: ['transactions-screen-final-fixed', myId],
+    queryKey: ['transactions-rich-final', myId],
     enabled: !!myId,
     staleTime: 0,
     gcTime: 0,
     queryFn: async () => {
       if (!myId) throw new Error('User ID not found');
 
-      let txs: TransactionData[] = [];
-
-      const q1 = await supabase
+      const q = await supabase
         .from('transactions')
         .select(`
           id,
           user_id,
-          type,
-          status,
-          amount,
-          description,
-          created_at,
           sender_id,
           receiver_id,
-          balance_after
+          type,
+          direction,
+          status,
+          amount,
+          fee_amount,
+          balance_before,
+          balance_after,
+          description,
+          reference_id,
+          source_table,
+          source_order_id,
+          source_product_id,
+          display_title,
+          display_subtitle,
+          display_image_url,
+          pin_code,
+          provider_name,
+          payment_method_name,
+          sender_full_name,
+          sender_email,
+          sender_avatar_url,
+          sender_city,
+          receiver_full_name,
+          receiver_email,
+          receiver_avatar_url,
+          receiver_city,
+          metadata,
+          created_at,
+          updated_at
         `)
         .or(`user_id.eq.${myId},sender_id.eq.${myId},receiver_id.eq.${myId}`)
         .order('created_at', { ascending: false });
 
-      if (q1.error) {
-        console.log('transactions q1 error', q1.error);
-
-        const q2 = await supabase
-          .from('transactions')
-          .select(`
-            id,
-            user_id,
-            type,
-            status,
-            amount,
-            description,
-            created_at,
-            sender_id,
-            receiver_id,
-            balance_after
-          `)
-          .eq('user_id', myId)
-          .order('created_at', { ascending: false });
-
-        if (q2.error) {
-          console.log('transactions q2 error', q2.error);
-          throw new Error('Failed to fetch transactions');
-        }
-
-        txs = (q2.data || []) as TransactionData[];
-      } else {
-        txs = (q1.data || []) as TransactionData[];
+      if (q.error) {
+        console.log('transactions fetch error', q.error);
+        throw new Error('Failed to fetch transactions');
       }
 
-      const ids = Array.from(
-        new Set(
-          txs
-            .flatMap((t) => [t.user_id, t.sender_id, t.receiver_id])
-            .filter((x): x is string => !!x)
-        )
-      );
-
-      const profileMap = new Map<
-        string,
-        {
-          full_name: string | null;
-          email: string | null;
-          avatar_url: string | null;
-          city: string | null;
-        }
-      >();
-
-      if (ids.length) {
-        const byId = await supabase
-          .from('profiles')
-          .select('id, full_name, email, avatar_url, city')
-          .in('id', ids);
-
-        if (!byId.error) {
-          (byId.data || []).forEach((p: any) => {
-            const key = safe(p.id);
-            if (!key) return;
-            profileMap.set(String(key), {
-              full_name: safe(p.full_name),
-              email: safe(p.email),
-              avatar_url: safe(p.avatar_url),
-              city: safe(p.city),
-            });
-          });
-        }
-      }
-
-      const metaMap = new Map<
-        string,
-        { title?: string | null; subtitle?: string | null; image?: string | null; source?: string | null }
-      >();
-
-      const tableAttempts = [
-        {
-          table: 'topup_orders',
-          select:
-            'transaction_id, tx_id, card_name, network_name, operator_name, provider, image_url, logo_url, card_image, image',
-        },
-        {
-          table: 'sim_card_orders',
-          select:
-            'transaction_id, tx_id, card_name, network_name, operator_name, provider, image_url, logo_url, card_image, image',
-        },
-        {
-          table: 'gift_card_orders',
-          select:
-            'transaction_id, tx_id, gift_card_name, card_name, brand_name, category, image_url, logo_url, card_image, image',
-        },
-        {
-          table: 'shop_orders',
-          select:
-            'transaction_id, tx_id, product_name, mobile_name, model_name, brand_name, image_url, logo_url, product_image, image, thumbnail_url',
-        },
-        {
-          table: 'mobile_shop_orders',
-          select:
-            'transaction_id, tx_id, product_name, mobile_name, model_name, brand_name, image_url, logo_url, product_image, image, thumbnail_url',
-        },
-        {
-          table: 'notifications',
-          select:
-            'transaction_id, tx_id, title, name, type, image_url, logo_url, image, icon_url',
-        },
-      ];
-
-      for (const t of tableAttempts) {
-        try {
-          const res = await supabase.from(t.table).select(t.select);
-          if (!res.error && res.data?.length) {
-            enrichFromRows(res.data, t.table, metaMap);
-          }
-        } catch (e) {
-          console.log(`skip optional table ${t.table}`, e);
-        }
-      }
-
-      return txs.map((tx) => {
-        const sender = tx.sender_id ? profileMap.get(tx.sender_id) : null;
-        const receiver = tx.receiver_id ? profileMap.get(tx.receiver_id) : null;
-        const meta = metaMap.get(tx.id);
-
-        return {
-          ...tx,
-          sender_name: sender?.full_name ?? null,
-          sender_email: sender?.email ?? null,
-          sender_avatar: sender?.avatar_url ?? null,
-          sender_city: sender?.city ?? null,
-
-          receiver_name: receiver?.full_name ?? null,
-          receiver_email: receiver?.email ?? null,
-          receiver_avatar: receiver?.avatar_url ?? null,
-          receiver_city: receiver?.city ?? null,
-
-          meta_title: meta?.title ?? null,
-          meta_subtitle: meta?.subtitle ?? null,
-          meta_image: meta?.image ?? null,
-          meta_source: meta?.source ?? null,
-        };
-      });
+      return (q.data || []) as TransactionData[];
     },
   });
 
@@ -443,53 +272,26 @@ export default function TransactionsScreen() {
     (tx: TransactionData): TxUi => {
       const type = String(tx.type || '').toLowerCase();
       const desc = safe(tx.description);
-      const descLower = String(desc || '').toLowerCase();
+      const meta = tx.metadata || {};
 
-      const senderName = safe(tx.sender_name);
-      const senderEmail = safe(tx.sender_email);
-      const senderAvatar = safe(tx.sender_avatar);
-      const senderCity = safe(tx.sender_city);
+      const senderLabel =
+        safe(tx.sender_full_name) ||
+        safe(tx.sender_email) ||
+        tOr('transactions_unknownUser', 'Unknown user');
 
-      const receiverName = safe(tx.receiver_name);
-      const receiverEmail = safe(tx.receiver_email);
-      const receiverAvatar = safe(tx.receiver_avatar);
-      const receiverCity = safe(tx.receiver_city);
-
-      const metaTitle = safe(tx.meta_title);
-      const metaSubtitle = safe(tx.meta_subtitle);
-      const metaImage = safe(tx.meta_image);
-
-      const senderLabel = senderName || senderEmail || tOr('transactions_unknownUser', 'Unknown user');
-      const receiverLabel = receiverName || receiverEmail || tOr('transactions_unknownUser', 'Unknown user');
+      const receiverLabel =
+        safe(tx.receiver_full_name) ||
+        safe(tx.receiver_email) ||
+        tOr('transactions_unknownUser', 'Unknown user');
 
       const isOutgoingBySender = tx.sender_id === myId;
       const isOutgoingByAmount = Number(tx.amount || 0) < 0;
-
-      const isVirtualCard =
-        type.includes('virtual') ||
-        type === 'virtual_card_create' ||
-        type === 'create_virtual_card' ||
-        descLower.includes('virtual card');
-
-      if (isVirtualCard) {
-        return {
-          title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions_virtualCardCreated', 'Virtual Card Created'),
-          subtitleLine2: makeShortTransactionId(tx.id),
-          iconName: 'card-outline',
-          isOutgoing: true,
-          displayName: tOr('transactions_virtualCardCreated', 'Virtual Card Created'),
-          displaySecondary: undefined,
-          displayEmail: undefined,
-          displayCity: undefined,
-          displayAvatar: null,
-          displayImage: null,
-          transactionTypeLabel: tOr('transactions_typeVirtualCard', 'Virtual Card'),
-          note: desc || tOr('transactions_noteVirtualCard', 'Virtual card created successfully'),
-          verified: false,
-          kind: 'virtual_card',
-        };
-      }
+      const displayTitle = safe(tx.display_title);
+      const displaySubtitle = safe(tx.display_subtitle);
+      const displayImage = safe(tx.display_image_url);
+      const pinCode = safe(tx.pin_code);
+      const providerName = safe(tx.provider_name);
+      const paymentMethodName = safe(tx.payment_method_name);
 
       if (type === 'send' || type === 'receive' || type === 'transfer' || type === 'p2p') {
         const isOutgoing = isOutgoingBySender || isOutgoingByAmount;
@@ -498,21 +300,18 @@ export default function TransactionsScreen() {
           return {
             title: tOr('transactions_moneySent', 'Money Sent'),
             subtitleLine1: receiverLabel,
-            subtitleLine2:
-              receiverEmail && receiverEmail !== receiverLabel
-                ? receiverEmail
-                : makeShortTransactionId(tx.id),
+            subtitleLine2: safe(tx.receiver_email) || makeShortTransactionId(tx.id),
             iconName: 'arrow-up-outline',
             isOutgoing: true,
+            verified: false,
             displayName: receiverLabel,
             displaySecondary: undefined,
-            displayEmail: receiverEmail || undefined,
-            displayCity: receiverCity || undefined,
-            displayAvatar: receiverAvatar || null,
+            displayEmail: safe(tx.receiver_email) || undefined,
+            displayCity: safe(tx.receiver_city) || undefined,
+            displayAvatar: safe(tx.receiver_avatar_url) || null,
             displayImage: null,
             transactionTypeLabel: tOr('transactions_typeP2PTransfer', 'P2P Transfer'),
             note: desc || `${tOr('transactions_moneySentTo', 'Money sent to')} ${receiverLabel}`,
-            verified: false,
             kind: 'send',
           };
         }
@@ -520,99 +319,90 @@ export default function TransactionsScreen() {
         return {
           title: tOr('transactions_youReceivedMoney', 'You Received Money'),
           subtitleLine1: senderLabel,
-          subtitleLine2:
-            senderEmail && senderEmail !== senderLabel
-              ? senderEmail
-              : makeShortTransactionId(tx.id),
+          subtitleLine2: safe(tx.sender_email) || makeShortTransactionId(tx.id),
           iconName: 'arrow-down-outline',
           isOutgoing: false,
+          verified: false,
           displayName: senderLabel,
           displaySecondary: undefined,
-          displayEmail: senderEmail || undefined,
-          displayCity: senderCity || undefined,
-          displayAvatar: senderAvatar || null,
+          displayEmail: safe(tx.sender_email) || undefined,
+          displayCity: safe(tx.sender_city) || undefined,
+          displayAvatar: safe(tx.sender_avatar_url) || null,
           displayImage: null,
           transactionTypeLabel: tOr('transactions_typeP2PTransfer', 'P2P Transfer'),
           note: desc || `${tOr('transactions_moneyReceivedFrom', 'Money received from')} ${senderLabel}`,
-          verified: false,
           kind: 'receive',
         };
       }
 
-      if (
-        type === 'deposit' ||
-        type === 'admin_add' ||
-        type === 'agent_add' ||
-        type === 'topup' ||
-        type === 'top_up' ||
-        type === 'add_balance'
-      ) {
+      if (type === 'deposit' || type === 'admin_add' || type === 'agent_add') {
+        const name = paymentMethodName ? `${APP_SYSTEM_NAME}` : APP_SYSTEM_NAME;
+
         return {
           title: tOr('transactions_youReceivedMoney', 'You Received Money'),
-          subtitleLine1: tOr('transactions_depositFromZenopay', 'Deposit from Zenopay'),
+          subtitleLine1: paymentMethodName
+            ? `${tOr('transactions_depositFrom', 'Deposit from')} ${paymentMethodName}`
+            : tOr('transactions_depositFromZenopay', 'Deposit from Zenopay'),
           subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'download-outline',
           isOutgoing: false,
-          displayName: APP_SYSTEM_NAME,
-          displaySecondary: undefined,
+          verified: true,
+          displayName: name,
+          displaySecondary: paymentMethodName || undefined,
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
           displayImage: null,
           transactionTypeLabel: tOr('transactions_typeDeposit', 'Deposit'),
           note: desc || tOr('transactions_depositFromZenopay', 'Deposit from Zenopay'),
-          verified: true,
           kind: 'deposit',
         };
       }
 
-      if (
-        type === 'withdraw' ||
-        type === 'admin_withdraw' ||
-        type === 'agent_withdraw' ||
-        type === 'withdraw_balance'
-      ) {
+      if (type === 'withdraw' || type === 'admin_withdraw' || type === 'agent_withdraw') {
         return {
           title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions_withdrawToZenopay', 'Withdraw to Zenopay'),
+          subtitleLine1: paymentMethodName
+            ? `${tOr('transactions_withdrawTo', 'Withdraw to')} ${paymentMethodName}`
+            : tOr('transactions_withdrawToZenopay', 'Withdraw to Zenopay'),
           subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'cash-outline',
           isOutgoing: true,
+          verified: true,
           displayName: APP_SYSTEM_NAME,
-          displaySecondary: undefined,
+          displaySecondary: paymentMethodName || undefined,
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
           displayImage: null,
           transactionTypeLabel: tOr('transactions_typeWithdraw', 'Withdraw'),
           note: desc || tOr('transactions_noteWithdraw', 'Withdraw processed by Zenopay'),
-          verified: true,
           kind: 'withdraw',
         };
       }
 
-      if (type.includes('gift') || type === 'gift_card_purchase' || type === 'purchase_giftcard') {
+      if (type === 'purchase_mobile' || type === 'mobile_shop_purchase') {
         return {
           title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: metaTitle || tOr('transactions_giftCardPurchase', 'Gift Card Purchase'),
-          subtitleLine2: metaSubtitle || makeShortTransactionId(tx.id),
-          iconName: 'gift-outline',
+          subtitleLine1: displayTitle || tOr('transactions_mobileShopPurchase', 'Mobile Shop Purchase'),
+          subtitleLine2: displaySubtitle || makeShortTransactionId(tx.id),
+          iconName: 'phone-portrait-outline',
           isOutgoing: true,
-          displayName: metaTitle || tOr('transactions_giftCardPurchase', 'Gift Card Purchase'),
-          displaySecondary: metaSubtitle || undefined,
+          verified: false,
+          displayName: displayTitle || tOr('transactions_mobileShopPurchase', 'Mobile Shop Purchase'),
+          displaySecondary: displaySubtitle || undefined,
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
-          displayImage: metaImage || null,
-          transactionTypeLabel: tOr('transactions_typeGiftCard', 'Gift Card'),
-          note: desc || metaTitle || tOr('transactions_noteGiftCard', 'Gift card purchased successfully'),
-          verified: false,
-          kind: 'giftcard',
+          displayImage,
+          transactionTypeLabel: tOr('transactions_typeMobileShop', 'Mobile Shop'),
+          note: desc || displayTitle || tOr('transactions_noteMobileShop', 'Mobile shop purchase completed'),
+          kind: 'mobile',
         };
       }
 
       if (
-        type.includes('sim') ||
+        type === 'purchase_card' ||
         type === 'sim_card_purchase' ||
         type === 'purchase_sim' ||
         type === 'topup_purchase' ||
@@ -620,83 +410,81 @@ export default function TransactionsScreen() {
       ) {
         return {
           title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: metaTitle || tOr('transactions_simCardPurchase', 'SIM Card Purchase'),
-          subtitleLine2: metaSubtitle || makeShortTransactionId(tx.id),
+          subtitleLine1: displayTitle || providerName || tOr('transactions_simCardPurchase', 'Top-Up Card Purchase'),
+          subtitleLine2: displaySubtitle || makeShortTransactionId(tx.id),
           iconName: 'cellular-outline',
           isOutgoing: true,
-          displayName: metaTitle || tOr('transactions_simCardPurchase', 'SIM Card Purchase'),
-          displaySecondary: metaSubtitle || undefined,
+          verified: false,
+          displayName: displayTitle || providerName || tOr('transactions_simCardPurchase', 'Top-Up Card Purchase'),
+          displaySecondary: pinCode ? `PIN: ${pinCode}` : displaySubtitle || undefined,
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
-          displayImage: metaImage || null,
-          transactionTypeLabel: tOr('transactions_typeSimCard', 'SIM Card'),
-          note: desc || metaTitle || tOr('transactions_noteSimCard', 'SIM card purchased successfully'),
-          verified: false,
+          displayImage,
+          transactionTypeLabel: tOr('transactions_typeSimCard', 'Top-Up Card'),
+          note: desc || displayTitle || providerName || tOr('transactions_noteSimCard', 'Card purchased successfully'),
           kind: 'sim',
         };
       }
 
-      if (type.includes('mobile') || type === 'purchase_mobile' || type === 'mobile_shop_purchase') {
+      if (type === 'gift_card_purchase' || type === 'purchase_giftcard') {
         return {
           title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: metaTitle || tOr('transactions_mobileShopPurchase', 'Mobile Shop Purchase'),
-          subtitleLine2: metaSubtitle || makeShortTransactionId(tx.id),
-          iconName: 'phone-portrait-outline',
+          subtitleLine1: displayTitle || tOr('transactions_giftCardPurchase', 'Gift Card Purchase'),
+          subtitleLine2: displaySubtitle || makeShortTransactionId(tx.id),
+          iconName: 'gift-outline',
           isOutgoing: true,
-          displayName: metaTitle || tOr('transactions_mobileShopPurchase', 'Mobile Shop Purchase'),
-          displaySecondary: metaSubtitle || undefined,
+          verified: false,
+          displayName: displayTitle || tOr('transactions_giftCardPurchase', 'Gift Card Purchase'),
+          displaySecondary: pinCode ? `PIN: ${pinCode}` : displaySubtitle || undefined,
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
-          displayImage: metaImage || null,
-          transactionTypeLabel: tOr('transactions_typeMobileShop', 'Mobile Shop'),
-          note: desc || metaTitle || tOr('transactions_noteMobileShop', 'Mobile shop purchase completed'),
-          verified: false,
-          kind: 'mobile',
+          displayImage,
+          transactionTypeLabel: tOr('transactions_typeGiftCard', 'Gift Card'),
+          note: desc || displayTitle || tOr('transactions_noteGiftCard', 'Gift card purchased successfully'),
+          kind: 'giftcard',
         };
       }
 
-      if (type.includes('purchase') || type === 'buy' || type === 'order') {
+      if (type === 'virtual_card_create' || type === 'create_virtual_card') {
         return {
           title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: metaTitle || tOr('transactions_purchase', 'Purchase'),
-          subtitleLine2: metaSubtitle || makeShortTransactionId(tx.id),
-          iconName: 'pricetag-outline',
+          subtitleLine1: tOr('transactions_virtualCardCreated', 'Virtual Card Created'),
+          subtitleLine2: makeShortTransactionId(tx.id),
+          iconName: 'card-outline',
           isOutgoing: true,
-          displayName: metaTitle || tOr('transactions_purchase', 'Purchase'),
-          displaySecondary: metaSubtitle || undefined,
+          verified: false,
+          displayName: tOr('transactions_virtualCardCreated', 'Virtual Card Created'),
+          displaySecondary: undefined,
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
-          displayImage: metaImage || null,
-          transactionTypeLabel: tOr('transactions_typePurchase', 'Purchase'),
-          note: desc || metaTitle || tOr('transactions_notePurchase', 'Purchase completed'),
-          verified: false,
-          kind: 'purchase',
+          displayImage: null,
+          transactionTypeLabel: tOr('transactions_typeVirtualCard', 'Virtual Card'),
+          note: desc || tOr('transactions_noteVirtualCard', 'Virtual card created successfully'),
+          kind: 'virtual_card',
         };
       }
-
-      const isOutgoing = isOutgoingBySender || isOutgoingByAmount;
 
       return {
-        title: isOutgoing
+        title: Number(tx.amount || 0) < 0
           ? tOr('transactions_moneySent', 'Money Sent')
           : tOr('transactions_youReceivedMoney', 'You Received Money'),
-        subtitleLine1: desc || tOr('transactions_transaction', 'Transaction'),
-        subtitleLine2: makeShortTransactionId(tx.id),
-        iconName: isOutgoing ? 'arrow-up-outline' : 'arrow-down-outline',
-        isOutgoing,
-        displayName: desc || tOr('transactions_transaction', 'Transaction'),
-        displaySecondary: undefined,
+        subtitleLine1: displayTitle || desc || tOr('transactions_purchase', 'Purchase'),
+        subtitleLine2: displaySubtitle || makeShortTransactionId(tx.id),
+        iconName: 'pricetag-outline',
+        isOutgoing: Number(tx.amount || 0) < 0,
+        verified: false,
+        displayName: displayTitle || desc || tOr('transactions_purchase', 'Purchase'),
+        displaySecondary: displaySubtitle || undefined,
         displayEmail: undefined,
         displayCity: undefined,
         displayAvatar: null,
-        displayImage: null,
-        transactionTypeLabel: tOr('transactions_typeTransaction', 'Transaction'),
-        note: desc || tOr('transactions_transactionDetailsText', 'Transaction details'),
-        verified: false,
-        kind: 'other',
+        displayImage,
+        transactionTypeLabel: tOr('transactions_typePurchase', 'Purchase'),
+        note: desc || tOr('transactions_notePurchase', 'Purchase completed'),
+        kind: 'purchase',
       };
     },
     [myId]
@@ -716,21 +504,22 @@ export default function TransactionsScreen() {
         tx.type,
         tx.status,
         tx.description,
-        tx.sender_name,
+        tx.display_title,
+        tx.display_subtitle,
+        tx.pin_code,
+        tx.provider_name,
+        tx.payment_method_name,
+        tx.sender_full_name,
         tx.sender_email,
-        tx.sender_city,
-        tx.receiver_name,
+        tx.receiver_full_name,
         tx.receiver_email,
-        tx.receiver_city,
-        tx.meta_title,
-        tx.meta_subtitle,
-        shortId,
         ui.title,
         ui.subtitleLine1,
         ui.subtitleLine2,
         ui.displayName,
+        ui.displaySecondary,
         ui.displayEmail,
-        ui.displayCity,
+        shortId,
       ]
         .filter(Boolean)
         .join(' ')
@@ -755,7 +544,7 @@ export default function TransactionsScreen() {
     (tx: TransactionData) => {
       const ui = getTxUi(tx);
       const amount = Math.abs(Number(tx.amount || 0));
-      const fee = 0;
+      const fee = Number(tx.fee_amount || 0);
       const total = amount + fee;
       const dateText = formatFullDate(tx.created_at);
       const timeText = formatTime(tx.created_at);
@@ -769,23 +558,14 @@ export default function TransactionsScreen() {
             * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
             body { margin: 0; padding: 28px; background: #f5f8fc; color: #1E2A4A; }
             .sheet { background: #fff; border-radius: 20px; padding: 24px; border: 1px solid #dce7f2; }
-            .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-            .logoWrap { display: flex; align-items: center; gap: 14px; }
-            .logo {
-              width: 60px; height: 60px; border-radius: 18px;
-              background: linear-gradient(135deg, #4F7CFF, #27D69B);
-              display: flex; align-items: center; justify-content: center;
-              color: white; font-size: 28px; font-weight: 700;
-            }
-            .title { font-size: 42px; font-weight: 800; margin: 0; color: #1E2A4A; }
-            .dateBox { text-align: right; font-size: 15px; color: #6F7A96; line-height: 1.8; }
+            .title { font-size: 38px; font-weight: 800; margin: 0 0 20px; }
             .row {
               display: flex; justify-content: space-between; align-items: center;
-              padding: 16px 0; border-top: 1px solid #edf2f7; gap: 16px;
+              padding: 14px 0; border-top: 1px solid #edf2f7; gap: 16px;
             }
             .label { font-size: 14px; color: #6F7A96; margin-bottom: 6px; }
-            .value { font-size: 17px; font-weight: 700; color: #1E2A4A; word-break: break-word; }
-            .amount { color: ${ui.isOutgoing ? '#FF4D7E' : '#27D69B'}; font-size: 24px; font-weight: 800; }
+            .value { font-size: 17px; font-weight: 700; color: #1E2A4A; }
+            .amount { color: ${ui.isOutgoing ? '#FF4D7E' : '#27D69B'}; font-size: 22px; font-weight: 800; }
             .badge {
               display: inline-block; padding: 10px 18px; border-radius: 999px; color: white;
               background: #4F7CFF; font-size: 15px; font-weight: 700;
@@ -798,28 +578,16 @@ export default function TransactionsScreen() {
         </head>
         <body>
           <div class="sheet">
-            <div class="top">
-              <div class="logoWrap">
-                <div class="logo">Z</div>
-                <div>
-                  <p class="title">INVOICE</p>
-                  <div>${APP_NAME}</div>
-                </div>
-              </div>
-              <div class="dateBox">
-                <div>${dateText}</div>
-                <div>${timeText}</div>
-              </div>
-            </div>
+            <div class="title">INVOICE</div>
 
             <div class="row">
               <div>
-                <div class="label">${tOr('transactions_transactionId', 'Transaction ID')}</div>
-                <div class="value">${shortId}</div>
+                <div class="label">Date</div>
+                <div class="value">${dateText} ${timeText}</div>
               </div>
-              <div style="text-align:right;">
-                <div class="label">${tOr('transactions_status', 'Status')}</div>
-                <div class="value">${tOr(`transactions_status_${statusLabel(tx.status)}`, statusLabel(tx.status))}</div>
+              <div>
+                <div class="label">Transaction ID</div>
+                <div class="value">${shortId}</div>
               </div>
             </div>
 
@@ -833,19 +601,11 @@ export default function TransactionsScreen() {
 
             <div class="row">
               <div>
-                <div class="label">${
-                  ui.kind === 'send'
-                    ? tOr('transactions_sentTo', 'Sent To')
-                    : ui.kind === 'receive' || ui.kind === 'deposit'
-                    ? tOr('transactions_receivedFrom', 'Received From')
-                    : ui.kind === 'withdraw'
-                    ? tOr('transactions_sentTo', 'Sent To')
-                    : tOr('transactions_item', 'Item')
-                }</div>
+                <div class="label">Details</div>
                 <div class="value">${ui.displayName}</div>
+                ${ui.displaySecondary ? `<div>${ui.displaySecondary}</div>` : ''}
                 ${ui.displayEmail ? `<div>${ui.displayEmail}</div>` : ''}
                 ${ui.displayCity ? `<div>${ui.displayCity}</div>` : ''}
-                ${ui.displaySecondary ? `<div>${ui.displaySecondary}</div>` : ''}
               </div>
             </div>
 
@@ -873,24 +633,24 @@ export default function TransactionsScreen() {
             ${
               tx.balance_after !== null && tx.balance_after !== undefined
                 ? `
-                  <div class="row">
-                    <div>
-                      <div class="label">${tOr('transactions_balanceAfter', 'Balance After')}</div>
-                      <div class="value">${formatIQD(tx.balance_after)}</div>
-                    </div>
+                <div class="row">
+                  <div>
+                    <div class="label">${tOr('transactions_balanceAfter', 'Balance After')}</div>
+                    <div class="value">${formatIQD(tx.balance_after)}</div>
                   </div>
-                `
+                </div>
+              `
                 : ''
             }
 
             ${
               ui.note
                 ? `
-                  <div class="note">
-                    <strong>${tOr('transactions_note', 'Note')}:</strong><br/>
-                    ${String(ui.note).replace(/\n/g, '<br/>')}
-                  </div>
-                `
+                <div class="note">
+                  <strong>${tOr('transactions_note', 'Note')}:</strong><br/>
+                  ${String(ui.note).replace(/\n/g, '<br/>')}
+                </div>
+              `
                 : ''
             }
           </div>
@@ -906,7 +666,6 @@ export default function TransactionsScreen() {
 
     try {
       setPdfLoading(true);
-
       const html = buildTransactionHtml(selectedTx);
       const { uri } = await Print.printToFileAsync({ html });
 
@@ -940,10 +699,7 @@ export default function TransactionsScreen() {
       return <Image source={{ uri: ui.displayAvatar }} style={styles.txAvatarImage} />;
     }
 
-    if (
-      ['purchase', 'giftcard', 'mobile', 'sim', 'topup'].includes(ui.kind) &&
-      ui.displayImage
-    ) {
+    if (ui.displayImage) {
       return <Image source={{ uri: ui.displayImage }} style={styles.txAvatarImage} />;
     }
 
@@ -1311,6 +1067,14 @@ export default function TransactionsScreen() {
                   </View>
                 </View>
 
+                {selectedTx.pin_code
+                  ? renderDetailRow('PIN Code', selectedTx.pin_code, false, UI.primaryDark)
+                  : null}
+
+                {selectedTx.payment_method_name
+                  ? renderDetailRow('Payment Method', selectedTx.payment_method_name, false, UI.primaryDark)
+                  : null}
+
                 {renderDetailRow(
                   tOr('transactions_transactionAmount', 'Transaction Amount'),
                   formatIQD(Math.abs(Number(selectedTx.amount || 0))),
@@ -1320,14 +1084,14 @@ export default function TransactionsScreen() {
 
                 {renderDetailRow(
                   tOr('transactions_transactionFee', 'Transaction Fee'),
-                  formatIQD(0),
+                  formatIQD(Number(selectedTx.fee_amount || 0)),
                   false,
                   UI.green
                 )}
 
                 {renderDetailRow(
                   tOr('transactions_transactionTotalAmount', 'Transaction Total Amount'),
-                  formatIQD(Math.abs(Number(selectedTx.amount || 0))),
+                  formatIQD(Math.abs(Number(selectedTx.amount || 0)) + Number(selectedTx.fee_amount || 0)),
                   false,
                   selectedUi.isOutgoing ? UI.red : UI.green
                 )}
