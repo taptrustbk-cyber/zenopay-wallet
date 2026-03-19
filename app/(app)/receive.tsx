@@ -18,7 +18,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
@@ -142,7 +141,6 @@ function getStatusMeta(status?: string) {
 export default function DepositScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { theme } = useTheme();
   const queryClient = useQueryClient();
 
   const [showMethodModal, setShowMethodModal] = useState(false);
@@ -266,9 +264,8 @@ export default function DepositScreen() {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.7,
-        aspect: [4, 5],
+        allowsEditing: false,
+        quality: 1,
       });
 
       if (!result.canceled && result.assets?.[0]?.uri) {
@@ -693,7 +690,7 @@ export default function DepositScreen() {
             <TouchableOpacity style={styles.uploadCard} activeOpacity={0.92} onPress={pickReceiptImage}>
               {receiptImage ? (
                 <>
-                  <Image source={{ uri: receiptImage }} style={styles.uploadPreview} resizeMode="cover" />
+                  <Image source={{ uri: receiptImage }} style={styles.uploadPreview} resizeMode="contain" />
                   <View style={styles.uploadOverlay}>
                     <Text style={styles.uploadOverlayText}>
                       {i18n.t('changeImage') || 'Change Image'}
@@ -862,7 +859,7 @@ export default function DepositScreen() {
                         <Image
                           source={{ uri: d.receipt_image }}
                           style={styles.historyReceiptImg}
-                          resizeMode="cover"
+                          resizeMode="contain"
                         />
                         <View style={styles.historyReceiptOverlay}>
                           <Eye size={18} color="#fff" />
@@ -1457,6 +1454,7 @@ const styles = StyleSheet.create({
   uploadPreview: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#F8FAFC',
   },
   uploadOverlay: {
     position: 'absolute',
@@ -1655,10 +1653,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: UI.border,
+    backgroundColor: '#F8FAFC',
   },
   historyReceiptImg: {
     width: '100%',
-    height: 180,
+    height: 220,
     backgroundColor: '#E2E8F0',
   },
   historyReceiptOverlay: {
