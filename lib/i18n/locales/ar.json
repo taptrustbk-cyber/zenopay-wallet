@@ -52,7 +52,7 @@
   "transactions_typeWithdraw": "سحب",
   "transactions_typeGiftCard": "بطاقة هدية",
   "transactions_typeSimCard":  "بطاقة شحن الرصيد",
-  transactions_typeMobileShop": "متجر الموبايل",
+  "transactions_typeMobileShop": "متجر الموبايل",
   "transactions_typeTopup": "شحن",
   "transactions_typePurchase": "شراء",
   "transactions_typeTransaction": "عملية",
