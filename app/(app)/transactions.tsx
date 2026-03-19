@@ -13,7 +13,6 @@ import {
   ScrollView,
   Alert,
   Image,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -31,7 +30,7 @@ const UI = {
   bg: '#F4F8FC',
   page: '#EDF3F8',
   card: '#FFFFFF',
-  soft: '#F6FAFD',
+  soft: '#F8FBFF',
   text: '#1E2A4A',
   text2: '#6F7A96',
   text3: '#94A3B8',
@@ -39,14 +38,12 @@ const UI = {
   primary: '#4F7CFF',
   primaryDark: '#315EE8',
   primarySoft: '#E9F0FF',
-  blueSoft2: '#EEF5FF',
   green: '#27D69B',
   greenSoft: '#EAFBF5',
   red: '#FF4D7E',
   redSoft: '#FFEAF1',
   amber: '#F59E0B',
   amberSoft: '#FFF4D9',
-  tabBg: '#E9EFF5',
   shadow: '#0F172A',
 };
 
@@ -96,6 +93,10 @@ type TxUi = {
     | 'other';
 };
 
+const APP_NAME = 'Zenopay';
+const APP_FAKE_PROFILE_NAME = 'Zenopay';
+const APP_DEFAULT_ICON = 'shield-checkmark-outline';
+
 const safe = (v?: string | null) => (v && String(v).trim().length ? String(v).trim() : null);
 
 const tOr = (key: string, fallback: string) => {
@@ -104,27 +105,13 @@ const tOr = (key: string, fallback: string) => {
   return v === key ? fallback : v;
 };
 
-const APP_NAME = 'Zenopay';
-const APP_FAKE_PROFILE_NAME = 'Zenopay';
-const APP_DEFAULT_ICON = 'shield-checkmark-outline';
-
-const APP_EMAIL_HINT = '';
-
 const formatIQD = (value: number | null | undefined) => {
   const num = Number(value || 0);
   const abs = Math.abs(num);
-  const formatted = new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: 0,
-  }).format(abs);
+  const formatted = abs
+    .toFixed(0)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return `${formatted} IQD`;
-};
-
-const formatMonthYear = (dateStr: string) => {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString(undefined, {
-    month: 'long',
-    year: 'numeric',
-  });
 };
 
 const formatFullDate = (dateStr: string) => {
@@ -153,26 +140,24 @@ const formatListDate = (dateStr: string) => {
   });
 };
 
-const getMonthKey = (dateStr: string) => {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
-
-const getMonthLabelFromKey = (key: string) => {
-  const [year, month] = key.split('-').map(Number);
-  const d = new Date(year, month - 1, 1);
-  return d.toLocaleDateString(undefined, {
-    month: 'long',
-    year: 'numeric',
-  });
-};
-
 const statusLabel = (raw: string) => {
   const s = String(raw || 'completed').toLowerCase();
-  if (s === 'completed' || s === 'success' || s === 'paid' || s === 'approved') return 'Completed';
-  if (s === 'pending' || s === 'processing') return 'Pending';
-  if (s === 'failed' || s === 'rejected' || s === 'cancelled' || s === 'canceled') return 'Failed';
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  if (s === 'completed' || s === 'success' || s === 'paid' || s === 'approved') return 'completed';
+  if (s === 'pending' || s === 'processing') return 'pending';
+  if (s === 'failed' || s === 'rejected' || s === 'cancelled' || s === 'canceled') return 'failed';
+  return s;
+};
+
+const makeShortTransactionId = (id?: string | null) => {
+  const base = String(id || '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toUpperCase();
+
+  if (!base) return 'TX000001';
+
+  if (base.length >= 8) return base.slice(0, 8);
+
+  return `${base}${'X'.repeat(8 - base.length)}`.slice(0, 8);
 };
 
 const getStatusColors = (raw: string) => {
@@ -189,17 +174,16 @@ const getStatusColors = (raw: string) => {
 export default function TransactionsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { theme } = useTheme();
+  useTheme();
   const isRTL = I18nManager.isRTL;
   const myId = user?.id || '';
 
-  const [activeTab, setActiveTab] = useState<'history' | 'summary'>('history');
   const [searchText, setSearchText] = useState('');
   const [selectedTx, setSelectedTx] = useState<TransactionData | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
 
   const transactionsQuery = useQuery({
-    queryKey: ['transactions-premium-screen', myId],
+    queryKey: ['transactions-screen-clean', myId],
     queryFn: async () => {
       if (!myId) throw new Error('User ID not found');
 
@@ -291,9 +275,7 @@ export default function TransactionsScreen() {
       }
 
       const ids = Array.from(
-        new Set(
-          txs.flatMap((t) => [t.sender_id, t.receiver_id]).filter((x): x is string => !!x)
-        )
+        new Set(txs.flatMap((t) => [t.sender_id, t.receiver_id]).filter((x): x is string => !!x))
       );
 
       if (!ids.length) return txs;
@@ -303,13 +285,32 @@ export default function TransactionsScreen() {
         { full_name: string | null; email: string | null; avatar_url: string | null }
       >();
 
-      const { data: p1, error: pErr1 } = await supabase
+      const { data: p1 } = await supabase
         .from('profiles')
         .select('id, user_id, full_name, email, avatar_url')
         .in('id', ids);
 
-      if (!pErr1) {
-        (p1 || []).forEach((p: any) => {
+      (p1 || []).forEach((p: any) => {
+        const key1 = safe(p.id);
+        const key2 = safe(p.user_id);
+        const val = {
+          full_name: safe(p.full_name),
+          email: safe(p.email),
+          avatar_url: safe(p.avatar_url),
+        };
+        if (key1) map.set(String(key1), val);
+        if (key2) map.set(String(key2), val);
+      });
+
+      const missing = ids.filter((id) => !map.has(id));
+
+      if (missing.length) {
+        const { data: p2 } = await supabase
+          .from('profiles')
+          .select('id, user_id, full_name, email, avatar_url')
+          .in('user_id', missing);
+
+        (p2 || []).forEach((p: any) => {
           const key1 = safe(p.id);
           const key2 = safe(p.user_id);
           const val = {
@@ -320,29 +321,6 @@ export default function TransactionsScreen() {
           if (key1) map.set(String(key1), val);
           if (key2) map.set(String(key2), val);
         });
-      }
-
-      const missing = ids.filter((id) => !map.has(id));
-
-      if (missing.length) {
-        const { data: p2, error: pErr2 } = await supabase
-          .from('profiles')
-          .select('id, user_id, full_name, email, avatar_url')
-          .in('user_id', missing);
-
-        if (!pErr2) {
-          (p2 || []).forEach((p: any) => {
-            const key1 = safe(p.id);
-            const key2 = safe(p.user_id);
-            const val = {
-              full_name: safe(p.full_name),
-              email: safe(p.email),
-              avatar_url: safe(p.avatar_url),
-            };
-            if (key1) map.set(String(key1), val);
-            if (key2) map.set(String(key2), val);
-          });
-        }
       }
 
       return txs.map((t) => {
@@ -376,8 +354,8 @@ export default function TransactionsScreen() {
       const senderAvatar = safe(tx.sender_avatar);
       const receiverAvatar = safe(tx.receiver_avatar);
 
-      const senderLabel = senderName || senderEmail || 'Unknown user';
-      const receiverLabel = receiverName || receiverEmail || 'Unknown user';
+      const senderLabel = senderName || senderEmail || tOr('transactions.unknownUser', 'Unknown user');
+      const receiverLabel = receiverName || receiverEmail || tOr('transactions.unknownUser', 'Unknown user');
 
       const isOutgoingBySender = tx.sender_id === myId;
       const isOutgoingByAmount = Number(tx.amount || 0) < 0;
@@ -394,16 +372,16 @@ export default function TransactionsScreen() {
 
       if (isVirtualCard) {
         return {
-          title: 'Zenopay Card Created',
-          subtitleLine1: 'Virtual card created successfully',
-          subtitleLine2: tx.id,
+          title: tOr('transactions.virtualCardCreated', 'Zenopay Card Created'),
+          subtitleLine1: tOr('transactions.virtualCardCreatedSubtitle', 'Virtual card created successfully'),
+          subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'card-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: 'Virtual Card',
-          note: desc || 'Zenopay virtual card has been created.',
+          transactionTypeLabel: tOr('transactions.typeVirtualCard', 'Virtual Card'),
+          note: desc || tOr('transactions.noteVirtualCard', 'Zenopay virtual card has been created.'),
           kind: 'virtual_card',
         };
       }
@@ -413,31 +391,31 @@ export default function TransactionsScreen() {
 
         if (isOutgoing) {
           return {
-            title: 'Money Sent',
+            title: tOr('transactions.moneySent', 'Money Sent'),
             subtitleLine1: receiverLabel,
-            subtitleLine2: receiverEmail && receiverEmail !== receiverLabel ? receiverEmail : tx.id,
+            subtitleLine2: receiverEmail && receiverEmail !== receiverLabel ? receiverEmail : makeShortTransactionId(tx.id),
             iconName: 'arrow-up-outline',
             isOutgoing: true,
             partyName: receiverLabel,
             partyEmail: receiverEmail || undefined,
             partyAvatar: receiverAvatar || null,
-            transactionTypeLabel: 'P2P-Transfer',
-            note: desc || `Money sent to ${receiverLabel}`,
+            transactionTypeLabel: tOr('transactions.typeP2PTransfer', 'P2P-Transfer'),
+            note: desc || `${tOr('transactions.moneySentTo', 'Money sent to')} ${receiverLabel}`,
             kind: 'send',
           };
         }
 
         return {
-          title: 'You Received Money',
+          title: tOr('transactions.youReceivedMoney', 'You Received Money'),
           subtitleLine1: senderLabel,
-          subtitleLine2: senderEmail && senderEmail !== senderLabel ? senderEmail : tx.id,
+          subtitleLine2: senderEmail && senderEmail !== senderLabel ? senderEmail : makeShortTransactionId(tx.id),
           iconName: 'arrow-down-outline',
           isOutgoing: false,
           partyName: senderLabel,
           partyEmail: senderEmail || undefined,
           partyAvatar: senderAvatar || null,
-          transactionTypeLabel: 'P2P-Transfer',
-          note: desc || `Money received from ${senderLabel}`,
+          transactionTypeLabel: tOr('transactions.typeP2PTransfer', 'P2P-Transfer'),
+          note: desc || `${tOr('transactions.moneyReceivedFrom', 'Money received from')} ${senderLabel}`,
           kind: 'receive',
         };
       }
@@ -451,16 +429,16 @@ export default function TransactionsScreen() {
         type === 'add_balance'
       ) {
         return {
-          title: 'You Received Money',
-          subtitleLine1: 'Deposit from Zenopay',
-          subtitleLine2: tx.id,
+          title: tOr('transactions.youReceivedMoney', 'You Received Money'),
+          subtitleLine1: tOr('transactions.depositFromZenopay', 'Deposit from Zenopay'),
+          subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'download-outline',
           isOutgoing: false,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: 'Deposit',
-          note: desc || 'Deposit from Zenopay',
+          transactionTypeLabel: tOr('transactions.typeDeposit', 'Deposit'),
+          note: desc || tOr('transactions.depositFromZenopay', 'Deposit from Zenopay'),
           kind: 'deposit',
         };
       }
@@ -472,112 +450,114 @@ export default function TransactionsScreen() {
         type === 'withdraw_balance'
       ) {
         return {
-          title: 'Money Sent',
-          subtitleLine1: 'Withdraw to Zenopay',
-          subtitleLine2: tx.id,
+          title: tOr('transactions.moneySent', 'Money Sent'),
+          subtitleLine1: tOr('transactions.withdrawToZenopay', 'Withdraw to Zenopay'),
+          subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'cash-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: 'Withdraw',
-          note: desc || 'Withdraw processed by Zenopay',
+          transactionTypeLabel: tOr('transactions.typeWithdraw', 'Withdraw'),
+          note: desc || tOr('transactions.noteWithdraw', 'Withdraw processed by Zenopay'),
           kind: 'withdraw',
         };
       }
 
       if (type.includes('gift') || type === 'gift_card_purchase' || type === 'purchase_giftcard') {
         return {
-          title: 'Money Sent',
-          subtitleLine1: 'Gift Card Purchase',
-          subtitleLine2: tx.id,
+          title: tOr('transactions.moneySent', 'Money Sent'),
+          subtitleLine1: tOr('transactions.giftCardPurchase', 'Gift Card Purchase'),
+          subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'gift-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: 'Gift Card',
-          note: desc || 'Gift card purchased successfully',
+          transactionTypeLabel: tOr('transactions.typeGiftCard', 'Gift Card'),
+          note: desc || tOr('transactions.noteGiftCard', 'Gift card purchased successfully'),
           kind: 'giftcard',
         };
       }
 
       if (type.includes('sim') || type === 'sim_card_purchase' || type === 'purchase_sim') {
         return {
-          title: 'Money Sent',
-          subtitleLine1: 'SIM Card Purchase',
-          subtitleLine2: tx.id,
+          title: tOr('transactions.moneySent', 'Money Sent'),
+          subtitleLine1: tOr('transactions.simCardPurchase', 'SIM Card Purchase'),
+          subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'cellular-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: 'SIM Card',
-          note: desc || 'SIM card purchased successfully',
+          transactionTypeLabel: tOr('transactions.typeSimCard', 'SIM Card'),
+          note: desc || tOr('transactions.noteSimCard', 'SIM card purchased successfully'),
           kind: 'sim',
         };
       }
 
       if (type.includes('mobile') || type === 'purchase_mobile' || type === 'mobile_shop_purchase') {
         return {
-          title: 'Money Sent',
-          subtitleLine1: 'Mobile Shop Purchase',
-          subtitleLine2: tx.id,
+          title: tOr('transactions.moneySent', 'Money Sent'),
+          subtitleLine1: tOr('transactions.mobileShopPurchase', 'Mobile Shop Purchase'),
+          subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'phone-portrait-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: 'Mobile Shop',
-          note: desc || 'Mobile shop purchase completed',
+          transactionTypeLabel: tOr('transactions.typeMobileShop', 'Mobile Shop'),
+          note: desc || tOr('transactions.noteMobileShop', 'Mobile shop purchase completed'),
           kind: 'mobile',
         };
       }
 
       if (type.includes('topup_purchase') || type === 'card_topup' || type === 'topup_purchase') {
         return {
-          title: 'Money Sent',
-          subtitleLine1: 'Top-Up Charge',
-          subtitleLine2: tx.id,
+          title: tOr('transactions.moneySent', 'Money Sent'),
+          subtitleLine1: tOr('transactions.topUpCharge', 'Top-Up Charge'),
+          subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'flash-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: 'Top-Up',
-          note: desc || 'Top-up purchase completed',
+          transactionTypeLabel: tOr('transactions.typeTopup', 'Top-Up'),
+          note: desc || tOr('transactions.noteTopup', 'Top-up purchase completed'),
           kind: 'topup',
         };
       }
 
       if (type.includes('purchase') || type === 'buy' || type === 'order') {
         return {
-          title: 'Money Sent',
-          subtitleLine1: 'Purchase',
-          subtitleLine2: tx.id,
+          title: tOr('transactions.moneySent', 'Money Sent'),
+          subtitleLine1: tOr('transactions.purchase', 'Purchase'),
+          subtitleLine2: makeShortTransactionId(tx.id),
           iconName: 'pricetag-outline',
           isOutgoing: true,
           partyName: APP_FAKE_PROFILE_NAME,
           partyEmail: undefined,
           partyAvatar: null,
-          transactionTypeLabel: 'Purchase',
-          note: desc || 'Purchase completed',
+          transactionTypeLabel: tOr('transactions.typePurchase', 'Purchase'),
+          note: desc || tOr('transactions.notePurchase', 'Purchase completed'),
           kind: 'purchase',
         };
       }
 
       const isOutgoing = isOutgoingBySender || isOutgoingByAmount;
       return {
-        title: isOutgoing ? 'Money Sent' : 'You Received Money',
-        subtitleLine1: desc || 'Transaction',
-        subtitleLine2: tx.id,
+        title: isOutgoing
+          ? tOr('transactions.moneySent', 'Money Sent')
+          : tOr('transactions.youReceivedMoney', 'You Received Money'),
+        subtitleLine1: desc || tOr('transactions.transaction', 'Transaction'),
+        subtitleLine2: makeShortTransactionId(tx.id),
         iconName: isOutgoing ? 'arrow-up-outline' : 'arrow-down-outline',
         isOutgoing,
         partyName: APP_FAKE_PROFILE_NAME,
         partyEmail: undefined,
         partyAvatar: null,
-        transactionTypeLabel: 'Transaction',
-        note: desc || 'Transaction details',
+        transactionTypeLabel: tOr('transactions.typeTransaction', 'Transaction'),
+        note: desc || tOr('transactions.transactionDetails', 'Transaction details'),
         kind: 'other',
       };
     },
@@ -592,8 +572,11 @@ export default function TransactionsScreen() {
 
     return all.filter((tx) => {
       const ui = getTxUi(tx);
+      const shortId = makeShortTransactionId(tx.id).toLowerCase();
+
       const bucket = [
         tx.id,
+        shortId,
         tx.type,
         tx.status,
         tx.description,
@@ -612,107 +595,6 @@ export default function TransactionsScreen() {
     });
   }, [transactionsQuery.data, searchText, getTxUi]);
 
-  const monthlySummary = useMemo(() => {
-    const rows = filteredTransactions || [];
-    const groups = new Map<
-      string,
-      {
-        monthKey: string;
-        monthLabel: string;
-        startBalance: number;
-        endBalance: number;
-        updatedAt: string;
-        cashOutCount: number;
-        cashOutAmount: number;
-        p2pCount: number;
-        p2pAmount: number;
-        onlineShoppingCount: number;
-        onlineShoppingAmount: number;
-        physicalShopCount: number;
-        physicalShopAmount: number;
-        depositCount: number;
-        depositAmount: number;
-        dataBundleCount: number;
-        dataBundleAmount: number;
-        airtimeCount: number;
-        airtimeAmount: number;
-        onlineCardCount: number;
-        onlineCardAmount: number;
-      }
-    >();
-
-    rows.forEach((tx) => {
-      const key = getMonthKey(tx.created_at);
-      const ui = getTxUi(tx);
-      const existing =
-        groups.get(key) ||
-        {
-          monthKey: key,
-          monthLabel: getMonthLabelFromKey(key),
-          startBalance: Number(tx.balance_after || 0),
-          endBalance: Number(tx.balance_after || 0),
-          updatedAt: tx.created_at,
-          cashOutCount: 0,
-          cashOutAmount: 0,
-          p2pCount: 0,
-          p2pAmount: 0,
-          onlineShoppingCount: 0,
-          onlineShoppingAmount: 0,
-          physicalShopCount: 0,
-          physicalShopAmount: 0,
-          depositCount: 0,
-          depositAmount: 0,
-          dataBundleCount: 0,
-          dataBundleAmount: 0,
-          airtimeCount: 0,
-          airtimeAmount: 0,
-          onlineCardCount: 0,
-          onlineCardAmount: 0,
-        };
-
-      const amount = Math.abs(Number(tx.amount || 0));
-      const currentBalance = Number(tx.balance_after || 0);
-
-      if (new Date(tx.created_at).getTime() > new Date(existing.updatedAt).getTime()) {
-        existing.updatedAt = tx.created_at;
-        existing.endBalance = currentBalance;
-      }
-
-      if (new Date(tx.created_at).getTime() < new Date(existing.updatedAt).getTime()) {
-        existing.startBalance = currentBalance;
-      }
-
-      if (ui.kind === 'withdraw') {
-        existing.cashOutCount += 1;
-        existing.cashOutAmount += amount;
-      } else if (ui.kind === 'send' || ui.kind === 'receive') {
-        existing.p2pCount += 1;
-        existing.p2pAmount += amount;
-      } else if (ui.kind === 'mobile') {
-        existing.onlineShoppingCount += 1;
-        existing.onlineShoppingAmount += amount;
-      } else if (ui.kind === 'sim') {
-        existing.physicalShopCount += 1;
-        existing.physicalShopAmount += amount;
-      } else if (ui.kind === 'deposit') {
-        existing.depositCount += 1;
-        existing.depositAmount += amount;
-      } else if (ui.kind === 'topup') {
-        existing.dataBundleCount += 1;
-        existing.dataBundleAmount += amount;
-        existing.airtimeCount += 1;
-        existing.airtimeAmount += amount;
-      } else if (ui.kind === 'giftcard' || ui.kind === 'virtual_card') {
-        existing.onlineCardCount += 1;
-        existing.onlineCardAmount += amount;
-      }
-
-      groups.set(key, existing);
-    });
-
-    return Array.from(groups.values()).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
-  }, [filteredTransactions, getTxUi]);
-
   const { refetch, isRefetching } = transactionsQuery;
 
   const onRefresh = useCallback(async () => {
@@ -729,11 +611,11 @@ export default function TransactionsScreen() {
     const amount = Math.abs(Number(tx.amount || 0));
     const fee = 0;
     const total = amount + fee;
-    const status = statusLabel(tx.status);
     const partyEmail = ui.partyEmail || '';
     const note = ui.note || '';
     const dateText = formatFullDate(tx.created_at);
     const timeText = formatTime(tx.created_at);
+    const shortId = makeShortTransactionId(tx.id);
 
     return `
       <html>
@@ -743,14 +625,14 @@ export default function TransactionsScreen() {
             * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
             body {
               margin: 0;
-              padding: 32px;
+              padding: 28px;
               background: #f5f8fc;
               color: #1E2A4A;
             }
             .sheet {
               background: #ffffff;
               border-radius: 20px;
-              padding: 28px;
+              padding: 24px;
               border: 1px solid #dce7f2;
             }
             .top {
@@ -792,8 +674,9 @@ export default function TransactionsScreen() {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              padding: 18px 0;
+              padding: 16px 0;
               border-top: 1px solid #edf2f7;
+              gap: 16px;
             }
             .label {
               font-size: 14px;
@@ -804,6 +687,7 @@ export default function TransactionsScreen() {
               font-size: 17px;
               font-weight: 700;
               color: #1E2A4A;
+              word-break: break-word;
             }
             .amount {
               color: ${ui.isOutgoing ? '#FF4D7E' : '#27D69B'};
@@ -858,7 +742,7 @@ export default function TransactionsScreen() {
                 <div class="logo">Z</div>
                 <div>
                   <p class="title">INVOICE</p>
-                  <div class="small">${APP_NAME} Transaction Statement</div>
+                  <div class="small">${APP_NAME}</div>
                 </div>
               </div>
               <div class="dateBox">
@@ -869,18 +753,18 @@ export default function TransactionsScreen() {
 
             <div class="row">
               <div>
-                <div class="label">Transaction ID</div>
-                <div class="value">${tx.id}</div>
+                <div class="label">${tOr('transactions.transactionId', 'Transaction ID')}</div>
+                <div class="value">${shortId}</div>
               </div>
               <div style="text-align:right;">
-                <div class="label">Status</div>
-                <div class="value">${status}</div>
+                <div class="label">${tOr('transactions.status', 'Status')}</div>
+                <div class="value">${tOr(`transactions.status_${statusLabel(tx.status)}`, statusLabel(tx.status))}</div>
               </div>
             </div>
 
             <div class="row">
               <div>
-                <div class="label">Transaction Type</div>
+                <div class="label">${tOr('transactions.transactionType', 'Transaction Type')}</div>
                 <div class="value">${ui.transactionTypeLabel}</div>
               </div>
               <div>
@@ -890,7 +774,7 @@ export default function TransactionsScreen() {
 
             <div class="row">
               <div>
-                <div class="label">${ui.isOutgoing ? 'Sent To' : 'Received From'}</div>
+                <div class="label">${ui.isOutgoing ? tOr('transactions.sentTo', 'Sent To') : tOr('transactions.receivedFrom', 'Received From')}</div>
                 <div class="partyBox">
                   <div class="partyAvatar">${ui.partyName?.slice(0, 1)?.toUpperCase() || 'Z'}</div>
                   <div>
@@ -903,31 +787,31 @@ export default function TransactionsScreen() {
 
             <div class="row">
               <div>
-                <div class="label">Transaction Amount</div>
+                <div class="label">${tOr('transactions.transactionAmount', 'Transaction Amount')}</div>
                 <div class="amount">${formatIQD(amount)}</div>
               </div>
             </div>
 
             <div class="row">
               <div>
-                <div class="label">Transaction Fee</div>
+                <div class="label">${tOr('transactions.transactionFee', 'Transaction Fee')}</div>
                 <div class="value">${formatIQD(fee)}</div>
               </div>
             </div>
 
             <div class="row">
               <div>
-                <div class="label">Transaction Total Amount</div>
+                <div class="label">${tOr('transactions.transactionTotalAmount', 'Transaction Total Amount')}</div>
                 <div class="amount">${formatIQD(total)}</div>
               </div>
             </div>
 
             ${
-              tx.balance_after !== null
+              tx.balance_after !== null && tx.balance_after !== undefined
                 ? `
               <div class="row">
                 <div>
-                  <div class="label">Balance After Transaction</div>
+                  <div class="label">${tOr('transactions.balanceAfter', 'Balance After')}</div>
                   <div class="value">${formatIQD(tx.balance_after)}</div>
                 </div>
               </div>
@@ -939,7 +823,7 @@ export default function TransactionsScreen() {
               note
                 ? `
               <div class="note">
-                <strong>Note:</strong><br/>
+                <strong>${tOr('transactions.note', 'Note')}:</strong><br/>
                 ${String(note).replace(/\n/g, '<br/>')}
               </div>
             `
@@ -957,14 +841,20 @@ export default function TransactionsScreen() {
       setPdfLoading(true);
       const html = buildTransactionHtml(selectedTx);
       const { uri } = await Print.printToFileAsync({ html });
-      const fileName = `transaction-${selectedTx.id}.pdf`;
+      const fileName = `transaction-${makeShortTransactionId(selectedTx.id)}.pdf`;
       const newPath = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.copyAsync({ from: uri, to: newPath });
 
-      Alert.alert('Success', `PDF saved successfully`);
+      Alert.alert(
+        tOr('transactions.success', 'Success'),
+        tOr('transactions.pdfSavedSuccessfully', 'PDF saved successfully')
+      );
     } catch (e) {
       console.log('PDF save error', e);
-      Alert.alert('Error', 'Could not save PDF');
+      Alert.alert(
+        tOr('common.error', 'Error'),
+        tOr('transactions.couldNotSavePdf', 'Could not save PDF')
+      );
     } finally {
       setPdfLoading(false);
     }
@@ -979,18 +869,24 @@ export default function TransactionsScreen() {
 
       const available = await Sharing.isAvailableAsync();
       if (!available) {
-        Alert.alert('Not available', 'Sharing is not available on this device');
+        Alert.alert(
+          tOr('transactions.notAvailable', 'Not available'),
+          tOr('transactions.sharingNotAvailable', 'Sharing is not available on this device')
+        );
         return;
       }
 
       await Sharing.shareAsync(uri, {
         mimeType: 'application/pdf',
-        dialogTitle: 'Share transaction PDF',
+        dialogTitle: tOr('transactions.shareTransactionPdf', 'Share transaction PDF'),
         UTI: 'com.adobe.pdf',
       });
     } catch (e) {
       console.log('PDF share error', e);
-      Alert.alert('Error', 'Could not share PDF');
+      Alert.alert(
+        tOr('common.error', 'Error'),
+        tOr('transactions.couldNotSharePdf', 'Could not share PDF')
+      );
     } finally {
       setPdfLoading(false);
     }
@@ -1000,58 +896,77 @@ export default function TransactionsScreen() {
     const ui = getTxUi(item);
     const statusColors = getStatusColors(item.status);
     const rawAmount = Math.abs(Number(item.amount || 0));
+    const shortId = makeShortTransactionId(item.id);
 
     return (
       <TouchableOpacity
-        activeOpacity={0.92}
+        activeOpacity={0.94}
         style={[styles.txCard, isRTL && styles.txCardRTL]}
         onPress={() => setSelectedTx(item)}
       >
         <View style={[styles.txTopRow, isRTL && styles.txTopRowRTL]}>
-          <View style={[styles.txLeft, isRTL && styles.txLeftRTL]}>
-            <View
-              style={[
-                styles.txIconBox,
-                { backgroundColor: ui.isOutgoing ? UI.redSoft : UI.greenSoft },
-              ]}
-            >
-              <Ionicons
-                name={ui.iconName}
-                size={24}
-                color={ui.isOutgoing ? UI.red : UI.green}
-              />
-            </View>
+          <View style={[styles.txMainLeft, isRTL && styles.txMainLeftRTL]}>
+            {ui.partyAvatar ? (
+              <Image source={{ uri: ui.partyAvatar }} style={styles.txAvatarImage} />
+            ) : (
+              <View
+                style={[
+                  styles.txIconBox,
+                  { backgroundColor: ui.isOutgoing ? UI.redSoft : UI.greenSoft },
+                ]}
+              >
+                <Ionicons
+                  name={ui.iconName}
+                  size={22}
+                  color={ui.isOutgoing ? UI.red : UI.green}
+                />
+              </View>
+            )}
 
             <View style={[styles.txInfo, isRTL && styles.txInfoRTL]}>
-              <Text style={[styles.txTitle, { color: ui.isOutgoing ? UI.red : UI.green }, isRTL && styles.textRTL]}>
+              <Text
+                style={[
+                  styles.txTitle,
+                  { color: ui.isOutgoing ? UI.red : UI.green },
+                  isRTL && styles.textRTL,
+                ]}
+                numberOfLines={1}
+              >
                 {ui.title}
               </Text>
 
-              <Text style={[styles.txSubtitleMain, isRTL && styles.textRTL]} numberOfLines={1}>
+              <Text
+                style={[styles.txSubtitleMain, isRTL && styles.textRTL]}
+                numberOfLines={2}
+              >
                 {ui.subtitleLine1}
               </Text>
 
               {!!ui.partyEmail && ui.partyEmail !== ui.subtitleLine1 && (
-                <Text style={[styles.txSubtitleSmall, isRTL && styles.textRTL]} numberOfLines={1}>
+                <Text
+                  style={[styles.txSubtitleSmall, isRTL && styles.textRTL]}
+                  numberOfLines={1}
+                >
                   {ui.partyEmail}
                 </Text>
               )}
             </View>
           </View>
 
-          <View style={[styles.txRight, isRTL && styles.txRightRTL]}>
+          <View style={[styles.txMainRight, isRTL && styles.txMainRightRTL]}>
             <Text
               style={[
                 styles.txAmount,
                 { color: ui.isOutgoing ? UI.red : UI.green },
                 isRTL && styles.textRTL,
               ]}
+              numberOfLines={1}
             >
               {formatIQD(rawAmount)}
             </Text>
 
             <Text style={[styles.txId, isRTL && styles.textRTL]} numberOfLines={1}>
-              {item.id}
+              {shortId}
             </Text>
           </View>
         </View>
@@ -1063,7 +978,9 @@ export default function TransactionsScreen() {
 
           <View style={[styles.statusPill, { backgroundColor: statusColors.bg }]}>
             <Text style={[styles.statusPillText, { color: statusColors.color }]}>
-              {ui.isOutgoing ? 'Debit' : 'Credit'}
+              {ui.isOutgoing
+                ? tOr('transactions.debit', 'Debit')
+                : tOr('transactions.credit', 'Credit')}
             </Text>
           </View>
         </View>
@@ -1071,71 +988,15 @@ export default function TransactionsScreen() {
     );
   };
 
-  const renderSummaryCard = (item: (typeof monthlySummary)[number]) => {
-    return (
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryMonthHeader}>
-          <TouchableOpacity activeOpacity={0.8} style={styles.monthArrowBtn}>
-            <Ionicons name="chevron-back" size={22} color={UI.text3} />
-          </TouchableOpacity>
-
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={styles.summaryMonthTitle}>{item.monthLabel}</Text>
-            <Text style={styles.summaryUpdatedAt}>
-              Last update {formatTime(item.updatedAt)}
-            </Text>
-          </View>
-
-          <TouchableOpacity activeOpacity={0.8} style={styles.monthArrowBtn}>
-            <Ionicons name="chevron-forward" size={22} color={UI.text3} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.balanceSplitRow}>
-          <View style={styles.balanceBox}>
-            <Text style={styles.balanceLabel}>Start Balance</Text>
-            <Text style={styles.balanceValue}>{formatIQD(item.startBalance)}</Text>
-          </View>
-
-          <View style={styles.balanceDivider} />
-
-          <View style={styles.balanceBox}>
-            <Text style={styles.balanceLabel}>End Balance</Text>
-            <Text style={styles.balanceValue}>{formatIQD(item.endBalance)}</Text>
-          </View>
-        </View>
-
-        {renderSummaryLine('Cash-Out', item.cashOutCount, item.cashOutAmount)}
-        {renderSummaryLine('P2P-Transfer', item.p2pCount, item.p2pAmount)}
-        {renderSummaryLine('Online-Shopping', item.onlineShoppingCount, item.onlineShoppingAmount)}
-        {renderSummaryLine('Physical-Shop', item.physicalShopCount, item.physicalShopAmount)}
-        {renderSummaryLine('Deposit/Cash Card', item.depositCount, item.depositAmount)}
-        {renderSummaryLine('Data Bundle', item.dataBundleCount, item.dataBundleAmount)}
-        {renderSummaryLine('Airtime', item.airtimeCount, item.airtimeAmount)}
-        {renderSummaryLine('Online-Card', item.onlineCardCount, item.onlineCardAmount)}
-      </View>
-    );
-  };
-
-  function renderSummaryLine(title: string, count: number, amount: number) {
-    return (
-      <View style={styles.summaryLine}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.summaryLineTitle}>{title}</Text>
-          <Text style={styles.summaryLineSub}>{count} times</Text>
-        </View>
-        <Text style={styles.summaryLineAmount}>{formatIQD(amount)}</Text>
-      </View>
-    );
-  }
-
   if (transactionsQuery.isLoading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.loaderContainer}>
           <ActivityIndicator color={UI.primary} size="large" />
-          <Text style={styles.loadingText}>Loading transactions...</Text>
+          <Text style={styles.loadingText}>
+            {tOr('transactions.loadingTransactions', 'Loading transactions...')}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -1145,57 +1006,59 @@ export default function TransactionsScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: UI.bg }]} edges={['top', 'bottom']}>
         <Stack.Screen options={{ headerShown: false }} />
-        <View style={styles.premiumHeader}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.85}>
+
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
             <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
           </TouchableOpacity>
-          <Text style={styles.pageTitle}>Transactions</Text>
-          <View style={{ width: 42 }} />
+
+          <Text style={styles.headerTitle}>{tOr('transactions.title', 'Transactions')}</Text>
+
+          <View style={{ width: 46 }} />
         </View>
 
         <View style={styles.errorStateContainer}>
           <View style={styles.errorIconContainer}>
             <Ionicons name="alert-circle" size={46} color={UI.red} />
           </View>
-          <Text style={styles.errorTitle}>Failed to load</Text>
-          <Text style={styles.errorMessage}>Could not load transactions</Text>
+
+          <Text style={styles.errorTitle}>
+            {tOr('transactions.failedToLoad', 'Failed to load')}
+          </Text>
+
+          <Text style={styles.errorMessage}>
+            {tOr('transactions.couldNotLoadTransactions', 'Could not load transactions')}
+          </Text>
 
           <TouchableOpacity style={styles.primaryBtn} onPress={() => transactionsQuery.refetch()} activeOpacity={0.9}>
             <Ionicons name="refresh" size={18} color="#fff" />
-            <Text style={styles.primaryBtnText}>Retry</Text>
+            <Text style={styles.primaryBtnText}>{tOr('common.retry', 'Retry')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
-  const currentBalance =
-    transactionsQuery.data?.[0]?.balance_after !== null && transactionsQuery.data?.[0]?.balance_after !== undefined
-      ? Number(transactionsQuery.data?.[0]?.balance_after || 0)
-      : 0;
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: UI.page }]} edges={['top', 'bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={styles.premiumHeader}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.85}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.85}>
           <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.text} />
         </TouchableOpacity>
 
-        <Text style={styles.pageTitle}>Transactions</Text>
+        <Text style={styles.headerTitle}>{tOr('transactions.title', 'Transactions')}</Text>
 
-        <TouchableOpacity activeOpacity={0.85} onPress={() => refetch()} style={styles.headerActionBtn}>
-          <Ionicons name="refresh-outline" size={20} color={UI.primaryDark} />
+        <TouchableOpacity activeOpacity={0.85} onPress={() => refetch()} style={styles.headerBtn}>
+          <Ionicons name="refresh-outline" size={22} color={UI.primaryDark} />
         </TouchableOpacity>
       </View>
 
       <FlatList
-        data={activeTab === 'history' ? filteredTransactions : monthlySummary}
-        keyExtractor={(item: any) => item.id || item.monthKey}
-        renderItem={({ item }: any) =>
-          activeTab === 'history' ? renderTransaction({ item }) : renderSummaryCard(item)
-        }
+        data={filteredTransactions}
+        keyExtractor={(item) => item.id}
+        renderItem={renderTransaction}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
@@ -1207,63 +1070,22 @@ export default function TransactionsScreen() {
         }
         ListHeaderComponent={
           <>
-            <View style={styles.balanceHero}>
-              <View style={styles.balanceHeroCircle1} />
-              <View style={styles.balanceHeroCircle2} />
-
-              <View style={styles.balanceTopRow}>
-                <View>
-                  <Text style={styles.balanceHeroTitle}>Account Balance</Text>
-                  <Text style={styles.balanceHeroSubtitle}>
-                    All your money movements in one place
-                  </Text>
-                </View>
-
-                <View style={styles.balanceCurrencyPill}>
-                  <Ionicons name="wallet-outline" size={22} color="#fff" />
-                  <Text style={styles.balanceCurrencyText}>IQD</Text>
-                </View>
-              </View>
-
-              <View style={styles.balanceValueRow}>
-                <Text style={styles.balanceHeroAmount}>{formatIQD(currentBalance)}</Text>
-              </View>
+            <View style={styles.historyOnlyBox}>
+              <Text style={styles.historyOnlyBoxText}>
+                {tOr('transactions.transactionHistory', 'Transaction History')}
+              </Text>
             </View>
 
-            <View style={styles.tabWrap}>
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => setActiveTab('history')}
-                style={[styles.tabBtn, activeTab === 'history' && styles.tabBtnActive]}
-              >
-                <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>
-                  Transaction History
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => setActiveTab('summary')}
-                style={[styles.tabBtn, activeTab === 'summary' && styles.tabBtnActive]}
-              >
-                <Text style={[styles.tabText, activeTab === 'summary' && styles.tabTextActive]}>
-                  Summary
-                </Text>
-              </TouchableOpacity>
+            <View style={styles.searchBox}>
+              <TextInput
+                value={searchText}
+                onChangeText={setSearchText}
+                placeholder={tOr('transactions.searchByTransactionId', 'Search transaction by transaction id')}
+                placeholderTextColor={UI.text2}
+                style={styles.searchInput}
+              />
+              <Ionicons name="search-outline" size={22} color={UI.text2} />
             </View>
-
-            {activeTab === 'history' && (
-              <View style={styles.searchBox}>
-                <TextInput
-                  value={searchText}
-                  onChangeText={setSearchText}
-                  placeholder="Filter for transaction"
-                  placeholderTextColor={UI.text2}
-                  style={styles.searchInput}
-                />
-                <Ionicons name="filter-outline" size={24} color={UI.text2} />
-              </View>
-            )}
           </>
         }
         ListEmptyComponent={
@@ -1271,8 +1093,12 @@ export default function TransactionsScreen() {
             <View style={styles.emptyIconContainer}>
               <Ionicons name="receipt-outline" size={44} color={UI.text2} />
             </View>
-            <Text style={styles.emptyTitle}>No transactions</Text>
-            <Text style={styles.emptySubtitle}>Your transactions will appear here.</Text>
+            <Text style={styles.emptyTitle}>
+              {tOr('transactions.noTransactions', 'No transactions')}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {tOr('transactions.transactionsWillAppearHere', 'Your transactions will appear here.')}
+            </Text>
           </View>
         }
         showsVerticalScrollIndicator={false}
@@ -1288,13 +1114,15 @@ export default function TransactionsScreen() {
           <Stack.Screen options={{ headerShown: false }} />
 
           <View style={styles.modalHeader}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => setSelectedTx(null)} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.headerBtn} onPress={() => setSelectedTx(null)} activeOpacity={0.85}>
               <Ionicons name="close" size={24} color={UI.text} />
             </TouchableOpacity>
 
-            <Text style={styles.modalTitle}>Transaction Details</Text>
+            <Text style={styles.modalTitle}>
+              {tOr('transactions.transactionDetails', 'Transaction Details')}
+            </Text>
 
-            <View style={{ width: 42 }} />
+            <View style={{ width: 46 }} />
           </View>
 
           {selectedTx && selectedUi && (
@@ -1316,7 +1144,9 @@ export default function TransactionsScreen() {
                   >
                     <Ionicons name="download-outline" size={20} color={UI.text} />
                     <Text style={styles.invoiceActionText}>
-                      {pdfLoading ? 'Please wait...' : 'Download PDF'}
+                      {pdfLoading
+                        ? tOr('transactions.pleaseWait', 'Please wait...')
+                        : tOr('transactions.downloadPdf', 'Download PDF')}
                     </Text>
                   </TouchableOpacity>
 
@@ -1327,7 +1157,9 @@ export default function TransactionsScreen() {
                     disabled={pdfLoading}
                   >
                     <Ionicons name="share-social-outline" size={20} color={UI.text} />
-                    <Text style={styles.invoiceActionText}>Share PDF</Text>
+                    <Text style={styles.invoiceActionText}>
+                      {tOr('transactions.sharePdf', 'Share PDF')}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1338,10 +1170,17 @@ export default function TransactionsScreen() {
                   <Text style={styles.detailTimeText}>{formatTime(selectedTx.created_at)}</Text>
                 </View>
 
-                {renderDetailRow('Transaction ID', selectedTx.id, true)}
+                {renderDetailRow(
+                  tOr('transactions.transactionId', 'Transaction ID'),
+                  makeShortTransactionId(selectedTx.id),
+                  false,
+                  UI.green
+                )}
 
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Transaction Type</Text>
+                  <Text style={styles.detailLabel}>
+                    {tOr('transactions.transactionType', 'Transaction Type')}
+                  </Text>
                   <View style={styles.typeBadge}>
                     <Text style={styles.typeBadgeText}>{selectedUi.transactionTypeLabel}</Text>
                   </View>
@@ -1349,7 +1188,9 @@ export default function TransactionsScreen() {
 
                 <View style={styles.detailPartySection}>
                   <Text style={styles.detailLabel}>
-                    {selectedUi.isOutgoing ? 'Sent To' : 'Received From'}
+                    {selectedUi.isOutgoing
+                      ? tOr('transactions.sentTo', 'Sent To')
+                      : tOr('transactions.receivedFrom', 'Received From')}
                   </Text>
 
                   <View style={styles.detailPartyBox}>
@@ -1392,18 +1233,46 @@ export default function TransactionsScreen() {
                   </View>
                 </View>
 
-                {renderDetailRow('Transaction Amount', formatIQD(Math.abs(Number(selectedTx.amount || 0))), false, selectedUi.isOutgoing ? UI.red : UI.green)}
-                {renderDetailRow('Transaction Fee', formatIQD(0), false, UI.green)}
-                {renderDetailRow('Transaction Total Amount', formatIQD(Math.abs(Number(selectedTx.amount || 0))), false, selectedUi.isOutgoing ? UI.red : UI.green)}
+                {renderDetailRow(
+                  tOr('transactions.transactionAmount', 'Transaction Amount'),
+                  formatIQD(Math.abs(Number(selectedTx.amount || 0))),
+                  false,
+                  selectedUi.isOutgoing ? UI.red : UI.green
+                )}
 
-                {selectedTx.balance_after !== null && selectedTx.balance_after !== undefined &&
-                  renderDetailRow('Balance After', formatIQD(selectedTx.balance_after), false, UI.primaryDark)}
+                {renderDetailRow(
+                  tOr('transactions.transactionFee', 'Transaction Fee'),
+                  formatIQD(0),
+                  false,
+                  UI.green
+                )}
 
-                {renderDetailRow('Status', statusLabel(selectedTx.status), false, getStatusColors(selectedTx.status).color)}
+                {renderDetailRow(
+                  tOr('transactions.transactionTotalAmount', 'Transaction Total Amount'),
+                  formatIQD(Math.abs(Number(selectedTx.amount || 0))),
+                  false,
+                  selectedUi.isOutgoing ? UI.red : UI.green
+                )}
+
+                {selectedTx.balance_after !== null &&
+                  selectedTx.balance_after !== undefined &&
+                  renderDetailRow(
+                    tOr('transactions.balanceAfter', 'Balance After'),
+                    formatIQD(selectedTx.balance_after),
+                    false,
+                    UI.primaryDark
+                  )}
+
+                {renderDetailRow(
+                  tOr('transactions.status', 'Status'),
+                  tOr(`transactions.status_${statusLabel(selectedTx.status)}`, statusLabel(selectedTx.status)),
+                  false,
+                  getStatusColors(selectedTx.status).color
+                )}
 
                 {!!selectedUi.note && (
                   <View style={styles.noteBox}>
-                    <Text style={styles.noteTitle}>Note</Text>
+                    <Text style={styles.noteTitle}>{tOr('transactions.note', 'Note')}</Text>
                     <Text style={styles.noteText}>{selectedUi.note}</Text>
                   </View>
                 )}
@@ -1431,6 +1300,7 @@ function renderDetailRow(
           mono && styles.detailValueMono,
           valueColor ? { color: valueColor } : null,
         ]}
+        numberOfLines={2}
       >
         {value}
       </Text>
@@ -1441,8 +1311,8 @@ function renderDetailRow(
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  premiumHeader: {
-    paddingHorizontal: 18,
+  header: {
+    paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 10,
     backgroundColor: UI.page,
@@ -1451,10 +1321,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
 
-  backBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+  headerBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: UI.border,
@@ -1462,18 +1332,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  headerActionBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: UI.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  pageTitle: {
+  headerTitle: {
     fontSize: 20,
     fontWeight: '900',
     color: UI.text,
@@ -1483,116 +1342,23 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
 
-  balanceHero: {
+  historyOnlyBox: {
     marginHorizontal: 16,
     marginTop: 8,
-    marginBottom: 16,
-    borderRadius: 32,
-    padding: 22,
-    backgroundColor: '#6A39F5',
-    overflow: 'hidden',
-  },
-
-  balanceHeroCircle1: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 160,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    left: -120,
-    bottom: -110,
-  },
-
-  balanceHeroCircle2: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 160,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    right: -70,
-    top: -50,
-  },
-
-  balanceTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-
-  balanceHeroTitle: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '900',
-  },
-
-  balanceHeroSubtitle: {
-    marginTop: 6,
-    color: 'rgba(255,255,255,0.82)',
-    fontSize: 14,
-    fontWeight: '700',
-    maxWidth: 220,
-  },
-
-  balanceCurrencyPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 18,
-  },
-
-  balanceCurrencyText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '900',
-  },
-
-  balanceValueRow: {
-    marginTop: 28,
-  },
-
-  balanceHeroAmount: {
-    color: '#fff',
-    fontSize: 40,
-    fontWeight: '900',
-    letterSpacing: 0.3,
-  },
-
-  tabWrap: {
-    marginHorizontal: 16,
-    flexDirection: 'row',
-    backgroundColor: UI.tabBg,
-    borderRadius: 24,
-    padding: 6,
     marginBottom: 14,
-  },
-
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 18,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: UI.border,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  tabBtnActive: {
-    backgroundColor: '#fff',
-    shadowColor: UI.shadow,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 1,
-  },
-
-  tabText: {
-    fontSize: 15,
+  historyOnlyBoxText: {
+    fontSize: 20,
     fontWeight: '900',
-    color: UI.text2,
-  },
-
-  tabTextActive: {
     color: UI.green,
   },
 
@@ -1635,35 +1401,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: 12,
   },
 
   txTopRowRTL: {
     flexDirection: 'row-reverse',
   },
 
-  txLeft: {
-    flexDirection: 'row',
+  txMainLeft: {
     flex: 1,
-    marginRight: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    minWidth: 0,
   },
 
-  txLeftRTL: {
+  txMainLeftRTL: {
     flexDirection: 'row-reverse',
-    marginRight: 0,
-    marginLeft: 12,
+  },
+
+  txMainRight: {
+    alignItems: 'flex-end',
+    maxWidth: 120,
+    minWidth: 90,
+  },
+
+  txMainRightRTL: {
+    alignItems: 'flex-start',
   },
 
   txIconBox: {
     width: 56,
     height: 56,
-    borderRadius: 16,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 12,
+  },
+
+  txAvatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    marginRight: 12,
+    backgroundColor: '#EFF5FF',
   },
 
   txInfo: {
     flex: 1,
+    minWidth: 0,
     justifyContent: 'center',
   },
 
@@ -1672,15 +1457,17 @@ const styles = StyleSheet.create({
   },
 
   txTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '900',
   },
 
   txSubtitleMain: {
     marginTop: 4,
-    fontSize: 16,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: '800',
     color: UI.text,
+    flexShrink: 1,
   },
 
   txSubtitleSmall: {
@@ -1690,17 +1477,10 @@ const styles = StyleSheet.create({
     color: UI.text2,
   },
 
-  txRight: {
-    alignItems: 'flex-end',
-  },
-
-  txRightRTL: {
-    alignItems: 'flex-start',
-  },
-
   txAmount: {
     fontSize: 17,
     fontWeight: '900',
+    textAlign: 'right',
   },
 
   txId: {
@@ -1718,6 +1498,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
   },
 
   txBottomRowRTL: {
@@ -1742,116 +1523,13 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  summaryCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: '#fff',
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: UI.border,
-    overflow: 'hidden',
-  },
-
-  summaryMonthHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: UI.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  monthArrowBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  summaryMonthTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: UI.text,
-  },
-
-  summaryUpdatedAt: {
-    marginTop: 4,
-    fontSize: 13,
-    fontWeight: '700',
-    color: UI.text2,
-  },
-
-  balanceSplitRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: UI.border,
-  },
-
-  balanceBox: {
-    flex: 1,
-    paddingVertical: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  balanceDivider: {
-    width: 1,
-    backgroundColor: UI.border,
-  },
-
-  balanceLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: UI.text2,
-  },
-
-  balanceValue: {
-    marginTop: 6,
-    fontSize: 18,
-    fontWeight: '900',
-    color: UI.text,
-  },
-
-  summaryLine: {
-    minHeight: 86,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: UI.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  summaryLineTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: UI.text,
-  },
-
-  summaryLineSub: {
-    marginTop: 4,
-    fontSize: 13,
-    fontWeight: '700',
-    color: UI.text2,
-  },
-
-  summaryLineAmount: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: UI.text,
-    marginLeft: 12,
-  },
-
   modalContainer: {
     flex: 1,
     backgroundColor: UI.page,
   },
 
   modalHeader: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 10,
     backgroundColor: UI.page,
@@ -1861,7 +1539,7 @@ const styles = StyleSheet.create({
   },
 
   modalTitle: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '900',
     color: UI.text,
   },
@@ -1880,10 +1558,12 @@ const styles = StyleSheet.create({
     borderColor: UI.border,
     padding: 18,
     marginBottom: 14,
+    gap: 14,
   },
 
   invoiceTopLeft: {
     justifyContent: 'center',
+    flex: 1,
   },
 
   invoiceLogoBox: {
@@ -2029,6 +1709,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexWrap: 'wrap',
   },
 
   partyName: {
