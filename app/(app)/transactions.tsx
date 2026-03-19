@@ -109,6 +109,12 @@ const formatIQD = (value: number | null | undefined) => {
   const num = Number(value || 0);
   const abs = Math.abs(num);
   const formatted = abs.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  const lang = i18n.language;
+
+  if (lang === 'ar') return `${formatted} د.غ`;
+  if (lang === 'ku') return `${formatted} د.ع`;
+
   return `${formatted} IQD`;
 };
 
@@ -967,7 +973,7 @@ export default function TransactionsScreen() {
               ]}
               numberOfLines={1}
             >
-              {formatIQD(rawAmount)}
+              {`${ui.isOutgoing ? '-' : '+'} ${formatIQD(rawAmount)}`}
             </Text>
 
             <Text style={[styles.txId, isRTL && styles.textRTL]} numberOfLines={1}>
