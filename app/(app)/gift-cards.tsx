@@ -39,14 +39,13 @@ interface GiftCardRow {
   amount?: number | null;
   price_iqd?: number | null;
   image_url?: string | null;
-
+  item_image_url?: string | null;
   cover_image_url?: string | null;
   category_image_url?: string | null;
-  item_image_url?: string | null;
   description?: string | null;
-
   is_active?: boolean | null;
   sort_order?: number | null;
+  category_id?: string | null;
 }
 
 interface GiftCategory {
@@ -181,7 +180,7 @@ const FALLBACK_CATEGORIES: GiftCategory[] = [
 function getCurrentLang() {
   const raw = String((i18n as any)?.language || (i18n as any)?.locale || 'en').toLowerCase();
   if (raw.startsWith('ar')) return 'ar';
-  if (raw.startsWith('ckb')) return 'ckb';
+  if (raw.startsWith('ckb') || raw.startsWith('cbk')) return 'ckb';
   if (raw.startsWith('ku') || raw.startsWith('kmr')) return 'kmr';
   return 'en';
 }
@@ -202,9 +201,7 @@ const TEXTS = {
     amount: 'Amount',
     price: 'Price',
     buyNow: 'Buy now',
-    open: 'Open',
     backToCategories: 'Back to categories',
-    available: 'Available',
     providers: 'Categories',
   },
   ar: {
@@ -222,18 +219,16 @@ const TEXTS = {
     amount: 'القيمة',
     price: 'السعر',
     buyNow: 'اشتر الآن',
-    open: 'فتح',
     backToCategories: 'العودة للفئات',
-    available: 'متوفر',
     providers: 'الفئات',
   },
   ckb: {
-    pageTitle: 'گیفت کارت',
-    heroTitle: 'گیفت کارتەکەت هەڵبژێرە',
-    heroSub: 'بەشێک بکەرەوە، بڕەکە هەڵبژێرە و داواکاریەکەت تەواو بکە.',
-    searchCategories: 'گەڕان بە ناوی گیفت کارت یان بەش',
-    noCategories: 'هیچ گیفت کارتێک بەردەست نییە',
-    noCategoriesSub: 'هیچ گیفت کارتێکی چالاک لە Supabase نەدۆزرایەوە.',
+    pageTitle: 'کارتین دیاری',
+    heroTitle: 'کارتا دیارییەکەت هەڵبژێرە',
+    heroSub: 'بەشێک هەڵبژێرە، بڕەکە دیاری بکە و بە ئاسانی داواکارییەکەت تەواو بکە.',
+    searchCategories: 'لێگەڕان بە ناوی کارت یان بەش',
+    noCategories: 'هیچ کارتێکی دیاری بەردەست نییە',
+    noCategoriesSub: 'هیچ کارتێکی دیاریی چالاک لە Supabase نەدۆزرایەوە.',
     categories: 'بەشەکان',
     cardsCount: 'کارت',
     chooseCategory: 'بەشێک هەڵبژێرە بۆ بینینی کارتە بەردەستەکان',
@@ -242,18 +237,16 @@ const TEXTS = {
     amount: 'بڕ',
     price: 'نرخ',
     buyNow: 'ئێستا بکڕە',
-    open: 'بیکەرەوە',
     backToCategories: 'گەڕانەوە بۆ بەشەکان',
-    available: 'بەردەستە',
     providers: 'بەشەکان',
   },
   kmr: {
     pageTitle: 'کارتێن دیاریێ',
     heroTitle: 'کارتا دیاریێ هەلبژێرە',
-    heroSub: 'بەشەکێ ڤەکە، بڕێ هەلبژێرە و داواکارییا خۆ تەواو بکە.',
+    heroSub: 'بەشەکێ هەلبژێرە، بڕێ دیاری بکە و داواکارییا خۆ ب ساناهی تەواو بکە.',
     searchCategories: 'لێگەڕێ ب ناڤێ کارتێ یان بەشێ',
     noCategories: 'هیچ کارتێن دیاریێ بەردەست نینن',
-    noCategoriesSub: 'هیچ کارتێن دیاریێن چالاک ل Supabase نەهاتیە دیتن.',
+    noCategoriesSub: 'هیچ کارتێن دیاریێن چالاک لە Supabase نەهاتیە دیتن.',
     categories: 'بەش',
     cardsCount: 'کارت',
     chooseCategory: 'بەشەکێ هەلبژێرە بۆ دیتنا کارتێن بەردەست',
@@ -262,9 +255,7 @@ const TEXTS = {
     amount: 'بڕ',
     price: 'نرخ',
     buyNow: 'ئێستا بکرە',
-    open: 'ڤەکە',
     backToCategories: 'ڤەگەڕان بۆ بەشان',
-    available: 'بەردەستە',
     providers: 'بەش',
   },
 } as const;
@@ -340,11 +331,11 @@ function getCategoryMeta(
 }
 
 function getCategoryPreviewImage(row: GiftCardRow) {
-  return row.cover_image_url || row.category_image_url || row.image_url || null;
+  return row.cover_image_url || row.category_image_url || row.image_url || row.item_image_url || null;
 }
 
 function getItemImage(row: GiftCardRow) {
-  return row.item_image_url || row.image_url || null;
+  return row.item_image_url || row.image_url || row.cover_image_url || null;
 }
 
 function getItemTitle(row: GiftCardRow, selectedMeta?: GiftCategory | null) {
@@ -363,7 +354,7 @@ function getItemTitle(row: GiftCardRow, selectedMeta?: GiftCategory | null) {
 }
 
 export default function GiftCardsScreen() {
-  const { theme } = useTheme();
+  useTheme();
   const router = useRouter();
   const t = useT();
 
@@ -432,9 +423,7 @@ export default function GiftCardsScreen() {
       }
     }
 
-    if (map.size === 0) {
-      return FALLBACK_CATEGORIES;
-    }
+    if (map.size === 0) return FALLBACK_CATEGORIES;
 
     const ordered: GiftCategory[] = [];
     for (const item of FALLBACK_CATEGORIES) {
@@ -472,7 +461,6 @@ export default function GiftCardsScreen() {
     return giftCards
       .filter((row) => {
         const key = normalizeCategory(row.category) || normalizeCategory(row.brand) || null;
-
         const matchCategory = selectedCategory ? key === selectedCategory : true;
 
         const title = String(row.title || '').toLowerCase();
@@ -502,22 +490,25 @@ export default function GiftCardsScreen() {
   const handleBuy = (item: GiftCardRow) => {
     const itemImage = getItemImage(item) || '';
     const finalPriceIqd = Number(item.price_iqd || 0);
+    const finalAmount = Number(item.amount || 0);
+    const finalProvider = String(item.brand || item.category || 'gift_card')
+      .toLowerCase()
+      .replace(/\s+/g, '_');
 
     router.push({
       pathname: '/(app)/buy-card' as any,
       params: {
         id: item.id,
+        category_id: item.category_id || '',
         name: getItemTitle(item, selectedMeta),
+        iqd_price: String(finalPriceIqd),
         price_iqd: String(finalPriceIqd),
         price: String(finalPriceIqd),
-        provider: String(item.brand || item.category || 'gift_card')
-          .toLowerCase()
-          .replace(/\s+/g, '_'),
-        amount: String(item.amount || 0),
+        provider: finalProvider,
+        amount: String(finalAmount),
         type: 'gift',
         image: itemImage,
         image_url: itemImage,
-        gift_card_id: item.id,
       },
     });
   };
@@ -571,9 +562,7 @@ export default function GiftCardsScreen() {
             {selectedMeta ? selectedMeta.title : t.heroTitle}
           </Text>
           <Text style={styles.heroSubtitle}>
-            {selectedMeta
-              ? `${t.selectedCategory}: ${selectedMeta.title}`
-              : t.chooseCategory}
+            {selectedMeta ? `${t.selectedCategory}: ${selectedMeta.title}` : t.chooseCategory}
           </Text>
         </View>
 
@@ -721,11 +710,7 @@ export default function GiftCardsScreen() {
                           },
                         ]}
                       >
-                        <Image
-                          source={{ uri: imageUri }}
-                          style={styles.cardImage}
-                          resizeMode="cover"
-                        />
+                        <Image source={{ uri: imageUri }} style={styles.cardImage} resizeMode="cover" />
                       </View>
                     ) : (
                       <View
