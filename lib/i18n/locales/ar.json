@@ -1,5 +1,7 @@
 {
   "home": "الرئيسية",
+  "transactions_topupCard": "بطاقة تعبئة",
+  "transactions_cardValue": "قيمة البطاقة",
   "transactions_topupCardPurchased": "تم شراء بطاقة التعبئة",
   "transactions_typeTopupCardPurchased": "تم شراء بطاقة التعبئة",
   "transactions_giftCardPurchased": "تم شراء بطاقة الهدايا",
