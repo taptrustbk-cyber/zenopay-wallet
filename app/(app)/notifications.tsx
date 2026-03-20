@@ -33,6 +33,19 @@ interface NotificationOrderRow {
   created_at: string | null;
   updated_at?: string | null;
   source: OrderSource;
+  image_url?: string | null;
+}
+
+interface CardLookupRow {
+  id: string;
+  card_title?: string | null;
+  title?: string | null;
+  provider?: string | null;
+  amount_iqd?: number | null;
+  price_iqd?: number | null;
+  image_url?: string | null;
+  brand?: string | null;
+  category?: string | null;
 }
 
 const providerConfig: Record<
@@ -89,10 +102,7 @@ const providerConfig: Record<
   },
 };
 
-function getProviderStyle(
-  provider?: string | null,
-  source?: OrderSource
-) {
+function getProviderStyle(provider?: string | null, source?: OrderSource) {
   const key = String(provider || '').toLowerCase();
 
   if (providerConfig[key]) return providerConfig[key];
@@ -101,8 +111,8 @@ function getProviderStyle(
     label:
       provider ||
       (source === 'gift'
-        ? i18n.t('notifications.giftCardLabel') || 'Gift Card'
-        : i18n.t('notifications.unknownCard')),
+        ? String(i18n.t('notifications.giftCardLabel') || 'Gift Card')
+        : String(i18n.t('notifications.unknownCard') || 'Unknown Card')),
     color: source === 'gift' ? '#8B5CF6' : '#9A7B00',
     soft: source === 'gift' ? '#F5F3FF' : '#FFFBEF',
     border: source === 'gift' ? '#E9D5FF' : '#F3E1A2',
@@ -154,6 +164,7 @@ function mapTopupOrder(row: any): NotificationOrderRow {
     created_at: row?.created_at ?? null,
     updated_at: row?.updated_at ?? null,
     source: 'sim',
+    image_url: row?.image_url ?? null,
   };
 }
 
@@ -180,7 +191,117 @@ function mapGiftOrder(row: any): NotificationOrderRow {
     created_at: row?.created_at ?? null,
     updated_at: row?.updated_at ?? null,
     source: 'gift',
+    image_url: row?.image_url ?? null,
   };
+}
+
+function uniqueIds(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter(Boolean) as string[]));
+}
+
+function buildDisplayTitle(order: NotificationOrderRow) {
+  const providerStyle = getProviderStyle(order.provider, order.source);
+  const title = String(order.card_title || '').trim();
+  const amountText = order.amount_iqd ? formatIQD(order.amount_iqd) : '';
+
+  if (title) return title;
+  if (amountText) return `${providerStyle.label} ${amountText}`;
+  return providerStyle.label;
+}
+
+function buildDisplaySubtitle(order: NotificationOrderRow) {
+  const providerStyle = getProviderStyle(order.provider, order.source);
+  const amountText = order.amount_iqd ? `${formatIQD(order.amount_iqd)} IQD` : '';
+  const priceText = order.price_iqd ? `${formatIQD(order.price_iqd)} IQD` : '';
+
+  if (amountText && priceText) {
+    return `${providerStyle.label} • ${amountText} • ${priceText}`;
+  }
+
+  if (amountText) return `${providerStyle.label} • ${amountText}`;
+  return providerStyle.label;
+}
+
+async function syncSuccessfulOrdersToTransactions(orders: NotificationOrderRow[]) {
+  const successOrders = orders.filter((order) => normalizeStatus(order.status) === 'success');
+
+  if (!successOrders.length) return;
+
+  for (const order of successOrders) {
+    const sourceTable = order.source === 'gift' ? 'gift_card_orders' : 'topup_orders';
+    const txType = order.source === 'gift' ? 'gift_card_purchase' : 'topup_purchase';
+    const paidAmount = Number(order.price_iqd || 0);
+
+    if (!order.user_id || !order.id || !paidAmount) continue;
+
+    const metadata = {
+      order_id: order.id,
+      card_name: buildDisplayTitle(order),
+      provider_name: order.provider,
+      amount_iqd: Number(order.amount_iqd || 0),
+      price_iqd: paidAmount,
+      pin_code: order.pin_code || null,
+      admin_note: order.notes || null,
+      note: order.notes || null,
+      image_url: order.image_url || null,
+      card_image_url: order.image_url || null,
+      product_image_url: order.image_url || null,
+      source: order.source,
+      delivered_at: order.updated_at || order.created_at || null,
+    };
+
+    const existingTx = await supabase
+      .from('transactions')
+      .select('id')
+      .eq('user_id', order.user_id)
+      .eq('source_table', sourceTable)
+      .eq('source_order_id', order.id)
+      .eq('type', txType)
+      .maybeSingle();
+
+    const payload = {
+      user_id: order.user_id,
+      sender_id: order.user_id,
+      receiver_id: null,
+      type: txType,
+      direction: 'out',
+      status: 'completed',
+      amount: -Math.abs(paidAmount),
+      amount_iqd: Math.abs(paidAmount),
+      fee_amount: 0,
+      description: order.notes || null,
+      reference_id: order.id,
+      source_table: sourceTable,
+      source_order_id: order.id,
+      source_product_id: order.item_id,
+      display_title: buildDisplayTitle(order),
+      display_subtitle: buildDisplaySubtitle(order),
+      display_image_url: order.image_url || null,
+      pin_code: order.pin_code || null,
+      provider_name: order.provider || null,
+      payment_method_name: null,
+      metadata,
+      created_at: order.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (existingTx.data?.id) {
+      const { error: updateError } = await supabase
+        .from('transactions')
+        .update(payload)
+        .eq('id', existingTx.data.id);
+
+      if (updateError) {
+        console.log('transactions update sync error:', updateError);
+      }
+    } else {
+      const { error: insertError } = await supabase.from('transactions').insert(payload);
+
+      if (insertError) {
+        console.log('transactions insert sync error:', insertError);
+      }
+    }
+  }
 }
 
 export default function NotificationsScreen() {
@@ -215,14 +336,97 @@ export default function NotificationsScreen() {
 
       if (topupRes.error) throw topupRes.error;
 
-      const topupOrders = (topupRes.data || []).map(mapTopupOrder);
+      const rawTopupOrders = (topupRes.data || []).map(mapTopupOrder);
 
-      let giftOrders: NotificationOrderRow[] = [];
+      let rawGiftOrders: NotificationOrderRow[] = [];
       if (!giftRes.error) {
-        giftOrders = (giftRes.data || []).map(mapGiftOrder);
+        rawGiftOrders = (giftRes.data || []).map(mapGiftOrder);
       } else {
         console.log('gift_card_orders not loaded:', giftRes.error?.message);
       }
+
+      const topupCardIds = uniqueIds(rawTopupOrders.map((o) => o.item_id));
+      const giftCardIds = uniqueIds(rawGiftOrders.map((o) => o.item_id));
+
+      const [topupCardsRes, giftCardsRes] = await Promise.all([
+        topupCardIds.length
+          ? supabase
+              .from('topup_cards')
+              .select('id, card_title, provider, amount_iqd, price_iqd, image_url')
+              .in('id', topupCardIds)
+          : Promise.resolve({ data: [], error: null } as any),
+
+        giftCardIds.length
+          ? supabase
+              .from('gift_cards')
+              .select('id, title, card_title, provider, brand, category, amount_iqd, price_iqd, image_url')
+              .in('id', giftCardIds)
+          : Promise.resolve({ data: [], error: null } as any),
+      ]);
+
+      if (topupCardsRes.error) {
+        console.log('topup_cards load error:', topupCardsRes.error.message);
+      }
+      if (giftCardsRes.error) {
+        console.log('gift_cards load error:', giftCardsRes.error.message);
+      }
+
+      const topupCardMap = new Map<string, CardLookupRow>();
+      const giftCardMap = new Map<string, CardLookupRow>();
+
+      (topupCardsRes.data || []).forEach((item: CardLookupRow) => {
+        if (item?.id) topupCardMap.set(String(item.id), item);
+      });
+
+      (giftCardsRes.data || []).forEach((item: CardLookupRow) => {
+        if (item?.id) giftCardMap.set(String(item.id), item);
+      });
+
+      const topupOrders = rawTopupOrders.map((order) => {
+        const card = order.item_id ? topupCardMap.get(String(order.item_id)) : null;
+
+        return {
+          ...order,
+          card_title: order.card_title || card?.card_title || null,
+          provider: order.provider || card?.provider || null,
+          amount_iqd:
+            order.amount_iqd !== null && order.amount_iqd !== undefined
+              ? order.amount_iqd
+              : card?.amount_iqd !== null && card?.amount_iqd !== undefined
+              ? Number(card.amount_iqd)
+              : null,
+          price_iqd:
+            order.price_iqd !== null && order.price_iqd !== undefined
+              ? order.price_iqd
+              : card?.price_iqd !== null && card?.price_iqd !== undefined
+              ? Number(card.price_iqd)
+              : null,
+          image_url: order.image_url || card?.image_url || null,
+        };
+      });
+
+      const giftOrders = rawGiftOrders.map((order) => {
+        const card = order.item_id ? giftCardMap.get(String(order.item_id)) : null;
+
+        return {
+          ...order,
+          card_title: order.card_title || card?.card_title || card?.title || null,
+          provider: order.provider || card?.provider || card?.brand || card?.category || null,
+          amount_iqd:
+            order.amount_iqd !== null && order.amount_iqd !== undefined
+              ? order.amount_iqd
+              : card?.amount_iqd !== null && card?.amount_iqd !== undefined
+              ? Number(card.amount_iqd)
+              : null,
+          price_iqd:
+            order.price_iqd !== null && order.price_iqd !== undefined
+              ? order.price_iqd
+              : card?.price_iqd !== null && card?.price_iqd !== undefined
+              ? Number(card.price_iqd)
+              : null,
+          image_url: order.image_url || card?.image_url || null,
+        };
+      });
 
       const merged = [...topupOrders, ...giftOrders].sort((a, b) => {
         const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
@@ -231,11 +435,13 @@ export default function NotificationsScreen() {
       });
 
       setOrders(merged);
+
+      await syncSuccessfulOrdersToTransactions(merged);
     } catch (error: any) {
       console.log('notifications screen error:', error);
       Alert.alert(
-        i18n.t('common.error') || 'Error',
-        error?.message || i18n.t('notifications.loadFailed') || 'Could not load notifications.'
+        String(i18n.t('common.error') || 'Error'),
+        error?.message || String(i18n.t('notifications.loadFailed') || 'Could not load notifications.')
       );
     } finally {
       setLoading(false);
@@ -367,9 +573,7 @@ export default function NotificationsScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.heroCard}>
           <Text style={styles.heroMini}>
@@ -384,10 +588,10 @@ export default function NotificationsScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabsRow}
         >
-          {renderTab('all', i18n.t('notifications.filterAll'), counts.all)}
-          {renderTab('pending', i18n.t('notifications.filterPending'), counts.pending)}
-          {renderTab('success', i18n.t('notifications.filterSuccess'), counts.success)}
-          {renderTab('cancelled', i18n.t('notifications.filterCancelled'), counts.cancelled)}
+          {renderTab('all', String(i18n.t('notifications.filterAll')), counts.all)}
+          {renderTab('pending', String(i18n.t('notifications.filterPending')), counts.pending)}
+          {renderTab('success', String(i18n.t('notifications.filterSuccess')), counts.success)}
+          {renderTab('cancelled', String(i18n.t('notifications.filterCancelled')), counts.cancelled)}
         </ScrollView>
 
         {loading ? (
@@ -460,7 +664,7 @@ export default function NotificationsScreen() {
                   </View>
 
                   <Text style={styles.cardTitle}>
-                    {order.card_title || i18n.t('notifications.unknownCard')}
+                    {buildDisplayTitle(order) || i18n.t('notifications.unknownCard')}
                   </Text>
 
                   <View style={styles.infoGrid}>
