@@ -1,5 +1,9 @@
 {
   "home": "الرئيسية",
+  "transactions_typeTopupCardPurchased": "تم شراء بطاقة التعبئة",
+  "transactions_provider": "المزوّد",
+  "transactions_pinCode": "رمز PIN",
+  "transactions_adminNote": "ملاحظة الأدمن",
   "transactions": "التحويلات",
   "transactions_purchaseProduct": "شراء المنتج",
 
