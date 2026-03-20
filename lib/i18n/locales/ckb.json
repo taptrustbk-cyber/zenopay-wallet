@@ -1,5 +1,9 @@
 {
   "home": "سەرەکی",
+  "transactions_typeTopupCardPurchased": "کارتی پرکردنەوە کڕدرا",
+  "transactions_provider": "دابینکەر",
+  "transactions_pinCode": "PIN کۆد",
+  "transactions_adminNote": "تێبینی ئەدمین",
   "transactions": "مامەڵەکان",
   "transactions_purchaseProduct": "کڕینی کاڵا",
 
