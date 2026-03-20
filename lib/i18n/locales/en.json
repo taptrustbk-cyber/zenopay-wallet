@@ -1,5 +1,9 @@
 {
   "home": "Home",
+  "transactions_typeTopupCardPurchased": "Topup Card Purchased",
+  "transactions_provider": "Provider",
+  "transactions_pinCode": "PIN Code",
+  "transactions_adminNote": "Admin Note",
   "transactions_purchaseProduct": "Purchase Product",
   "sendMoneySubtitle": "Secure Iraqi Dinar transfer",
   "sendMoneyFormSubtitle": "Enter receiver email, amount, and note",
