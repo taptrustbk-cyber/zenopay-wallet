@@ -1,6 +1,9 @@
 {
   "home": "سەرەکی",
-  "transactions_typeTopupCardPurchased": "کارتی توپ ئاپ کڕدرا",
+  "transactions_topupCardPurchased": "کارتی تۆپئەپ کڕدرا",
+  "transactions_typeTopupCardPurchased": "کارتی تۆپئەپ کڕدرا",
+  "transactions_giftCardPurchased": "گیفت کارت کڕدرا",
+  "transactions_typeGiftCardPurchased": "گیفت کارت کڕدرا",
   "transactions_provider": "دابینکەر",
   "transactions_pinCode": "PIN کۆد",
   "transactions_adminNote": "تێبینی ئەدمین",
