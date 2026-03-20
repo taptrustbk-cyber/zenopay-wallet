@@ -180,6 +180,14 @@ export default function AdminScreen() {
           />
 
           <MenuItem
+            label="Gift Card Orders"
+            subLabel="Approve, reject and send gift card PIN codes"
+            onPress={() => router.push('/admin-gift-card-orders' as any)}
+            icon={<ClipboardList size={18} color={UI.gold} />}
+            tone="gold"
+          />
+
+          <MenuItem
             label="Payment Methods"
             subLabel="Banks, QR codes and withdraw methods"
             onPress={() => router.push('/admin-payment-methods' as any)}
