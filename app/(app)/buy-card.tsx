@@ -40,18 +40,18 @@ type ProfileRow = {
 type GiftCardRow = {
   id: string;
   title?: string | null;
-  name?: string | null;
-  provider?: string | null;
+  brand?: string | null;
+  category?: string | null;
   amount?: number | null;
   price_iqd?: number | null;
   image_url?: string | null;
+  item_image_url?: string | null;
   category_id?: string | null;
 };
 
 type TopupCardRow = {
   id: string;
   title?: string | null;
-  name?: string | null;
   provider?: string | null;
   amount_iqd?: number | null;
   amount?: number | null;
@@ -132,7 +132,9 @@ function upperFirst(v?: string | null) {
 }
 
 function toNumberSafe(value: any) {
-  const num = Number(value);
+  if (value === null || value === undefined) return 0;
+  const cleaned = String(value).replace(/,/g, '').trim();
+  const num = Number(cleaned);
   return Number.isFinite(num) ? num : 0;
 }
 
@@ -148,10 +150,13 @@ export default function BuyCardScreen() {
   const categoryIdFromParams = String(params.category_id || '');
   const cardNameFromParams = String(params.name || '');
   const providerFromParams = String(params.provider || '');
-  const imageUrlFromParams = String(params.image || '');
+  const imageUrlFromParams = String(params.image || params.image_url || '');
   const type = String(params.type || 'sim') as CardType;
 
-  const amountRawFromParams = toNumberSafe(params.amount);
+  const amountRawFromParams =
+    toNumberSafe(params.amount) ||
+    toNumberSafe(params.amount_iqd);
+
   const passedIqdPrice =
     toNumberSafe(params.iqd_price) ||
     toNumberSafe(params.price_iqd) ||
@@ -162,7 +167,9 @@ export default function BuyCardScreen() {
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
     queryFn: async () => {
-      if (!user?.id) throw new Error(i18n.t('auth.loginRequired') || 'Please login first.');
+      if (!user?.id) {
+        throw new Error(i18n.t('auth.loginRequired') || 'Please login first.');
+      }
 
       const { data, error } = await supabase
         .from('wallets')
@@ -179,7 +186,9 @@ export default function BuyCardScreen() {
   const profileQuery = useQuery({
     queryKey: ['profile_buy_card', user?.id],
     queryFn: async () => {
-      if (!user?.id) throw new Error(i18n.t('auth.loginRequired') || 'Please login first.');
+      if (!user?.id) {
+        throw new Error(i18n.t('auth.loginRequired') || 'Please login first.');
+      }
 
       const { data, error } = await supabase
         .from('profiles')
@@ -202,7 +211,7 @@ export default function BuyCardScreen() {
       if (type === 'gift') {
         const { data, error } = await supabase
           .from('gift_cards')
-          .select('id, title, name, provider, amount, price_iqd, image_url, category_id')
+          .select('id, title, brand, category, amount, price_iqd, image_url, item_image_url, category_id')
           .eq('id', cardId)
           .maybeSingle();
 
@@ -212,7 +221,7 @@ export default function BuyCardScreen() {
 
       const { data, error } = await supabase
         .from('topup_cards')
-        .select('id, title, name, provider, amount_iqd, amount, price_iqd, image_url')
+        .select('id, title, provider, amount_iqd, amount, price_iqd, image_url')
         .eq('id', cardId)
         .maybeSingle();
 
@@ -221,19 +230,22 @@ export default function BuyCardScreen() {
     },
   });
 
-  const dbCard = cardQuery.data;
+  const dbCard = cardQuery.data as GiftCardRow | TopupCardRow | null;
 
   const cardName = useMemo(() => {
     return (
       cardNameFromParams ||
-      String((dbCard as any)?.title || '') ||
-      String((dbCard as any)?.name || '') ||
-      ''
+      String((dbCard as any)?.title || '').trim() ||
+      'Card'
     );
   }, [cardNameFromParams, dbCard]);
 
   const provider = useMemo(() => {
-    return providerFromParams || String((dbCard as any)?.provider || '') || '';
+    return (
+      providerFromParams ||
+      String((dbCard as any)?.provider || (dbCard as any)?.brand || (dbCard as any)?.category || '').trim() ||
+      ''
+    );
   }, [providerFromParams, dbCard]);
 
   const amountRaw = useMemo(() => {
@@ -263,13 +275,16 @@ export default function BuyCardScreen() {
 
   const finalProviderLabel = useMemo(() => {
     if (!provider) return '-';
-    return upperFirst(provider);
+    return upperFirst(provider.replace(/_/g, ' '));
   }, [provider]);
 
   const finalImage = useMemo(() => {
     if (imageUrlFromParams) return imageUrlFromParams;
-    if ((dbCard as any)?.image_url) return String((dbCard as any).image_url);
-    return providerStyle.logo || '';
+    return (
+      String((dbCard as any)?.item_image_url || (dbCard as any)?.image_url || '').trim() ||
+      providerStyle.logo ||
+      ''
+    );
   }, [imageUrlFromParams, dbCard, providerStyle.logo]);
 
   const hasEnoughBalance = useMemo(() => {
@@ -285,14 +300,17 @@ export default function BuyCardScreen() {
 
   const purchaseMutation = useMutation({
     mutationFn: async () => {
-      if (!user?.id) throw new Error(i18n.t('auth.loginRequired') || 'Please login first.');
-      if (!walletQuery.data) throw new Error(i18n.t('buyCard.walletNotFound') || 'Wallet not found.');
+      if (!user?.id) {
+        throw new Error(i18n.t('auth.loginRequired') || 'Please login first.');
+      }
+      if (!walletQuery.data) {
+        throw new Error(i18n.t('buyCard.walletNotFound') || 'Wallet not found.');
+      }
+      if (priceIqd <= 0) {
+        throw new Error('Price IQD is missing. Please set price_iqd in admin.');
+      }
 
       const currentBalance = Number(walletQuery.data.balance || 0);
-
-      if (priceIqd <= 0) {
-        throw new Error('Card price is missing. Please check admin price_iqd.');
-      }
 
       if (currentBalance < priceIqd) {
         throw new Error(
@@ -300,60 +318,78 @@ export default function BuyCardScreen() {
         );
       }
 
+      const newBalance = currentBalance - priceIqd;
+
+      const { error: walletError } = await supabase
+        .from('wallets')
+        .update({ balance: newBalance })
+        .eq('user_id', user.id);
+
+      if (walletError) throw walletError;
+
       const profile = profileQuery.data;
 
-      if (type === 'gift') {
-        const giftOrderPayload = {
-          user_id: user.id,
-          gift_card_id: cardId || null,
-          category_id: resolvedCategoryId || null,
-          card_title: cardName || null,
-          provider: provider || null,
-          amount: amountRaw || 0,
-          price_iqd: priceIqd,
-          image_url: finalImage || null,
-          status: 'pending',
-          pin_code: null,
-          notes: null,
-          user_name: profile?.full_name || '',
-          user_email: profile?.email || user.email || '',
-          user_phone: profile?.phone || '',
-          user_city: profile?.city || '',
-          user_avatar_url: profile?.avatar_url || null,
-        };
+      try {
+        if (type === 'gift') {
+          const giftOrderPayload = {
+            user_id: user.id,
+            gift_card_id: cardId || null,
+            category_id: resolvedCategoryId || null,
+            card_title: cardName || null,
+            provider: provider || null,
+            amount: amountRaw || 0,
+            price_iqd: priceIqd,
+            image_url: finalImage || null,
+            status: 'pending',
+            pin_code: null,
+            notes: null,
+            user_name: profile?.full_name || '',
+            user_email: profile?.email || user.email || '',
+            user_phone: profile?.phone || '',
+            user_city: profile?.city || '',
+            user_avatar_url: profile?.avatar_url || null,
+          };
 
-        const { error: orderError } = await supabase
-          .from('gift_card_orders')
-          .insert(giftOrderPayload);
+          const { error: orderError } = await supabase
+            .from('gift_card_orders')
+            .insert(giftOrderPayload);
 
-        if (orderError) throw orderError;
-      } else {
-        const topupOrderPayload = {
-          user_id: user.id,
-          topup_card_id: cardId || null,
-          card_title: cardName || null,
-          provider: provider || type,
-          amount_iqd: amountRaw || 0,
-          price_iqd: priceIqd,
-          image_url: finalImage || null,
-          status: 'pending',
-          pin_code: null,
-          notes: null,
-          user_name: profile?.full_name || '',
-          user_email: profile?.email || user.email || '',
-          user_phone: profile?.phone || '',
-          user_city: profile?.city || '',
-          user_avatar_url: profile?.avatar_url || null,
-        };
+          if (orderError) throw orderError;
+        } else {
+          const topupOrderPayload = {
+            user_id: user.id,
+            topup_card_id: cardId || null,
+            card_title: cardName || null,
+            provider: provider || type,
+            amount_iqd: amountRaw || 0,
+            price_iqd: priceIqd,
+            image_url: finalImage || null,
+            status: 'pending',
+            pin_code: null,
+            notes: null,
+            user_name: profile?.full_name || '',
+            user_email: profile?.email || user.email || '',
+            user_phone: profile?.phone || '',
+            user_city: profile?.city || '',
+            user_avatar_url: profile?.avatar_url || null,
+          };
 
-        const { error: orderError } = await supabase
-          .from('topup_orders')
-          .insert(topupOrderPayload);
+          const { error: orderError } = await supabase
+            .from('topup_orders')
+            .insert(topupOrderPayload);
 
-        if (orderError) throw orderError;
+          if (orderError) throw orderError;
+        }
+
+        return true;
+      } catch (error) {
+        await supabase
+          .from('wallets')
+          .update({ balance: currentBalance })
+          .eq('user_id', user.id);
+
+        throw error;
       }
-
-      return true;
     },
     onSuccess: async () => {
       setOrderCreated(true);
