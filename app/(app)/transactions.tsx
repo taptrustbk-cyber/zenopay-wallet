@@ -55,6 +55,15 @@ const UI = {
   purpleSoft: '#F3E8FF',
 };
 
+const TOPUP_PROVIDER_IMAGES: Record<string, string> = {
+  korek:
+    'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773717052421.jpg',
+  zain:
+    'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773716686562.jpg',
+  asiacell:
+    'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773716476782.png',
+};
+
 interface TransactionData {
   id: string;
   user_id?: string | null;
@@ -136,6 +145,7 @@ type TxUi = {
   detailPinCode?: string | null;
   detailProvider?: string | null;
   detailCategory?: string | null;
+  detailCardValue?: string | null;
 
   kind:
     | 'send'
@@ -173,6 +183,15 @@ const formatIQD = (value: number | null | undefined) => {
   const abs = Math.abs(num);
   const formatted = abs.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return isArabicMoneyLang() ? `${formatted} د.غ` : `${formatted} IQD`;
+};
+
+const formatCardValue = (value: number | string | null | undefined) => {
+  if (value === null || value === undefined || value === '') return '';
+  const num = Number(value);
+  if (Number.isFinite(num) && num > 0) {
+    return num.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+  return String(value);
 };
 
 const formatFullDate = (dateStr: string) => {
@@ -246,6 +265,27 @@ const upperFirst = (v?: string | null) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
+const normalizeProviderName = (v?: string | null) => {
+  const s = String(v || '').trim().toLowerCase();
+  if (!s) return '';
+  if (s === 'asiacell') return 'Asiacell';
+  if (s === 'zain') return 'Zain';
+  if (s === 'korek') return 'Korek';
+  return upperFirst(s);
+};
+
+const getProviderImage = (provider?: string | null, fallback?: string | null) => {
+  const key = String(provider || '').trim().toLowerCase();
+  return TOPUP_PROVIDER_IMAGES[key] || fallback || null;
+};
+
+const areSameText = (a?: string | null, b?: string | null) => {
+  const aa = String(a || '').trim().toLowerCase();
+  const bb = String(b || '').trim().toLowerCase();
+  if (!aa || !bb) return false;
+  return aa === bb;
+};
+
 export default function TransactionsScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -259,7 +299,7 @@ export default function TransactionsScreen() {
   const [pdfLoading, setPdfLoading] = useState(false);
 
   const transactionsQuery = useQuery({
-    queryKey: ['transactions-rich-final-v2', myId],
+    queryKey: ['transactions-rich-final-v3', myId],
     enabled: !!myId,
     staleTime: 0,
     gcTime: 0,
@@ -365,33 +405,51 @@ export default function TransactionsScreen() {
       const metaPurchaseMode = safe(meta.purchase_mode);
       const metaMonthsCount = toNum(meta.months_count, 0);
       const metaMonthlyPrice = toNum(meta.unit_monthly_price_iqd, 0);
-      const metaPaidNow =
+
+      const rawPaidNowCandidate =
         toNum(meta.paid_amount_iqd, NaN) ||
         toNum(meta.refund_amount_iqd, NaN) ||
         toNum(tx.amount_iqd, NaN) ||
-        toNum(tx.amount, 0);
+        Math.abs(Number(tx.amount || 0));
+
+      const metaPaidNow = Number.isFinite(rawPaidNowCandidate)
+        ? Math.abs(rawPaidNowCandidate)
+        : Math.abs(Number(tx.amount || 0));
+
       const metaRemaining = toNum(meta.remaining_amount_iqd, 0);
       const metaContractTotal = toNum(meta.installment_total_contract_iqd, 0);
+
       const metaCashTotal =
         toNum(meta.cash_total_price_iqd, 0) ||
         toNum(meta.total_price_iqd, 0) ||
         toNum(meta.price_iqd, 0) ||
         Math.abs(Number(tx.amount || 0));
+
       const metaQuantity = toNum(meta.quantity, 1);
       const metaDescription =
         safe(meta.description_snapshot) ||
         safe(meta.note) ||
         safe(meta.user_note) ||
         desc;
+
       const metaOrderId =
         safe(meta.order_id) ||
         safe(tx.reference_id) ||
         safe(tx.source_order_id);
+
       const metaAdminNote =
         safe(meta.admin_note) ||
         safe(meta.note_from_admin) ||
         safe(meta.approval_note) ||
         safe(meta.delivery_note);
+
+      const cardValueRaw =
+        safe(meta.card_value) ||
+        safe(meta.card_amount) ||
+        safe(meta.amount_label) ||
+        (meta.amount_iqd !== null && meta.amount_iqd !== undefined
+          ? formatCardValue(meta.amount_iqd)
+          : displayTitle);
 
       if (type === 'send' || type === 'receive' || type === 'transfer' || type === 'p2p') {
         const isOutgoing = isOutgoingBySender || isOutgoingByAmount;
@@ -400,7 +458,7 @@ export default function TransactionsScreen() {
           return {
             title: tOr('transactions_moneySent', 'Money Sent'),
             subtitleLine1: receiverLabel,
-            subtitleLine2: safe(tx.receiver_email) || makeShortTransactionId(tx.id),
+            subtitleLine2: safe(tx.receiver_email) || undefined,
             iconName: 'arrow-up-outline',
             isOutgoing: true,
             verified: false,
@@ -420,7 +478,7 @@ export default function TransactionsScreen() {
         return {
           title: tOr('transactions_youReceivedMoney', 'You Received Money'),
           subtitleLine1: senderLabel,
-          subtitleLine2: safe(tx.sender_email) || makeShortTransactionId(tx.id),
+          subtitleLine2: safe(tx.sender_email) || undefined,
           iconName: 'arrow-down-outline',
           isOutgoing: false,
           verified: false,
@@ -438,37 +496,39 @@ export default function TransactionsScreen() {
       }
 
       if (type === 'deposit' || type === 'admin_add' || type === 'agent_add') {
-        const name = paymentMethodName ? `${APP_SYSTEM_NAME}` : APP_SYSTEM_NAME;
+        const titleText = paymentMethodName
+          ? `${tOr('transactions_depositFrom', 'Deposit from')} ${paymentMethodName}`
+          : tOr('transactions_depositFromZenopay', 'Deposit from Zenopay');
 
         return {
-          title: tOr('transactions_youReceivedMoney', 'You Received Money'),
-          subtitleLine1: paymentMethodName
-            ? `${tOr('transactions_depositFrom', 'Deposit from')} ${paymentMethodName}`
-            : tOr('transactions_depositFromZenopay', 'Deposit from Zenopay'),
-          subtitleLine2: makeShortTransactionId(tx.id),
+          title: titleText,
+          subtitleLine1: APP_SYSTEM_NAME,
+          subtitleLine2: undefined,
           iconName: 'download-outline',
           isOutgoing: false,
           verified: true,
-          displayName: name,
+          displayName: APP_SYSTEM_NAME,
           displaySecondary: paymentMethodName || undefined,
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
           displayImage: null,
           transactionTypeLabel: tOr('transactions_typeDeposit', 'Deposit'),
-          note: desc || tOr('transactions_depositFromZenopay', 'Deposit from Zenopay'),
+          note: desc || titleText,
           adminNote: metaAdminNote || undefined,
           kind: 'deposit',
         };
       }
 
       if (type === 'withdraw' || type === 'admin_withdraw' || type === 'agent_withdraw') {
+        const titleText = paymentMethodName
+          ? `${tOr('transactions_withdrawTo', 'Withdraw to')} ${paymentMethodName}`
+          : tOr('transactions_withdrawToZenopay', 'Withdraw to Zenopay');
+
         return {
-          title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: paymentMethodName
-            ? `${tOr('transactions_withdrawTo', 'Withdraw to')} ${paymentMethodName}`
-            : tOr('transactions_withdrawToZenopay', 'Withdraw to Zenopay'),
-          subtitleLine2: makeShortTransactionId(tx.id),
+          title: titleText,
+          subtitleLine1: APP_SYSTEM_NAME,
+          subtitleLine2: undefined,
           iconName: 'cash-outline',
           isOutgoing: true,
           verified: true,
@@ -479,7 +539,7 @@ export default function TransactionsScreen() {
           displayAvatar: null,
           displayImage: null,
           transactionTypeLabel: tOr('transactions_typeWithdraw', 'Withdraw'),
-          note: desc || tOr('transactions_noteWithdraw', 'Withdraw processed by Zenopay'),
+          note: desc || titleText,
           adminNote: metaAdminNote || undefined,
           kind: 'withdraw',
         };
@@ -498,17 +558,19 @@ export default function TransactionsScreen() {
         const purchaseModeLabel =
           metaPurchaseMode === 'installment'
             ? tOr('transactions_installment', 'Installment')
-            : tOr('transactions_cash', 'Cash');
+            : metaPurchaseMode === 'cash'
+            ? tOr('transactions_cash', 'Cash')
+            : '';
 
         return {
           title: tOr('transactions_purchaseProduct', 'Purchase Product'),
           subtitleLine1: modelName,
-          subtitleLine2: makeShortTransactionId(tx.id),
+          subtitleLine2: purchaseModeLabel || undefined,
           iconName: 'phone-portrait-outline',
           isOutgoing: true,
           verified: false,
           displayName: modelName,
-          displaySecondary: undefined,
+          displaySecondary: purchaseModeLabel || undefined,
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
@@ -522,7 +584,7 @@ export default function TransactionsScreen() {
           detailPurchaseMode: metaPurchaseMode || 'cash',
           detailMonthsCount: metaMonthsCount || null,
           detailMonthlyPrice: metaMonthlyPrice || null,
-          detailPaidNow: metaPaidNow || Math.abs(Number(tx.amount || 0)),
+          detailPaidNow: metaPaidNow,
           detailRemaining: metaRemaining || 0,
           detailContractTotal: metaContractTotal || null,
           detailCashTotal: metaCashTotal || null,
@@ -533,7 +595,7 @@ export default function TransactionsScreen() {
           detailProvider: providerName || null,
           detailCategory: tOr('transactions_typeMobileShop', 'Mobile Shop'),
           transactionTypeLabel: tOr('transactions_typeMobileShop', 'Mobile Shop'),
-          note: metaDescription || desc || `${modelName}${metaPurchaseMode ? ` • ${purchaseModeLabel}` : ''}`,
+          note: metaDescription || desc || undefined,
           adminNote: metaAdminNote || undefined,
           kind: 'mobile',
         };
@@ -546,9 +608,9 @@ export default function TransactionsScreen() {
           tOr('transactions_mobileOrderRefund', 'Mobile Order Refund');
 
         return {
-          title: tOr('transactions_youReceivedMoney', 'You Received Money'),
+          title: tOr('transactions_refundAmount', 'Refund Amount'),
           subtitleLine1: modelName,
-          subtitleLine2: makeShortTransactionId(tx.id),
+          subtitleLine2: undefined,
           iconName: 'refresh-outline',
           isOutgoing: false,
           verified: true,
@@ -591,33 +653,34 @@ export default function TransactionsScreen() {
         type === 'topup_purchase' ||
         type === 'card_topup'
       ) {
-        const cardName =
-          displayTitle ||
-          metaProductName ||
-          providerName ||
-          tOr('transactions_topupCardPurchased', 'Topup Card Purchased');
+        const providerPretty = normalizeProviderName(
+          providerName || safe(meta.provider_name) || displaySubtitle
+        );
+        const cardImage = getProviderImage(providerPretty, metaImage || displayImage || null);
 
         return {
           title: tOr('transactions_topupCardPurchased', 'Topup Card Purchased'),
-          subtitleLine1: cardName,
-          subtitleLine2: makeShortTransactionId(tx.id),
+          subtitleLine1: providerPretty || tOr('transactions_topupCard', 'Topup Card'),
+          subtitleLine2: undefined,
           iconName: 'cellular-outline',
           isOutgoing: true,
           verified: false,
-          displayName: cardName,
-          displaySecondary: providerName || displaySubtitle || undefined,
+          displayName: providerPretty || tOr('transactions_topupCard', 'Topup Card'),
+          displaySecondary: cardValueRaw || undefined,
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
-          displayImage: metaImage || displayImage || null,
-          detailImage: metaImage || displayImage || null,
-          detailModel: cardName,
+          displayImage: cardImage,
+          detailImage: cardImage,
+          detailModel: cardValueRaw || null,
           detailCashTotal: metaCashTotal || Math.abs(Number(tx.amount || 0)),
+          detailPaidNow: metaPaidNow,
           detailOrderId: metaOrderId || null,
           detailDescription: metaDescription || null,
           detailPinCode: pinCode || safe(meta.pin_code) || null,
-          detailProvider: providerName || displaySubtitle || null,
+          detailProvider: providerPretty || null,
           detailCategory: tOr('transactions_typeTopupCardPurchased', 'Topup Card Purchased'),
+          detailCardValue: cardValueRaw || null,
           transactionTypeLabel: tOr('transactions_typeTopupCardPurchased', 'Topup Card Purchased'),
           note: metaDescription || desc || tOr('transactions_noteSimCard', 'Card purchased successfully'),
           adminNote: metaAdminNote || undefined,
@@ -634,7 +697,7 @@ export default function TransactionsScreen() {
         return {
           title: tOr('transactions_giftCardPurchased', 'Gift Card Purchased'),
           subtitleLine1: giftName,
-          subtitleLine2: makeShortTransactionId(tx.id),
+          subtitleLine2: providerName || displaySubtitle || undefined,
           iconName: 'gift-outline',
           isOutgoing: true,
           verified: false,
@@ -647,6 +710,7 @@ export default function TransactionsScreen() {
           detailImage: metaImage || displayImage || null,
           detailModel: giftName,
           detailCashTotal: metaCashTotal || Math.abs(Number(tx.amount || 0)),
+          detailPaidNow: metaPaidNow,
           detailOrderId: metaOrderId || null,
           detailDescription: metaDescription || null,
           detailPinCode: pinCode || safe(meta.pin_code) || null,
@@ -661,9 +725,9 @@ export default function TransactionsScreen() {
 
       if (type === 'virtual_card_create' || type === 'create_virtual_card') {
         return {
-          title: tOr('transactions_moneySent', 'Money Sent'),
-          subtitleLine1: tOr('transactions_virtualCardCreated', 'Virtual Card Created'),
-          subtitleLine2: makeShortTransactionId(tx.id),
+          title: tOr('transactions_virtualCardCreated', 'Virtual Card Created'),
+          subtitleLine1: APP_SYSTEM_NAME,
+          subtitleLine2: undefined,
           iconName: 'card-outline',
           isOutgoing: true,
           verified: false,
@@ -682,10 +746,10 @@ export default function TransactionsScreen() {
 
       return {
         title: Number(tx.amount || 0) < 0
-          ? tOr('transactions_moneySent', 'Money Sent')
+          ? tOr('transactions_purchase', 'Purchase')
           : tOr('transactions_youReceivedMoney', 'You Received Money'),
         subtitleLine1: displayTitle || desc || tOr('transactions_purchase', 'Purchase'),
-        subtitleLine2: makeShortTransactionId(tx.id),
+        subtitleLine2: undefined,
         iconName: 'pricetag-outline',
         isOutgoing: Number(tx.amount || 0) < 0,
         verified: false,
@@ -742,6 +806,7 @@ export default function TransactionsScreen() {
         ui.detailPurchaseMode,
         ui.detailPinCode,
         ui.detailProvider,
+        ui.detailCardValue,
         meta.product_name,
         meta.product_brand,
         meta.storage,
@@ -771,6 +836,12 @@ export default function TransactionsScreen() {
     return getTxUi(selectedTx);
   }, [selectedTx, getTxUi]);
 
+  const shouldShowSeparateAdminNote = useCallback((ui: TxUi) => {
+    if (!ui.adminNote) return false;
+    if (!ui.note) return false;
+    return !areSameText(ui.note, ui.adminNote);
+  }, []);
+
   const buildTransactionHtml = useCallback(
     (tx: TransactionData) => {
       const ui = getTxUi(tx);
@@ -798,7 +869,7 @@ export default function TransactionsScreen() {
             ${ui.detailModel ? `
             <div class="row">
               <div>
-                <div class="label">${tOr('transactions_item', 'Item')}</div>
+                <div class="label">${ui.kind === 'sim' ? tOr('transactions_cardValue', 'Card Value') : tOr('transactions_item', 'Item')}</div>
                 <div class="value">${ui.detailModel}</div>
               </div>
             </div>` : ''}
@@ -827,7 +898,7 @@ export default function TransactionsScreen() {
               </div>
             </div>` : ''}
 
-            ${ui.detailQuantity ? `
+            ${ui.detailQuantity && ui.kind === 'mobile' ? `
             <div class="row">
               <div>
                 <div class="label">${tOr('transactions_quantity', 'Quantity')}</div>
@@ -976,11 +1047,17 @@ export default function TransactionsScreen() {
                   <strong>${tOr('transactions_note', 'Note')}:</strong><br/>
                   ${String(ui.note).replace(/\n/g, '<br/>')}
                 </div>`
+                : ui.adminNote
+                ? `
+                <div class="note">
+                  <strong>${tOr('transactions_note', 'Note')}:</strong><br/>
+                  ${String(ui.adminNote).replace(/\n/g, '<br/>')}
+                </div>`
                 : ''
             }
 
             ${
-              ui.adminNote
+              ui.adminNote && ui.note && !areSameText(ui.note, ui.adminNote)
                 ? `
                 <div class="note">
                   <strong>${tOr('transactions_adminNote', 'Admin Note')}:</strong><br/>
@@ -1007,7 +1084,7 @@ export default function TransactionsScreen() {
             }
             .label { font-size: 14px; color: #6F7A96; margin-bottom: 6px; }
             .value { font-size: 17px; font-weight: 700; color: #1E2A4A; }
-            .amount { color: #2563EB; font-size: 22px; font-weight: 800; }
+            .amount { color: #1E2A4A; font-size: 22px; font-weight: 800; }
             .badge {
               display: inline-block; padding: 10px 18px; border-radius: 999px; color: white;
               background: #2563EB; font-size: 15px; font-weight: 700;
@@ -1091,11 +1168,17 @@ export default function TransactionsScreen() {
                     <strong>${tOr('transactions_note', 'Note')}:</strong><br/>
                     ${String(ui.note).replace(/\n/g, '<br/>')}
                   </div>`
+                  : ui.adminNote
+                  ? `
+                  <div class="note">
+                    <strong>${tOr('transactions_note', 'Note')}:</strong><br/>
+                    ${String(ui.adminNote).replace(/\n/g, '<br/>')}
+                  </div>`
                   : ''
               }
 
               ${
-                ui.adminNote
+                ui.adminNote && ui.note && !areSameText(ui.note, ui.adminNote)
                   ? `
                   <div class="note">
                     <strong>${tOr('transactions_adminNote', 'Admin Note')}:</strong><br/>
@@ -1213,7 +1296,11 @@ export default function TransactionsScreen() {
 
     return (
       <View style={styles.mobileExtraCard}>
-        {ui.detailModel
+        {ui.kind === 'sim' && ui.detailCardValue
+          ? renderDetailRow(tOr('transactions_cardValue', 'Card Value'), ui.detailCardValue, false, UI.text)
+          : null}
+
+        {ui.kind !== 'sim' && ui.detailModel
           ? renderDetailRow(tOr('transactions_item', 'Item'), ui.detailModel, false, UI.text)
           : null}
 
@@ -1234,7 +1321,7 @@ export default function TransactionsScreen() {
             )
           : null}
 
-        {ui.detailQuantity
+        {ui.detailQuantity && ui.kind === 'mobile'
           ? renderDetailRow(tOr('transactions_quantity', 'Quantity'), String(ui.detailQuantity), false, UI.text)
           : null}
 
@@ -1283,7 +1370,7 @@ export default function TransactionsScreen() {
                 : tOr('transactions_transactionAmount', 'Transaction Amount'),
               formatIQD(ui.detailPaidNow),
               false,
-              ui.kind === 'mobile_refund' ? UI.blue : UI.blue
+              ui.kind === 'mobile_refund' ? UI.green : UI.red
             )
           : null}
 
@@ -1335,18 +1422,7 @@ export default function TransactionsScreen() {
 
             <View style={[styles.txInfo, isRTL && styles.txInfoRTL]}>
               <Text
-                style={[
-                  styles.txTitle,
-                  {
-                    color:
-                      ui.kind === 'mobile_refund'
-                        ? UI.blue
-                        : ui.isOutgoing
-                        ? UI.blue
-                        : UI.green,
-                  },
-                  isRTL && styles.textRTL,
-                ]}
+                style={[styles.txTitle, isRTL && styles.textRTL]}
                 numberOfLines={1}
               >
                 {ui.title}
@@ -1374,14 +1450,7 @@ export default function TransactionsScreen() {
             <Text
               style={[
                 styles.txAmount,
-                {
-                  color:
-                    ui.kind === 'mobile_refund'
-                      ? UI.blue
-                      : ui.isOutgoing
-                      ? UI.blue
-                      : UI.green,
-                },
+                { color: ui.isOutgoing ? UI.red : UI.green },
                 isRTL && styles.textRTL,
               ]}
               numberOfLines={1}
@@ -1492,18 +1561,16 @@ export default function TransactionsScreen() {
           />
         }
         ListHeaderComponent={
-          <>
-            <View style={styles.searchBox}>
-              <TextInput
-                value={searchText}
-                onChangeText={setSearchText}
-                placeholder={tOr('transactions_searchByTransactionId', 'Search transaction by transaction id')}
-                placeholderTextColor={UI.text2}
-                style={styles.searchInput}
-              />
-              <Ionicons name="search-outline" size={22} color={UI.text2} />
-            </View>
-          </>
+          <View style={styles.searchBox}>
+            <TextInput
+              value={searchText}
+              onChangeText={setSearchText}
+              placeholder={tOr('transactions_searchByTransactionId', 'Search transaction by transaction id')}
+              placeholderTextColor={UI.text2}
+              style={styles.searchInput}
+            />
+            <Ionicons name="search-outline" size={22} color={UI.text2} />
+          </View>
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -1590,8 +1657,6 @@ export default function TransactionsScreen() {
                       ? tOr('transactions_receivedFrom', 'Received From')
                       : selectedUi.kind === 'withdraw'
                       ? tOr('transactions_sentTo', 'Sent To')
-                      : selectedUi.kind === 'mobile_refund'
-                      ? tOr('transactions_refundItem', 'Refund Item')
                       : tOr('transactions_item', 'Item')}
                   </Text>
 
@@ -1626,19 +1691,7 @@ export default function TransactionsScreen() {
 
                     <View style={{ flex: 1 }}>
                       <View style={styles.partyNameRow}>
-                        <Text
-                          style={[
-                            styles.partyName,
-                            {
-                              color:
-                                selectedUi.kind === 'mobile_refund'
-                                  ? UI.blue
-                                  : selectedUi.isOutgoing
-                                  ? UI.blue
-                                  : UI.green,
-                            },
-                          ]}
-                        >
+                        <Text style={[styles.partyName, { color: UI.blue }]}>
                           {selectedUi.displayName}
                         </Text>
 
@@ -1672,11 +1725,7 @@ export default function TransactionsScreen() {
                     tOr('transactions_transactionAmount', 'Transaction Amount'),
                     formatIQD(Math.abs(Number(selectedTx.amount || 0))),
                     false,
-                    selectedUi.kind === 'mobile_refund'
-                      ? UI.blue
-                      : selectedUi.isOutgoing
-                      ? UI.blue
-                      : UI.green
+                    selectedUi.isOutgoing ? UI.red : UI.green
                   )}
 
                 {selectedUi.kind !== 'mobile' &&
@@ -1708,7 +1757,14 @@ export default function TransactionsScreen() {
                   </View>
                 )}
 
-                {!!selectedUi.adminNote && (
+                {!selectedUi.note && !!selectedUi.adminNote && (
+                  <View style={styles.noteBox}>
+                    <Text style={styles.noteTitle}>{tOr('transactions_note', 'Note')}</Text>
+                    <Text style={styles.noteText}>{selectedUi.adminNote}</Text>
+                  </View>
+                )}
+
+                {shouldShowSeparateAdminNote(selectedUi) && (
                   <View style={styles.noteBox}>
                     <Text style={styles.noteTitle}>{tOr('transactions_adminNote', 'Admin Note')}</Text>
                     <Text style={styles.noteText}>{selectedUi.adminNote}</Text>
@@ -1873,6 +1929,7 @@ const styles = StyleSheet.create({
   txTitle: {
     fontSize: 15,
     fontWeight: '900',
+    color: UI.blue,
   },
 
   txSubtitleMain: {
