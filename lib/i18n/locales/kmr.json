@@ -1,6 +1,10 @@
 {
   "home": "سەرەکی",
   "transactions": "مامەڵە",
+  "transactions_typeTopupCardPurchased": "کارتا بارکرنێ هاتە کرین",
+  "transactions_provider": "دابینکەر",
+  "transactions_pinCode": "PIN کۆد",
+  "transactions_adminNote": "تێبینا ئەدمین",
   "transactions_purchaseProduct": "کرینا بەرهەمی",
 
   "sendMoney": "هنارتنا پارێ",
