@@ -1,5 +1,7 @@
 {
   "home": "سەرەکی",
+  "transactions_topupCard": "کارتا بارکرنێ",
+  "transactions_cardValue": "بڕا کارتێ",
   "transactions": "مامەڵە",
   "transactions_topupCardPurchased": "کارتا بارکرنێ هاتە کرین",
   "transactions_typeTopupCardPurchased": "کارتا بارکرنێ هاتە کرین",
