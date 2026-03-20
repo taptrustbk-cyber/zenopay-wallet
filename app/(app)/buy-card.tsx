@@ -37,6 +37,28 @@ type ProfileRow = {
   avatar_url?: string | null;
 };
 
+type GiftCardRow = {
+  id: string;
+  title?: string | null;
+  name?: string | null;
+  provider?: string | null;
+  amount?: number | null;
+  price_iqd?: number | null;
+  image_url?: string | null;
+  category_id?: string | null;
+};
+
+type TopupCardRow = {
+  id: string;
+  title?: string | null;
+  name?: string | null;
+  provider?: string | null;
+  amount_iqd?: number | null;
+  amount?: number | null;
+  price_iqd?: number | null;
+  image_url?: string | null;
+};
+
 const providerConfig: Record<string, { color: string; bgColor: string; logo: string }> = {
   korek: {
     color: '#1570A6',
@@ -103,14 +125,15 @@ function formatIQDLocal(value?: number | null) {
   return isArabicMoneyLang() ? `${formatted} د.غ` : `${formatted} IQD`;
 }
 
-function getIqdLabel() {
-  return isArabicMoneyLang() ? 'د.غ' : 'IQD';
-}
-
 function upperFirst(v?: string | null) {
   const s = String(v || '').trim();
   if (!s) return '';
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function toNumberSafe(value: any) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
 }
 
 export default function BuyCardScreen() {
@@ -122,20 +145,19 @@ export default function BuyCardScreen() {
   const params = useLocalSearchParams();
 
   const cardId = String(params.id || '');
-  const categoryId = String(params.category_id || '');
-  const cardName = String(params.name || '');
-  const provider = String(params.provider || '');
-  const imageUrl = String(params.image || '');
+  const categoryIdFromParams = String(params.category_id || '');
+  const cardNameFromParams = String(params.name || '');
+  const providerFromParams = String(params.provider || '');
+  const imageUrlFromParams = String(params.image || '');
   const type = String(params.type || 'sim') as CardType;
 
-  const amountRaw = Number(params.amount || 0);
-  const passedIqdPrice = Number(params.iqd_price || 0);
-
-  const priceIqd = passedIqdPrice > 0 ? passedIqdPrice : 0;
+  const amountRawFromParams = toNumberSafe(params.amount);
+  const passedIqdPrice =
+    toNumberSafe(params.iqd_price) ||
+    toNumberSafe(params.price_iqd) ||
+    toNumberSafe(params.price);
 
   const [orderCreated, setOrderCreated] = useState(false);
-
-  const providerStyle = useMemo(() => getProviderStyle(provider), [provider]);
 
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
@@ -171,6 +193,85 @@ export default function BuyCardScreen() {
     enabled: !!user?.id,
   });
 
+  const cardQuery = useQuery({
+    queryKey: ['buy_card_source_data', type, cardId],
+    enabled: !!cardId,
+    queryFn: async () => {
+      if (!cardId) return null;
+
+      if (type === 'gift') {
+        const { data, error } = await supabase
+          .from('gift_cards')
+          .select('id, title, name, provider, amount, price_iqd, image_url, category_id')
+          .eq('id', cardId)
+          .maybeSingle();
+
+        if (error) throw error;
+        return data as GiftCardRow | null;
+      }
+
+      const { data, error } = await supabase
+        .from('topup_cards')
+        .select('id, title, name, provider, amount_iqd, amount, price_iqd, image_url')
+        .eq('id', cardId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as TopupCardRow | null;
+    },
+  });
+
+  const dbCard = cardQuery.data;
+
+  const cardName = useMemo(() => {
+    return (
+      cardNameFromParams ||
+      String((dbCard as any)?.title || '') ||
+      String((dbCard as any)?.name || '') ||
+      ''
+    );
+  }, [cardNameFromParams, dbCard]);
+
+  const provider = useMemo(() => {
+    return providerFromParams || String((dbCard as any)?.provider || '') || '';
+  }, [providerFromParams, dbCard]);
+
+  const amountRaw = useMemo(() => {
+    if (amountRawFromParams > 0) return amountRawFromParams;
+
+    if (type === 'gift') {
+      return toNumberSafe((dbCard as GiftCardRow | null)?.amount);
+    }
+
+    return (
+      toNumberSafe((dbCard as TopupCardRow | null)?.amount_iqd) ||
+      toNumberSafe((dbCard as TopupCardRow | null)?.amount)
+    );
+  }, [amountRawFromParams, dbCard, type]);
+
+  const priceIqd = useMemo(() => {
+    if (passedIqdPrice > 0) return passedIqdPrice;
+    return toNumberSafe((dbCard as any)?.price_iqd);
+  }, [passedIqdPrice, dbCard]);
+
+  const resolvedCategoryId = useMemo(() => {
+    if (categoryIdFromParams) return categoryIdFromParams;
+    return String((dbCard as GiftCardRow | null)?.category_id || '');
+  }, [categoryIdFromParams, dbCard]);
+
+  const providerStyle = useMemo(() => getProviderStyle(provider), [provider]);
+
+  const finalProviderLabel = useMemo(() => {
+    if (!provider) return '-';
+    return upperFirst(provider);
+  }, [provider]);
+
+  const finalImage = useMemo(() => {
+    if (imageUrlFromParams) return imageUrlFromParams;
+    if ((dbCard as any)?.image_url) return String((dbCard as any).image_url);
+    return providerStyle.logo || '';
+  }, [imageUrlFromParams, dbCard, providerStyle.logo]);
+
   const hasEnoughBalance = useMemo(() => {
     const balance = Number(walletQuery.data?.balance || 0);
     return balance >= priceIqd;
@@ -182,22 +283,16 @@ export default function BuyCardScreen() {
     return i18n.t('buyCard.mobileCard') || 'Mobile Card';
   }, [type]);
 
-  const finalProviderLabel = useMemo(() => {
-    if (!provider) return '-';
-    return upperFirst(provider);
-  }, [provider]);
-
-  const finalImage = useMemo(() => {
-    if (imageUrl) return imageUrl;
-    return providerStyle.logo || '';
-  }, [imageUrl, providerStyle.logo]);
-
   const purchaseMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error(i18n.t('auth.loginRequired') || 'Please login first.');
       if (!walletQuery.data) throw new Error(i18n.t('buyCard.walletNotFound') || 'Wallet not found.');
 
       const currentBalance = Number(walletQuery.data.balance || 0);
+
+      if (priceIqd <= 0) {
+        throw new Error('Card price is missing. Please check admin price_iqd.');
+      }
 
       if (currentBalance < priceIqd) {
         throw new Error(
@@ -211,11 +306,10 @@ export default function BuyCardScreen() {
         const giftOrderPayload = {
           user_id: user.id,
           gift_card_id: cardId || null,
-          category_id: categoryId || null,
+          category_id: resolvedCategoryId || null,
           card_title: cardName || null,
           provider: provider || null,
           amount: amountRaw || 0,
-          amount_iqd: amountRaw || 0,
           price_iqd: priceIqd,
           image_url: finalImage || null,
           status: 'pending',
@@ -277,6 +371,14 @@ export default function BuyCardScreen() {
   });
 
   const handlePurchase = () => {
+    if (priceIqd <= 0) {
+      Alert.alert(
+        i18n.t('common.error') || 'Error',
+        'Price IQD is missing. Please make sure price_iqd is set in admin.'
+      );
+      return;
+    }
+
     Alert.alert(
       i18n.t('buyCard.confirmPurchaseTitle') || 'Confirm Purchase',
       `${i18n.t('buyCard.purchaseConfirmMessage') || 'Do you want to buy'} ${cardName} ${
@@ -316,6 +418,11 @@ export default function BuyCardScreen() {
       />
     );
   };
+
+  const showPageLoader =
+    walletQuery.isLoading ||
+    profileQuery.isLoading ||
+    (cardId ? cardQuery.isLoading : false);
 
   if (orderCreated) {
     return (
@@ -408,93 +515,92 @@ export default function BuyCardScreen() {
         <View style={styles.headerRightSpacer} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.topCard}>
-          <Text style={styles.topCardMini}>{cardTypeLabel}</Text>
-          <Text style={styles.topCardTitle}>
-            {i18n.t('buyCard.reviewYourOrder') || 'Review your order'}
-          </Text>
+      {showPageLoader ? (
+        <View style={styles.centerLoader}>
+          <ActivityIndicator color={UI.goldDark} size="large" />
         </View>
-
-        <View style={styles.cardPreview}>
-          <View style={[styles.cardIconContainer, { backgroundColor: providerStyle.bgColor }]}>
-            {renderCardImage()}
-          </View>
-
-          <Text style={styles.cardName}>{cardName}</Text>
-          <Text style={styles.cardPriceIqd}>{formatIQDLocal(priceIqd)}</Text>
-        </View>
-
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>{i18n.t('buyCard.cardType') || 'Card Type'}</Text>
-            <Text style={styles.infoValue}>{cardTypeLabel}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>{i18n.t('buyCard.provider') || 'Provider'}</Text>
-            <Text style={styles.infoValue}>{finalProviderLabel}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>{i18n.t('buyCard.amount') || 'Amount'}</Text>
-            <Text style={styles.infoValue}>{formatIQDLocal(amountRaw)}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>{i18n.t('buyCard.priceIqd') || 'Price IQD'}</Text>
-            <Text style={styles.infoValue}>{formatIQDLocal(priceIqd)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>{i18n.t('buyCard.yourBalance') || 'Your Balance'}</Text>
-          {walletQuery.isLoading ? (
-            <ActivityIndicator color={UI.goldDark} />
-          ) : (
-            <Text style={styles.balanceAmount}>
-              {formatIQDLocal(walletQuery.data?.balance || 0)}
-            </Text>
-          )}
-        </View>
-
-        {walletQuery.data && !hasEnoughBalance && (
-          <View style={styles.insufficientWarning}>
-            <Ionicons name="warning-outline" size={20} color={UI.dangerText} />
-            <Text style={styles.insufficientText}>
-              {i18n.t('buyCard.insufficientBalanceForPurchase') || 'Insufficient balance for purchase.'}
+      ) : (
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.topCard}>
+            <Text style={styles.topCardMini}>{cardTypeLabel}</Text>
+            <Text style={styles.topCardTitle}>
+              {i18n.t('buyCard.reviewYourOrder') || 'Review your order'}
             </Text>
           </View>
-        )}
 
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            (purchaseMutation.isPending || !hasEnoughBalance || walletQuery.isLoading || profileQuery.isLoading) &&
-              styles.disabledButton,
-          ]}
-          onPress={handlePurchase}
-          disabled={purchaseMutation.isPending || !hasEnoughBalance || walletQuery.isLoading || profileQuery.isLoading}
-          activeOpacity={0.9}
-        >
-          {purchaseMutation.isPending ? (
-            <ActivityIndicator color={UI.goldDark} />
-          ) : (
-            <>
-              <Ionicons name="cart-outline" size={18} color={UI.goldDark} />
-              <Text style={styles.primaryButtonText}>
-                {i18n.t('buyCard.buyNow') || 'Buy Now'}
+          <View style={styles.cardPreview}>
+            <View style={[styles.cardIconContainer, { backgroundColor: providerStyle.bgColor }]}>
+              {renderCardImage()}
+            </View>
+
+            <Text style={styles.cardName}>{cardName}</Text>
+            <Text style={styles.cardPriceIqd}>{formatIQDLocal(priceIqd)}</Text>
+          </View>
+
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>{i18n.t('buyCard.cardType') || 'Card Type'}</Text>
+              <Text style={styles.infoValue}>{cardTypeLabel}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>{i18n.t('buyCard.provider') || 'Provider'}</Text>
+              <Text style={styles.infoValue}>{finalProviderLabel}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>{i18n.t('buyCard.amount') || 'Amount'}</Text>
+              <Text style={styles.infoValue}>{formatIQDLocal(amountRaw)}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>{i18n.t('buyCard.priceIqd') || 'Price IQD'}</Text>
+              <Text style={styles.infoValue}>{formatIQDLocal(priceIqd)}</Text>
+            </View>
+          </View>
+
+          <View style={styles.balanceCard}>
+            <Text style={styles.balanceLabel}>{i18n.t('buyCard.yourBalance') || 'Your Balance'}</Text>
+            <Text style={styles.balanceAmount}>{formatIQDLocal(walletQuery.data?.balance || 0)}</Text>
+          </View>
+
+          {!!walletQuery.data && !hasEnoughBalance && (
+            <View style={styles.insufficientWarning}>
+              <Ionicons name="warning-outline" size={20} color={UI.dangerText} />
+              <Text style={styles.insufficientText}>
+                {i18n.t('buyCard.insufficientBalanceForPurchase') || 'Insufficient balance for purchase.'}
               </Text>
-            </>
+            </View>
           )}
-        </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryButton} onPress={goBack} activeOpacity={0.9}>
-          <Text style={styles.secondaryButtonText}>{i18n.t('common.cancel') || 'Cancel'}</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              (purchaseMutation.isPending || !hasEnoughBalance || priceIqd <= 0) && styles.disabledButton,
+            ]}
+            onPress={handlePurchase}
+            disabled={purchaseMutation.isPending || !hasEnoughBalance || priceIqd <= 0}
+            activeOpacity={0.9}
+          >
+            {purchaseMutation.isPending ? (
+              <ActivityIndicator color={UI.goldDark} />
+            ) : (
+              <>
+                <Ionicons name="cart-outline" size={18} color={UI.goldDark} />
+                <Text style={styles.primaryButtonText}>
+                  {i18n.t('buyCard.buyNow') || 'Buy Now'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
 
-        <View style={{ height: 10 }} />
-      </ScrollView>
+          <TouchableOpacity style={styles.secondaryButton} onPress={goBack} activeOpacity={0.9}>
+            <Text style={styles.secondaryButtonText}>{i18n.t('common.cancel') || 'Cancel'}</Text>
+          </TouchableOpacity>
+
+          <View style={{ height: 10 }} />
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -535,6 +641,12 @@ const styles = StyleSheet.create({
   headerRightSpacer: {
     width: 38,
     height: 38,
+  },
+
+  centerLoader: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   content: {
