@@ -19,7 +19,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
-import { formatIQD } from '@/lib/format';
 
 type CardType = 'sim' | 'gift' | 'topup';
 
@@ -35,30 +34,29 @@ type ProfileRow = {
   full_name?: string | null;
   phone?: string | null;
   city?: string | null;
+  avatar_url?: string | null;
 };
-
-const IQD_RATE = 1530;
 
 const providerConfig: Record<string, { color: string; bgColor: string; logo: string }> = {
   korek: {
     color: '#1570A6',
     bgColor: '#F1F9FF',
-    logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uu16k1t8p3uz3dpr3k6ic',
+    logo: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773717052421.jpg',
   },
   zain: {
     color: '#6E3CBC',
     bgColor: '#F6F1FF',
-    logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uq8qjx7d0g47h9rv2jvzz',
+    logo: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773716686562.jpg',
   },
   asiacell: {
     color: '#D53434',
     bgColor: '#FFF3F2',
-    logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/q8puaw0dyshx6jruwg83i',
+    logo: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773716476782.png',
   },
   ftth: {
     color: '#2269D1',
     bgColor: '#F2F7FF',
-    logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/1ogdfkyuisk5c6unchj2s',
+    logo: '',
   },
 };
 
@@ -91,6 +89,30 @@ function getProviderStyle(provider?: string | null) {
   );
 }
 
+function isArabicMoneyLang() {
+  const lang = String(i18n.language || '').toLowerCase();
+  return ['ar', 'cbk', 'kmr'].includes(lang);
+}
+
+function formatIQDLocal(value?: number | null) {
+  const num = Number(value || 0);
+  const formatted = Math.abs(num)
+    .toFixed(0)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  return isArabicMoneyLang() ? `${formatted} د.غ` : `${formatted} IQD`;
+}
+
+function getIqdLabel() {
+  return isArabicMoneyLang() ? 'د.غ' : 'IQD';
+}
+
+function upperFirst(v?: string | null) {
+  const s = String(v || '').trim();
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export default function BuyCardScreen() {
   useTheme();
 
@@ -100,17 +122,16 @@ export default function BuyCardScreen() {
   const params = useLocalSearchParams();
 
   const cardId = String(params.id || '');
+  const categoryId = String(params.category_id || '');
   const cardName = String(params.name || '');
   const provider = String(params.provider || '');
   const imageUrl = String(params.image || '');
   const type = String(params.type || 'sim') as CardType;
 
-  const priceUsd = Number(params.price || 0);
   const amountRaw = Number(params.amount || 0);
   const passedIqdPrice = Number(params.iqd_price || 0);
 
-  // ✅ Use admin IQD price first. Old USD fallback only if old data still exists.
-  const priceIqd = passedIqdPrice > 0 ? passedIqdPrice : Math.round(priceUsd * IQD_RATE);
+  const priceIqd = passedIqdPrice > 0 ? passedIqdPrice : 0;
 
   const [orderCreated, setOrderCreated] = useState(false);
 
@@ -140,7 +161,7 @@ export default function BuyCardScreen() {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, phone, city')
+        .select('id, email, full_name, phone, city, avatar_url')
         .eq('id', user.id)
         .single();
 
@@ -161,6 +182,16 @@ export default function BuyCardScreen() {
     return i18n.t('buyCard.mobileCard') || 'Mobile Card';
   }, [type]);
 
+  const finalProviderLabel = useMemo(() => {
+    if (!provider) return '-';
+    return upperFirst(provider);
+  }, [provider]);
+
+  const finalImage = useMemo(() => {
+    if (imageUrl) return imageUrl;
+    return providerStyle.logo || '';
+  }, [imageUrl, providerStyle.logo]);
+
   const purchaseMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error(i18n.t('auth.loginRequired') || 'Please login first.');
@@ -174,51 +205,58 @@ export default function BuyCardScreen() {
         );
       }
 
-      const newBalance = currentBalance - priceIqd;
-
-      const { error: walletError } = await supabase
-        .from('wallets')
-        .update({ balance: newBalance })
-        .eq('user_id', user.id);
-
-      if (walletError) throw walletError;
-
       const profile = profileQuery.data;
 
-      const orderPayload = {
-        user_id: user.id,
-        topup_card_id: cardId || null,
-        card_title: cardName,
-        provider: provider || type,
-        amount_iqd: amountRaw || 0,
-        price_usd: 0,
-        price_iqd: priceIqd,
-        status: 'pending',
-        pin_code: null,
-        notes: type,
-        user_name: profile?.full_name || '',
-        user_email: profile?.email || user.email || '',
-        user_phone: profile?.phone || '',
-        user_city: profile?.city || '',
-      };
+      if (type === 'gift') {
+        const giftOrderPayload = {
+          user_id: user.id,
+          gift_card_id: cardId || null,
+          category_id: categoryId || null,
+          card_title: cardName || null,
+          provider: provider || null,
+          amount: amountRaw || 0,
+          amount_iqd: amountRaw || 0,
+          price_iqd: priceIqd,
+          image_url: finalImage || null,
+          status: 'pending',
+          pin_code: null,
+          notes: null,
+          user_name: profile?.full_name || '',
+          user_email: profile?.email || user.email || '',
+          user_phone: profile?.phone || '',
+          user_city: profile?.city || '',
+          user_avatar_url: profile?.avatar_url || null,
+        };
 
-      const { error: orderError } = await supabase.from('topup_orders').insert(orderPayload);
+        const { error: orderError } = await supabase
+          .from('gift_card_orders')
+          .insert(giftOrderPayload);
 
-      if (orderError) {
-        await supabase.from('wallets').update({ balance: currentBalance }).eq('user_id', user.id);
-        throw orderError;
-      }
+        if (orderError) throw orderError;
+      } else {
+        const topupOrderPayload = {
+          user_id: user.id,
+          topup_card_id: cardId || null,
+          card_title: cardName || null,
+          provider: provider || type,
+          amount_iqd: amountRaw || 0,
+          price_iqd: priceIqd,
+          image_url: finalImage || null,
+          status: 'pending',
+          pin_code: null,
+          notes: null,
+          user_name: profile?.full_name || '',
+          user_email: profile?.email || user.email || '',
+          user_phone: profile?.phone || '',
+          user_city: profile?.city || '',
+          user_avatar_url: profile?.avatar_url || null,
+        };
 
-      const { error: txError } = await supabase.from('transactions').insert({
-        to_user_id: user.id,
-        type: 'purchase',
-        amount: -priceIqd,
-        description: `Purchased ${cardName} - ${formatIQD(priceIqd)} IQD`,
-        status: 'completed',
-      });
+        const { error: orderError } = await supabase
+          .from('topup_orders')
+          .insert(topupOrderPayload);
 
-      if (txError) {
-        console.log('transactions insert warning:', txError);
+        if (orderError) throw orderError;
       }
 
       return true;
@@ -226,8 +264,9 @@ export default function BuyCardScreen() {
     onSuccess: async () => {
       setOrderCreated(true);
       await queryClient.invalidateQueries({ queryKey: ['wallet', user?.id] });
-      await queryClient.invalidateQueries({ queryKey: ['transactions'] });
       await queryClient.invalidateQueries({ queryKey: ['notifications_orders', user?.id] });
+      await queryClient.invalidateQueries({ queryKey: ['topup_orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['gift_card_orders'] });
     },
     onError: (error: any) => {
       Alert.alert(
@@ -242,7 +281,7 @@ export default function BuyCardScreen() {
       i18n.t('buyCard.confirmPurchaseTitle') || 'Confirm Purchase',
       `${i18n.t('buyCard.purchaseConfirmMessage') || 'Do you want to buy'} ${cardName} ${
         i18n.t('buyCard.for') || 'for'
-      } ${formatIQD(priceIqd)} ${i18n.t('buyCard.iqd') || 'IQD'}?`,
+      } ${formatIQDLocal(priceIqd)}?`,
       [
         {
           text: i18n.t('common.cancel') || 'Cancel',
@@ -265,8 +304,6 @@ export default function BuyCardScreen() {
   };
 
   const renderCardImage = () => {
-    const finalImage = imageUrl || providerStyle.logo;
-
     if (finalImage) {
       return <Image source={{ uri: finalImage }} style={styles.cardImage} resizeMode="cover" />;
     }
@@ -327,19 +364,17 @@ export default function BuyCardScreen() {
 
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>{i18n.t('buyCard.provider') || 'Provider'}</Text>
-              <Text style={styles.detailValue}>{provider || '-'}</Text>
+              <Text style={styles.detailValue}>{finalProviderLabel}</Text>
             </View>
 
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>{i18n.t('buyCard.amount') || 'Amount'}</Text>
-              <Text style={styles.detailValue}>{formatIQD(amountRaw)}</Text>
+              <Text style={styles.detailValue}>{formatIQDLocal(amountRaw)}</Text>
             </View>
 
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>{i18n.t('buyCard.priceIqd') || 'Price IQD'}</Text>
-              <Text style={styles.detailValue}>
-                {formatIQD(priceIqd)} {i18n.t('buyCard.iqd') || 'IQD'}
-              </Text>
+              <Text style={styles.detailValue}>{formatIQDLocal(priceIqd)}</Text>
             </View>
           </View>
 
@@ -387,9 +422,7 @@ export default function BuyCardScreen() {
           </View>
 
           <Text style={styles.cardName}>{cardName}</Text>
-          <Text style={styles.cardPriceIqd}>
-            {formatIQD(priceIqd)} {i18n.t('buyCard.iqd') || 'IQD'}
-          </Text>
+          <Text style={styles.cardPriceIqd}>{formatIQDLocal(priceIqd)}</Text>
         </View>
 
         <View style={styles.infoCard}>
@@ -400,19 +433,17 @@ export default function BuyCardScreen() {
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{i18n.t('buyCard.provider') || 'Provider'}</Text>
-            <Text style={styles.infoValue}>{provider || '-'}</Text>
+            <Text style={styles.infoValue}>{finalProviderLabel}</Text>
           </View>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{i18n.t('buyCard.amount') || 'Amount'}</Text>
-            <Text style={styles.infoValue}>{formatIQD(amountRaw)}</Text>
+            <Text style={styles.infoValue}>{formatIQDLocal(amountRaw)}</Text>
           </View>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{i18n.t('buyCard.priceIqd') || 'Price IQD'}</Text>
-            <Text style={styles.infoValue}>
-              {formatIQD(priceIqd)} {i18n.t('buyCard.iqd') || 'IQD'}
-            </Text>
+            <Text style={styles.infoValue}>{formatIQDLocal(priceIqd)}</Text>
           </View>
         </View>
 
@@ -422,7 +453,7 @@ export default function BuyCardScreen() {
             <ActivityIndicator color={UI.goldDark} />
           ) : (
             <Text style={styles.balanceAmount}>
-              {formatIQD(walletQuery.data?.balance || 0)} {i18n.t('buyCard.iqd') || 'IQD'}
+              {formatIQDLocal(walletQuery.data?.balance || 0)}
             </Text>
           )}
         </View>
