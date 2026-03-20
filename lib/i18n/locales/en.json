@@ -1,5 +1,9 @@
 {
   "home": "Home",
+  "transactions_topupCard": "Topup Card",
+  "transactions_mobileCard": "Mobile Card",
+  "transactions_topup": "Topup",
+  "transactions_card": "Card Purchase",
   "transactions_typeTopupCardPurchased": "Topup Card Purchased",
   "transactions_provider": "Provider",
   "transactions_pinCode": "PIN Code",
