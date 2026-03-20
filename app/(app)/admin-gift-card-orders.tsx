@@ -54,13 +54,6 @@ function formatIQD(value?: number | null) {
   }).format(Number(value || 0));
 }
 
-function formatUSD(value?: number | null) {
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0));
-}
-
 function formatDate(value?: string | null) {
   if (!value) return '-';
   try {
@@ -105,6 +98,14 @@ function getStatusColors(status?: string | null) {
     text: '#B58103',
     label: 'Pending',
   };
+}
+
+function buildGiftDisplayTitle(order: GiftCardOrder) {
+  const provider = String(order.provider || '').trim();
+  const title = String(order.card_title || '').trim();
+
+  if (provider && title) return `${provider} - ${title}`;
+  return provider || title || 'Gift Card';
 }
 
 export default function AdminGiftCardOrdersScreen() {
@@ -213,33 +214,70 @@ export default function AdminGiftCardOrdersScreen() {
     }));
   };
 
+  const sendStatusEmail = async (order: GiftCardOrder, status: string, pinCode: string, note: string) => {
+    if (!order.user_email) return;
+
+    try {
+      await supabase.functions.invoke('gift-card-order-mail', {
+        body: {
+          to: order.user_email,
+          customer_name: order.user_name || 'Customer',
+          order_id: order.id,
+          card_title: order.card_title,
+          provider: order.provider,
+          amount: order.amount,
+          price_iqd: order.price_iqd,
+          status,
+          pin_code: pinCode || null,
+          note: note || null,
+          image_url: order.image_url || null,
+        },
+      });
+    } catch (e) {
+      console.log('gift-card-order-mail invoke error:', e);
+    }
+  };
+
   const handleSave = async (order: GiftCardOrder) => {
     try {
       const draft = editState[order.id];
       if (!draft) return;
 
-      if (draft.status === 'success' && !draft.pin_code.trim()) {
+      const nextStatus = normalizeStatus(draft.status);
+      const oldStatus = normalizeStatus(order.status);
+
+      if (nextStatus === 'success' && !draft.pin_code.trim()) {
         Alert.alert('Error', 'PIN code is required when status is success.');
         return;
       }
 
       setSavingId(order.id);
 
-      const payload = {
-        status: draft.status,
-        pin_code: draft.pin_code.trim() || null,
-        notes: draft.notes.trim() || null,
-      };
-
-      const { error } = await supabase
-        .from('gift_card_orders')
-        .update(payload)
-        .eq('id', order.id);
+      const { data, error } = await supabase.rpc('admin_process_gift_card_order', {
+        p_order_id: order.id,
+        p_status: nextStatus,
+        p_pin_code: draft.pin_code.trim() || null,
+        p_notes: draft.notes.trim() || null,
+      });
 
       if (error) throw error;
 
+      await sendStatusEmail(
+        order,
+        nextStatus,
+        draft.pin_code.trim(),
+        draft.notes.trim()
+      );
+
       await fetchOrders();
-      Alert.alert('Success', 'Gift card order updated successfully.');
+
+      if (oldStatus !== nextStatus && nextStatus === 'cancelled') {
+        Alert.alert('Success', 'Order cancelled and wallet refunded successfully.');
+      } else if (oldStatus !== nextStatus && nextStatus === 'success') {
+        Alert.alert('Success', 'Order approved, transaction created, and email sent.');
+      } else {
+        Alert.alert('Success', 'Gift card order updated successfully.');
+      }
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Could not update gift card order.');
     } finally {
@@ -426,7 +464,7 @@ export default function AdminGiftCardOrdersScreen() {
 
                       <View style={{ flex: 1 }}>
                         <Text style={styles.orderTitle}>
-                          {order.card_title || 'Unknown Gift Card'}
+                          {buildGiftDisplayTitle(order)}
                         </Text>
 
                         <View style={styles.topBadgesRow}>
@@ -492,11 +530,6 @@ export default function AdminGiftCardOrdersScreen() {
                   <View style={styles.infoBox}>
                     <Text style={styles.infoLabel}>Price IQD</Text>
                     <Text style={styles.infoValue}>{formatIQD(order.price_iqd)} IQD</Text>
-                  </View>
-
-                  <View style={styles.infoBox}>
-                    <Text style={styles.infoLabel}>Price USD</Text>
-                    <Text style={styles.infoValue}>${formatUSD(order.price_usd)}</Text>
                   </View>
 
                   <View style={styles.infoBoxFull}>
