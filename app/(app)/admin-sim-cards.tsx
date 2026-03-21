@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Platform,
   RefreshControl,
   ScrollView,
@@ -17,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { Image as ExpoImage } from 'expo-image';
 import { supabase } from '@/lib/supabase';
 
 type TopupProviderRow = {
@@ -42,6 +42,7 @@ type SimCardRow = {
   price_usd?: number | null;
   image_url: string | null;
   card_image_url?: string | null;
+  item_image_url?: string | null;
   notes: string | null;
   is_active: boolean | null;
   sort_order?: number | null;
@@ -104,6 +105,11 @@ const PROVIDER_PRESETS = [
   {
     key: 'kurdtel',
     label: 'Kurdtel',
+    logo: FALLBACK_IMAGE,
+  },
+  {
+    key: 'zenopay',
+    label: 'Zenopay',
     logo: FALLBACK_IMAGE,
   },
 ];
@@ -188,6 +194,9 @@ export default function AdminSimCardScreen() {
   const [cardSortOrder, setCardSortOrder] = useState('0');
   const [cardIsAvailable, setCardIsAvailable] = useState(true);
 
+  const [failedProviderThumbs, setFailedProviderThumbs] = useState<Record<string, boolean>>({});
+  const [failedCardThumbs, setFailedCardThumbs] = useState<Record<string, boolean>>({});
+
   const selectedProvider = useMemo(
     () => providers.find((x) => x.id === selectedProviderId) || null,
     [providers, selectedProviderId]
@@ -248,6 +257,17 @@ export default function AdminSimCardScreen() {
 
       setProviders(providersData);
       setCards(cardsData);
+
+      const preloadUrls = [
+        ...providersData.map((x) => x.logo_url).filter(Boolean),
+        ...cardsData
+          .map((x) => x.card_image_url || x.item_image_url || x.image_url)
+          .filter(Boolean),
+      ] as string[];
+
+      if (preloadUrls.length) {
+        ExpoImage.prefetch(preloadUrls).catch(() => {});
+      }
 
       if (!providersData.length) {
         setSelectedProviderId('');
@@ -374,9 +394,9 @@ export default function AdminSimCardScreen() {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        quality: 0.9,
+        quality: 0.72,
         allowsEditing: true,
-        aspect: [4, 4],
+        aspect: mode === 'provider' ? [1, 1] : [4, 4],
       });
 
       if (result.canceled || !result.assets?.length) return;
@@ -400,6 +420,7 @@ export default function AdminSimCardScreen() {
         .upload(fileName, arrayBuffer, {
           contentType: mimeType,
           upsert: false,
+          cacheControl: '31536000',
         });
 
       if (uploadError) throw uploadError;
@@ -557,13 +578,13 @@ export default function AdminSimCardScreen() {
         title: cardTitle.trim(),
         provider: normalizedProviderKey,
         provider_title: selectedProvider.title?.trim() || providerPreset.label,
-        provider_logo_url:
-          selectedProvider.logo_url?.trim() || providerPreset.logo || null,
+        provider_logo_url: selectedProvider.logo_url?.trim() || providerPreset.logo || null,
         amount_iqd: toNumber(amountIqd),
         price_iqd: toNumber(priceIqd),
         price_usd: toNumber(priceIqd) / 1530,
         image_url: itemImage,
         card_image_url: itemImage,
+        item_image_url: itemImage,
         notes: notes.trim() || null,
         sort_order: toNumber(cardSortOrder),
         is_active: cardIsAvailable && !!selectedProvider.is_active,
@@ -611,7 +632,7 @@ export default function AdminSimCardScreen() {
     setAmountIqd(String(card.amount_iqd || ''));
     setPriceIqd(String(card.price_iqd || ''));
     setNotes(String(card.notes || ''));
-    setCardImageUrl(String(card.card_image_url || card.image_url || ''));
+    setCardImageUrl(String(card.card_image_url || card.item_image_url || card.image_url || ''));
     setCardSortOrder(String(card.sort_order ?? 0));
     setCardIsAvailable(!!card.is_active);
   };
@@ -879,10 +900,12 @@ export default function AdminSimCardScreen() {
                     }
                   }}
                 >
-                  <Image
+                  <ExpoImage
                     source={{ uri: providerLogoUrl || selectedPreset.logo || FALLBACK_IMAGE }}
                     style={styles.providerLogoSmall}
-                    resizeMode="contain"
+                    contentFit="contain"
+                    cachePolicy="memory-disk"
+                    transition={100}
                   />
                   <Text style={styles.providerPickerText}>{providerTitle || selectedPreset.label}</Text>
                   <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.72)" />
@@ -964,10 +987,12 @@ export default function AdminSimCardScreen() {
                 </View>
 
                 {!!providerLogoUrl && (
-                  <Image
+                  <ExpoImage
                     source={{ uri: providerLogoUrl }}
                     style={styles.previewImage}
-                    resizeMode="cover"
+                    contentFit="contain"
+                    cachePolicy="memory-disk"
+                    transition={100}
                   />
                 )}
 
@@ -1032,16 +1057,30 @@ export default function AdminSimCardScreen() {
                 filteredProviders.map((providerRow) => {
                   const linkedCount = cards.filter((x) => x.provider_id === providerRow.id).length;
                   const preset = getProviderPreset(providerRow.provider_key);
+                  const providerThumb = providerRow.logo_url || preset.logo || FALLBACK_IMAGE;
+                  const canShowThumb = !!providerThumb && !failedProviderThumbs[providerRow.id];
 
                   return (
                     <View key={providerRow.id} style={styles.cardListItem}>
-                      <Image
-                        source={{
-                          uri: providerRow.logo_url || preset.logo || FALLBACK_IMAGE,
-                        }}
-                        style={styles.cardThumb}
-                        resizeMode="cover"
-                      />
+                      {canShowThumb ? (
+                        <ExpoImage
+                          source={{ uri: providerThumb }}
+                          style={styles.cardThumb}
+                          contentFit="contain"
+                          cachePolicy="memory-disk"
+                          transition={100}
+                          onError={() =>
+                            setFailedProviderThumbs((prev) => ({
+                              ...prev,
+                              [providerRow.id]: true,
+                            }))
+                          }
+                        />
+                      ) : (
+                        <View style={[styles.cardThumb, styles.thumbFallback]}>
+                          <Ionicons name="images-outline" size={34} color="#E8C35A" />
+                        </View>
+                      )}
 
                       <View style={styles.cardInfo}>
                         <Text style={styles.cardItemTitle}>{providerRow.title || '-'}</Text>
@@ -1124,7 +1163,7 @@ export default function AdminSimCardScreen() {
                     setSelectedProviderId(next.id);
                   }}
                 >
-                  <Image
+                  <ExpoImage
                     source={{
                       uri:
                         selectedProvider?.logo_url ||
@@ -1132,7 +1171,9 @@ export default function AdminSimCardScreen() {
                         FALLBACK_IMAGE,
                     }}
                     style={styles.providerLogoSmall}
-                    resizeMode="contain"
+                    contentFit="contain"
+                    cachePolicy="memory-disk"
+                    transition={100}
                   />
                   <Text style={styles.providerPickerText}>
                     {selectedProvider?.title || 'Choose Provider'}
@@ -1230,10 +1271,12 @@ export default function AdminSimCardScreen() {
                 </View>
 
                 {!!cardImageUrl && (
-                  <Image
+                  <ExpoImage
                     source={{ uri: cardImageUrl }}
                     style={styles.previewImage}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                    transition={100}
                   />
                 )}
 
@@ -1299,18 +1342,31 @@ export default function AdminSimCardScreen() {
                     providerRow?.provider_key || card.provider || card.provider_title
                   );
 
+                  const cardThumb =
+                    card.card_image_url || card.item_image_url || card.image_url || FALLBACK_IMAGE;
+                  const canShowThumb = !!cardThumb && !failedCardThumbs[card.id];
+
                   return (
                     <View key={card.id} style={styles.cardListItem}>
-                      <Image
-                        source={{
-                          uri:
-                            card.card_image_url ||
-                            card.image_url ||
-                            FALLBACK_IMAGE,
-                        }}
-                        style={styles.cardThumb}
-                        resizeMode="cover"
-                      />
+                      {canShowThumb ? (
+                        <ExpoImage
+                          source={{ uri: cardThumb }}
+                          style={styles.cardThumb}
+                          contentFit="cover"
+                          cachePolicy="memory-disk"
+                          transition={100}
+                          onError={() =>
+                            setFailedCardThumbs((prev) => ({
+                              ...prev,
+                              [card.id]: true,
+                            }))
+                          }
+                        />
+                      ) : (
+                        <View style={[styles.cardThumb, styles.thumbFallback]}>
+                          <Ionicons name="card-outline" size={34} color="#E8C35A" />
+                        </View>
+                      )}
 
                       <View style={styles.cardInfo}>
                         <Text style={styles.cardItemTitle}>{card.title || '-'}</Text>
@@ -1741,6 +1797,10 @@ const styles = StyleSheet.create({
     height: 136,
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
+  },
+  thumbFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   cardInfo: {
