@@ -19,17 +19,17 @@ import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 
-type GiftCategoryKey =
-  | 'pubg_uc'
-  | 'free_fire'
-  | 'itunes'
-  | 'google_play'
-  | 'steam'
-  | 'playstation'
-  | 'xbox'
-  | 'amazon'
-  | 'netflix'
-  | 'spotify';
+interface GiftCardCategoryRow {
+  id: string;
+  title?: string | null;
+  slug?: string | null;
+  subtitle?: string | null;
+  cover_image_url?: string | null;
+  icon_name?: string | null;
+  is_active?: boolean | null;
+  sort_order?: number | null;
+  created_at?: string | null;
+}
 
 interface GiftCardRow {
   id: string;
@@ -46,10 +46,12 @@ interface GiftCardRow {
   is_active?: boolean | null;
   sort_order?: number | null;
   category_id?: string | null;
+  created_at?: string | null;
 }
 
 interface GiftCategory {
-  key: GiftCategoryKey;
+  key: string;
+  id?: string | null;
   title: string;
   subtitle: string;
   image: string | null;
@@ -58,6 +60,7 @@ interface GiftCategory {
   soft: string;
   border: string;
   count?: number;
+  sort_order?: number;
 }
 
 const UI = {
@@ -73,109 +76,6 @@ const UI = {
   yellowDark: '#9A7B00',
   yellowSoft: '#FFF6D9',
 };
-
-const FALLBACK_CATEGORIES: GiftCategory[] = [
-  {
-    key: 'pubg_uc',
-    title: 'PUBG UC',
-    subtitle: 'UC Cards',
-    image: null,
-    icon: 'game-controller-outline',
-    color: '#B7791F',
-    soft: '#FFF7E6',
-    border: '#F4D9A6',
-  },
-  {
-    key: 'free_fire',
-    title: 'Free Fire',
-    subtitle: 'Diamond Cards',
-    image: null,
-    icon: 'flame-outline',
-    color: '#EA580C',
-    soft: '#FFF4ED',
-    border: '#FED7AA',
-  },
-  {
-    key: 'itunes',
-    title: 'iTunes',
-    subtitle: 'Apple Gift Cards',
-    image: null,
-    icon: 'logo-apple',
-    color: '#111827',
-    soft: '#F3F4F6',
-    border: '#E5E7EB',
-  },
-  {
-    key: 'google_play',
-    title: 'Google Play',
-    subtitle: 'Play Store Cards',
-    image: null,
-    icon: 'logo-google-playstore',
-    color: '#2563EB',
-    soft: '#EFF6FF',
-    border: '#BFDBFE',
-  },
-  {
-    key: 'steam',
-    title: 'Steam',
-    subtitle: 'Gaming Cards',
-    image: null,
-    icon: 'game-controller-outline',
-    color: '#1D4ED8',
-    soft: '#EFF6FF',
-    border: '#BFDBFE',
-  },
-  {
-    key: 'playstation',
-    title: 'PlayStation',
-    subtitle: 'PS Cards',
-    image: null,
-    icon: 'logo-playstation',
-    color: '#1D4ED8',
-    soft: '#EFF6FF',
-    border: '#BFDBFE',
-  },
-  {
-    key: 'xbox',
-    title: 'Xbox',
-    subtitle: 'Xbox Cards',
-    image: null,
-    icon: 'logo-xbox',
-    color: '#15803D',
-    soft: '#F0FDF4',
-    border: '#BBF7D0',
-  },
-  {
-    key: 'amazon',
-    title: 'Amazon',
-    subtitle: 'Shopping Cards',
-    image: null,
-    icon: 'bag-handle-outline',
-    color: '#D97706',
-    soft: '#FFFBEB',
-    border: '#FDE68A',
-  },
-  {
-    key: 'netflix',
-    title: 'Netflix',
-    subtitle: 'Streaming Cards',
-    image: null,
-    icon: 'film-outline',
-    color: '#DC2626',
-    soft: '#FEF2F2',
-    border: '#FECACA',
-  },
-  {
-    key: 'spotify',
-    title: 'Spotify',
-    subtitle: 'Music Cards',
-    image: null,
-    icon: 'musical-notes-outline',
-    color: '#16A34A',
-    soft: '#F0FDF4',
-    border: '#BBF7D0',
-  },
-];
 
 function getCurrentLang() {
   const raw = String((i18n as any)?.language || (i18n as any)?.locale || 'en').toLowerCase();
@@ -265,88 +165,112 @@ function useT() {
   return TEXTS[lang] || TEXTS.en;
 }
 
-function normalizeCategory(value?: string | null): GiftCategoryKey | null {
-  const raw = String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_')
-    .replace(/-/g, '_');
-
-  if (
-    [
-      'pubg_uc',
-      'free_fire',
-      'itunes',
-      'google_play',
-      'steam',
-      'playstation',
-      'xbox',
-      'amazon',
-      'netflix',
-      'spotify',
-    ].includes(raw)
-  ) {
-    return raw as GiftCategoryKey;
-  }
-
-  if (['pubg', 'pubguc', 'uc', 'pubg_card'].includes(raw)) return 'pubg_uc';
-  if (['freefire', 'ff'].includes(raw)) return 'free_fire';
-  if (['googleplay', 'playstore'].includes(raw)) return 'google_play';
-  if (['ps', 'psn', 'ps_card'].includes(raw)) return 'playstation';
-
-  return null;
-}
-
 function formatIQD(value?: number | null) {
   const num = Number(value || 0);
   const rounded = Math.round(num);
   return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-function getCategoryMeta(
-  key: GiftCategoryKey,
-  dbImage?: string | null,
-  dbTitle?: string | null
-): GiftCategory {
-  const found = FALLBACK_CATEGORIES.find((item) => item.key === key);
+function normalizeKey(value?: string | null) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/-/g, '_');
+}
 
-  if (!found) {
-    return {
-      key,
-      title: dbTitle || 'Gift Card',
-      subtitle: 'Gift Cards',
-      image: dbImage || null,
-      icon: 'gift-outline',
-      color: '#8B5CF6',
-      soft: '#F5F3FF',
-      border: '#E9D5FF',
-    };
+function titleFromKey(value?: string | null) {
+  const raw = String(value || '').trim();
+  if (!raw) return 'Gift Card';
+
+  return raw
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function pickIconFromSlug(slug?: string | null): keyof typeof Ionicons.glyphMap {
+  const key = normalizeKey(slug);
+
+  if (key.includes('pubg') || key.includes('game')) return 'game-controller-outline';
+  if (key.includes('free_fire') || key.includes('fire')) return 'flame-outline';
+  if (key.includes('itunes') || key.includes('apple')) return 'logo-apple';
+  if (key.includes('google') || key.includes('play')) return 'logo-google-playstore';
+  if (key.includes('playstation') || key === 'ps' || key.includes('psn')) return 'logo-playstation';
+  if (key.includes('xbox')) return 'logo-xbox';
+  if (key.includes('spotify') || key.includes('music')) return 'musical-notes-outline';
+  if (key.includes('netflix') || key.includes('movie') || key.includes('film')) return 'film-outline';
+  if (key.includes('amazon') || key.includes('shop')) return 'bag-handle-outline';
+  if (key.includes('steam')) return 'desktop-outline';
+  if (key.includes('tiktok')) return 'logo-tiktok';
+  return 'gift-outline';
+}
+
+function pickThemeFromSlug(slug?: string | null) {
+  const key = normalizeKey(slug);
+
+  if (key.includes('pubg') || key.includes('amazon')) {
+    return { color: '#B7791F', soft: '#FFF7E6', border: '#F4D9A6' };
+  }
+  if (key.includes('fire')) {
+    return { color: '#EA580C', soft: '#FFF4ED', border: '#FED7AA' };
+  }
+  if (key.includes('apple') || key.includes('itunes')) {
+    return { color: '#111827', soft: '#F3F4F6', border: '#E5E7EB' };
+  }
+  if (key.includes('google') || key.includes('play') || key.includes('steam') || key.includes('playstation')) {
+    return { color: '#2563EB', soft: '#EFF6FF', border: '#BFDBFE' };
+  }
+  if (key.includes('xbox') || key.includes('spotify')) {
+    return { color: '#16A34A', soft: '#F0FDF4', border: '#BBF7D0' };
+  }
+  if (key.includes('netflix') || key.includes('tiktok')) {
+    return { color: '#DC2626', soft: '#FEF2F2', border: '#FECACA' };
   }
 
-  return {
-    ...found,
-    title: dbTitle || found.title,
-    image: dbImage || found.image,
-  };
+  return { color: '#8B5CF6', soft: '#F5F3FF', border: '#E9D5FF' };
 }
 
-function getCategoryPreviewImage(row: GiftCardRow) {
-  return row.cover_image_url || row.category_image_url || row.image_url || row.item_image_url || null;
+function getCategoryPreviewImage(card: GiftCardRow, category?: GiftCardCategoryRow | null) {
+  return (
+    category?.cover_image_url ||
+    card.cover_image_url ||
+    card.category_image_url ||
+    card.image_url ||
+    card.item_image_url ||
+    null
+  );
 }
 
-function getItemImage(row: GiftCardRow) {
-  return row.item_image_url || row.image_url || row.cover_image_url || null;
+function getItemImage(card: GiftCardRow, category?: GiftCardCategoryRow | null) {
+  return (
+    card.item_image_url ||
+    card.image_url ||
+    card.cover_image_url ||
+    category?.cover_image_url ||
+    null
+  );
 }
 
-function getItemTitle(row: GiftCardRow, selectedMeta?: GiftCategory | null) {
+function getItemTitle(
+  row: GiftCardRow,
+  selectedMeta?: GiftCategory | null,
+  categoryRow?: GiftCardCategoryRow | null
+) {
   if (row.title && row.title.trim()) return row.title.trim();
 
   const amount = Number(row.amount || 0);
-  const categoryName = selectedMeta?.title || row.brand || row.category || 'Gift Card';
+  const categoryName =
+    selectedMeta?.title ||
+    categoryRow?.title ||
+    row.brand ||
+    row.category ||
+    'Gift Card';
+
+  const key = normalizeKey(categoryRow?.slug || row.category || row.brand);
 
   if (amount > 0) {
-    if (selectedMeta?.key === 'pubg_uc') return `${formatIQD(amount)} UC`;
-    if (selectedMeta?.key === 'free_fire') return `${formatIQD(amount)} Diamond`;
+    if (key.includes('pubg')) return `${formatIQD(amount)} UC`;
+    if (key.includes('free_fire')) return `${formatIQD(amount)} Diamond`;
     return `${formatIQD(amount)} ${categoryName}`;
   }
 
@@ -359,24 +283,35 @@ export default function GiftCardsScreen() {
   const t = useT();
 
   const [giftCards, setGiftCards] = useState<GiftCardRow[]>([]);
+  const [giftCategories, setGiftCategories] = useState<GiftCardCategoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<GiftCategoryKey | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const fetchGiftCards = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('gift_cards')
-        .select('*')
-        .eq('is_active', true)
-        .order('category', { ascending: true })
-        .order('sort_order', { ascending: true })
-        .order('price_iqd', { ascending: true });
+      const [cardsRes, categoriesRes] = await Promise.all([
+        supabase
+          .from('gift_cards')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .order('price_iqd', { ascending: true })
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('gift_card_categories')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: false }),
+      ]);
 
-      if (error) throw error;
+      if (cardsRes.error) throw cardsRes.error;
+      if (categoriesRes.error) throw categoriesRes.error;
 
-      setGiftCards((data || []) as GiftCardRow[]);
+      setGiftCards((cardsRes.data || []) as GiftCardRow[]);
+      setGiftCategories((categoriesRes.data || []) as GiftCardCategoryRow[]);
     } catch (error: any) {
       console.log('gift-cards screen error:', error);
       Alert.alert(
@@ -384,6 +319,7 @@ export default function GiftCardsScreen() {
         error?.message || 'Could not load gift cards.'
       );
       setGiftCards([]);
+      setGiftCategories([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -399,43 +335,79 @@ export default function GiftCardsScreen() {
     await fetchGiftCards();
   };
 
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, GiftCardCategoryRow>();
+    for (const category of giftCategories) {
+      map.set(category.id, category);
+    }
+    return map;
+  }, [giftCategories]);
+
   const categories = useMemo(() => {
-    const map = new Map<GiftCategoryKey, GiftCategory>();
+    const map = new Map<string, GiftCategory>();
+
+    for (const category of giftCategories) {
+      const key = category.id;
+      const theme = pickThemeFromSlug(category.slug || category.title);
+      const count = giftCards.filter(
+        (card) => card.is_active !== false && card.category_id === category.id
+      ).length;
+
+      map.set(key, {
+        key,
+        id: category.id,
+        title: String(category.title || titleFromKey(category.slug)),
+        subtitle: String(category.subtitle || 'Gift Cards'),
+        image: category.cover_image_url || null,
+        icon: (category.icon_name as keyof typeof Ionicons.glyphMap) || pickIconFromSlug(category.slug),
+        color: theme.color,
+        soft: theme.soft,
+        border: theme.border,
+        count,
+        sort_order: Number(category.sort_order || 0),
+      });
+    }
 
     for (const row of giftCards) {
-      const key = normalizeCategory(row.category) || normalizeCategory(row.brand) || null;
-      if (!key) continue;
+      const fallbackKey =
+        row.category_id ||
+        normalizeKey(row.category) ||
+        normalizeKey(row.brand) ||
+        row.id;
 
-      const previewImage = getCategoryPreviewImage(row);
-
-      if (!map.has(key)) {
-        map.set(key, {
-          ...getCategoryMeta(key, previewImage, row.brand || row.title),
+      if (!map.has(fallbackKey)) {
+        const slug = row.category || row.brand || row.title;
+        const theme = pickThemeFromSlug(slug);
+        map.set(fallbackKey, {
+          key: fallbackKey,
+          id: row.category_id || null,
+          title: titleFromKey(row.brand || row.category || row.title),
+          subtitle: 'Gift Cards',
+          image: getCategoryPreviewImage(row, null),
+          icon: pickIconFromSlug(slug),
+          color: theme.color,
+          soft: theme.soft,
+          border: theme.border,
           count: 1,
+          sort_order: Number(row.sort_order || 0),
         });
       } else {
-        const current = map.get(key)!;
-        map.set(key, {
+        const current = map.get(fallbackKey)!;
+        map.set(fallbackKey, {
           ...current,
           count: Number(current.count || 0) + 1,
-          image: current.image || previewImage || null,
+          image: current.image || getCategoryPreviewImage(row, null),
         });
       }
     }
 
-    if (map.size === 0) return FALLBACK_CATEGORIES;
-
-    const ordered: GiftCategory[] = [];
-    for (const item of FALLBACK_CATEGORIES) {
-      if (map.has(item.key)) ordered.push(map.get(item.key)!);
-    }
-
-    for (const entry of map.values()) {
-      if (!ordered.find((x) => x.key === entry.key)) ordered.push(entry);
-    }
-
-    return ordered;
-  }, [giftCards]);
+    return Array.from(map.values()).sort((a, b) => {
+      const aOrder = Number(a.sort_order || 0);
+      const bOrder = Number(b.sort_order || 0);
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.title.localeCompare(b.title);
+    });
+  }, [giftCategories, giftCards]);
 
   const filteredCategories = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -460,8 +432,13 @@ export default function GiftCardsScreen() {
 
     return giftCards
       .filter((row) => {
-        const key = normalizeCategory(row.category) || normalizeCategory(row.brand) || null;
-        const matchCategory = selectedCategory ? key === selectedCategory : true;
+        const categoryKey =
+          row.category_id ||
+          normalizeKey(row.category) ||
+          normalizeKey(row.brand) ||
+          row.id;
+
+        const matchCategory = selectedCategory ? categoryKey === selectedCategory : true;
 
         const title = String(row.title || '').toLowerCase();
         const brand = String(row.brand || '').toLowerCase();
@@ -488,19 +465,20 @@ export default function GiftCardsScreen() {
   }, [giftCards, selectedCategory, search]);
 
   const handleBuy = (item: GiftCardRow) => {
-    const itemImage = getItemImage(item) || '';
+    const categoryRow = item.category_id ? categoryMap.get(item.category_id) || null : null;
+    const itemImage = getItemImage(item, categoryRow) || '';
     const finalPriceIqd = Number(item.price_iqd || 0);
     const finalAmount = Number(item.amount || 0);
-    const finalProvider = String(item.brand || item.category || 'gift_card')
-      .toLowerCase()
-      .replace(/\s+/g, '_');
+    const finalProvider = normalizeKey(
+      categoryRow?.slug || item.brand || item.category || 'gift_card'
+    );
 
     router.push({
       pathname: '/(app)/buy-card' as any,
       params: {
         id: item.id,
         category_id: item.category_id || '',
-        name: getItemTitle(item, selectedMeta),
+        name: getItemTitle(item, selectedMeta, categoryRow),
         iqd_price: String(finalPriceIqd),
         price_iqd: String(finalPriceIqd),
         price: String(finalPriceIqd),
@@ -691,7 +669,8 @@ export default function GiftCardsScreen() {
 
             <View style={styles.cardsList}>
               {filteredItems.map((item) => {
-                const imageUri = getItemImage(item);
+                const categoryRow = item.category_id ? categoryMap.get(item.category_id) || null : null;
+                const imageUri = getItemImage(item, categoryRow);
 
                 return (
                   <TouchableOpacity
@@ -733,14 +712,14 @@ export default function GiftCardsScreen() {
 
                     <View style={styles.cardMiddle}>
                       <Text numberOfLines={2} style={styles.cardName}>
-                        {getItemTitle(item, selectedMeta)}
+                        {getItemTitle(item, selectedMeta, categoryRow)}
                       </Text>
 
                       <Text style={styles.cardAmountText}>
                         {t.amount}:{' '}
-                        {selectedMeta?.key === 'pubg_uc'
+                        {normalizeKey(categoryRow?.slug || item.category || item.brand).includes('pubg')
                           ? `${formatIQD(Number(item.amount || 0))} UC`
-                          : selectedMeta?.key === 'free_fire'
+                          : normalizeKey(categoryRow?.slug || item.category || item.brand).includes('free_fire')
                           ? `${formatIQD(Number(item.amount || 0))}`
                           : `${formatIQD(Number(item.amount || 0))}`}
                       </Text>
