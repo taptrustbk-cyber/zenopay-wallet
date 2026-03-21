@@ -19,14 +19,29 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
 
+type TopupProviderRow = {
+  id: string;
+  provider_key: string | null;
+  title: string | null;
+  subtitle: string | null;
+  logo_url: string | null;
+  is_active: boolean | null;
+  sort_order?: number | null;
+  created_at?: string | null;
+};
+
 type SimCardRow = {
   id: string;
+  provider_id?: string | null;
   title: string | null;
   provider: string | null;
+  provider_title?: string | null;
+  provider_logo_url?: string | null;
   amount_iqd: number | null;
   price_iqd: number | null;
   price_usd?: number | null;
   image_url: string | null;
+  card_image_url?: string | null;
   notes: string | null;
   is_active: boolean | null;
   sort_order?: number | null;
@@ -36,14 +51,6 @@ type SimCardRow = {
 type FilterType = 'all' | 'available' | 'unavailable';
 type SortType = 'newest' | 'oldest' | 'price_low' | 'price_high' | 'name_az';
 type AdminTab = 'providers' | 'cards';
-
-type ProviderRow = {
-  key: string;
-  label: string;
-  logo: string;
-  count: number;
-  activeCount: number;
-};
 
 const BUCKET_NAME = 'product-images';
 const FALLBACK_IMAGE =
@@ -68,21 +75,21 @@ const UI = {
   redBg: 'rgba(239,68,68,0.16)',
 };
 
-const PROVIDERS = [
+const PROVIDER_PRESETS = [
   {
     key: 'korek',
     label: 'Korek',
-    logo: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773717052421.jpg',
+    logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uu16k1t8p3uz3dpr3k6ic',
   },
   {
     key: 'zain',
     label: 'Zain',
-    logo: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773716686562.jpg',
+    logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uq8qjx7d0g47h9rv2jvzz',
   },
   {
     key: 'asiacell',
     label: 'AsiaCell',
-    logo: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773716476782.png',
+    logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/q8puaw0dyshx6jruwg83i',
   },
   {
     key: 'ftth',
@@ -107,19 +114,17 @@ function formatIQD(value?: number | null) {
   }).format(Number(value || 0));
 }
 
-function normalizeProvider(value: string) {
-  return value.trim().toLowerCase().replace(/\s+/g, '');
+function normalizeProviderKey(value: string) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '')
+    .replace(/-/g, '');
 }
 
-function getProviderInfo(provider?: string | null) {
-  const key = normalizeProvider(String(provider || ''));
-  return (
-    PROVIDERS.find((p) => p.key === key) || {
-      key,
-      label: provider || 'Provider',
-      logo: FALLBACK_IMAGE,
-    }
-  );
+function toNumber(value: string | number | null | undefined) {
+  return Number(String(value ?? '').replace(/,/g, '').trim() || 0);
 }
 
 function getSortLabel(sort: SortType) {
@@ -137,65 +142,123 @@ function getSortLabel(sort: SortType) {
   }
 }
 
+function getProviderPreset(key?: string | null) {
+  const normalized = normalizeProviderKey(String(key || ''));
+  return (
+    PROVIDER_PRESETS.find((p) => p.key === normalized) || {
+      key: normalized || 'provider',
+      label: key || 'Provider',
+      logo: FALLBACK_IMAGE,
+    }
+  );
+}
+
 export default function AdminSimCardScreen() {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('providers');
 
+  const [providers, setProviders] = useState<TopupProviderRow[]>([]);
   const [cards, setCards] = useState<SimCardRow[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState<'provider' | 'card' | null>(null);
 
   const [filter, setFilter] = useState<FilterType>('all');
   const [sortBy, setSortBy] = useState<SortType>('newest');
 
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingProviderId, setEditingProviderId] = useState<string | null>(null);
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
 
-  const [selectedProvider, setSelectedProvider] = useState('korek');
+  const [providerKey, setProviderKey] = useState('korek');
+  const [providerTitle, setProviderTitle] = useState('Korek');
+  const [providerSubtitle, setProviderSubtitle] = useState('');
+  const [providerLogoUrl, setProviderLogoUrl] = useState('');
+  const [providerSortOrder, setProviderSortOrder] = useState('0');
+  const [providerIsAvailable, setProviderIsAvailable] = useState(true);
 
-  const [provider, setProvider] = useState('korek');
-  const [title, setTitle] = useState('');
+  const [selectedProviderId, setSelectedProviderId] = useState('');
+  const [cardTitle, setCardTitle] = useState('');
   const [amountIqd, setAmountIqd] = useState('');
   const [priceIqd, setPriceIqd] = useState('');
   const [notes, setNotes] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [sortOrder, setSortOrder] = useState('0');
-  const [isAvailable, setIsAvailable] = useState(true);
+  const [cardImageUrl, setCardImageUrl] = useState('');
+  const [cardSortOrder, setCardSortOrder] = useState('0');
+  const [cardIsAvailable, setCardIsAvailable] = useState(true);
 
-  const selectedProviderInfo = getProviderInfo(provider);
-  const selectedCategoryInfo = getProviderInfo(selectedProvider);
+  const selectedProvider = useMemo(
+    () => providers.find((x) => x.id === selectedProviderId) || null,
+    [providers, selectedProviderId]
+  );
 
-  const resetForm = () => {
-    setEditingId(null);
-    setProvider(selectedProvider || 'korek');
-    setTitle('');
+  const selectedPreset = getProviderPreset(providerKey);
+
+  const resetProviderForm = () => {
+    setEditingProviderId(null);
+    setProviderKey('korek');
+    setProviderTitle('Korek');
+    setProviderSubtitle('');
+    setProviderLogoUrl('');
+    setProviderSortOrder('0');
+    setProviderIsAvailable(true);
+  };
+
+  const resetCardForm = (keepSelectedProvider = true) => {
+    setEditingCardId(null);
+    setCardTitle('');
     setAmountIqd('');
     setPriceIqd('');
     setNotes('');
-    setImageUrl('');
-    setSortOrder('0');
-    setIsAvailable(true);
+    setCardImageUrl('');
+    setCardSortOrder('0');
+    setCardIsAvailable(true);
+
+    if (!keepSelectedProvider) {
+      setSelectedProviderId(providers[0]?.id || '');
+      return;
+    }
+
+    if (!selectedProviderId && providers.length) {
+      setSelectedProviderId(providers[0].id);
+    }
   };
 
-  const fetchCards = async () => {
+  const fetchAll = async () => {
     try {
-      const { data, error } = await supabase
-        .from('topup_cards')
-        .select('*')
-        .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: false });
+      const [providersRes, cardsRes] = await Promise.all([
+        supabase
+          .from('topup_providers')
+          .select('*')
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('topup_cards')
+          .select('*')
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: false }),
+      ]);
 
-      if (error) throw error;
-      const rows = (data || []) as SimCardRow[];
-      setCards(rows);
+      if (providersRes.error) throw providersRes.error;
+      if (cardsRes.error) throw cardsRes.error;
 
-      if (!rows.some((x) => normalizeProvider(String(x.provider || '')) === selectedProvider)) {
-        setSelectedProvider(selectedProvider || 'korek');
+      const providersData = (providersRes.data || []) as TopupProviderRow[];
+      const cardsData = (cardsRes.data || []) as SimCardRow[];
+
+      setProviders(providersData);
+      setCards(cardsData);
+
+      if (!providersData.length) {
+        setSelectedProviderId('');
+      } else {
+        const stillExists = providersData.some((x) => x.id === selectedProviderId);
+        if (!selectedProviderId || !stillExists) {
+          setSelectedProviderId(providersData[0].id);
+        }
       }
     } catch (error: any) {
-      Alert.alert('Error', error?.message || 'Could not load SIM cards.');
+      Alert.alert('Error', error?.message || 'Could not load SIM cards data.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -203,45 +266,59 @@ export default function AdminSimCardScreen() {
   };
 
   useEffect(() => {
-    fetchCards();
+    fetchAll();
   }, []);
-
-  useEffect(() => {
-    if (!provider) setProvider(selectedProvider || 'korek');
-  }, [selectedProvider, provider]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchCards();
+    await fetchAll();
   };
 
-  const providerRows = useMemo<ProviderRow[]>(() => {
-    return PROVIDERS.map((item) => {
-      const related = cards.filter(
-        (card) => normalizeProvider(String(card.provider || '')) === item.key
-      );
+  const providerStats = useMemo(() => {
+    const all = providers.length;
+    const available = providers.filter((p) => !!p.is_active).length;
+    const unavailable = providers.filter((p) => !p.is_active).length;
+    return { all, available, unavailable };
+  }, [providers]);
 
-      return {
-        ...item,
-        count: related.length,
-        activeCount: related.filter((x) => !!x.is_active).length,
-      };
-    });
-  }, [cards]);
-
-  const stats = useMemo(() => {
+  const cardStats = useMemo(() => {
     const all = cards.length;
     const available = cards.filter((c) => !!c.is_active).length;
     const unavailable = cards.filter((c) => !c.is_active).length;
     return { all, available, unavailable };
   }, [cards]);
 
+  const filteredProviders = useMemo(() => {
+    let rows = [...providers];
+
+    if (filter === 'available') rows = rows.filter((x) => !!x.is_active);
+    if (filter === 'unavailable') rows = rows.filter((x) => !x.is_active);
+
+    switch (sortBy) {
+      case 'oldest':
+        rows.sort(
+          (a, b) =>
+            new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+        );
+        break;
+      case 'name_az':
+        rows.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+        break;
+      default:
+        rows.sort((a, b) => {
+          const aOrder = Number(a.sort_order || 0);
+          const bOrder = Number(b.sort_order || 0);
+          if (aOrder !== bOrder) return aOrder - bOrder;
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        });
+        break;
+    }
+
+    return rows;
+  }, [providers, filter, sortBy]);
+
   const filteredCards = useMemo(() => {
     let rows = [...cards];
-
-    rows = rows.filter(
-      (x) => normalizeProvider(String(x.provider || '')) === normalizeProvider(selectedProvider)
-    );
 
     if (filter === 'available') rows = rows.filter((x) => !!x.is_active);
     if (filter === 'unavailable') rows = rows.filter((x) => !x.is_active);
@@ -273,7 +350,7 @@ export default function AdminSimCardScreen() {
     }
 
     return rows;
-  }, [cards, filter, sortBy, selectedProvider]);
+  }, [cards, filter, sortBy]);
 
   const cycleSort = () => {
     setSortBy((prev) => {
@@ -285,9 +362,9 @@ export default function AdminSimCardScreen() {
     });
   };
 
-  const pickAndUploadImage = async () => {
+  const pickAndUploadImage = async (mode: 'provider' | 'card') => {
     try {
-      setUploading(true);
+      setUploading(mode);
 
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
@@ -307,12 +384,16 @@ export default function AdminSimCardScreen() {
       const asset = result.assets[0];
       const uri = asset.uri;
       const mimeType = asset.mimeType || 'image/jpeg';
-      const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
+      const ext = mimeType.includes('png')
+        ? 'png'
+        : mimeType.includes('webp')
+        ? 'webp'
+        : 'jpg';
 
       const response = await fetch(uri);
       const arrayBuffer = await response.arrayBuffer();
 
-      const fileName = `sim-card-${Date.now()}.${ext}`;
+      const fileName = `sim-${mode}-${Date.now()}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from(BUCKET_NAME)
@@ -324,22 +405,40 @@ export default function AdminSimCardScreen() {
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(fileName);
-      setImageUrl(data.publicUrl);
+
+      if (mode === 'provider') {
+        setProviderLogoUrl(data.publicUrl);
+      } else {
+        setCardImageUrl(data.publicUrl);
+      }
+
       Alert.alert('Success', 'Image uploaded successfully.');
     } catch (error: any) {
       Alert.alert('Upload error', error?.message || 'Could not upload image.');
     } finally {
-      setUploading(false);
+      setUploading(null);
     }
   };
 
-  const validateForm = () => {
-    if (!provider.trim()) {
-      Alert.alert('Missing provider', 'Please enter or choose a provider.');
+  const validateProviderForm = () => {
+    if (!providerTitle.trim()) {
+      Alert.alert('Missing title', 'Please enter provider title.');
       return false;
     }
-    if (!title.trim()) {
-      Alert.alert('Missing title', 'Please enter the SIM card title.');
+    if (!providerKey.trim()) {
+      Alert.alert('Missing key', 'Please enter provider key.');
+      return false;
+    }
+    return true;
+  };
+
+  const validateCardForm = () => {
+    if (!selectedProviderId.trim()) {
+      Alert.alert('Missing provider', 'Please choose a provider first.');
+      return false;
+    }
+    if (!cardTitle.trim()) {
+      Alert.alert('Missing title', 'Please enter SIM card title.');
       return false;
     }
     if (!amountIqd.trim()) {
@@ -353,41 +452,139 @@ export default function AdminSimCardScreen() {
     return true;
   };
 
-  const handleSubmit = async () => {
+  const syncCardsWithProvider = async (
+    providerId: string,
+    payload: {
+      provider_key: string;
+      title: string;
+      logo_url: string | null;
+      is_active: boolean;
+    }
+  ) => {
+    const { error } = await supabase
+      .from('topup_cards')
+      .update({
+        provider_id: providerId,
+        provider: payload.provider_key,
+        provider_title: payload.title,
+        provider_logo_url: payload.logo_url,
+        is_active: payload.is_active,
+      })
+      .eq('provider_id', providerId);
+
+    if (error) throw error;
+  };
+
+  const handleSubmitProvider = async () => {
     try {
-      if (!validateForm()) return;
+      if (!validateProviderForm()) return;
 
       setSubmitting(true);
 
+      const normalizedKey = normalizeProviderKey(providerKey.trim());
+      const preset = getProviderPreset(normalizedKey);
+
       const payload = {
-        title: title.trim(),
-        provider: normalizeProvider(provider),
-        amount_iqd: Number(String(amountIqd).replace(/,/g, '')),
-        price_iqd: Number(String(priceIqd).replace(/,/g, '')),
-        price_usd: Number(String(priceIqd).replace(/,/g, '')) / 1530,
-        image_url: imageUrl.trim() || null,
-        notes: notes.trim() || null,
-        sort_order: Number(String(sortOrder).replace(/,/g, '')) || 0,
-        is_active: isAvailable,
+        provider_key: normalizedKey,
+        title: providerTitle.trim() || preset.label,
+        subtitle: providerSubtitle.trim() || null,
+        logo_url: providerLogoUrl.trim() || preset.logo || null,
+        sort_order: toNumber(providerSortOrder),
+        is_active: providerIsAvailable,
       };
 
-      if (editingId) {
+      if (editingProviderId) {
+        const { error } = await supabase
+          .from('topup_providers')
+          .update(payload)
+          .eq('id', editingProviderId);
+
+        if (error) throw error;
+
+        await syncCardsWithProvider(editingProviderId, {
+          provider_key: payload.provider_key,
+          title: payload.title,
+          logo_url: payload.logo_url,
+          is_active: payload.is_active,
+        });
+
+        Alert.alert('Updated', 'Provider updated successfully.');
+      } else {
+        const { data, error } = await supabase
+          .from('topup_providers')
+          .insert(payload)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        if (data?.id) {
+          setSelectedProviderId(data.id);
+        }
+
+        Alert.alert('Added', 'Provider added successfully.');
+      }
+
+      resetProviderForm();
+      await fetchAll();
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Could not save provider.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSubmitCard = async () => {
+    try {
+      if (!validateCardForm()) return;
+
+      if (!selectedProvider) {
+        Alert.alert('Missing provider', 'Please choose a valid provider first.');
+        return;
+      }
+
+      setSubmitting(true);
+
+      const providerPreset = getProviderPreset(selectedProvider.provider_key || selectedProvider.title);
+      const normalizedProviderKey = normalizeProviderKey(
+        selectedProvider.provider_key || providerPreset.key
+      );
+
+      const itemImage = cardImageUrl.trim() || null;
+
+      const payload = {
+        provider_id: selectedProvider.id,
+        title: cardTitle.trim(),
+        provider: normalizedProviderKey,
+        provider_title: selectedProvider.title?.trim() || providerPreset.label,
+        provider_logo_url:
+          selectedProvider.logo_url?.trim() || providerPreset.logo || null,
+        amount_iqd: toNumber(amountIqd),
+        price_iqd: toNumber(priceIqd),
+        price_usd: toNumber(priceIqd) / 1530,
+        image_url: itemImage,
+        card_image_url: itemImage,
+        notes: notes.trim() || null,
+        sort_order: toNumber(cardSortOrder),
+        is_active: cardIsAvailable && !!selectedProvider.is_active,
+      };
+
+      if (editingCardId) {
         const { error } = await supabase
           .from('topup_cards')
           .update(payload)
-          .eq('id', editingId);
+          .eq('id', editingCardId);
 
         if (error) throw error;
         Alert.alert('Updated', 'SIM card updated successfully.');
       } else {
         const { error } = await supabase.from('topup_cards').insert(payload);
-
         if (error) throw error;
         Alert.alert('Added', 'SIM card added successfully.');
       }
 
-      resetForm();
-      await fetchCards();
+      resetCardForm();
+      await fetchAll();
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Could not save SIM card.');
     } finally {
@@ -395,22 +592,72 @@ export default function AdminSimCardScreen() {
     }
   };
 
-  const handleEdit = (card: SimCardRow) => {
+  const handleEditProvider = (providerRow: TopupProviderRow) => {
+    setActiveTab('providers');
+    setEditingProviderId(providerRow.id);
+    setProviderKey(String(providerRow.provider_key || ''));
+    setProviderTitle(String(providerRow.title || ''));
+    setProviderSubtitle(String(providerRow.subtitle || ''));
+    setProviderLogoUrl(String(providerRow.logo_url || ''));
+    setProviderSortOrder(String(providerRow.sort_order ?? 0));
+    setProviderIsAvailable(!!providerRow.is_active);
+  };
+
+  const handleEditCard = (card: SimCardRow) => {
     setActiveTab('cards');
-    setEditingId(card.id);
-    setProvider(String(card.provider || 'korek'));
-    setSelectedProvider(String(card.provider || 'korek'));
-    setTitle(String(card.title || ''));
+    setEditingCardId(card.id);
+    setSelectedProviderId(String(card.provider_id || ''));
+    setCardTitle(String(card.title || ''));
     setAmountIqd(String(card.amount_iqd || ''));
     setPriceIqd(String(card.price_iqd || ''));
     setNotes(String(card.notes || ''));
-    setImageUrl(String(card.image_url || ''));
-    setSortOrder(String(card.sort_order ?? 0));
-    setIsAvailable(!!card.is_active);
+    setCardImageUrl(String(card.card_image_url || card.image_url || ''));
+    setCardSortOrder(String(card.sort_order ?? 0));
+    setCardIsAvailable(!!card.is_active);
   };
 
-  const handleDelete = (id: string) => {
-    Alert.alert('Delete card', 'Are you sure you want to delete this card?', [
+  const handleDeleteProvider = (id: string) => {
+    const linkedCardsCount = cards.filter((x) => x.provider_id === id).length;
+
+    Alert.alert(
+      'Delete provider',
+      linkedCardsCount > 0
+        ? `This provider has ${linkedCardsCount} cards. Delete provider and all linked cards?`
+        : 'Are you sure you want to delete this provider?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (linkedCardsCount > 0) {
+                const { error: deleteCardsError } = await supabase
+                  .from('topup_cards')
+                  .delete()
+                  .eq('provider_id', id);
+
+                if (deleteCardsError) throw deleteCardsError;
+              }
+
+              const { error } = await supabase.from('topup_providers').delete().eq('id', id);
+              if (error) throw error;
+
+              if (editingProviderId === id) resetProviderForm();
+              if (selectedProviderId === id) setSelectedProviderId('');
+
+              await fetchAll();
+            } catch (error: any) {
+              Alert.alert('Error', error?.message || 'Could not delete provider.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteCard = (id: string) => {
+    Alert.alert('Delete card', 'Are you sure you want to delete this SIM card?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -419,7 +666,10 @@ export default function AdminSimCardScreen() {
           try {
             const { error } = await supabase.from('topup_cards').delete().eq('id', id);
             if (error) throw error;
-            await fetchCards();
+
+            if (editingCardId === id) resetCardForm();
+
+            await fetchAll();
           } catch (error: any) {
             Alert.alert('Error', error?.message || 'Could not delete card.');
           }
@@ -428,7 +678,31 @@ export default function AdminSimCardScreen() {
     ]);
   };
 
-  const quickToggleAvailability = async (card: SimCardRow) => {
+  const quickToggleProviderAvailability = async (providerRow: TopupProviderRow) => {
+    try {
+      const nextActive = !providerRow.is_active;
+
+      const { error } = await supabase
+        .from('topup_providers')
+        .update({ is_active: nextActive })
+        .eq('id', providerRow.id);
+
+      if (error) throw error;
+
+      await syncCardsWithProvider(providerRow.id, {
+        provider_key: normalizeProviderKey(String(providerRow.provider_key || '')),
+        title: String(providerRow.title || ''),
+        logo_url: providerRow.logo_url || null,
+        is_active: nextActive,
+      });
+
+      await fetchAll();
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Could not update availability.');
+    }
+  };
+
+  const quickToggleCardAvailability = async (card: SimCardRow) => {
     try {
       const { error } = await supabase
         .from('topup_cards')
@@ -436,13 +710,13 @@ export default function AdminSimCardScreen() {
         .eq('id', card.id);
 
       if (error) throw error;
-      await fetchCards();
+      await fetchAll();
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Could not update availability.');
     }
   };
 
-  const renderFilterBar = () => (
+  const renderFilterBar = (stats: { all: number; available: number; unavailable: number }) => (
     <View style={styles.filterBar}>
       <TouchableOpacity
         activeOpacity={0.9}
@@ -582,86 +856,296 @@ export default function AdminSimCardScreen() {
 
           {activeTab === 'providers' ? (
             <>
-              <Text style={styles.listTitle}>All Providers</Text>
-
-              {loading ? (
-                <View style={styles.loaderWrap}>
-                  <ActivityIndicator size="large" color="#FFFFFF" />
-                </View>
-              ) : (
-                providerRows.map((item) => (
-                  <TouchableOpacity
-                    key={item.key}
-                    activeOpacity={0.92}
-                    style={styles.providerListItem}
-                    onPress={() => {
-                      setSelectedProvider(item.key);
-                      setProvider(item.key);
-                      setActiveTab('cards');
-                      if (!editingId) {
-                        setTitle('');
-                        setAmountIqd('');
-                        setPriceIqd('');
-                        setNotes('');
-                        setImageUrl('');
-                        setSortOrder('0');
-                        setIsAvailable(true);
-                      }
-                    }}
-                  >
-                    <Image source={{ uri: item.logo || FALLBACK_IMAGE }} style={styles.providerThumb} />
-
-                    <View style={styles.providerInfo}>
-                      <Text style={styles.providerTitle}>{item.label}</Text>
-                      <Text style={styles.providerSub}>
-                        Total cards: {item.count}
-                      </Text>
-                      <Text style={styles.providerSub}>
-                        Available: {item.activeCount}
-                      </Text>
-                    </View>
-
-                    <View style={styles.providerOpenPill}>
-                      <Text style={styles.providerOpenText}>Open</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))
-              )}
-            </>
-          ) : (
-            <>
               <View style={styles.formCard}>
                 <Text style={styles.formTitle}>
-                  {editingId ? 'Edit Card' : 'Add New Card'}
+                  {editingProviderId ? 'Edit Provider' : 'Add New Provider'}
                 </Text>
 
                 <TouchableOpacity
                   activeOpacity={0.9}
                   style={styles.providerPicker}
                   onPress={() => {
-                    const currentIndex = PROVIDERS.findIndex(
-                      (x) => x.key === normalizeProvider(provider)
+                    const currentIndex = PROVIDER_PRESETS.findIndex(
+                      (x) => x.key === normalizeProviderKey(String(providerKey || ''))
                     );
-                    const next = PROVIDERS[(currentIndex + 1 + PROVIDERS.length) % PROVIDERS.length];
-                    setProvider(next.key);
-                    setSelectedProvider(next.key);
+                    const next =
+                      PROVIDER_PRESETS[
+                        (currentIndex + 1 + PROVIDER_PRESETS.length) % PROVIDER_PRESETS.length
+                      ];
+                    setProviderKey(next.key);
+                    setProviderTitle(next.label);
+                    if (!providerLogoUrl.trim()) {
+                      setProviderLogoUrl(next.logo);
+                    }
                   }}
                 >
                   <Image
-                    source={{ uri: selectedProviderInfo.logo || FALLBACK_IMAGE }}
+                    source={{ uri: providerLogoUrl || selectedPreset.logo || FALLBACK_IMAGE }}
                     style={styles.providerLogoSmall}
-                    resizeMode="cover"
+                    resizeMode="contain"
                   />
-                  <Text style={styles.providerPickerText}>{selectedProviderInfo.label}</Text>
+                  <Text style={styles.providerPickerText}>{providerTitle || selectedPreset.label}</Text>
                   <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.72)" />
                 </TouchableOpacity>
 
                 <TextInput
                   style={styles.input}
-                  placeholder="Card title (e.g. Korek Telekom 1000 IQD)"
+                  placeholder="Provider title (e.g. Korek)"
                   placeholderTextColor="rgba(255,255,255,0.42)"
-                  value={title}
-                  onChangeText={setTitle}
+                  value={providerTitle}
+                  onChangeText={setProviderTitle}
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Provider key (e.g. korek)"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  value={providerKey}
+                  onChangeText={setProviderKey}
+                  autoCapitalize="none"
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Subtitle (e.g. Mobile Cards)"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  value={providerSubtitle}
+                  onChangeText={setProviderSubtitle}
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Provider logo URL"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  value={providerLogoUrl}
+                  onChangeText={setProviderLogoUrl}
+                  autoCapitalize="none"
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Sort order (0,1,2...)"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  keyboardType="numeric"
+                  value={providerSortOrder}
+                  onChangeText={setProviderSortOrder}
+                />
+
+                <View style={styles.statusRow}>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={[styles.statusPill, providerIsAvailable && styles.statusPillActive]}
+                    onPress={() => setProviderIsAvailable(true)}
+                  >
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        providerIsAvailable && styles.statusPillTextActive,
+                      ]}
+                    >
+                      Available
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={[styles.statusPill, !providerIsAvailable && styles.statusPillInactive]}
+                    onPress={() => setProviderIsAvailable(false)}
+                  >
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        !providerIsAvailable && styles.statusPillTextInactive,
+                      ]}
+                    >
+                      Unavailable
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {!!providerLogoUrl && (
+                  <Image
+                    source={{ uri: providerLogoUrl }}
+                    style={styles.previewImage}
+                    resizeMode="cover"
+                  />
+                )}
+
+                <TouchableOpacity
+                  activeOpacity={0.92}
+                  style={styles.uploadButton}
+                  onPress={() => pickAndUploadImage('provider')}
+                  disabled={uploading !== null}
+                >
+                  {uploading === 'provider' ? (
+                    <ActivityIndicator color={UI.goldDark} />
+                  ) : (
+                    <>
+                      <Ionicons name="camera" size={24} color={UI.goldDark} />
+                      <Text style={styles.uploadButtonText}>Upload Provider Logo</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.92}
+                  style={styles.addButton}
+                  onPress={handleSubmitProvider}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <ActivityIndicator color={UI.goldDark} />
+                  ) : (
+                    <Text style={styles.addButtonText}>
+                      {editingProviderId ? 'Update Provider' : 'Add Provider'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                {editingProviderId && (
+                  <TouchableOpacity
+                    activeOpacity={0.92}
+                    style={styles.cancelEditButton}
+                    onPress={resetProviderForm}
+                  >
+                    <Text style={styles.cancelEditButtonText}>Cancel Edit</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <Text style={styles.listTitle}>All Providers</Text>
+              {renderFilterBar(providerStats)}
+
+              {loading ? (
+                <View style={styles.loaderWrap}>
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                </View>
+              ) : filteredProviders.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Ionicons name="images-outline" size={42} color={UI.gold} />
+                  <Text style={styles.emptyTitle}>No providers found</Text>
+                  <Text style={styles.emptyText}>
+                    Add your first provider from the form above.
+                  </Text>
+                </View>
+              ) : (
+                filteredProviders.map((providerRow) => {
+                  const linkedCount = cards.filter((x) => x.provider_id === providerRow.id).length;
+                  const preset = getProviderPreset(providerRow.provider_key);
+
+                  return (
+                    <View key={providerRow.id} style={styles.cardListItem}>
+                      <Image
+                        source={{
+                          uri: providerRow.logo_url || preset.logo || FALLBACK_IMAGE,
+                        }}
+                        style={styles.cardThumb}
+                        resizeMode="cover"
+                      />
+
+                      <View style={styles.cardInfo}>
+                        <Text style={styles.cardItemTitle}>{providerRow.title || '-'}</Text>
+                        <Text style={styles.cardItemPrice}>{providerRow.provider_key || '-'}</Text>
+
+                        {!!providerRow.subtitle && (
+                          <Text numberOfLines={2} style={styles.cardItemNotes}>
+                            {providerRow.subtitle}
+                          </Text>
+                        )}
+
+                        <Text numberOfLines={1} style={styles.linkedCountText}>
+                          Linked cards: {linkedCount}
+                        </Text>
+
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          onPress={() => quickToggleProviderAvailability(providerRow)}
+                          style={[
+                            styles.availabilityBadge,
+                            providerRow.is_active
+                              ? styles.availabilityBadgeOn
+                              : styles.availabilityBadgeOff,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.availabilityBadgeText,
+                              providerRow.is_active
+                                ? styles.availabilityBadgeTextOn
+                                : styles.availabilityBadgeTextOff,
+                            ]}
+                          >
+                            {providerRow.is_active ? 'Available' : 'Unavailable'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <View style={styles.actionsBox}>
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          style={styles.actionBtn}
+                          onPress={() => handleEditProvider(providerRow)}
+                        >
+                          <Ionicons name="pencil" size={18} color="#E8C35A" />
+                        </TouchableOpacity>
+
+                        <View style={styles.actionDivider} />
+
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          style={styles.actionBtn}
+                          onPress={() => handleDeleteProvider(providerRow.id)}
+                        >
+                          <Ionicons name="trash" size={18} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </>
+          ) : (
+            <>
+              <View style={styles.formCard}>
+                <Text style={styles.formTitle}>
+                  {editingCardId ? 'Edit Card' : 'Add New Card'}
+                </Text>
+
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={styles.providerPicker}
+                  onPress={() => {
+                    if (!providers.length) {
+                      Alert.alert('No providers', 'Please create a provider first.');
+                      return;
+                    }
+                    const currentIndex = providers.findIndex((x) => x.id === selectedProviderId);
+                    const next = providers[(currentIndex + 1 + providers.length) % providers.length];
+                    setSelectedProviderId(next.id);
+                  }}
+                >
+                  <Image
+                    source={{
+                      uri:
+                        selectedProvider?.logo_url ||
+                        getProviderPreset(selectedProvider?.provider_key || selectedProvider?.title).logo ||
+                        FALLBACK_IMAGE,
+                    }}
+                    style={styles.providerLogoSmall}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.providerPickerText}>
+                    {selectedProvider?.title || 'Choose Provider'}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.72)" />
+                </TouchableOpacity>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Card title (e.g. Korek Telecom 1000 IQD)"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  value={cardTitle}
+                  onChangeText={setCardTitle}
                 />
 
                 <View style={styles.doubleRow}>
@@ -689,15 +1173,15 @@ export default function AdminSimCardScreen() {
                     placeholder="Sort order"
                     placeholderTextColor="rgba(255,255,255,0.42)"
                     keyboardType="numeric"
-                    value={sortOrder}
-                    onChangeText={setSortOrder}
+                    value={cardSortOrder}
+                    onChangeText={setCardSortOrder}
                   />
                   <View style={styles.halfInput} />
                 </View>
 
                 <TextInput
                   style={[styles.input, styles.textarea]}
-                  placeholder="Notes / Description"
+                  placeholder="Notes"
                   placeholderTextColor="rgba(255,255,255,0.42)"
                   value={notes}
                   onChangeText={setNotes}
@@ -706,53 +1190,65 @@ export default function AdminSimCardScreen() {
 
                 <TextInput
                   style={styles.input}
-                  placeholder="Item image URL for this card"
+                  placeholder="Card image URL"
                   placeholderTextColor="rgba(255,255,255,0.42)"
-                  value={imageUrl}
-                  onChangeText={setImageUrl}
+                  value={cardImageUrl}
+                  onChangeText={setCardImageUrl}
                   autoCapitalize="none"
                 />
 
                 <View style={styles.statusRow}>
                   <TouchableOpacity
                     activeOpacity={0.9}
-                    style={[styles.statusPill, isAvailable && styles.statusPillActive]}
-                    onPress={() => setIsAvailable(true)}
+                    style={[styles.statusPill, cardIsAvailable && styles.statusPillActive]}
+                    onPress={() => setCardIsAvailable(true)}
                   >
-                    <Text style={[styles.statusPillText, isAvailable && styles.statusPillTextActive]}>
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        cardIsAvailable && styles.statusPillTextActive,
+                      ]}
+                    >
                       Available
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     activeOpacity={0.9}
-                    style={[styles.statusPill, !isAvailable && styles.statusPillInactive]}
-                    onPress={() => setIsAvailable(false)}
+                    style={[styles.statusPill, !cardIsAvailable && styles.statusPillInactive]}
+                    onPress={() => setCardIsAvailable(false)}
                   >
                     <Text
-                      style={[styles.statusPillText, !isAvailable && styles.statusPillTextInactive]}
+                      style={[
+                        styles.statusPillText,
+                        !cardIsAvailable && styles.statusPillTextInactive,
+                      ]}
                     >
                       Unavailable
                     </Text>
                   </TouchableOpacity>
                 </View>
 
-                {!!imageUrl && (
-                  <Image source={{ uri: imageUrl }} style={styles.previewImage} resizeMode="cover" />
+                {!!cardImageUrl && (
+                  <Image
+                    source={{ uri: cardImageUrl }}
+                    style={styles.previewImage}
+                    resizeMode="cover"
+                  />
                 )}
 
                 <TouchableOpacity
                   activeOpacity={0.92}
                   style={styles.uploadButton}
-                  onPress={pickAndUploadImage}
-                  disabled={uploading}
+                  onPress={() => pickAndUploadImage('card')}
+                  disabled={uploading !== null}
                 >
-                  {uploading ? (
+                  {uploading === 'card' ? (
                     <ActivityIndicator color={UI.goldDark} />
                   ) : (
                     <>
                       <Ionicons name="camera" size={24} color={UI.goldDark} />
-                      <Text style={styles.uploadButtonText}>Upload Item Image</Text>
+                      <Text style={styles.uploadButtonText}>Upload Card Image</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -760,31 +1256,31 @@ export default function AdminSimCardScreen() {
                 <TouchableOpacity
                   activeOpacity={0.92}
                   style={styles.addButton}
-                  onPress={handleSubmit}
+                  onPress={handleSubmitCard}
                   disabled={submitting}
                 >
                   {submitting ? (
                     <ActivityIndicator color={UI.goldDark} />
                   ) : (
                     <Text style={styles.addButtonText}>
-                      {editingId ? 'Update Card' : 'Add Card'}
+                      {editingCardId ? 'Update Card' : 'Add Card'}
                     </Text>
                   )}
                 </TouchableOpacity>
 
-                {editingId && (
+                {editingCardId && (
                   <TouchableOpacity
                     activeOpacity={0.92}
                     style={styles.cancelEditButton}
-                    onPress={resetForm}
+                    onPress={() => resetCardForm()}
                   >
                     <Text style={styles.cancelEditButtonText}>Cancel Edit</Text>
                   </TouchableOpacity>
                 )}
               </View>
 
-              <Text style={styles.listTitle}>{selectedCategoryInfo.label} Cards</Text>
-              {renderFilterBar()}
+              <Text style={styles.listTitle}>All Cards</Text>
+              {renderFilterBar(cardStats)}
 
               {loading ? (
                 <View style={styles.loaderWrap}>
@@ -794,43 +1290,56 @@ export default function AdminSimCardScreen() {
                 <View style={styles.emptyCard}>
                   <Ionicons name="card-outline" size={42} color={UI.gold} />
                   <Text style={styles.emptyTitle}>No cards found</Text>
-                  <Text style={styles.emptyText}>
-                    Add your first {selectedCategoryInfo.label} card from the form above.
-                  </Text>
+                  <Text style={styles.emptyText}>Add your first SIM card from the form above.</Text>
                 </View>
               ) : (
                 filteredCards.map((card) => {
-                  const providerInfo = getProviderInfo(card.provider);
+                  const providerRow = providers.find((x) => x.id === card.provider_id);
+                  const providerPreset = getProviderPreset(
+                    providerRow?.provider_key || card.provider || card.provider_title
+                  );
 
                   return (
                     <View key={card.id} style={styles.cardListItem}>
                       <Image
-                        source={{ uri: card.image_url || providerInfo.logo || FALLBACK_IMAGE }}
+                        source={{
+                          uri:
+                            card.card_image_url ||
+                            card.image_url ||
+                            FALLBACK_IMAGE,
+                        }}
                         style={styles.cardThumb}
                         resizeMode="cover"
                       />
 
                       <View style={styles.cardInfo}>
                         <Text style={styles.cardItemTitle}>{card.title || '-'}</Text>
+
                         <Text style={styles.cardItemPrice}>
                           Price {formatIQD(card.price_iqd)} IQD
                         </Text>
-                        <Text style={styles.cardItemAmount}>
-                          Amount {formatIQD(card.amount_iqd)} IQD
+
+                        <Text numberOfLines={2} style={styles.cardItemNotes}>
+                          {(providerRow?.title || card.provider_title || providerPreset.label || 'Provider') +
+                            ' • Amount ' +
+                            formatIQD(card.amount_iqd) +
+                            ' IQD'}
                         </Text>
 
                         {!!card.notes && (
-                          <Text numberOfLines={2} style={styles.cardItemNotes}>
+                          <Text numberOfLines={2} style={styles.cardDescriptionText}>
                             {card.notes}
                           </Text>
                         )}
 
                         <TouchableOpacity
                           activeOpacity={0.9}
-                          onPress={() => quickToggleAvailability(card)}
+                          onPress={() => quickToggleCardAvailability(card)}
                           style={[
                             styles.availabilityBadge,
-                            card.is_active ? styles.availabilityBadgeOn : styles.availabilityBadgeOff,
+                            card.is_active
+                              ? styles.availabilityBadgeOn
+                              : styles.availabilityBadgeOff,
                           ]}
                         >
                           <Text
@@ -850,7 +1359,7 @@ export default function AdminSimCardScreen() {
                         <TouchableOpacity
                           activeOpacity={0.9}
                           style={styles.actionBtn}
-                          onPress={() => handleEdit(card)}
+                          onPress={() => handleEditCard(card)}
                         >
                           <Ionicons name="pencil" size={18} color="#E8C35A" />
                         </TouchableOpacity>
@@ -860,7 +1369,7 @@ export default function AdminSimCardScreen() {
                         <TouchableOpacity
                           activeOpacity={0.9}
                           style={styles.actionBtn}
-                          onPress={() => handleDelete(card.id)}
+                          onPress={() => handleDeleteCard(card.id)}
                         >
                           <Ionicons name="trash" size={18} color="#EF4444" />
                         </TouchableOpacity>
@@ -1122,57 +1631,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  providerListItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(17,30,73,0.82)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 24,
-    padding: 14,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.20,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
-  },
-  providerThumb: {
-    width: 90,
-    height: 90,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-  },
-  providerInfo: {
-    flex: 1,
-    paddingHorizontal: 14,
-  },
-  providerTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  providerSub: {
-    color: 'rgba(255,255,255,0.62)',
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  providerOpenPill: {
-    minHeight: 38,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: UI.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  providerOpenText: {
-    color: UI.goldDark,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-
   filterBar: {
     minHeight: 58,
     borderRadius: 24,
@@ -1302,16 +1760,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 8,
   },
-  cardItemAmount: {
-    color: '#F4D981',
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
   cardItemNotes: {
     color: 'rgba(255,255,255,0.62)',
     fontSize: 14,
     lineHeight: 21,
+    marginBottom: 8,
+  },
+  linkedCountText: {
+    color: '#F4D981',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  cardDescriptionText: {
+    color: 'rgba(255,255,255,0.56)',
+    fontSize: 13,
+    lineHeight: 20,
     marginBottom: 12,
   },
 
