@@ -19,8 +19,6 @@ import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 
-type ProviderKey = 'korek' | 'zain' | 'asiacell' | 'ftth' | 'reber' | 'kurdtel';
-
 interface SimCardRow {
   id: string;
   title?: string | null;
@@ -29,13 +27,16 @@ interface SimCardRow {
   amount?: number | null;
   price_iqd?: number | null;
   image_url?: string | null;
+  item_image_url?: string | null;
+  provider_image_url?: string | null;
   notes?: string | null;
   is_active?: boolean | null;
   sort_order?: number | null;
+  created_at?: string | null;
 }
 
 interface ProviderCard {
-  key: ProviderKey;
+  key: string;
   title: string;
   subtitle: string;
   image: string | null;
@@ -43,6 +44,7 @@ interface ProviderCard {
   soft: string;
   border: string;
   count?: number;
+  sort_order?: number;
 }
 
 const UI = {
@@ -58,63 +60,6 @@ const UI = {
   yellowDark: '#9A7B00',
   yellowSoft: '#FFF6D9',
 };
-
-const PROVIDERS_META: ProviderCard[] = [
-  {
-    key: 'asiacell',
-    title: 'AsiaCell',
-    subtitle: 'Mobile Cards',
-    image: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773716476782.png',
-    color: '#D53434',
-    soft: '#FFF1F1',
-    border: '#F6CACA',
-  },
-  {
-    key: 'korek',
-    title: 'Korek',
-    subtitle: 'Mobile Cards',
-    image: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773717052421.jpg',
-    color: '#1570A6',
-    soft: '#EEF7FF',
-    border: '#CDE5F7',
-  },
-  {
-    key: 'zain',
-    title: 'Zain',
-    subtitle: 'Mobile Cards',
-    image: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773716686562.jpg',
-    color: '#0F766E',
-    soft: '#ECFEFF',
-    border: '#BEEEF1',
-  },
-  {
-    key: 'ftth',
-    title: 'FTTH',
-    subtitle: 'Internet Cards',
-    image: null,
-    color: '#2563EB',
-    soft: '#EFF6FF',
-    border: '#BFDBFE',
-  },
-  {
-    key: 'reber',
-    title: 'Reber',
-    subtitle: 'Mobile Cards',
-    image: null,
-    color: '#7C3AED',
-    soft: '#F5F3FF',
-    border: '#DDD6FE',
-  },
-  {
-    key: 'kurdtel',
-    title: 'Kurdtel',
-    subtitle: 'Mobile Cards',
-    image: null,
-    color: '#CA8A04',
-    soft: '#FEFCE8',
-    border: '#FDE68A',
-  },
-];
 
 function getCurrentLang() {
   const raw = String((i18n as any)?.language || (i18n as any)?.locale || 'en').toLowerCase();
@@ -200,17 +145,26 @@ function useT() {
   return TEXTS[lang] || TEXTS.en;
 }
 
-function normalizeProvider(value?: string | null): ProviderKey | null {
-  const raw = String(value || '')
+function normalizeProvider(value?: string | null) {
+  return String(value || '')
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, '');
+    .replace(/\s+/g, '')
+    .replace(/_/g, '')
+    .replace(/-/g, '');
+}
 
-  if (['korek', 'zain', 'asiacell', 'ftth', 'reber', 'kurdtel'].includes(raw)) {
-    return raw as ProviderKey;
-  }
+function prettyProviderName(value?: string | null) {
+  const raw = String(value || '').trim();
+  if (!raw) return 'Provider';
 
-  return null;
+  if (normalizeProvider(raw) === 'asiacell') return 'AsiaCell';
+  if (normalizeProvider(raw) === 'ftth') return 'FTTH';
+
+  return raw
+    .replace(/_/g, ' ')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
 function formatIQD(value?: number | null) {
@@ -219,25 +173,43 @@ function formatIQD(value?: number | null) {
   return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-function getProviderMeta(key: ProviderKey): ProviderCard {
-  return (
-    PROVIDERS_META.find((item) => item.key === key) || {
-      key,
-      title: key,
-      subtitle: 'Mobile Cards',
-      image: null,
-      color: '#1570A6',
-      soft: '#EEF7FF',
-      border: '#CDE5F7',
-    }
-  );
+function pickProviderTheme(key?: string | null) {
+  const normalized = normalizeProvider(key);
+
+  if (normalized.includes('asiacell')) {
+    return { color: '#D53434', soft: '#FFF1F1', border: '#F6CACA' };
+  }
+  if (normalized.includes('korek')) {
+    return { color: '#1570A6', soft: '#EEF7FF', border: '#CDE5F7' };
+  }
+  if (normalized.includes('zain')) {
+    return { color: '#0F766E', soft: '#ECFEFF', border: '#BEEEF1' };
+  }
+  if (normalized.includes('ftth')) {
+    return { color: '#2563EB', soft: '#EFF6FF', border: '#BFDBFE' };
+  }
+  if (normalized.includes('reber')) {
+    return { color: '#7C3AED', soft: '#F5F3FF', border: '#DDD6FE' };
+  }
+  if (normalized.includes('kurdtel')) {
+    return { color: '#CA8A04', soft: '#FEFCE8', border: '#FDE68A' };
+  }
+
+  return { color: '#1570A6', soft: '#EEF7FF', border: '#CDE5F7' };
+}
+
+function getProviderImageFromCard(row: SimCardRow) {
+  return row.provider_image_url || row.image_url || row.item_image_url || null;
+}
+
+function getItemImage(row: SimCardRow) {
+  return row.item_image_url || row.image_url || row.provider_image_url || null;
 }
 
 function getItemTitle(row: SimCardRow, providerMeta?: ProviderCard | null) {
   if (row.title && row.title.trim()) return row.title.trim();
 
-  const amount =
-    Number(row.amount_iqd || 0) || Number(row.amount || 0);
+  const amount = Number(row.amount_iqd || 0) || Number(row.amount || 0);
 
   if (amount > 0) {
     return `${formatIQD(amount)} IQD`;
@@ -247,7 +219,7 @@ function getItemTitle(row: SimCardRow, providerMeta?: ProviderCard | null) {
 }
 
 export default function SimCardsScreen() {
-  const { theme } = useTheme();
+  useTheme();
   const router = useRouter();
   const t = useT();
 
@@ -255,7 +227,7 @@ export default function SimCardsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [selectedProvider, setSelectedProvider] = useState<ProviderKey | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 
   const fetchSimCards = useCallback(async () => {
     try {
@@ -293,29 +265,43 @@ export default function SimCardsScreen() {
   };
 
   const providers = useMemo(() => {
-    const map = new Map<ProviderKey, ProviderCard>();
+    const map = new Map<string, ProviderCard>();
 
     for (const row of simCards) {
       const key = normalizeProvider(row.provider);
       if (!key) continue;
 
-      const meta = getProviderMeta(key);
+      const theme = pickProviderTheme(key);
+      const image = getProviderImageFromCard(row);
 
       if (!map.has(key)) {
         map.set(key, {
-          ...meta,
+          key,
+          title: prettyProviderName(row.provider),
+          subtitle: 'Mobile Cards',
+          image,
+          color: theme.color,
+          soft: theme.soft,
+          border: theme.border,
           count: 1,
+          sort_order: Number(row.sort_order || 0),
         });
       } else {
         const current = map.get(key)!;
         map.set(key, {
           ...current,
           count: Number(current.count || 0) + 1,
+          image: current.image || image,
         });
       }
     }
 
-    return Array.from(map.values());
+    return Array.from(map.values()).sort((a, b) => {
+      const aOrder = Number(a.sort_order || 0);
+      const bOrder = Number(b.sort_order || 0);
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.title.localeCompare(b.title);
+    });
   }, [simCards]);
 
   const filteredProviders = useMemo(() => {
@@ -333,7 +319,7 @@ export default function SimCardsScreen() {
 
   const selectedMeta = useMemo(() => {
     if (!selectedProvider) return null;
-    return providers.find((item) => item.key === selectedProvider) || getProviderMeta(selectedProvider);
+    return providers.find((item) => item.key === selectedProvider) || null;
   }, [providers, selectedProvider]);
 
   const filteredItems = useMemo(() => {
@@ -380,8 +366,8 @@ export default function SimCardsScreen() {
         provider: String(item.provider || 'sim').toLowerCase(),
         amount: String(finalAmount),
         type: 'sim',
-        image: String(item.image_url || ''),
-        image_url: String(item.image_url || ''),
+        image: String(getItemImage(item) || ''),
+        image_url: String(getItemImage(item) || ''),
       },
     });
   };
@@ -566,7 +552,7 @@ export default function SimCardsScreen() {
 
             <View style={styles.cardsList}>
               {filteredItems.map((item) => {
-                const imageUri = item.image_url || '';
+                const imageUri = getItemImage(item) || '';
 
                 return (
                   <TouchableOpacity
