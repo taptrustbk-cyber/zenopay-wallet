@@ -12,6 +12,7 @@ import {
   I18nManager,
 } from 'react-native';
 import { Asset } from 'expo-asset';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery } from '@tanstack/react-query';
 import { formatIQD } from '@/lib/format';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,24 +26,49 @@ const PHONE_IPHONE = require('@/assets/images/iphone17-promax-orange.png');
 const PHONE_SAMSUNG = require('@/assets/images/samsung-s25-ultra.png');
 
 const UI = {
-  bg: '#F5F6FA',
+  bg: '#EEF4FF',
+  bgSoft: '#F7FAFF',
   card: '#FFFFFF',
-  text: '#111827',
-  text2: '#6B7280',
-  border: '#E5E7EB',
-  green: '#47B08A',
-  greenSoft: '#EAF7F1',
-  blueBanner: '#1E66D0',
-  iconGray: '#6B7280',
+  cardSoft: '#F8FBFF',
+  text: '#0F172A',
+  text2: '#64748B',
+  text3: '#94A3B8',
+  border: '#D9E5F6',
 
-  adBg: '#FFF8DB',
-  adBorder: '#F3D768',
-  adGold: '#F4C400',
-  adDark: '#1F2937',
-  adGreen: '#2E8B57',
-  adGreenDark: '#1F6A43',
-  adOlive: '#95A320',
-  adRed: '#EF4444',
+  blue: '#2563EB',
+  blue2: '#3B82F6',
+  blue3: '#60A5FA',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
+
+  iconGray: '#64748B',
+  white: '#FFFFFF',
+  black: '#0F172A',
+  orange: '#F97316',
+  orangeSoft: '#FFF1E8',
+  success: '#23864A',
+  successSoft: '#EAF8EF',
+  yellowSoft: '#FFF8DA',
+  yellowBorder: '#F4D98B',
+  purpleSoft: '#F4F3FF',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: '#7DA8E6',
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: '#8BA9D6',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
 };
 
 const __avatarVersionByUser: Record<string, number> = {};
@@ -71,9 +97,9 @@ const ActionCircle = ({
   label: string;
   onPress: () => void;
 }) => (
-  <TouchableOpacity style={styles.quickItem} onPress={onPress} activeOpacity={0.85}>
+  <TouchableOpacity style={styles.quickItem} onPress={onPress} activeOpacity={0.88}>
     <View style={styles.quickIconCircle}>
-      <Ionicons name={icon} size={22} color={UI.green} />
+      <Ionicons name={icon} size={22} color={UI.blueDark} />
     </View>
     <Text style={styles.quickLabel}>{label}</Text>
   </TouchableOpacity>
@@ -91,8 +117,8 @@ const NavItem = ({
   onPress: () => void;
 }) => (
   <TouchableOpacity style={styles.navItem} onPress={onPress} activeOpacity={0.85}>
-    <Ionicons name={icon} size={22} color={active ? UI.green : '#9CA3AF'} />
-    <Text style={[styles.navText, active && { color: UI.green }]}>{label}</Text>
+    <Ionicons name={icon} size={22} color={active ? UI.blue : '#9CA3AF'} />
+    <Text style={[styles.navText, active && { color: UI.blue }]}>{label}</Text>
   </TouchableOpacity>
 );
 
@@ -249,7 +275,7 @@ export default function DashboardScreen() {
           { backgroundColor: UI.bg, justifyContent: 'center', alignItems: 'center' },
         ]}
       >
-        <ActivityIndicator size="large" color={UI.green} />
+        <ActivityIndicator size="large" color={UI.blue} />
       </View>
     );
   }
@@ -262,8 +288,8 @@ export default function DashboardScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor={UI.green}
-            colors={[UI.green]}
+            tintColor={UI.blue}
+            colors={[UI.blue]}
           />
         }
       >
@@ -281,7 +307,7 @@ export default function DashboardScreen() {
               />
             ) : (
               <View style={styles.profileAvatarFallback}>
-                <Ionicons name="person" size={20} color={UI.green} />
+                <Ionicons name="person" size={20} color={UI.blue} />
               </View>
             )}
 
@@ -293,8 +319,16 @@ export default function DashboardScreen() {
           <View style={styles.headerRight} />
         </View>
 
-        {/* Balance green card */}
-        <View style={styles.balanceCard}>
+        {/* Balance Card */}
+        <LinearGradient
+          colors={['#5DA8FF', '#3B82F6', '#2563EB']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.balanceCard}
+        >
+          <View style={styles.balanceGlowOne} />
+          <View style={styles.balanceGlowTwo} />
+
           <View style={styles.balanceTopRow}>
             <Text style={styles.balanceTitle}>{i18n.t('accountBalance')}</Text>
 
@@ -307,7 +341,7 @@ export default function DashboardScreen() {
                 <Ionicons
                   name={isBalanceHidden ? 'eye-off' : 'eye'}
                   size={22}
-                  color="rgba(255,255,255,0.95)"
+                  color="rgba(255,255,255,0.96)"
                 />
               </TouchableOpacity>
             </View>
@@ -335,7 +369,7 @@ export default function DashboardScreen() {
               <Text style={styles.balanceCurrency}> {currencyText}</Text>
             </View>
           )}
-        </View>
+        </LinearGradient>
 
         {/* Quick actions */}
         <View style={styles.quickRow}>
@@ -367,6 +401,7 @@ export default function DashboardScreen() {
           activeOpacity={0.92}
           onPress={() => router.push('/(app)/mobile-shop' as any)}
         >
+          <View style={styles.mobileAdGlass} />
           <View style={[styles.mobileAdTopBadge, isRTL && styles.mobileAdTopBadgeRTL]}>
             <Text
               style={[styles.mobileAdTopBadgeText, isRTL && styles.textRTL]}
@@ -423,16 +458,16 @@ export default function DashboardScreen() {
               </Text>
 
               <View style={[styles.mobileAdPillsWrap, isRTL && styles.mobileAdPillsWrapRTL]}>
-                <View style={styles.mobileAdPillGreen}>
+                <View style={styles.mobileAdPillBlue}>
                   <Ionicons name="cash-outline" size={12} color="#FFFFFF" />
-                  <Text style={styles.mobileAdPillGreenText} numberOfLines={1}>
+                  <Text style={styles.mobileAdPillBlueText} numberOfLines={1}>
                     {i18n.t('mobileShopAdCash')}
                   </Text>
                 </View>
 
-                <View style={styles.mobileAdPillOlive}>
-                  <Ionicons name="calendar-outline" size={12} color="#FFFFFF" />
-                  <Text style={styles.mobileAdPillOliveText} numberOfLines={1}>
+                <View style={styles.mobileAdPillSoft}>
+                  <Ionicons name="calendar-outline" size={12} color={UI.blueDark} />
+                  <Text style={styles.mobileAdPillSoftText} numberOfLines={1}>
                     {i18n.t('mobileShopAdInstallment')}
                   </Text>
                 </View>
@@ -469,7 +504,12 @@ export default function DashboardScreen() {
               </Text>
             </View>
 
-            <View style={styles.mobileAdButton}>
+            <LinearGradient
+              colors={['#79B7FF', '#4C92F7', '#2563EB']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.mobileAdButton}
+            >
               <Text style={styles.mobileAdButtonText} numberOfLines={1}>
                 {i18n.t('mobileShopAdButton')}
               </Text>
@@ -478,7 +518,7 @@ export default function DashboardScreen() {
                 size={16}
                 color="#FFFFFF"
               />
-            </View>
+            </LinearGradient>
           </View>
         </TouchableOpacity>
 
@@ -496,7 +536,7 @@ export default function DashboardScreen() {
               activeOpacity={0.85}
             >
               <View style={styles.marketMiniIcon}>
-                <Ionicons name="card" size={22} color={UI.green} />
+                <Ionicons name="card" size={22} color={UI.blueDark} />
               </View>
               <Text style={styles.marketMiniLabel}>{i18n.t('market.topup')}</Text>
             </TouchableOpacity>
@@ -507,7 +547,7 @@ export default function DashboardScreen() {
               activeOpacity={0.85}
             >
               <View style={styles.marketMiniIcon}>
-                <Ionicons name="gift" size={22} color={UI.green} />
+                <Ionicons name="gift" size={22} color={UI.blueDark} />
               </View>
               <Text style={styles.marketMiniLabel}>{i18n.t('market.gift')}</Text>
             </TouchableOpacity>
@@ -518,7 +558,7 @@ export default function DashboardScreen() {
               activeOpacity={0.85}
             >
               <View style={styles.marketMiniIcon}>
-                <Ionicons name="phone-portrait" size={22} color={UI.green} />
+                <Ionicons name="phone-portrait" size={22} color={UI.blueDark} />
               </View>
               <Text style={styles.marketMiniLabel}>{i18n.t('market.mobile')}</Text>
             </TouchableOpacity>
@@ -529,7 +569,7 @@ export default function DashboardScreen() {
               activeOpacity={0.85}
             >
               <View style={styles.marketMiniIcon}>
-                <Ionicons name="airplane" size={22} color={UI.green} />
+                <Ionicons name="airplane" size={22} color={UI.blueDark} />
               </View>
               <Text style={styles.marketMiniLabel}>{i18n.t('market.travel')}</Text>
             </TouchableOpacity>
@@ -581,20 +621,24 @@ const styles = StyleSheet.create({
     maxWidth: '65%',
   },
   profileAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.8)',
+    ...SHADOWS.soft,
   },
   profileAvatarFallback: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: UI.greenSoft,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: UI.blueSoft,
     borderWidth: 1,
     borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOWS.soft,
   },
   profileName: {
     fontSize: 16,
@@ -607,33 +651,54 @@ const styles = StyleSheet.create({
   balanceCard: {
     marginHorizontal: 16,
     marginTop: 10,
-    borderRadius: 18,
-    padding: 16,
-    backgroundColor: UI.green,
+    borderRadius: 24,
+    padding: 18,
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+  balanceGlowOne: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    left: -70,
+    bottom: -90,
+  },
+  balanceGlowTwo: {
+    position: 'absolute',
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    right: -30,
+    top: -40,
   },
   balanceTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  balanceTitle: { color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: '800' },
+  balanceTitle: { color: 'rgba(255,255,255,0.92)', fontSize: 15, fontWeight: '800' },
   balanceRightRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 
   eyeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
 
-  balanceValueRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 12 },
-  balanceValue: { fontSize: 44, fontWeight: '900', color: '#fff' },
+  balanceValueRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 14 },
+  balanceValue: { fontSize: 42, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
   balanceCurrency: {
     fontSize: 17,
     fontWeight: '800',
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.92)',
     paddingBottom: 8,
   },
 
@@ -641,16 +706,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginHorizontal: 16,
-    marginTop: 16,
+    marginTop: 18,
   },
   quickItem: { alignItems: 'center', width: '23%' },
   quickIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: UI.greenSoft,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderWidth: 1,
+    borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOWS.soft,
   },
   quickLabel: {
     marginTop: 8,
@@ -662,30 +730,42 @@ const styles = StyleSheet.create({
 
   mobileAd: {
     marginHorizontal: 16,
-    marginTop: 16,
-    backgroundColor: UI.adBg,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 12,
+    marginTop: 18,
+    borderRadius: 24,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 14,
     borderWidth: 1,
-    borderColor: UI.adBorder,
+    borderColor: UI.border,
+    backgroundColor: UI.card,
     overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+  mobileAdGlass: {
+    position: 'absolute',
+    top: -30,
+    right: -20,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(220,235,255,0.35)',
   },
   mobileAdTopBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: UI.adGold,
+    backgroundColor: UI.yellowSoft,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
     marginBottom: 10,
     maxWidth: '82%',
+    borderWidth: 1,
+    borderColor: UI.yellowBorder,
   },
   mobileAdTopBadgeRTL: {
     alignSelf: 'flex-end',
   },
   mobileAdTopBadgeText: {
-    color: UI.adDark,
+    color: '#8A6A18',
     fontSize: 13,
     fontWeight: '900',
   },
@@ -714,7 +794,7 @@ const styles = StyleSheet.create({
   },
 
   mobileAdTitle: {
-    color: UI.adDark,
+    color: UI.text,
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '900',
@@ -736,44 +816,46 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
 
-  mobileAdPillGreen: {
+  mobileAdPillBlue: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    backgroundColor: UI.adGreen,
+    backgroundColor: UI.blue,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
     minWidth: 82,
   },
-  mobileAdPillGreenText: {
+  mobileAdPillBlueText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '900',
     textAlign: 'center',
   },
 
-  mobileAdPillOlive: {
+  mobileAdPillSoft: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    backgroundColor: UI.adOlive,
+    backgroundColor: UI.blueSoft,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
     minWidth: 104,
+    borderWidth: 1,
+    borderColor: UI.border,
   },
-  mobileAdPillOliveText: {
-    color: '#FFFFFF',
+  mobileAdPillSoftText: {
+    color: UI.blueDark,
     fontSize: 11,
     fontWeight: '900',
     textAlign: 'center',
   },
 
   mobileAdLine: {
-    color: '#374151',
+    color: UI.text2,
     fontSize: 12.5,
     lineHeight: 18,
     fontWeight: '700',
@@ -820,7 +902,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     bottom: 8,
-    backgroundColor: UI.adRed,
+    backgroundColor: UI.orange,
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 12,
@@ -859,7 +941,7 @@ const styles = StyleSheet.create({
 
   mobileAdPriceBox: {
     minHeight: 52,
-    backgroundColor: UI.adGreenDark,
+    backgroundColor: '#0F1F3D',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 16,
@@ -894,10 +976,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
-    backgroundColor: UI.adGreen,
     paddingHorizontal: 14,
     paddingVertical: 13,
     borderRadius: 999,
+    ...SHADOWS.soft,
   },
   mobileAdButtonText: {
     color: '#FFFFFF',
@@ -908,12 +990,13 @@ const styles = StyleSheet.create({
 
   marketLightCard: {
     marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 18,
+    marginTop: 14,
+    borderRadius: 22,
     backgroundColor: UI.card,
     padding: 16,
     borderWidth: 1,
     borderColor: UI.border,
+    ...SHADOWS.soft,
   },
   marketHeader: { marginBottom: 12 },
   marketTitle: { fontSize: 19, fontWeight: '900', color: UI.text },
@@ -933,20 +1016,21 @@ const styles = StyleSheet.create({
   },
   marketMiniItem: {
     width: '48%',
-    borderRadius: 14,
+    borderRadius: 18,
     padding: 14,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: UI.cardSoft,
     borderWidth: 1,
     borderColor: UI.border,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    ...SHADOWS.soft,
   },
   marketMiniIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: UI.greenSoft,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: UI.blueSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
