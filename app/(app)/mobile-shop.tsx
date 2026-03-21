@@ -69,22 +69,55 @@ type OrderForm = {
 type QuickFilterKey = 'all' | 'discount' | 'new' | 'special';
 
 const COLORS = {
-  bg: '#F7F8FC',
+  bg: '#EEF4FF',
+  bg2: '#F7FAFF',
   card: '#FFFFFF',
-  border: '#E5E7EB',
+  cardSoft: '#F8FBFF',
+  border: '#D9E5F6',
+  borderStrong: '#C9D9F1',
   text: '#0F172A',
-  textSecondary: '#6B7280',
-  yellow: '#F5C400',
-  yellowSoft: '#FFF7CC',
-  yellowDark: '#A16207',
+  textSecondary: '#64748B',
+  textMuted: '#94A3B8',
+
   blue: '#2563EB',
-  green: '#16A34A',
-  red: '#DC2626',
-  orange: '#EA580C',
-  black: '#0F172A',
+  blue2: '#3B82F6',
+  blue3: '#60A5FA',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
+  blueDark: '#1D4ED8',
+
+  sky: '#8EC5FF',
   white: '#FFFFFF',
+  black: '#0F172A',
+
+  success: '#16A34A',
+  successSoft: '#EAF8EF',
+  orange: '#F97316',
+  orangeSoft: '#FFF1E8',
+  red: '#DC2626',
+  redSoft: '#FEECEC',
+
   purple: '#7C3AED',
-  purpleSoft: '#EDE9FE',
+  purpleSoft: '#F1EBFF',
+
+  overlay: 'rgba(15, 23, 42, 0.20)',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: '#7DA8E6',
+    shadowOpacity: 0.10,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: '#8BA9D6',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
 };
 
 const ScreenHeaderOff = () => <Stack.Screen options={{ headerShown: false }} />;
@@ -198,7 +231,7 @@ const ProductImage = ({
   if (!uri) {
     return (
       <View style={[style, styles.imagePlaceholder]}>
-        <Ionicons name="phone-portrait-outline" size={iconSize} color={COLORS.textSecondary} />
+        <Ionicons name="phone-portrait-outline" size={iconSize} color={COLORS.textMuted} />
       </View>
     );
   }
@@ -705,10 +738,10 @@ export default function MobileShopScreen() {
   ];
 
   const quickFilters = [
-    { key: 'all' as QuickFilterKey, label: t('all', 'All'), icon: 'apps-outline', bg: '#FFF7CC' },
-    { key: 'discount' as QuickFilterKey, label: t('discounts', 'Discounts'), icon: 'pricetag-outline', bg: '#EFF6FF' },
-    { key: 'new' as QuickFilterKey, label: t('newModels', 'New Models'), icon: 'sparkles-outline', bg: '#ECFDF5' },
-    { key: 'special' as QuickFilterKey, label: t('specialOffers', 'Special Offers'), icon: 'megaphone-outline', bg: '#FEF2F2' },
+    { key: 'all' as QuickFilterKey, label: t('all', 'All'), icon: 'apps-outline', bg: '#FFF8DA' },
+    { key: 'discount' as QuickFilterKey, label: t('discounts', 'Discounts'), icon: 'pricetag-outline', bg: '#EDF5FF' },
+    { key: 'new' as QuickFilterKey, label: t('newModels', 'New Models'), icon: 'sparkles-outline', bg: '#EEF9FF' },
+    { key: 'special' as QuickFilterKey, label: t('specialOffers', 'Special Offers'), icon: 'megaphone-outline', bg: '#F4F3FF' },
   ];
 
   const renderProductCard = ({ item }: { item: MobileProduct }) => {
@@ -724,14 +757,16 @@ export default function MobileShopScreen() {
               : item.badge || (item.is_new ? t('new', 'New') : t('available', 'Available'));
 
     return (
-      <TouchableOpacity activeOpacity={0.94} style={styles.productCard} onPress={() => openCheckout(item)}>
+      <TouchableOpacity activeOpacity={0.95} style={styles.productCard} onPress={() => openCheckout(item)}>
+        <View style={styles.productCardGlow} />
+
         <View style={styles.productCardTop}>
           <View style={styles.badgePill}>
             <Text style={styles.badgeText}>{badgeText}</Text>
           </View>
 
           <TouchableOpacity style={styles.iconBubble} onPress={() => openCheckout(item)}>
-            <Ionicons name="cart-outline" size={16} color={COLORS.black} />
+            <Ionicons name="cart-outline" size={16} color={COLORS.blueDark} />
           </TouchableOpacity>
         </View>
 
@@ -776,29 +811,34 @@ export default function MobileShopScreen() {
     <View style={styles.container}>
       <ScreenHeaderOff />
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <LinearGradient colors={['#D8B100', '#F5C400', '#FFD84A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.topBar}>
+        <LinearGradient
+          colors={['#EEF5FF', '#E8F1FF', '#DDEBFF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.topBar}
+        >
           <TouchableOpacity onPress={() => router.back()} style={styles.topIconBtn}>
-            <Ionicons name={isRTL ? 'arrow-forward' : 'arrow-back'} size={22} color="#fff" />
+            <Ionicons name={isRTL ? 'arrow-forward' : 'arrow-back'} size={22} color={COLORS.blueDark} />
           </TouchableOpacity>
 
           <Text style={styles.topTitle}>{t('zenopayMobileShop', 'Zenopay Mobile Shop')}</Text>
 
           <TouchableOpacity onPress={() => setMenuOpen(true)} style={styles.topMenuBtn}>
-            <Ionicons name="ellipsis-horizontal" size={20} color="#7A5B00" />
+            <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.blueDark} />
           </TouchableOpacity>
         </LinearGradient>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshAll} tintColor={COLORS.blue} />}
         >
           <View style={styles.headerBlock}>
             <Text style={styles.sectionTitle}>{t('mobileShopHome', 'Home')}</Text>
 
             <View style={styles.searchRow}>
               <View style={styles.locationPill}>
-                <Ionicons name="location-outline" size={18} color={COLORS.orange} />
+                <Ionicons name="location-outline" size={18} color={COLORS.blue} />
                 <Text numberOfLines={1} style={styles.locationText}>
                   {locationLoading ? t('detectingLocation', 'Detecting...') : cityLabel}
                 </Text>
@@ -810,7 +850,7 @@ export default function MobileShopScreen() {
                   onChangeText={setSearch}
                   style={styles.searchInput}
                   placeholder={t('searchMobiles', 'Search for mobile model')}
-                  placeholderTextColor={COLORS.textSecondary}
+                  placeholderTextColor={COLORS.textMuted}
                   textAlign={isRTL ? 'right' : 'left'}
                 />
                 <Ionicons name="search-outline" size={20} color={COLORS.textSecondary} />
@@ -829,7 +869,7 @@ export default function MobileShopScreen() {
                     <Ionicons
                       name={getBrandIcon(item.key as BrandKey) as any}
                       size={15}
-                      color={active ? '#7A5B00' : COLORS.textSecondary}
+                      color={active ? COLORS.blueDark : COLORS.textSecondary}
                       style={{ marginEnd: 6 }}
                     />
                     <Text style={[styles.brandTabText, active && styles.brandTabTextActive]}>{item.label}</Text>
@@ -857,7 +897,15 @@ export default function MobileShopScreen() {
             })}
           </View>
 
-          <LinearGradient colors={['#FFE16A', '#F5C400']} style={styles.heroCard}>
+          <LinearGradient
+            colors={['#F7FBFF', '#EAF3FF', '#DCEBFF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroCard}
+          >
+            <View style={styles.heroBlurCircleOne} />
+            <View style={styles.heroBlurCircleTwo} />
+
             <View style={styles.heroLeft}>
               <Text style={styles.heroSmall}>{t('zenopayWallet', 'Zenopay Wallet')}</Text>
               <Text style={styles.heroTitle}>{t('latestMobileSeries', 'Latest Mobile Series')}</Text>
@@ -871,7 +919,14 @@ export default function MobileShopScreen() {
                   if (featuredProduct) openCheckout(featuredProduct);
                 }}
               >
-                <Text style={styles.heroButtonText}>{t('buyNow', 'Buy Now')}</Text>
+                <LinearGradient
+                  colors={['#7AB9FF', '#4A8DF5', '#2563EB']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.heroButtonGradient}
+                >
+                  <Text style={styles.heroButtonText}>{t('buyNow', 'Buy Now')}</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
 
@@ -881,8 +936,15 @@ export default function MobileShopScreen() {
           </LinearGradient>
 
           <View style={styles.walletCard}>
-            <Text style={styles.walletLabelCenter}>{t('yourWalletBalance', 'Your Wallet Balance')}</Text>
-            <Text style={styles.walletValueCenter}>{walletQuery.isLoading ? '...' : formatIQD(walletBalance)}</Text>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.92)', 'rgba(242,247,255,0.92)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.walletCardInner}
+            >
+              <Text style={styles.walletLabelCenter}>{t('yourWalletBalance', 'Your Wallet Balance')}</Text>
+              <Text style={styles.walletValueCenter}>{walletQuery.isLoading ? '...' : formatIQD(walletBalance)}</Text>
+            </LinearGradient>
           </View>
 
           <View style={styles.sectionHeader}>
@@ -907,7 +969,7 @@ export default function MobileShopScreen() {
             columnWrapperStyle={styles.gridRow}
             ListEmptyComponent={
               <View style={styles.emptyWrap}>
-                <Ionicons name="phone-portrait-outline" size={34} color={COLORS.textSecondary} />
+                <Ionicons name="phone-portrait-outline" size={34} color={COLORS.textMuted} />
                 <Text style={styles.emptyTitle}>{t('noProductsFound', 'No products found')}</Text>
                 <Text style={styles.emptySub}>{t('tryAnotherSearchOrBrand', 'Try another search or brand')}</Text>
               </View>
@@ -948,8 +1010,8 @@ export default function MobileShopScreen() {
 
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{t('completeMobilePurchase', 'Complete Mobile Purchase')}</Text>
-                <TouchableOpacity onPress={() => setCheckoutOpen(false)}>
-                  <Ionicons name="close" size={24} color={COLORS.text} />
+                <TouchableOpacity onPress={() => setCheckoutOpen(false)} style={styles.modalCloseBtn}>
+                  <Ionicons name="close" size={20} color={COLORS.text} />
                 </TouchableOpacity>
               </View>
 
@@ -1055,7 +1117,7 @@ export default function MobileShopScreen() {
                         onChangeText={(v) => setForm((p) => ({ ...p, city: v }))}
                         style={styles.input}
                         placeholder={t('enterCity', 'Enter city')}
-                        placeholderTextColor={COLORS.textSecondary}
+                        placeholderTextColor={COLORS.textMuted}
                       />
                     </View>
 
@@ -1066,7 +1128,7 @@ export default function MobileShopScreen() {
                         onChangeText={(v) => setForm((p) => ({ ...p, street: v }))}
                         style={styles.input}
                         placeholder={t('enterStreetAddress', 'Enter street address')}
-                        placeholderTextColor={COLORS.textSecondary}
+                        placeholderTextColor={COLORS.textMuted}
                       />
                     </View>
 
@@ -1077,7 +1139,7 @@ export default function MobileShopScreen() {
                         onChangeText={(v) => setForm((p) => ({ ...p, phoneNumber: v }))}
                         style={styles.input}
                         placeholder={t('enterPhoneNumber', 'Enter phone number')}
-                        placeholderTextColor={COLORS.textSecondary}
+                        placeholderTextColor={COLORS.textMuted}
                         keyboardType="phone-pad"
                       />
                     </View>
@@ -1089,7 +1151,7 @@ export default function MobileShopScreen() {
                         onChangeText={(v) => setForm((p) => ({ ...p, fullName: v }))}
                         style={styles.input}
                         placeholder={t('enterFullName', 'Enter full name')}
-                        placeholderTextColor={COLORS.textSecondary}
+                        placeholderTextColor={COLORS.textMuted}
                       />
                     </View>
 
@@ -1100,7 +1162,7 @@ export default function MobileShopScreen() {
                         onChangeText={(v) => setForm((p) => ({ ...p, email: v }))}
                         style={styles.input}
                         placeholder={t('enterEmail', 'Enter email')}
-                        placeholderTextColor={COLORS.textSecondary}
+                        placeholderTextColor={COLORS.textMuted}
                         keyboardType="email-address"
                         autoCapitalize="none"
                       />
@@ -1113,7 +1175,7 @@ export default function MobileShopScreen() {
                         onChangeText={(v) => setForm((p) => ({ ...p, note: v }))}
                         style={[styles.input, styles.noteInput]}
                         placeholder={t('optionalNote', 'Optional note')}
-                        placeholderTextColor={COLORS.textSecondary}
+                        placeholderTextColor={COLORS.textMuted}
                         multiline
                       />
                     </View>
@@ -1215,15 +1277,22 @@ export default function MobileShopScreen() {
                       onPress={() => createOrderMutation.mutate()}
                       disabled={createOrderMutation.isPending}
                     >
-                      {createOrderMutation.isPending ? (
-                        <ActivityIndicator color={COLORS.black} />
-                      ) : (
-                        <Text style={styles.buyButtonText}>
-                          {purchaseMode === 'cash'
-                            ? t('buyCashWithWallet', 'Buy Cash with Wallet')
-                            : t('buyInstallmentWithWallet', 'Pay First Month with Wallet')}
-                        </Text>
-                      )}
+                      <LinearGradient
+                        colors={['#79B7FF', '#4C92F7', '#2563EB']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.buyButtonGradient}
+                      >
+                        {createOrderMutation.isPending ? (
+                          <ActivityIndicator color={COLORS.white} />
+                        ) : (
+                          <Text style={styles.buyButtonText}>
+                            {purchaseMode === 'cash'
+                              ? t('buyCashWithWallet', 'Buy Cash with Wallet')
+                              : t('buyInstallmentWithWallet', 'Pay First Month with Wallet')}
+                          </Text>
+                        )}
+                      </LinearGradient>
                     </TouchableOpacity>
                   </>
                 ) : null}
@@ -1245,109 +1314,130 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bg,
   },
+
   topBar: {
-    height: 64,
+    height: 74,
+    marginHorizontal: 12,
+    marginTop: 6,
+    borderRadius: 28,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.55)',
+    ...SHADOWS.card,
   },
   topIconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.70)',
+    borderWidth: 1,
+    borderColor: 'rgba(201,217,241,0.9)',
   },
   topMenuBtn: {
     minWidth: 42,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(122,91,0,0.16)',
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.78)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(201,217,241,0.9)',
   },
   topTitle: {
-    color: '#fff',
-    fontSize: 20,
+    flex: 1,
+    textAlign: 'center',
+    color: '#234D8C',
+    fontSize: 18,
     fontWeight: '900',
+    paddingHorizontal: 10,
   },
+
   scrollContent: {
     paddingBottom: 22,
   },
   headerBlock: {
     paddingHorizontal: 16,
-    paddingTop: 14,
+    paddingTop: 18,
   },
   sectionTitle: {
     textAlign: 'center',
     color: COLORS.text,
-    fontSize: 21,
+    fontSize: 25,
     fontWeight: '900',
-    marginBottom: 14,
+    marginBottom: 16,
+    letterSpacing: -0.3,
   },
+
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
   locationPill: {
-    maxWidth: 130,
-    height: 46,
-    borderRadius: 23,
+    maxWidth: 132,
+    height: 48,
+    borderRadius: 24,
     paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.white,
+    backgroundColor: 'rgba(255,255,255,0.88)',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    ...SHADOWS.soft,
   },
   locationText: {
     color: COLORS.text,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     flexShrink: 1,
   },
   searchBox: {
     flex: 1,
-    height: 46,
-    borderRadius: 23,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.white,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    ...SHADOWS.soft,
   },
   searchInput: {
     flex: 1,
     color: COLORS.text,
     fontSize: 14,
+    fontWeight: '600',
   },
+
   brandTabsRow: {
     paddingTop: 14,
-    paddingBottom: 6,
+    paddingBottom: 4,
     gap: 10,
   },
   brandTab: {
-    height: 38,
-    borderRadius: 19,
+    height: 40,
+    borderRadius: 20,
     paddingHorizontal: 14,
-    backgroundColor: COLORS.white,
+    backgroundColor: 'rgba(255,255,255,0.88)',
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    ...SHADOWS.soft,
   },
   brandTabActive: {
-    backgroundColor: '#FFF1B2',
-    borderColor: COLORS.yellow,
+    backgroundColor: '#FFF9E8',
+    borderColor: '#F4D98B',
   },
   brandTabText: {
     color: COLORS.textSecondary,
@@ -1355,11 +1445,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   brandTabTextActive: {
-    color: '#7A5B00',
+    color: '#8A6A18',
   },
+
   quickFilterRow: {
     paddingHorizontal: 16,
-    marginTop: 10,
+    marginTop: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
@@ -1368,39 +1459,65 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   quickFilterCardActive: {
-    transform: [{ scale: 1.02 }],
+    transform: [{ scale: 1.03 }],
   },
   quickFilterIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(217,229,246,0.85)',
   },
   quickFilterLabel: {
     textAlign: 'center',
     color: COLORS.text,
     fontSize: 12,
     fontWeight: '700',
+    lineHeight: 16,
   },
+
   heroCard: {
     marginTop: 18,
     marginHorizontal: 16,
-    borderRadius: 24,
+    borderRadius: 28,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.72)',
+    ...SHADOWS.card,
+  },
+  heroBlurCircleOne: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.28)',
+    left: -80,
+    top: 40,
+  },
+  heroBlurCircleTwo: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.24)',
+    right: -50,
+    top: -40,
   },
   heroLeft: {
     flex: 1,
-    paddingEnd: 8,
+    paddingEnd: 10,
+    zIndex: 2,
   },
   heroSmall: {
-    color: '#7A5B00',
-    fontSize: 12,
-    fontWeight: '800',
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
     marginBottom: 6,
   },
   heroTitle: {
@@ -1408,47 +1525,61 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '900',
     marginBottom: 8,
+    letterSpacing: -0.4,
   },
   heroSub: {
     color: COLORS.black,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
-    marginBottom: 12,
+    marginBottom: 14,
+    lineHeight: 22,
   },
   heroButton: {
     alignSelf: 'flex-start',
-    height: 40,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    backgroundColor: COLORS.black,
+    borderRadius: 22,
+    overflow: 'hidden',
+    ...SHADOWS.soft,
+  },
+  heroButtonGradient: {
+    minHeight: 42,
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 22,
   },
   heroButtonText: {
-    color: '#fff',
-    fontSize: 14,
+    color: COLORS.white,
+    fontSize: 15,
     fontWeight: '900',
   },
   heroImageWrap: {
-    width: 134,
-    height: 134,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    width: 138,
+    height: 138,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.44)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.68)',
+    zIndex: 2,
   },
   heroImage: {
-    width: 126,
-    height: 126,
+    width: 130,
+    height: 130,
   },
+
   walletCard: {
     marginTop: 16,
     marginHorizontal: 16,
-    backgroundColor: COLORS.white,
-    borderRadius: 22,
+    borderRadius: 24,
+    overflow: 'hidden',
+    ...SHADOWS.soft,
+  },
+  walletCardInner: {
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingVertical: 20,
+    paddingVertical: 22,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1466,8 +1597,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center',
   },
+
   sectionHeader: {
-    marginTop: 20,
+    marginTop: 22,
     marginBottom: 12,
     paddingHorizontal: 16,
     flexDirection: 'row',
@@ -1478,12 +1610,14 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 20,
     fontWeight: '900',
+    letterSpacing: -0.3,
   },
   sectionLink: {
     color: COLORS.blue,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
   },
+
   gridRow: {
     paddingHorizontal: 16,
     justifyContent: 'space-between',
@@ -1491,11 +1625,22 @@ const styles = StyleSheet.create({
   },
   productCard: {
     width: CARD_WIDTH,
-    backgroundColor: COLORS.card,
+    backgroundColor: 'rgba(255,255,255,0.88)',
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 22,
+    borderRadius: 24,
     padding: 12,
+    overflow: 'hidden',
+    ...SHADOWS.soft,
+  },
+  productCardGlow: {
+    position: 'absolute',
+    top: -20,
+    right: -10,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(220,235,255,0.40)',
   },
   productCardTop: {
     flexDirection: 'row',
@@ -1504,21 +1649,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   badgePill: {
-    backgroundColor: '#EAF7EF',
+    backgroundColor: '#EAF8EF',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   badgeText: {
-    color: '#1A7F37',
+    color: '#23864A',
     fontSize: 11,
     fontWeight: '800',
   },
   iconBubble: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#F3F4F6',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F4F8FF',
+    borderWidth: 1,
+    borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1526,13 +1673,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 125,
     marginBottom: 8,
-    borderRadius: 12,
-    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    backgroundColor: '#F7FAFF',
   },
   imagePlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F7FAFF',
   },
   brandRow: {
     flexDirection: 'row',
@@ -1555,6 +1702,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     lineHeight: 21,
     minHeight: 42,
+    letterSpacing: -0.2,
   },
   productSpec: {
     color: COLORS.textSecondary,
@@ -1562,6 +1710,7 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     minHeight: 34,
     marginTop: 4,
+    fontWeight: '600',
   },
   metaRow: {
     marginTop: 8,
@@ -1586,6 +1735,7 @@ const styles = StyleSheet.create({
     color: COLORS.orange,
     fontSize: 22,
     fontWeight: '900',
+    letterSpacing: -0.3,
   },
   monthlyText: {
     marginTop: 4,
@@ -1598,15 +1748,16 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   shopTag: {
-    backgroundColor: COLORS.black,
+    backgroundColor: '#0F1F3D',
     color: '#fff',
     borderRadius: 999,
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     paddingVertical: 5,
     fontSize: 11,
     fontWeight: '700',
     overflow: 'hidden',
   },
+
   emptyWrap: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -1624,12 +1775,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+
   menuOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(17,24,39,0.18)',
+    backgroundColor: COLORS.overlay,
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
-    paddingTop: 82,
+    paddingTop: 92,
     paddingHorizontal: 16,
   },
   menuBackdrop: {
@@ -1637,15 +1789,16 @@ const styles = StyleSheet.create({
   },
   menuCard: {
     width: 250,
-    backgroundColor: COLORS.white,
-    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: COLORS.border,
     paddingVertical: 6,
     zIndex: 2,
+    ...SHADOWS.card,
   },
   menuItem: {
-    minHeight: 46,
+    minHeight: 48,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1657,25 +1810,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     flexShrink: 1,
   },
+
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(17,24,39,0.35)',
+    backgroundColor: 'rgba(15, 23, 42, 0.28)',
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: '#F8F8FC',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: '#F7FAFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 24,
     maxHeight: '88%',
+    borderTopWidth: 1,
+    borderColor: '#E3ECFA',
   },
   modalHandle: {
     width: 64,
     height: 5,
     borderRadius: 999,
-    backgroundColor: '#D1D5DB',
+    backgroundColor: '#C7D5EA',
     alignSelf: 'center',
     marginBottom: 10,
   },
@@ -1689,23 +1845,36 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 20,
     fontWeight: '900',
+    letterSpacing: -0.2,
   },
+  modalCloseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   selectedCard: {
     backgroundColor: COLORS.white,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     marginBottom: 14,
+    ...SHADOWS.soft,
   },
   selectedImage: {
     width: 62,
     height: 62,
-    borderRadius: 12,
-    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    backgroundColor: '#F8FBFF',
   },
   selectedName: {
     color: COLORS.text,
@@ -1730,13 +1899,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+
   descriptionBox: {
     backgroundColor: COLORS.white,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 14,
     marginBottom: 14,
+    ...SHADOWS.soft,
   },
   descriptionTitle: {
     color: COLORS.text,
@@ -1750,6 +1921,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '700',
   },
+
   modeSelectorWrap: {
     flexDirection: 'row',
     gap: 10,
@@ -1757,16 +1929,17 @@ const styles = StyleSheet.create({
   },
   modeBtn: {
     flex: 1,
-    minHeight: 48,
-    borderRadius: 16,
+    minHeight: 50,
+    borderRadius: 17,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.white,
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOWS.soft,
   },
   modeBtnActive: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: '#EAF2FF',
     borderColor: COLORS.blue,
   },
   modeBtnActivePurple: {
@@ -1784,25 +1957,30 @@ const styles = StyleSheet.create({
   modeBtnTextActivePurple: {
     color: COLORS.purple,
   },
+
   priceModeInfo: {
     backgroundColor: COLORS.white,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 14,
     marginBottom: 14,
+    ...SHADOWS.soft,
   },
+
   balanceBox: {
-    backgroundColor: COLORS.yellowSoft,
-    borderRadius: 16,
+    backgroundColor: '#EEF5FF',
+    borderRadius: 18,
     paddingVertical: 16,
     paddingHorizontal: 14,
     marginBottom: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D8E6FA',
   },
   balanceBoxLabel: {
-    color: COLORS.yellowDark,
+    color: COLORS.blueDark,
     fontSize: 12,
     fontWeight: '700',
     marginBottom: 6,
@@ -1814,6 +1992,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center',
   },
+
   fieldWrap: {
     marginBottom: 12,
   },
@@ -1824,7 +2003,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   input: {
-    minHeight: 48,
+    minHeight: 50,
     borderRadius: 16,
     backgroundColor: COLORS.white,
     borderWidth: 1,
@@ -1832,12 +2011,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     color: COLORS.text,
     fontSize: 15,
+    ...SHADOWS.soft,
   },
   noteInput: {
-    minHeight: 90,
+    minHeight: 92,
     paddingTop: 12,
     textAlignVertical: 'top',
   },
+
   qtyWrap: {
     marginBottom: 14,
   },
@@ -1850,6 +2031,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     overflow: 'hidden',
+    ...SHADOWS.soft,
   },
   qtyBtn: {
     width: 46,
@@ -1864,19 +2046,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
   },
+
   summaryBox: {
     backgroundColor: COLORS.white,
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 14,
     marginBottom: 16,
+    ...SHADOWS.soft,
   },
   summaryRow: {
     marginBottom: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEF2F7',
+    borderBottomColor: '#EEF3FA',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1901,16 +2085,22 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     flexShrink: 1,
   },
+
   buyButton: {
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: '#FFD000',
+    borderRadius: 28,
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+  buyButtonGradient: {
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 16,
   },
   buyButtonText: {
-    color: COLORS.black,
-    fontSize: 18,
+    color: COLORS.white,
+    fontSize: 17,
     fontWeight: '900',
   },
 });
