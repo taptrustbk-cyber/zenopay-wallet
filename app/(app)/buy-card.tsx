@@ -57,6 +57,8 @@ type TopupCardRow = {
   amount?: number | null;
   price_iqd?: number | null;
   image_url?: string | null;
+  item_image_url?: string | null;
+  provider_image_url?: string | null;
 };
 
 const providerConfig: Record<string, { color: string; bgColor: string; logo: string }> = {
@@ -221,6 +223,7 @@ export default function BuyCardScreen() {
   const cardNameFromParams = String(params.name || '');
   const providerFromParams = String(params.provider || '');
   const imageUrlFromParams = String(params.image || params.image_url || '');
+  const amountLabelFromParams = String(params.amount_label || '').trim();
   const type = String(params.type || 'sim') as CardType;
 
   const amountRawFromParams =
@@ -291,11 +294,11 @@ export default function BuyCardScreen() {
 
       const { data, error } = await supabase
         .from('topup_cards')
-        .select('id, title, provider, amount_iqd, amount, price_iqd, image_url')
+        .select('id, title, provider, amount_iqd, amount, price_iqd, image_url, item_image_url, provider_image_url')
         .eq('id', cardId)
         .maybeSingle();
 
-        if (error) throw error;
+      if (error) throw error;
       return data as TopupCardRow | null;
     },
   });
@@ -353,13 +356,20 @@ export default function BuyCardScreen() {
     if (imageUrlFromParams) return imageUrlFromParams;
 
     return (
-      String((dbCard as any)?.item_image_url || (dbCard as any)?.image_url || '').trim() ||
+      String(
+        (dbCard as any)?.item_image_url ||
+          (dbCard as any)?.image_url ||
+          (dbCard as any)?.provider_image_url ||
+          ''
+      ).trim() ||
       providerStyle.logo ||
       ''
     );
   }, [imageUrlFromParams, dbCard, providerStyle.logo]);
 
   const displayAmount = useMemo(() => {
+    if (amountLabelFromParams) return amountLabelFromParams;
+
     if (type === 'gift') {
       const giftCard = dbCard as GiftCardRow | null;
 
@@ -372,8 +382,12 @@ export default function BuyCardScreen() {
       });
     }
 
-    return formatIQDLocal(amountRaw);
-  }, [type, dbCard, amountRaw, cardName, provider]);
+    if (type === 'sim' || type === 'topup') {
+      return formatNumberOnly(amountRaw);
+    }
+
+    return formatNumberOnly(amountRaw);
+  }, [amountLabelFromParams, type, dbCard, amountRaw, cardName, provider]);
 
   const hasEnoughBalance = useMemo(() => {
     const balance = Number(walletQuery.data?.balance || 0);
