@@ -354,9 +354,7 @@ export default function SimCardsScreen() {
       );
       const providerSubtitle = String(providerRow?.subtitle || 'Mobile Cards');
 
-      const currentSortOrder = Number(
-        providerRow?.sort_order ?? row.sort_order ?? 0
-      );
+      const currentSortOrder = Number(providerRow?.sort_order ?? row.sort_order ?? 0);
 
       if (!map.has(providerKey)) {
         map.set(providerKey, {
@@ -577,7 +575,7 @@ export default function SimCardsScreen() {
                           style={[
                             styles.providerImageWrap,
                             {
-                              backgroundColor: provider.soft,
+                              backgroundColor: '#FFFFFF',
                               borderColor: provider.border,
                             },
                           ]}
