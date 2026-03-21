@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Platform,
   RefreshControl,
   ScrollView,
@@ -15,20 +14,35 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Stack } from 'expo-router';
+import { Image as ExpoImage } from 'expo-image';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 
+interface TopupProviderRow {
+  id: string;
+  provider_key?: string | null;
+  title?: string | null;
+  subtitle?: string | null;
+  logo_url?: string | null;
+  is_active?: boolean | null;
+  sort_order?: number | null;
+  created_at?: string | null;
+}
+
 interface SimCardRow {
   id: string;
+  provider_id?: string | null;
   title?: string | null;
   provider?: string | null;
+  provider_title?: string | null;
+  provider_logo_url?: string | null;
   amount_iqd?: number | null;
   amount?: number | null;
   price_iqd?: number | null;
   image_url?: string | null;
+  card_image_url?: string | null;
   item_image_url?: string | null;
-  provider_image_url?: string | null;
   notes?: string | null;
   is_active?: boolean | null;
   sort_order?: number | null;
@@ -36,6 +50,7 @@ interface SimCardRow {
 }
 
 interface ProviderCard {
+  id: string;
   key: string;
   title: string;
   subtitle: string;
@@ -43,8 +58,9 @@ interface ProviderCard {
   color: string;
   soft: string;
   border: string;
-  count?: number;
-  sort_order?: number;
+  count: number;
+  sort_order: number;
+  is_active: boolean;
 }
 
 const UI = {
@@ -207,14 +223,6 @@ function pickProviderTheme(key?: string | null) {
   return { color: '#1570A6', soft: '#EEF7FF', border: '#CDE5F7' };
 }
 
-function getProviderImageFromCard(row: SimCardRow) {
-  return row.provider_image_url || null;
-}
-
-function getItemImage(row: SimCardRow) {
-  return row.item_image_url || row.image_url || row.provider_image_url || null;
-}
-
 function getRawAmount(row: SimCardRow) {
   return Number(row.amount_iqd || 0) || Number(row.amount || 0) || 0;
 }
@@ -237,36 +245,65 @@ function getAmountLabel(row: SimCardRow) {
   return formatAmountPlain(amount);
 }
 
+function getCardImage(row: SimCardRow) {
+  return row.card_image_url || row.item_image_url || row.image_url || null;
+}
+
 export default function SimCardsScreen() {
   useTheme();
   const router = useRouter();
   const t = useT();
 
+  const [providersRows, setProvidersRows] = useState<TopupProviderRow[]>([]);
   const [simCards, setSimCards] = useState<SimCardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [failedProviderImages, setFailedProviderImages] = useState<Record<string, boolean>>({});
+  const [failedCardImages, setFailedCardImages] = useState<Record<string, boolean>>({});
 
   const fetchSimCards = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('topup_cards')
-        .select('*')
-        .eq('is_active', true)
-        .order('provider', { ascending: true })
-        .order('sort_order', { ascending: true })
-        .order('price_iqd', { ascending: true });
+      const [providersRes, cardsRes] = await Promise.all([
+        supabase
+          .from('topup_providers')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('topup_cards')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .order('price_iqd', { ascending: true }),
+      ]);
 
-      if (error) throw error;
+      if (providersRes.error) throw providersRes.error;
+      if (cardsRes.error) throw cardsRes.error;
 
-      setSimCards((data || []) as SimCardRow[]);
+      const providerData = (providersRes.data || []) as TopupProviderRow[];
+      const cardsData = (cardsRes.data || []) as SimCardRow[];
+
+      setProvidersRows(providerData);
+      setSimCards(cardsData);
+
+      const preloadUrls = [
+        ...providerData.map((x) => x.logo_url).filter(Boolean),
+        ...cardsData.map((x) => getCardImage(x)).filter(Boolean),
+      ] as string[];
+
+      if (preloadUrls.length) {
+        ExpoImage.prefetch(preloadUrls).catch(() => {});
+      }
     } catch (error: any) {
       console.log('sim-cards screen error:', error);
       Alert.alert(
         i18n.t('common.error') || 'Error',
         error?.message || 'Could not load mobile cards.'
       );
+      setProvidersRows([]);
       setSimCards([]);
     } finally {
       setLoading(false);
@@ -283,45 +320,77 @@ export default function SimCardsScreen() {
     await fetchSimCards();
   };
 
+  const providerMap = useMemo(() => {
+    const map = new Map<string, TopupProviderRow>();
+
+    for (const row of providersRows) {
+      const byId = String(row.id || '').trim();
+      const byKey = normalizeProvider(row.provider_key || row.title);
+
+      if (byId) map.set(byId, row);
+      if (byKey) map.set(byKey, row);
+    }
+
+    return map;
+  }, [providersRows]);
+
   const providers = useMemo(() => {
     const map = new Map<string, ProviderCard>();
 
     for (const row of simCards) {
-      const key = normalizeProvider(row.provider);
-      if (!key) continue;
+      const providerRow =
+        (row.provider_id && providerMap.get(String(row.provider_id))) ||
+        providerMap.get(normalizeProvider(row.provider || row.provider_title));
 
-      const theme = pickProviderTheme(key);
-      const image = getProviderImageFromCard(row);
+      const providerKey = normalizeProvider(
+        providerRow?.provider_key || row.provider || row.provider_title
+      );
+      if (!providerKey) continue;
 
-      if (!map.has(key)) {
-        map.set(key, {
-          key,
-          title: prettyProviderName(row.provider),
-          subtitle: 'Mobile Cards',
-          image,
+      const theme = pickProviderTheme(providerKey);
+      const providerImage = providerRow?.logo_url || row.provider_logo_url || null;
+      const providerTitle = prettyProviderName(
+        providerRow?.title || row.provider_title || row.provider
+      );
+      const providerSubtitle = String(providerRow?.subtitle || 'Mobile Cards');
+
+      const currentSortOrder = Number(
+        providerRow?.sort_order ?? row.sort_order ?? 0
+      );
+
+      if (!map.has(providerKey)) {
+        map.set(providerKey, {
+          id: String(providerRow?.id || providerKey),
+          key: providerKey,
+          title: providerTitle,
+          subtitle: providerSubtitle,
+          image: providerImage,
           color: theme.color,
           soft: theme.soft,
           border: theme.border,
           count: 1,
-          sort_order: Number(row.sort_order || 0),
+          sort_order: currentSortOrder,
+          is_active: !!(providerRow?.is_active ?? row.is_active),
         });
       } else {
-        const current = map.get(key)!;
-        map.set(key, {
+        const current = map.get(providerKey)!;
+        map.set(providerKey, {
           ...current,
-          count: Number(current.count || 0) + 1,
-          image: current.image || image,
+          count: current.count + 1,
+          image: current.image || providerImage,
         });
       }
     }
 
-    return Array.from(map.values()).sort((a, b) => {
-      const aOrder = Number(a.sort_order || 0);
-      const bOrder = Number(b.sort_order || 0);
-      if (aOrder !== bOrder) return aOrder - bOrder;
-      return a.title.localeCompare(b.title);
-    });
-  }, [simCards]);
+    return Array.from(map.values())
+      .filter((x) => x.is_active)
+      .sort((a, b) => {
+        const aOrder = Number(a.sort_order || 0);
+        const bOrder = Number(b.sort_order || 0);
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return a.title.localeCompare(b.title);
+      });
+  }, [simCards, providerMap]);
 
   const filteredProviders = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -346,11 +415,20 @@ export default function SimCardsScreen() {
 
     return simCards
       .filter((row) => {
-        const key = normalizeProvider(row.provider);
+        const providerRow =
+          (row.provider_id && providerMap.get(String(row.provider_id))) ||
+          providerMap.get(normalizeProvider(row.provider || row.provider_title));
+
+        const key = normalizeProvider(
+          providerRow?.provider_key || row.provider || row.provider_title
+        );
+
         const matchProvider = selectedProvider ? key === selectedProvider : true;
 
         const title = String(row.title || '').toLowerCase();
-        const provider = String(row.provider || '').toLowerCase();
+        const provider = String(
+          providerRow?.title || row.provider_title || row.provider || ''
+        ).toLowerCase();
         const amount = String(row.amount_iqd || row.amount || '');
         const price = String(row.price_iqd || '');
 
@@ -361,7 +439,7 @@ export default function SimCardsScreen() {
             price.includes(q)
           : true;
 
-        return matchProvider && matchSearch;
+        return !!row.is_active && matchProvider && matchSearch;
       })
       .sort((a, b) => {
         const aOrder = Number(a.sort_order || 0);
@@ -369,12 +447,12 @@ export default function SimCardsScreen() {
         if (aOrder !== bOrder) return aOrder - bOrder;
         return Number(a.price_iqd || 0) - Number(b.price_iqd || 0);
       });
-  }, [simCards, selectedProvider, search]);
+  }, [simCards, providerMap, selectedProvider, search]);
 
   const handleBuy = (item: SimCardRow) => {
     const finalPriceIqd = Number(item.price_iqd || 0);
     const finalAmount = getRawAmount(item);
-    const finalImage = String(getItemImage(item) || '');
+    const finalImage = String(getCardImage(item) || '');
     const amountLabel = getAmountLabel(item);
 
     router.push({
@@ -384,7 +462,7 @@ export default function SimCardsScreen() {
         name: getItemTitle(item, selectedMeta),
         price_iqd: String(finalPriceIqd),
         price: String(finalPriceIqd),
-        provider: String(item.provider || 'sim').toLowerCase(),
+        provider: String(item.provider || item.provider_title || 'sim').toLowerCase(),
         amount: String(finalAmount),
         amount_label: amountLabel,
         type: 'sim',
@@ -481,57 +559,69 @@ export default function SimCardsScreen() {
               </View>
 
               <View style={styles.providersGrid}>
-                {filteredProviders.map((provider) => (
-                  <TouchableOpacity
-                    key={provider.key}
-                    activeOpacity={0.92}
-                    style={styles.providerCard}
-                    onPress={() => {
-                      setSelectedProvider(provider.key);
-                      setSearch('');
-                    }}
-                  >
-                    {provider.image ? (
-                      <View
-                        style={[
-                          styles.providerImageWrap,
-                          {
-                            backgroundColor: provider.soft,
-                            borderColor: provider.border,
-                          },
-                        ]}
-                      >
-                        <Image
-                          source={{ uri: provider.image }}
-                          style={styles.providerImage}
-                          resizeMode="cover"
-                        />
-                      </View>
-                    ) : (
-                      <View
-                        style={[
-                          styles.providerImageWrap,
-                          styles.fallbackCenter,
-                          {
-                            backgroundColor: provider.soft,
-                            borderColor: provider.border,
-                          },
-                        ]}
-                      >
-                        <Ionicons name="card-outline" size={42} color={provider.color} />
-                      </View>
-                    )}
+                {filteredProviders.map((provider) => {
+                  const canShowImage = !!provider.image && !failedProviderImages[provider.key];
 
-                    <View style={styles.providerFooter}>
-                      <Text numberOfLines={1} style={styles.providerName}>
-                        {provider.title}
-                      </Text>
-                      <Text style={styles.providerCount}>
-                        {Number(provider.count || 0)} {t.cardsCount}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                  return (
+                    <TouchableOpacity
+                      key={provider.key}
+                      activeOpacity={0.92}
+                      style={styles.providerCard}
+                      onPress={() => {
+                        setSelectedProvider(provider.key);
+                        setSearch('');
+                      }}
+                    >
+                      {canShowImage ? (
+                        <View
+                          style={[
+                            styles.providerImageWrap,
+                            {
+                              backgroundColor: provider.soft,
+                              borderColor: provider.border,
+                            },
+                          ]}
+                        >
+                          <ExpoImage
+                            source={{ uri: provider.image! }}
+                            style={styles.providerImage}
+                            contentFit="contain"
+                            cachePolicy="memory-disk"
+                            transition={120}
+                            onError={() =>
+                              setFailedProviderImages((prev) => ({
+                                ...prev,
+                                [provider.key]: true,
+                              }))
+                            }
+                          />
+                        </View>
+                      ) : (
+                        <View
+                          style={[
+                            styles.providerImageWrap,
+                            styles.fallbackCenter,
+                            {
+                              backgroundColor: provider.soft,
+                              borderColor: provider.border,
+                            },
+                          ]}
+                        >
+                          <Ionicons name="card-outline" size={42} color={provider.color} />
+                        </View>
+                      )}
+
+                      <View style={styles.providerFooter}>
+                        <Text numberOfLines={1} style={styles.providerName}>
+                          {provider.title}
+                        </Text>
+                        <Text style={styles.providerCount}>
+                          {Number(provider.count || 0)} {t.cardsCount}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </>
           )
@@ -572,8 +662,9 @@ export default function SimCardsScreen() {
 
             <View style={styles.cardsList}>
               {filteredItems.map((item) => {
-                const imageUri = getItemImage(item) || '';
+                const imageUri = getCardImage(item) || '';
                 const amountLabel = getAmountLabel(item);
+                const canShowImage = !!imageUri && !failedCardImages[item.id];
 
                 return (
                   <TouchableOpacity
@@ -582,7 +673,7 @@ export default function SimCardsScreen() {
                     activeOpacity={0.92}
                     onPress={() => handleBuy(item)}
                   >
-                    {imageUri ? (
+                    {canShowImage ? (
                       <View
                         style={[
                           styles.cardImageWrap,
@@ -592,10 +683,18 @@ export default function SimCardsScreen() {
                           },
                         ]}
                       >
-                        <Image
+                        <ExpoImage
                           source={{ uri: imageUri }}
                           style={styles.cardImage}
-                          resizeMode="cover"
+                          contentFit="cover"
+                          cachePolicy="memory-disk"
+                          transition={120}
+                          onError={() =>
+                            setFailedCardImages((prev) => ({
+                              ...prev,
+                              [item.id]: true,
+                            }))
+                          }
                         />
                       </View>
                     ) : (
