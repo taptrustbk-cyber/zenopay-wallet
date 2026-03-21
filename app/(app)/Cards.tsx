@@ -12,7 +12,8 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,14 +21,47 @@ import i18n from '@/lib/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const UI = {
-  bg: '#F5F6FA',
+  bg: '#EEF4FF',
+  bgSoft: '#F7FAFF',
   card: '#FFFFFF',
-  text: '#111827',
-  text2: '#6B7280',
-  border: '#E5E7EB',
-  green: '#47B08A',
-  greenSoft: '#EAF7F1',
+  cardSoft: '#F8FBFF',
+  text: '#0F172A',
+  text2: '#64748B',
+  text3: '#94A3B8',
+  border: '#D9E5F6',
+
+  blue: '#2563EB',
+  blue2: '#3B82F6',
+  blue3: '#60A5FA',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+
+  purple: '#7C3AED',
+  purpleDark: '#5B21B6',
+  purpleSoft: '#F3E8FF',
+
   danger: '#DC2626',
+  dangerSoft: '#FEECEC',
+  success: '#2563EB',
+  successSoft: '#EAF2FF',
+  white: '#FFFFFF',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: '#7DA8E6',
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: '#8BA9D6',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
 };
 
 type WalletRow = {
@@ -74,9 +108,8 @@ type PurchaseCardResponse = {
   new_balance?: number;
 };
 
-const CARD_PRICE = 25;
+const CARD_PRICE_IQD = 25000;
 
-// ✅ Fix: safe translator with fallback (avoids [missing "..."] showing)
 const t = (key: string, fallback: string) => {
   try {
     const v = (i18n as any)?.t?.(key);
@@ -100,36 +133,94 @@ function formatExp(month: number, year: number) {
   return `${mm}/${yy}`;
 }
 
-// ✅ show only first 12 digits on the card UI
+function formatNumberWithDots(value?: number | null) {
+  const number = Math.max(0, Number(value || 0));
+  const rounded = Math.round(number);
+  return String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function formatIQDLocal(value?: number | null) {
+  return `${formatNumberWithDots(value)} IQD`;
+}
+
 function formatPan12ForDisplay(panMasked: string) {
   const digits = onlyDigits(panMasked);
 
-  // if db returns 16 digits, show first 12 digits only
   if (digits.length >= 16) {
     const first12 = digits.slice(0, 12);
     return first12.replace(/(\d{4})(?=\d)/g, '$1 ');
   }
 
-  // if already 12 digits, format it nicely
   if (digits.length === 12) {
     return digits.replace(/(\d{4})(?=\d)/g, '$1 ');
   }
 
-  // fallback to original
   return panMasked;
 }
 
+async function insertCardTransaction(params: {
+  userId: string;
+  amount: number;
+  cardId?: string;
+  last4?: string;
+  newBalance?: number | null;
+}) {
+  const description = params.last4
+    ? `Virtual card created • **** ${params.last4}`
+    : 'Virtual card created';
+
+  const payloads = [
+    {
+      user_id: params.userId,
+      type: 'card_purchase',
+      direction: 'out',
+      amount: params.amount,
+      currency: 'IQD',
+      status: 'completed',
+      title: 'Virtual Card Purchase',
+      description,
+      reference_id: params.cardId || null,
+      balance_after: params.newBalance ?? null,
+      created_at: new Date().toISOString(),
+    },
+    {
+      user_id: params.userId,
+      type: 'purchase_card',
+      direction: 'out',
+      amount: params.amount,
+      currency: 'IQD',
+      status: 'completed',
+      description,
+      reference_id: params.cardId || null,
+      created_at: new Date().toISOString(),
+    },
+    {
+      user_id: params.userId,
+      amount: params.amount,
+      currency: 'IQD',
+      status: 'completed',
+      description,
+      created_at: new Date().toISOString(),
+    },
+  ];
+
+  for (const payload of payloads) {
+    const { error } = await supabase.from('transactions').insert(payload as any);
+    if (!error) return true;
+  }
+
+  return false;
+}
+
 export default function CardsScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, profile } = useAuth();
 
   const [fullName, setFullName] = useState<string>((profile as any)?.full_name || '');
   const [phone, setPhone] = useState<string>('');
-  const [country, setCountry] = useState<string>('');
+  const [country, setCountry] = useState<string>('Iraq');
   const [city, setCity] = useState<string>('');
   const [address, setAddress] = useState<string>('');
-
   const [isCreating, setIsCreating] = useState(false);
 
   const walletQuery = useQuery({
@@ -152,7 +243,6 @@ export default function CardsScreen() {
     gcTime: 0,
   });
 
-  // ✅ IMPORTANT FIX: filter cards by the logged-in user
   const cardsQuery = useQuery({
     queryKey: ['cards', user?.id],
     enabled: !!user?.id,
@@ -172,14 +262,13 @@ export default function CardsScreen() {
   });
 
   const balance = walletQuery.data?.balance ?? 0;
-  const currency = walletQuery.data?.currency ?? 'USD';
+  const currency = 'IQD';
 
   const hasCard = (cardsQuery.data?.length || 0) > 0;
   const firstCard = hasCard ? cardsQuery.data![0] : null;
 
-  // ✅ If user already has a card, we should not allow creating again
   const canBuy =
-    !hasCard && balance >= CARD_PRICE && !walletQuery.isLoading && !walletQuery.isError;
+    !hasCard && balance >= CARD_PRICE_IQD && !walletQuery.isLoading && !walletQuery.isError;
 
   const isFormValid = useMemo(() => {
     if (!fullName.trim()) return false;
@@ -196,7 +285,6 @@ export default function CardsScreen() {
       return;
     }
 
-    // ✅ hard block: only 1 virtual card allowed
     const alreadyHasCard = (cardsQuery.data?.length || 0) > 0;
     if (alreadyHasCard) {
       Alert.alert(
@@ -217,7 +305,7 @@ export default function CardsScreen() {
     if (!canBuy) {
       Alert.alert(
         t('cards.insufficient_title', 'Insufficient balance'),
-        t('cards.insufficient_desc', `You need at least ${CARD_PRICE} ${currency}.`)
+        t('cards.insufficient_desc', `You need at least ${formatIQDLocal(CARD_PRICE_IQD)}.`)
       );
       return;
     }
@@ -231,30 +319,44 @@ export default function CardsScreen() {
         p_country: country.trim(),
         p_city: city.trim(),
         p_address: address.trim(),
-        p_price: CARD_PRICE,
+        p_price: CARD_PRICE_IQD,
       });
 
       if (error) throw error;
 
       const res = data as PurchaseCardResponse;
       if (!res?.ok) {
-        Alert.alert(t('common.failed', 'Failed'), res?.message || t('cards.create_failed', 'Unable to create card.'));
+        Alert.alert(
+          t('common.failed', 'Failed'),
+          res?.message || t('cards.create_failed', 'Unable to create card.')
+        );
         return;
       }
 
-      Alert.alert(
-        t('common.success', 'Success'),
-        t('cards.created_success', `Card created. ${CARD_PRICE}$ deducted from your balance.`).replace(
-          '25',
-          String(CARD_PRICE)
-        )
-      );
+      await insertCardTransaction({
+        userId: user.id,
+        amount: CARD_PRICE_IQD,
+        cardId: res?.card?.id,
+        last4: res?.card?.last4,
+        newBalance: res?.new_balance ?? null,
+      });
 
       await walletQuery.refetch();
       await cardsQuery.refetch();
+
+      Alert.alert(
+        t('common.success', 'Success'),
+        t(
+          'cards.created_success_iqd',
+          `Card created successfully. ${formatIQDLocal(CARD_PRICE_IQD)} was deducted from your balance.`
+        )
+      );
     } catch (e: any) {
       console.error(e);
-      Alert.alert(t('common.error', 'Error'), e?.message || t('common.something_wrong', 'Something went wrong.'));
+      Alert.alert(
+        t('common.error', 'Error'),
+        e?.message || t('common.something_wrong', 'Something went wrong.')
+      );
     } finally {
       setIsCreating(false);
     }
@@ -265,11 +367,19 @@ export default function CardsScreen() {
 
     return (
       <View style={styles.cardItemOuter}>
-        <View style={styles.cardItemGreen}>
+        <LinearGradient
+          colors={['#6AAEFF', '#4B6BFF', '#6D28D9']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardItemBlue}
+        >
+          <View style={styles.cardGlowOne} />
+          <View style={styles.cardGlowTwo} />
+
           <View style={styles.itemTopRow}>
             <View style={styles.logoPill}>
-              <View style={styles.logoDot} />
-              <Text style={styles.logoText}>{(card.brand || 'ZENOPAY').toUpperCase()}</Text>
+              <Ionicons name="wallet-outline" size={14} color="#FFFFFF" />
+              <Text style={styles.logoText}>ZENOPAY</Text>
             </View>
 
             <View style={[styles.statusPill, card.status !== 'active' && { opacity: 0.7 }]}>
@@ -277,7 +387,14 @@ export default function CardsScreen() {
             </View>
           </View>
 
-          {/* ✅ 12-digit display */}
+          <View style={styles.brandMarksRow}>
+            <View style={styles.masterMarkWrap}>
+              <View style={[styles.brandCircle, styles.brandCircleRed]} />
+              <View style={[styles.brandCircle, styles.brandCircleOrange]} />
+            </View>
+            <Text style={styles.visaText}>VISA</Text>
+          </View>
+
           <Text style={styles.itemNumber} numberOfLines={1}>
             {formatPan12ForDisplay(card.pan_masked)}
           </Text>
@@ -301,7 +418,7 @@ export default function CardsScreen() {
               </View>
             </View>
           </View>
-        </View>
+        </LinearGradient>
 
         <View style={styles.itemMetaRow}>
           <Ionicons name="time-outline" size={14} color={UI.text2} />
@@ -319,20 +436,16 @@ export default function CardsScreen() {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
-          {/* Header */}
           <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.85}>
-              <Ionicons name="arrow-back" size={22} color={UI.text} />
-            </TouchableOpacity>
-
+            <View style={{ width: 40 }} />
             <Text style={styles.headerTitle} numberOfLines={1}>
               {t('cards.title', 'Cards')}
             </Text>
-
-            <View style={{ width: 40 }} />
+            <TouchableOpacity activeOpacity={0.85} onPress={() => cardsQuery.refetch()} style={styles.refreshBtn}>
+              <Ionicons name="refresh" size={18} color={UI.text} />
+            </TouchableOpacity>
           </View>
 
-          {/* Balance + price */}
           <View style={styles.balanceCard}>
             <View style={styles.balanceRow}>
               <View style={{ flex: 1, paddingRight: 10 }}>
@@ -340,7 +453,7 @@ export default function CardsScreen() {
 
                 {walletQuery.isLoading ? (
                   <View style={{ marginTop: 8 }}>
-                    <ActivityIndicator />
+                    <ActivityIndicator color={UI.blue} />
                   </View>
                 ) : walletQuery.isError ? (
                   <Text style={[styles.balanceValue, { color: UI.danger }]} numberOfLines={1}>
@@ -348,23 +461,21 @@ export default function CardsScreen() {
                   </Text>
                 ) : (
                   <Text style={styles.balanceValue} numberOfLines={1} ellipsizeMode="tail">
-                    {balance.toFixed(2)} <Text style={styles.balanceCurrency}>{currency}</Text>
+                    {formatNumberWithDots(balance)} <Text style={styles.balanceCurrency}>{currency}</Text>
                   </Text>
                 )}
               </View>
 
-              {/* ✅ If user already has a card, hide the price pill */}
               {!hasCard ? (
                 <View style={styles.pricePill}>
-                  <Ionicons name="pricetag" size={16} color={UI.green} />
+                  <Ionicons name="pricetag" size={16} color={UI.blue} />
                   <Text style={styles.priceText} numberOfLines={1}>
-                    {t('cards.create_price', 'Create')}: {CARD_PRICE}$
+                    {t('cards.create_price', 'Create')}: {formatIQDLocal(CARD_PRICE_IQD)}
                   </Text>
                 </View>
               ) : null}
             </View>
 
-            {/* ✅ inline warning only if user can’t buy and doesn’t already have a card */}
             {!hasCard && !canBuy && !walletQuery.isLoading && !walletQuery.isError ? (
               <View style={styles.warnRow}>
                 <Ionicons name="alert-circle" size={18} color={UI.danger} />
@@ -374,29 +485,24 @@ export default function CardsScreen() {
               </View>
             ) : null}
 
-            {/* ✅ show one-card rule message */}
             {hasCard ? (
               <View style={[styles.warnRow, { marginTop: 10 }]}>
-                <Ionicons name="checkmark-circle" size={18} color={UI.green} />
+                <Ionicons name="checkmark-circle" size={18} color={UI.blue} />
                 <Text style={[styles.warnText, { color: UI.text }]}>
-                 {t('cards.one_card_inline', 'Your virtual card is active. You can only have one card.')}
-              </Text>
+                  {t('cards.one_card_inline', 'Your virtual card is active. You can only have one card.')}
+                </Text>
               </View>
             ) : null}
           </View>
 
-          {/* Cards area */}
           <View style={styles.listWrap}>
             <View style={styles.listHeaderRow}>
               <Text style={styles.listTitle}>{t('cards.your_cards', 'Your Cards')}</Text>
-              <TouchableOpacity activeOpacity={0.85} onPress={() => cardsQuery.refetch()} style={styles.refreshBtn}>
-                <Ionicons name="refresh" size={18} color={UI.text} />
-              </TouchableOpacity>
             </View>
 
             {cardsQuery.isLoading ? (
               <View style={styles.loadingBox}>
-                <ActivityIndicator />
+                <ActivityIndicator color={UI.blue} />
                 <Text style={styles.loadingText}>{t('cards.loading_cards', 'Loading cards...')}</Text>
               </View>
             ) : cardsQuery.isError ? (
@@ -412,12 +518,10 @@ export default function CardsScreen() {
                 <Text style={styles.emptyText}>{t('cards.empty', 'No cards yet. Create your first card below.')}</Text>
               </View>
             ) : (
-              // ✅ show only the single (latest) card
               <CardItem card={firstCard!} />
             )}
           </View>
 
-          {/* ✅ FORM: show only if user has NO card */}
           {!hasCard ? (
             <View style={styles.formCard}>
               <Text style={styles.formTitle}>{t('cards.create_new', 'Create New Card')}</Text>
@@ -484,16 +588,23 @@ export default function CardsScreen() {
                 activeOpacity={0.9}
                 onPress={createCard}
                 disabled={!canBuy || !isFormValid || isCreating}
-                style={[styles.createBtn, (!canBuy || !isFormValid || isCreating) && { opacity: 0.55 }]}
+                style={[styles.createBtnWrap, (!canBuy || !isFormValid || isCreating) && { opacity: 0.55 }]}
               >
-                {isCreating ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons name="card" size={18} color="#fff" />
-                    <Text style={styles.createBtnText}>{t('cards.create_btn', 'Create Virtual Card')}</Text>
-                  </>
-                )}
+                <LinearGradient
+                  colors={['#79B7FF', '#4C92F7', '#2563EB']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.createBtn}
+                >
+                  {isCreating ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="card" size={18} color="#fff" />
+                      <Text style={styles.createBtnText}>{t('cards.create_btn', 'Create Virtual Card')}</Text>
+                    </>
+                  )}
+                </LinearGradient>
               </TouchableOpacity>
 
               <Text style={styles.virtualInfo}>
@@ -502,9 +613,9 @@ export default function CardsScreen() {
 
               <Text style={styles.note}>
                 {t(
-                  'cards.note',
-                  `By creating a card, ${CARD_PRICE}$ will be deducted automatically from your wallet balance.`
-                ).replace('25', String(CARD_PRICE))}
+                  'cards.note_iqd',
+                  `By creating a card, ${formatIQDLocal(CARD_PRICE_IQD)} will be deducted automatically from your wallet balance.`
+                )}
               </Text>
             </View>
           ) : null}
@@ -524,29 +635,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EEF2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '900',
     color: UI.text,
     maxWidth: 240,
+  },
+  refreshBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: UI.card,
+    borderWidth: 1,
+    borderColor: UI.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.soft,
   },
 
   balanceCard: {
     marginHorizontal: 16,
     marginTop: 8,
     backgroundColor: UI.card,
-    borderRadius: 18,
+    borderRadius: 22,
     padding: 16,
     borderWidth: 1,
     borderColor: UI.border,
+    ...SHADOWS.soft,
   },
   balanceRow: {
     flexDirection: 'row',
@@ -561,7 +676,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: UI.greenSoft,
+    backgroundColor: UI.blueSoft,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -576,45 +691,56 @@ const styles = StyleSheet.create({
 
   listWrap: { marginTop: 14, paddingHorizontal: 16 },
   listHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  listTitle: { fontSize: 16, fontWeight: '900', color: UI.text },
-  refreshBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#EEF2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  listTitle: { fontSize: 17, fontWeight: '900', color: UI.text },
 
   loadingBox: {
     backgroundColor: UI.card,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: UI.border,
     padding: 16,
     alignItems: 'center',
     gap: 10,
+    ...SHADOWS.soft,
   },
   loadingText: { color: UI.text2, fontWeight: '800', textAlign: 'center' },
 
   emptyBox: {
     backgroundColor: UI.card,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: UI.border,
     padding: 16,
     alignItems: 'center',
     gap: 10,
+    ...SHADOWS.soft,
   },
   emptyText: { color: UI.text2, fontWeight: '800', textAlign: 'center' },
 
   cardItemOuter: { gap: 8 },
-  cardItemGreen: {
-    borderRadius: 20,
+  cardItemBlue: {
+    borderRadius: 24,
     padding: 16,
-    backgroundColor: UI.green,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)',
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+  cardGlowOne: {
+    position: 'absolute',
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    left: -40,
+    top: 40,
+  },
+  cardGlowTwo: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    right: -30,
+    top: -30,
   },
   itemTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
@@ -627,7 +753,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  logoDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' },
   logoText: { color: '#fff', fontWeight: '900', letterSpacing: 0.6 },
 
   statusPill: {
@@ -640,8 +765,39 @@ const styles = StyleSheet.create({
   },
   statusText: { color: '#fff', fontWeight: '900', fontSize: 11, letterSpacing: 0.6 },
 
-  itemNumber: {
+  brandMarksRow: {
     marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  masterMarkWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  brandCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  brandCircleRed: {
+    backgroundColor: '#EF4444',
+    marginRight: -8,
+    opacity: 0.95,
+  },
+  brandCircleOrange: {
+    backgroundColor: '#F59E0B',
+    opacity: 0.95,
+  },
+  visaText: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+    fontSize: 14,
+    letterSpacing: 1.1,
+  },
+
+  itemNumber: {
+    marginTop: 18,
     color: '#fff',
     fontWeight: '900',
     fontSize: 20,
@@ -649,7 +805,7 @@ const styles = StyleSheet.create({
   },
 
   itemBottomRow: {
-    marginTop: 14,
+    marginTop: 18,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
@@ -663,22 +819,23 @@ const styles = StyleSheet.create({
   formCard: {
     marginHorizontal: 16,
     marginTop: 14,
-    borderRadius: 18,
+    borderRadius: 22,
     backgroundColor: UI.card,
     padding: 16,
     borderWidth: 1,
     borderColor: UI.border,
+    ...SHADOWS.soft,
   },
-  formTitle: { fontSize: 16, fontWeight: '900', color: UI.text, marginBottom: 10 },
+  formTitle: { fontSize: 17, fontWeight: '900', color: UI.text, marginBottom: 10 },
 
   field: { marginTop: 10 },
   fieldLabel: { color: UI.text2, fontWeight: '800', fontSize: 12, marginBottom: 6 },
   input: {
-    height: 48,
-    borderRadius: 14,
+    height: 50,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: UI.border,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: UI.cardSoft,
     paddingHorizontal: 12,
     fontWeight: '800',
     color: UI.text,
@@ -686,11 +843,15 @@ const styles = StyleSheet.create({
 
   twoCol: { flexDirection: 'row', gap: 12, marginTop: 2 },
 
-  createBtn: {
+  createBtnWrap: {
     marginTop: 16,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: UI.green,
+    borderRadius: 18,
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+  createBtn: {
+    height: 54,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
