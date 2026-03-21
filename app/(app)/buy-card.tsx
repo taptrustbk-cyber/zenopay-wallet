@@ -113,7 +113,7 @@ function getProviderStyle(provider?: string | null) {
 
 function isArabicMoneyLang() {
   const lang = String(i18n.language || '').toLowerCase();
-  return ['ar', 'cbk', 'kmr'].includes(lang);
+  return ['ar', 'cbk', 'ckb', 'kmr'].includes(lang);
 }
 
 function formatIQDLocal(value?: number | null) {
@@ -125,10 +125,20 @@ function formatIQDLocal(value?: number | null) {
   return isArabicMoneyLang() ? `${formatted} د.غ` : `${formatted} IQD`;
 }
 
+function formatNumberOnly(value?: number | null) {
+  const num = Number(value || 0);
+  return Math.abs(num)
+    .toFixed(0)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 function upperFirst(v?: string | null) {
   const s = String(v || '').trim();
   if (!s) return '';
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  return s
+    .replace(/_/g, ' ')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
 function toNumberSafe(value: any) {
@@ -136,6 +146,66 @@ function toNumberSafe(value: any) {
   const cleaned = String(value).replace(/,/g, '').trim();
   const num = Number(cleaned);
   return Number.isFinite(num) ? num : 0;
+}
+
+function normalizeText(value?: string | null) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/-/g, ' ');
+}
+
+function buildGiftAmountLabel(params: {
+  amount: number;
+  cardName?: string | null;
+  provider?: string | null;
+  brand?: string | null;
+  category?: string | null;
+}) {
+  const amount = Number(params.amount || 0);
+  const joined = [
+    params.cardName,
+    params.provider,
+    params.brand,
+    params.category,
+  ]
+    .map((x) => normalizeText(x))
+    .join(' ');
+
+  if (joined.includes('pubg') || joined.includes('uc')) {
+    return `${formatNumberOnly(amount)} UC`;
+  }
+
+  if (joined.includes('tiktok') || joined.includes('coin')) {
+    return `${formatNumberOnly(amount)} Coins`;
+  }
+
+  if (joined.includes('free fire') || joined.includes('diamond')) {
+    return `${formatNumberOnly(amount)} Diamonds`;
+  }
+
+  if (joined.includes('itunes') || joined.includes('apple')) {
+    return `${formatNumberOnly(amount)}`;
+  }
+
+  if (joined.includes('google play') || joined.includes('play store')) {
+    return `${formatNumberOnly(amount)}`;
+  }
+
+  if (joined.includes('steam')) {
+    return `${formatNumberOnly(amount)}`;
+  }
+
+  if (joined.includes('xbox')) {
+    return `${formatNumberOnly(amount)}`;
+  }
+
+  if (joined.includes('playstation') || joined.includes('psn')) {
+    return `${formatNumberOnly(amount)}`;
+  }
+
+  return formatNumberOnly(amount);
 }
 
 export default function BuyCardScreen() {
@@ -225,7 +295,7 @@ export default function BuyCardScreen() {
         .eq('id', cardId)
         .maybeSingle();
 
-      if (error) throw error;
+        if (error) throw error;
       return data as TopupCardRow | null;
     },
   });
@@ -233,17 +303,18 @@ export default function BuyCardScreen() {
   const dbCard = cardQuery.data as GiftCardRow | TopupCardRow | null;
 
   const cardName = useMemo(() => {
-    return (
-      cardNameFromParams ||
-      String((dbCard as any)?.title || '').trim() ||
-      'Card'
-    );
+    return cardNameFromParams || String((dbCard as any)?.title || '').trim() || 'Card';
   }, [cardNameFromParams, dbCard]);
 
   const provider = useMemo(() => {
     return (
       providerFromParams ||
-      String((dbCard as any)?.provider || (dbCard as any)?.brand || (dbCard as any)?.category || '').trim() ||
+      String(
+        (dbCard as any)?.provider ||
+          (dbCard as any)?.brand ||
+          (dbCard as any)?.category ||
+          ''
+      ).trim() ||
       ''
     );
   }, [providerFromParams, dbCard]);
@@ -275,17 +346,34 @@ export default function BuyCardScreen() {
 
   const finalProviderLabel = useMemo(() => {
     if (!provider) return '-';
-    return upperFirst(provider.replace(/_/g, ' '));
+    return upperFirst(provider);
   }, [provider]);
 
   const finalImage = useMemo(() => {
     if (imageUrlFromParams) return imageUrlFromParams;
+
     return (
       String((dbCard as any)?.item_image_url || (dbCard as any)?.image_url || '').trim() ||
       providerStyle.logo ||
       ''
     );
   }, [imageUrlFromParams, dbCard, providerStyle.logo]);
+
+  const displayAmount = useMemo(() => {
+    if (type === 'gift') {
+      const giftCard = dbCard as GiftCardRow | null;
+
+      return buildGiftAmountLabel({
+        amount: amountRaw,
+        cardName,
+        provider,
+        brand: giftCard?.brand,
+        category: giftCard?.category,
+      });
+    }
+
+    return formatIQDLocal(amountRaw);
+  }, [type, dbCard, amountRaw, cardName, provider]);
 
   const hasEnoughBalance = useMemo(() => {
     const balance = Number(walletQuery.data?.balance || 0);
@@ -512,7 +600,7 @@ export default function BuyCardScreen() {
 
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>{i18n.t('buyCard.amount') || 'Amount'}</Text>
-              <Text style={styles.detailValue}>{formatIQDLocal(amountRaw)}</Text>
+              <Text style={styles.detailValue}>{displayAmount}</Text>
             </View>
 
             <View style={styles.detailRow}>
@@ -586,7 +674,7 @@ export default function BuyCardScreen() {
 
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>{i18n.t('buyCard.amount') || 'Amount'}</Text>
-              <Text style={styles.infoValue}>{formatIQDLocal(amountRaw)}</Text>
+              <Text style={styles.infoValue}>{displayAmount}</Text>
             </View>
 
             <View style={styles.infoRow}>
@@ -774,7 +862,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
     color: UI.text,
-    textTransform: 'capitalize',
   },
 
   balanceCard: {
@@ -908,6 +995,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
     color: UI.text,
-    textTransform: 'capitalize',
   },
 });
