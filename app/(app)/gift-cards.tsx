@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
+ Image,
   Platform,
   RefreshControl,
   ScrollView,
@@ -299,6 +299,7 @@ export default function GiftCardsScreen() {
           .order('sort_order', { ascending: true })
           .order('price_iqd', { ascending: true })
           .order('created_at', { ascending: false }),
+
         supabase
           .from('gift_card_categories')
           .select('*')
@@ -338,47 +339,73 @@ export default function GiftCardsScreen() {
   const categoryMap = useMemo(() => {
     const map = new Map<string, GiftCardCategoryRow>();
     for (const category of giftCategories) {
-      map.set(category.id, category);
+      if (category?.id) {
+        map.set(String(category.id), category);
+      }
     }
     return map;
   }, [giftCategories]);
 
   const categories = useMemo(() => {
-    const map = new Map<string, GiftCategory>();
+    const activeCards = giftCards.filter((card) => card.is_active !== false);
+    const result: GiftCategory[] = [];
 
     for (const category of giftCategories) {
-      const key = category.id;
-      const theme = pickThemeFromSlug(category.slug || category.title);
-      const count = giftCards.filter(
-        (card) => card.is_active !== false && card.category_id === category.id
-      ).length;
+      const linkedCards = activeCards.filter(
+        (card) => String(card.category_id || '') === String(category.id || '')
+      );
 
-      map.set(key, {
-        key,
-        id: category.id,
+      const theme = pickThemeFromSlug(category.slug || category.title);
+      const firstLinked = linkedCards[0];
+
+      result.push({
+        key: String(category.id),
+        id: String(category.id),
         title: String(category.title || titleFromKey(category.slug)),
         subtitle: String(category.subtitle || 'Gift Cards'),
-        image: category.cover_image_url || null,
-        icon: (category.icon_name as keyof typeof Ionicons.glyphMap) || pickIconFromSlug(category.slug),
+        image:
+          category.cover_image_url ||
+          getCategoryPreviewImage(firstLinked as GiftCardRow, category) ||
+          null,
+        icon:
+          (category.icon_name as keyof typeof Ionicons.glyphMap) ||
+          pickIconFromSlug(category.slug || category.title),
         color: theme.color,
         soft: theme.soft,
         border: theme.border,
-        count,
+        count: linkedCards.length,
         sort_order: Number(category.sort_order || 0),
       });
     }
 
-    for (const row of giftCards) {
+    const categoriesIds = new Set(giftCategories.map((c) => String(c.id)));
+
+    for (const row of activeCards) {
       const fallbackKey =
-        row.category_id ||
+        String(row.category_id || '') ||
         normalizeKey(row.category) ||
         normalizeKey(row.brand) ||
         row.id;
 
-      if (!map.has(fallbackKey)) {
-        const slug = row.category || row.brand || row.title;
-        const theme = pickThemeFromSlug(slug);
-        map.set(fallbackKey, {
+      if (String(row.category_id || '') && categoriesIds.has(String(row.category_id))) {
+        continue;
+      }
+
+      const exists = result.find((item) => item.key === fallbackKey);
+      const slug = row.category || row.brand || row.title;
+      const theme = pickThemeFromSlug(slug);
+
+      if (!exists) {
+        const fallbackCards = activeCards.filter((card) => {
+          const key =
+            String(card.category_id || '') ||
+            normalizeKey(card.category) ||
+            normalizeKey(card.brand) ||
+            card.id;
+          return key === fallbackKey;
+        });
+
+        result.push({
           key: fallbackKey,
           id: row.category_id || null,
           title: titleFromKey(row.brand || row.category || row.title),
@@ -388,20 +415,13 @@ export default function GiftCardsScreen() {
           color: theme.color,
           soft: theme.soft,
           border: theme.border,
-          count: 1,
+          count: fallbackCards.length,
           sort_order: Number(row.sort_order || 0),
-        });
-      } else {
-        const current = map.get(fallbackKey)!;
-        map.set(fallbackKey, {
-          ...current,
-          count: Number(current.count || 0) + 1,
-          image: current.image || getCategoryPreviewImage(row, null),
         });
       }
     }
 
-    return Array.from(map.values()).sort((a, b) => {
+    return result.sort((a, b) => {
       const aOrder = Number(a.sort_order || 0);
       const bOrder = Number(b.sort_order || 0);
       if (aOrder !== bOrder) return aOrder - bOrder;
@@ -431,9 +451,10 @@ export default function GiftCardsScreen() {
     const q = search.trim().toLowerCase();
 
     return giftCards
+      .filter((row) => row.is_active !== false)
       .filter((row) => {
         const categoryKey =
-          row.category_id ||
+          String(row.category_id || '') ||
           normalizeKey(row.category) ||
           normalizeKey(row.brand) ||
           row.id;
