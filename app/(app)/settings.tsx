@@ -9,7 +9,7 @@ import {
   Modal,
   Pressable,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
@@ -17,13 +17,36 @@ import i18n, { setLanguage, getCurrentLanguage } from '@/lib/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const UI = {
-  bg: '#F5F6FA',
+  bg: '#EEF4FF',
   card: '#FFFFFF',
-  text: '#111827',
-  text2: '#6B7280',
-  border: '#E5E7EB',
-  green: '#47B08A',
-  greenSoft: '#EAF7F1',
+  cardSoft: '#F8FBFF',
+  text: '#0F172A',
+  text2: '#64748B',
+  border: '#D9E5F6',
+
+  blue: '#2563EB',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+
+  danger: '#DC2626',
+  dangerSoft: '#FEECEC',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: '#7DA8E6',
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: '#8BA9D6',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
 };
 
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
@@ -38,14 +61,12 @@ const LANGUAGES = [
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const { theme } = useTheme(); // keep for logout color (error)
+  const { theme } = useTheme();
   const [showLanguages, setShowLanguages] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [, forceUpdate] = useState({});
-  const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
-
-  // ✅ Custom logout modal state (replaces Alert.alert)
+  const isAdmin = !!(user && ADMIN_EMAILS.includes(user.email || ''));
   const [logoutOpen, setLogoutOpen] = useState(false);
 
   useEffect(() => {
@@ -67,7 +88,6 @@ export default function SettingsScreen() {
     ]);
   };
 
-  // ✅ Open custom modal instead of system Alert
   const handleLogout = () => {
     setLogoutOpen(true);
   };
@@ -78,32 +98,32 @@ export default function SettingsScreen() {
       label: 'Email Support',
       icon: 'mail' as const,
       url: 'mailto:info@zenopay.bond',
-      color: UI.greenSoft,
-      iconColor: UI.green,
+      color: UI.blueSoft,
+      iconColor: UI.blue,
     },
     {
       id: 'facebook',
       label: 'Facebook',
       icon: 'logo-facebook' as const,
       url: 'https://www.facebook.com/profile.php?id=61586118897855',
-      color: UI.greenSoft,
-      iconColor: UI.green,
+      color: UI.blueSoft,
+      iconColor: UI.blue,
     },
     {
       id: 'instagram',
       label: 'Instagram',
       icon: 'logo-instagram' as const,
       url: 'https://www.instagram.com/zenopaywallet/',
-      color: UI.greenSoft,
-      iconColor: UI.green,
+      color: UI.blueSoft,
+      iconColor: UI.blue,
     },
     {
       id: 'tiktok',
       label: 'TikTok',
       icon: 'logo-tiktok' as const,
       url: 'https://www.tiktok.com/@zenopaywallet?lang=en',
-      color: UI.greenSoft,
-      iconColor: UI.green,
+      color: UI.blueSoft,
+      iconColor: UI.blue,
     },
   ];
 
@@ -121,18 +141,17 @@ export default function SettingsScreen() {
     }
   };
 
-  // =========================
-  // Support screen
-  // =========================
   if (showSupport) {
     return (
       <View style={[styles.container, { backgroundColor: UI.bg }]}>
-        <View style={[styles.header, { borderBottomColor: UI.border, backgroundColor: UI.bg }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+
+        <View style={[styles.subHeader, { borderBottomColor: UI.border, backgroundColor: UI.bg }]}>
           <TouchableOpacity onPress={() => setShowSupport(false)} style={styles.backButton}>
             <Ionicons name="arrow-back" size={22} color={UI.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: UI.text }]}>{i18n.t('support')}</Text>
-          <View style={{ width: 24 }} />
+          <View style={{ width: 42 }} />
         </View>
 
         <ScrollView style={styles.supportList} contentContainerStyle={{ paddingBottom: 24 }}>
@@ -155,18 +174,17 @@ export default function SettingsScreen() {
     );
   }
 
-  // =========================
-  // Language screen
-  // =========================
   if (showLanguages) {
     return (
       <View style={[styles.container, { backgroundColor: UI.bg }]}>
-        <View style={[styles.header, { borderBottomColor: UI.border, backgroundColor: UI.bg }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+
+        <View style={[styles.subHeader, { borderBottomColor: UI.border, backgroundColor: UI.bg }]}>
           <TouchableOpacity onPress={() => setShowLanguages(false)} style={styles.backButton}>
             <Ionicons name="arrow-back" size={22} color={UI.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: UI.text }]}>{i18n.t('language')}</Text>
-          <View style={{ width: 24 }} />
+          <View style={{ width: 42 }} />
         </View>
 
         <ScrollView style={styles.languageList} contentContainerStyle={{ paddingBottom: 24 }}>
@@ -176,10 +194,7 @@ export default function SettingsScreen() {
               style={[
                 styles.languageItem,
                 { backgroundColor: UI.card, borderColor: UI.border },
-                selectedLanguage === language.code && [
-                  styles.languageItemActive,
-                  { backgroundColor: UI.card, borderColor: UI.green },
-                ],
+                selectedLanguage === language.code && styles.languageItemActive,
               ]}
               onPress={() => handleLanguageSelect(language.code)}
               activeOpacity={0.9}
@@ -188,7 +203,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.languageName, { color: UI.text }]}>{language.name}</Text>
               </View>
               {selectedLanguage === language.code && (
-                <Ionicons name="checkmark-circle" size={24} color={UI.green} />
+                <Ionicons name="checkmark-circle" size={24} color={UI.blue} />
               )}
             </TouchableOpacity>
           ))}
@@ -197,17 +212,14 @@ export default function SettingsScreen() {
     );
   }
 
-  // =========================
-  // Main screen
-  // =========================
   return (
     <View style={[styles.container, { backgroundColor: UI.bg }]}>
-      <View style={[styles.header, { backgroundColor: UI.bg, borderBottomColor: UI.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color={UI.text} />
-        </TouchableOpacity>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <View style={[styles.mainHeader, { backgroundColor: UI.bg }]}>
+        <View style={{ width: 42 }} />
         <Text style={[styles.headerTitle, { color: UI.text }]}>{i18n.t('settings')}</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 42 }} />
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 30 }}>
@@ -216,8 +228,8 @@ export default function SettingsScreen() {
           onPress={() => router.push('/(app)/profile' as any)}
           activeOpacity={0.9}
         >
-          <View style={[styles.menuIconContainer, { backgroundColor: UI.greenSoft }]}>
-            <Ionicons name="person" size={22} color={UI.green} />
+          <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
+            <Ionicons name="person" size={22} color={UI.blue} />
           </View>
           <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('profile')}</Text>
           <Ionicons name="chevron-forward" size={20} color={UI.text2} />
@@ -228,22 +240,20 @@ export default function SettingsScreen() {
           onPress={() => setShowLanguages(true)}
           activeOpacity={0.9}
         >
-          <View style={[styles.menuIconContainer, { backgroundColor: UI.greenSoft }]}>
-            <Ionicons name="language" size={22} color={UI.green} />
+          <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
+            <Ionicons name="language" size={22} color={UI.blue} />
           </View>
           <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('language')}</Text>
           <Ionicons name="chevron-forward" size={20} color={UI.text2} />
         </TouchableOpacity>
-
-        {/* ✅ Dark Mode button removed */}
 
         <TouchableOpacity
           style={[styles.menuItem, { backgroundColor: UI.card, borderColor: UI.border }]}
           onPress={() => router.push('/(app)/security' as any)}
           activeOpacity={0.9}
         >
-          <View style={[styles.menuIconContainer, { backgroundColor: UI.greenSoft }]}>
-            <Ionicons name="lock-closed" size={22} color={UI.green} />
+          <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
+            <Ionicons name="lock-closed" size={22} color={UI.blue} />
           </View>
           <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('security')}</Text>
           <Ionicons name="chevron-forward" size={20} color={UI.text2} />
@@ -254,8 +264,8 @@ export default function SettingsScreen() {
           onPress={() => router.push('/(app)/privacy-policy' as any)}
           activeOpacity={0.9}
         >
-          <View style={[styles.menuIconContainer, { backgroundColor: UI.greenSoft }]}>
-            <Ionicons name="document-text" size={22} color={UI.green} />
+          <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
+            <Ionicons name="document-text" size={22} color={UI.blue} />
           </View>
           <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('privacyPolicy')}</Text>
           <Ionicons name="chevron-forward" size={20} color={UI.text2} />
@@ -266,8 +276,8 @@ export default function SettingsScreen() {
           onPress={() => router.push('/(app)/terms-conditions' as any)}
           activeOpacity={0.9}
         >
-          <View style={[styles.menuIconContainer, { backgroundColor: UI.greenSoft }]}>
-            <Ionicons name="clipboard" size={22} color={UI.green} />
+          <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
+            <Ionicons name="clipboard" size={22} color={UI.blue} />
           </View>
           <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('termsConditions')}</Text>
           <Ionicons name="chevron-forward" size={20} color={UI.text2} />
@@ -278,8 +288,8 @@ export default function SettingsScreen() {
           onPress={() => setShowSupport(true)}
           activeOpacity={0.9}
         >
-          <View style={[styles.menuIconContainer, { backgroundColor: UI.greenSoft }]}>
-            <Ionicons name="mail" size={22} color={UI.green} />
+          <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
+            <Ionicons name="mail" size={22} color={UI.blue} />
           </View>
           <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('support')}</Text>
           <Ionicons name="chevron-forward" size={20} color={UI.text2} />
@@ -292,7 +302,7 @@ export default function SettingsScreen() {
             activeOpacity={0.9}
           >
             <View style={[styles.menuIconContainer, styles.adminIcon]}>
-              <Ionicons name="shield-checkmark" size={22} color="#A78BFA" />
+              <Ionicons name="shield-checkmark" size={22} color="#FFFFFF" />
             </View>
             <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('adminPanel')}</Text>
             <Ionicons name="chevron-forward" size={20} color={UI.text2} />
@@ -313,7 +323,6 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* ✅ Custom Logout Modal (small + white background + styled buttons) */}
       <Modal
         visible={logoutOpen}
         transparent
@@ -359,7 +368,15 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  header: {
+  mainHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 54,
+    paddingBottom: 14,
+  },
+  subHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -368,11 +385,21 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     borderBottomWidth: 1,
   },
-  backButton: { padding: 4 },
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: UI.card,
+    borderWidth: 1,
+    borderColor: UI.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.soft,
+  },
 
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '900' as const,
+    fontSize: 20,
+    fontWeight: '900',
   },
 
   content: { flex: 1 },
@@ -383,26 +410,27 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
+    ...SHADOWS.soft,
   },
 
   menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
 
-  adminIcon: { backgroundColor: '#5B21B6' },
-  logoutIcon: { backgroundColor: '#7F1D1D' },
+  adminIcon: { backgroundColor: UI.blueDark },
+  logoutIcon: { backgroundColor: UI.dangerSoft },
 
   menuText: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '900' as const,
+    fontWeight: '900',
   },
 
   logoutItem: {
@@ -423,12 +451,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     marginBottom: 12,
     borderWidth: 1,
+    ...SHADOWS.soft,
   },
   languageItemActive: {
     borderWidth: 1,
+    borderColor: UI.blue,
+    backgroundColor: UI.cardSoft,
   },
   languageInfo: {
     flexDirection: 'row',
@@ -437,7 +468,7 @@ const styles = StyleSheet.create({
   },
   languageName: {
     fontSize: 15,
-    fontWeight: '900' as const,
+    fontWeight: '900',
   },
 
   supportList: { flex: 1, padding: 16 },
@@ -446,18 +477,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     marginBottom: 12,
     borderWidth: 1,
+    ...SHADOWS.soft,
   },
   supportItemText: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '900' as const,
+    fontWeight: '900',
   },
 });
 
-// ✅ Logout modal styles (small card)
 const stylesLogout = StyleSheet.create({
   backdrop: {
     flex: 1,
@@ -468,15 +499,15 @@ const stylesLogout = StyleSheet.create({
   },
   card: {
     width: '100%',
-    maxWidth: 340, // ✅ smaller
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF', // ✅ white background
+    maxWidth: 340,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
     padding: 16,
   },
   title: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#111827', // ✅ black text
+    color: '#111827',
     marginBottom: 6,
     textAlign: 'left',
   },
@@ -499,10 +530,10 @@ const stylesLogout = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelBtn: {
-    backgroundColor: '#111827', // ✅ black button
+    backgroundColor: '#111827',
   },
   confirmBtn: {
-    backgroundColor: '#16A34A', // ✅ green button (logout)
+    backgroundColor: '#2563EB',
   },
   btnText: {
     fontSize: 15,
