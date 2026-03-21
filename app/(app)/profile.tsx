@@ -11,18 +11,18 @@ import {
   Platform,
   Modal,
   Pressable,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Stack, useFocusEffect } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image } from 'expo-image';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const COLORS = {
   bg: '#FFFFFF',
@@ -40,10 +40,6 @@ function safeText(v: any) {
   return String(v);
 }
 
-/**
- * DB column names
- * ✅ You asked: connect to profiles.date_of_brith (typo in DB)
- */
 const COL_DATE = 'date_of_brith';
 const COL_DATE_FALLBACK = 'date_of_birth';
 
@@ -51,9 +47,6 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, profile, refreshProfile } = useAuth();
 
-  // -----------------------------
-  // Local state
-  // -----------------------------
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [dob, setDob] = useState(
     safeText((profile as any)?.[COL_DATE] ?? (profile as any)?.[COL_DATE_FALLBACK])
@@ -65,28 +58,23 @@ export default function ProfileScreen() {
   const [accountActiveText, setAccountActiveText] = useState('Account is active');
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>((profile as any)?.avatar_url ?? null);
+  const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [savingAvatar, setSavingAvatar] = useState(false);
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
 
-  // -----------------------------
-  // ✅ Refresh profile whenever screen is focused
-  // -----------------------------
   useFocusEffect(
     useCallback(() => {
       refreshProfile?.();
     }, [refreshProfile])
   );
 
-  // -----------------------------
-  // Sync UI state with profile changes
-  // -----------------------------
   useEffect(() => {
     setFullName(profile?.full_name || '');
     setDob(safeText((profile as any)?.[COL_DATE] ?? (profile as any)?.[COL_DATE_FALLBACK]));
     setPhone(safeText((profile as any)?.phone));
     setCountry(safeText((profile as any)?.country));
     setAvatarUrl((profile as any)?.avatar_url ?? null);
-
     setAccountActiveText(i18n.t('accountActive') || 'Account is active');
   }, [
     profile?.full_name,
@@ -97,16 +85,10 @@ export default function ProfileScreen() {
     (profile as any)?.avatar_url,
   ]);
 
-  // -----------------------------
-  // ✅ Avatar "stable cache-bust" (NO reload on refresh)
-  // - We keep a stable ?v= value in AsyncStorage
-  // - Only change v when avatar is changed (upload) or url changed
-  // -----------------------------
   const AVATAR_VERSION_KEY = user?.id ? `avatar_version_${user.id}` : 'avatar_version_guest';
-  const [avatarVersion, setAvatarVersion] = useState<string>(''); // stable
+  const [avatarVersion, setAvatarVersion] = useState<string>('');
   const lastUrlRef = useRef<string | null>(null);
 
-  // load saved version once
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -116,12 +98,12 @@ export default function ProfileScreen() {
         if (mounted && v) setAvatarVersion(v);
       } catch {}
     })();
+
     return () => {
       mounted = false;
     };
   }, [user?.id, AVATAR_VERSION_KEY]);
 
-  // if avatar_url itself changes (from another device, etc), bump version once
   useEffect(() => {
     const currentUrl = (profile as any)?.avatar_url ?? avatarUrl ?? null;
     if (!user?.id) return;
@@ -135,18 +117,20 @@ export default function ProfileScreen() {
     lastUrlRef.current = currentUrl;
   }, [user?.id, (profile as any)?.avatar_url, avatarUrl, AVATAR_VERSION_KEY]);
 
-  const avatarPreview = useMemo(() => {
+  const remoteAvatarPreview = useMemo(() => {
     const url = (profile as any)?.avatar_url ?? avatarUrl ?? null;
     if (!url) return null;
-    // ✅ stable URL on refresh (same v), so it will NOT reload
-    // ✅ only changes when avatarVersion changes (when avatar changed)
+
     const sep = url.includes('?') ? '&' : '?';
     return avatarVersion ? `${url}${sep}v=${encodeURIComponent(avatarVersion)}` : url;
   }, [(profile as any)?.avatar_url, avatarUrl, avatarVersion]);
 
-  // -----------------------------
-  // ✅ Auto-save (debounced) when user edits inputs
-  // -----------------------------
+  const avatarPreview = localAvatarUri || remoteAvatarPreview;
+
+  useEffect(() => {
+    setAvatarLoaded(false);
+  }, [avatarPreview]);
+
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const lastSaved = useRef({
@@ -155,6 +139,21 @@ export default function ProfileScreen() {
     phone: safeText((profile as any)?.phone),
     country: safeText((profile as any)?.country),
   });
+
+  useEffect(() => {
+    lastSaved.current = {
+      full_name: profile?.full_name || '',
+      date_of_brith: safeText((profile as any)?.[COL_DATE] ?? (profile as any)?.[COL_DATE_FALLBACK]),
+      phone: safeText((profile as any)?.phone),
+      country: safeText((profile as any)?.country),
+    };
+  }, [
+    profile?.full_name,
+    (profile as any)?.[COL_DATE],
+    (profile as any)?.[COL_DATE_FALLBACK],
+    (profile as any)?.phone,
+    (profile as any)?.country,
+  ]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -188,7 +187,7 @@ export default function ProfileScreen() {
       try {
         const payload: any = {
           full_name: current.full_name,
-          [COL_DATE]: current.date_of_brith, // ✅ profiles.date_of_brith
+          [COL_DATE]: current.date_of_brith,
           phone: current.phone,
           country: current.country,
         };
@@ -198,19 +197,16 @@ export default function ProfileScreen() {
 
         lastSaved.current = { ...current };
         await refreshProfile?.();
-      } catch (e: any) {
+      } catch (e) {
         console.error('Auto save profile error:', e);
       }
-    }, 650);
+    }, 700);
 
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
   }, [fullName, dob, phone, country, user?.id, refreshProfile]);
 
-  // -----------------------------
-  // Manual Save (button)
-  // -----------------------------
   const updateMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('Not authenticated');
@@ -232,6 +228,7 @@ export default function ProfileScreen() {
         phone: phone.trim(),
         country: country.trim(),
       };
+
       await refreshProfile?.();
       Alert.alert(i18n.t('success') || 'Success', i18n.t('profileUpdated') || 'Profile updated');
     },
@@ -240,57 +237,55 @@ export default function ProfileScreen() {
     },
   });
 
-  // -----------------------------
-  // Avatar upload
-  // -----------------------------
   const uploadAvatarToSupabase = async (uri: string) => {
     if (!user?.id) {
       Alert.alert(i18n.t('error') || 'Error', 'Not authenticated');
       return;
     }
 
+    const previousRemoteAvatar = avatarUrl;
+
     try {
       setSavingAvatar(true);
 
-      const resp = await fetch(uri);
-      const blob = await resp.blob();
-      const arrayBuffer = await blob.arrayBuffer();
+      // نیشاندانی وێنەکە دەستبەجێ لەسەر شاشە
+      setLocalAvatarUri(uri);
 
+      const response = await fetch(uri);
+      const blob = await response.blob();
       const mime = blob.type || 'image/jpeg';
       const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
 
-      // ✅ fixed path (overwrite old avatar)
       const filePath = `${user.id}/avatar.${ext}`;
 
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, arrayBuffer, {
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, blob, {
         upsert: true,
         contentType: mime,
-        cacheControl: '0',
+        cacheControl: '31536000',
       });
       if (uploadError) throw uploadError;
 
-      // ✅ get public URL
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const publicUrl = data?.publicUrl;
       if (!publicUrl) throw new Error('Failed to get public URL');
 
-      // ✅ save url in profiles.avatar_url
       const { error: dbError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
       if (dbError) throw dbError;
 
-      // ✅ update UI
-      setAvatarUrl(publicUrl);
-
-      // ✅ IMPORTANT: bump stable version ONLY when avatar changed
       const newV = String(Date.now());
       setAvatarVersion(newV);
       await AsyncStorage.setItem(AVATAR_VERSION_KEY, newV);
+
+      setAvatarUrl(publicUrl);
+      setLocalAvatarUri(null);
 
       await refreshProfile?.();
 
       Alert.alert(i18n.t('success') || 'Success', i18n.t('profileUpdated') || 'Profile updated');
     } catch (e: any) {
       console.error('Avatar upload error:', e);
+      setLocalAvatarUri(null);
+      setAvatarUrl(previousRemoteAvatar ?? null);
       Alert.alert(i18n.t('error') || 'Error', e?.message || 'Upload failed');
     } finally {
       setSavingAvatar(false);
@@ -307,13 +302,15 @@ export default function ProfileScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.9,
+      quality: 0.7,
+      selectionLimit: 1,
     });
 
     if (result.canceled) return;
+
     const uri = result.assets?.[0]?.uri;
     if (!uri) return;
 
@@ -332,17 +329,17 @@ export default function ProfileScreen() {
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.9,
+      quality: 0.7,
     });
 
     if (result.canceled) return;
+
     const uri = result.assets?.[0]?.uri;
     if (!uri) return;
 
     await uploadAvatarToSupabase(uri);
   };
 
-  // Status text
   const statusText =
     (profile as any)?.kyc_status === 'approved'
       ? i18n.t('active') || 'Active'
@@ -367,9 +364,9 @@ export default function ProfileScreen() {
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.card}>
-            {/* Avatar */}
             <View style={styles.avatarWrap}>
               <TouchableOpacity
                 activeOpacity={0.9}
@@ -378,7 +375,24 @@ export default function ProfileScreen() {
                 disabled={savingAvatar}
               >
                 {avatarPreview ? (
-                  <Image source={{ uri: avatarPreview }} style={styles.avatarImg} />
+                  <>
+                    {!avatarLoaded && (
+                      <View style={styles.avatarLoadingLayer}>
+                        <ActivityIndicator size="small" color={COLORS.green} />
+                      </View>
+                    )}
+
+                    <Image
+                      source={{ uri: avatarPreview }}
+                      style={styles.avatarImg}
+                      contentFit="cover"
+                      transition={120}
+                      cachePolicy="memory-disk"
+                      onLoadStart={() => setAvatarLoaded(false)}
+                      onLoad={() => setAvatarLoaded(true)}
+                      onError={() => setAvatarLoaded(true)}
+                    />
+                  </>
                 ) : (
                   <View style={styles.avatarFallback}>
                     <Ionicons name="person" size={34} color={COLORS.green} />
@@ -394,10 +408,11 @@ export default function ProfileScreen() {
                 </View>
               </TouchableOpacity>
 
-              <Text style={styles.avatarHint}>{i18n.t('tapToChangePhoto') || 'Tap to change photo'}</Text>
+              <Text style={styles.avatarHint}>
+                {i18n.t('tapToChangePhoto') || 'Tap to change photo'}
+              </Text>
             </View>
 
-            {/* Full Name */}
             <Text style={styles.label}>{i18n.t('fullName')}</Text>
             <TextInput
               style={styles.input}
@@ -408,7 +423,6 @@ export default function ProfileScreen() {
               autoCapitalize="words"
             />
 
-            {/* Date Of Birth */}
             <Text style={styles.label}>{i18n.t('dateOfBirth')}</Text>
             <TextInput
               style={styles.input}
@@ -418,7 +432,6 @@ export default function ProfileScreen() {
               onChangeText={setDob}
             />
 
-            {/* Phone Number */}
             <Text style={styles.label}>{i18n.t('phoneNumber')}</Text>
             <TextInput
               style={styles.input}
@@ -429,13 +442,11 @@ export default function ProfileScreen() {
               keyboardType="phone-pad"
             />
 
-            {/* Email (readonly) */}
             <Text style={styles.label}>{i18n.t('email')}</Text>
             <View style={styles.infoBox}>
               <Text style={styles.infoText}>{user?.email || email}</Text>
             </View>
 
-            {/* Country */}
             <Text style={styles.label}>{i18n.t('country')}</Text>
             <TextInput
               style={styles.input}
@@ -445,16 +456,14 @@ export default function ProfileScreen() {
               onChangeText={setCountry}
             />
 
-            {/* Account status */}
             <Text style={styles.label}>{accountActiveText}</Text>
             <View style={styles.statusBox}>
               <View style={styles.statusDot} />
               <Text style={styles.statusText}>{statusText}</Text>
             </View>
 
-            {/* Save */}
             <TouchableOpacity
-              style={[styles.primaryButton, (updateMutation.isPending || savingAvatar) && { opacity: 0.7 }]}
+              style={[styles.primaryButton, (updateMutation.isPending || savingAvatar) && styles.buttonDisabled]}
               onPress={() => updateMutation.mutate()}
               disabled={updateMutation.isPending || savingAvatar}
               activeOpacity={0.9}
@@ -471,7 +480,6 @@ export default function ProfileScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      {/* Picker Modal */}
       <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setPickerOpen(false)} />
         <View style={styles.modalSheet}>
@@ -479,7 +487,9 @@ export default function ProfileScreen() {
 
           <TouchableOpacity style={styles.sheetButton} activeOpacity={0.9} onPress={pickFromGallery}>
             <Ionicons name="images" size={18} color={COLORS.text} />
-            <Text style={styles.sheetButtonText}>{i18n.t('selectExistingPhoto') || 'Select existing photo'}</Text>
+            <Text style={styles.sheetButtonText}>
+              {i18n.t('selectExistingPhoto') || 'Select existing photo'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.sheetButton} activeOpacity={0.9} onPress={takeNewPhoto}>
@@ -538,9 +548,25 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
-  avatarImg: { width: '100%', height: '100%' },
-  avatarFallback: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarLoadingLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 2,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarFallback: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   avatarPencil: {
     position: 'absolute',
     right: 6,
@@ -551,10 +577,21 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.green,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 3,
   },
-  avatarHint: { marginTop: 10, fontSize: 13, color: COLORS.textSecondary, fontWeight: '700' },
+  avatarHint: {
+    marginTop: 10,
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontWeight: '700',
+  },
 
-  label: { fontSize: 13, fontWeight: '900', marginBottom: 8, color: COLORS.text },
+  label: {
+    fontSize: 13,
+    fontWeight: '900',
+    marginBottom: 8,
+    color: COLORS.text,
+  },
 
   input: {
     borderRadius: 14,
@@ -579,7 +616,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  infoText: { fontSize: 16, fontWeight: '800', color: COLORS.text },
+  infoText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
 
   statusBox: {
     borderRadius: 14,
@@ -590,11 +631,20 @@ const styles = StyleSheet.create({
     height: 52,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    columnGap: 10,
     marginBottom: 10,
   },
-  statusDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.green },
-  statusText: { fontSize: 15, fontWeight: '900', color: COLORS.text },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.green,
+  },
+  statusText: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: COLORS.text,
+  },
 
   primaryButton: {
     marginTop: 6,
@@ -604,9 +654,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: COLORS.green,
   },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '900',
+  },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
   modalSheet: {
     position: 'absolute',
     left: 16,
@@ -634,10 +694,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    columnGap: 10,
     marginTop: 10,
   },
-  sheetButtonText: { fontSize: 15, fontWeight: '900', color: COLORS.text },
+  sheetButtonText: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: COLORS.text,
+  },
   cancelBtn: {
     height: 50,
     borderRadius: 14,
@@ -646,5 +710,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#F3F4F6',
   },
-  cancelText: { fontSize: 15, fontWeight: '900', color: COLORS.text },
+  cancelText: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: COLORS.text,
+  },
 });
