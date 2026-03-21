@@ -173,6 +173,12 @@ function formatIQD(value?: number | null) {
   return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
+function formatAmountPlain(value?: number | null) {
+  const num = Number(value || 0);
+  const rounded = Math.round(num);
+  return rounded.toString();
+}
+
 function pickProviderTheme(key?: string | null) {
   const normalized = normalizeProvider(key);
 
@@ -194,6 +200,9 @@ function pickProviderTheme(key?: string | null) {
   if (normalized.includes('kurdtel')) {
     return { color: '#CA8A04', soft: '#FEFCE8', border: '#FDE68A' };
   }
+  if (normalized.includes('zenopay')) {
+    return { color: '#0EA5B7', soft: '#ECFEFF', border: '#BDEFF5' };
+  }
 
   return { color: '#1570A6', soft: '#EEF7FF', border: '#CDE5F7' };
 }
@@ -206,16 +215,26 @@ function getItemImage(row: SimCardRow) {
   return row.item_image_url || row.image_url || row.provider_image_url || null;
 }
 
+function getRawAmount(row: SimCardRow) {
+  return Number(row.amount_iqd || 0) || Number(row.amount || 0) || 0;
+}
+
 function getItemTitle(row: SimCardRow, providerMeta?: ProviderCard | null) {
   if (row.title && row.title.trim()) return row.title.trim();
 
-  const amount = Number(row.amount_iqd || 0) || Number(row.amount || 0);
+  const amount = getRawAmount(row);
 
   if (amount > 0) {
-    return `${formatIQD(amount)} IQD`;
+    return `${formatIQD(amount)}`;
   }
 
   return providerMeta?.title || 'Mobile Card';
+}
+
+function getAmountLabel(row: SimCardRow) {
+  const amount = getRawAmount(row);
+  if (amount <= 0) return '';
+  return formatAmountPlain(amount);
 }
 
 export default function SimCardsScreen() {
@@ -354,7 +373,9 @@ export default function SimCardsScreen() {
 
   const handleBuy = (item: SimCardRow) => {
     const finalPriceIqd = Number(item.price_iqd || 0);
-    const finalAmount = Number(item.amount_iqd || item.amount || 0);
+    const finalAmount = getRawAmount(item);
+    const finalImage = String(getItemImage(item) || '');
+    const amountLabel = getAmountLabel(item);
 
     router.push({
       pathname: '/(app)/buy-card' as any,
@@ -365,9 +386,10 @@ export default function SimCardsScreen() {
         price: String(finalPriceIqd),
         provider: String(item.provider || 'sim').toLowerCase(),
         amount: String(finalAmount),
+        amount_label: amountLabel,
         type: 'sim',
-        image: String(getItemImage(item) || ''),
-        image_url: String(getItemImage(item) || ''),
+        image: finalImage,
+        image_url: finalImage,
       },
     });
   };
@@ -421,9 +443,7 @@ export default function SimCardsScreen() {
             {selectedMeta ? selectedMeta.title : t.heroTitle}
           </Text>
           <Text style={styles.heroSubtitle}>
-            {selectedMeta
-              ? `${t.selectedProvider}: ${selectedMeta.title}`
-              : t.chooseProvider}
+            {selectedMeta ? `${t.selectedProvider}: ${selectedMeta.title}` : t.chooseProvider}
           </Text>
         </View>
 
@@ -553,6 +573,7 @@ export default function SimCardsScreen() {
             <View style={styles.cardsList}>
               {filteredItems.map((item) => {
                 const imageUri = getItemImage(item) || '';
+                const amountLabel = getAmountLabel(item);
 
                 return (
                   <TouchableOpacity
@@ -601,9 +622,11 @@ export default function SimCardsScreen() {
                         {getItemTitle(item, selectedMeta)}
                       </Text>
 
-                      <Text style={styles.cardAmountText}>
-                        {t.amount}: {formatIQD(Number(item.amount_iqd || item.amount || 0))} IQD
-                      </Text>
+                      {!!amountLabel && (
+                        <Text style={styles.cardAmountText}>
+                          {t.amount}: {amountLabel}
+                        </Text>
+                      )}
 
                       {!!item.notes && (
                         <Text numberOfLines={2} style={styles.cardDescription}>
