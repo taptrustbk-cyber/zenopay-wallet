@@ -208,7 +208,7 @@ function pickProviderTheme(key?: string | null) {
 }
 
 function getProviderImageFromCard(row: SimCardRow) {
-  return row.provider_image_url || row.image_url || row.item_image_url || null;
+  return row.provider_image_url || null;
 }
 
 function getItemImage(row: SimCardRow) {
