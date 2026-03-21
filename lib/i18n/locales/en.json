@@ -1,6 +1,7 @@
 {
   "home": "Home",
   "buyNow": "Buy Now",
+  "installmentTotalPrice": "Installment Total Price",
   "transactions_topupCard": "Topup Card",
   "transactions_cardValue": "Card Value",
   "transactions_topupCardPurchased": "Topup Card Purchased",
