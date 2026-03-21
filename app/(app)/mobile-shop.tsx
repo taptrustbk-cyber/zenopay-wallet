@@ -9,11 +9,11 @@ import {
   Alert,
   ActivityIndicator,
   FlatList,
-  Image,
   I18nManager,
   Dimensions,
   Modal,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +21,7 @@ import { useRouter, Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Location from 'expo-location';
+import { Image as ExpoImage } from 'expo-image';
 import i18n from '@/lib/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -217,26 +218,47 @@ const getInstallmentContractPrice = (product?: MobileProduct | null) => {
   return getMonthlyPrice(product) * getMonthsCount(product);
 };
 
+const getAllImageUrls = (products: MobileProduct[]) => {
+  const urls = products
+    .flatMap((item) => [item.image_url, item.logo_url])
+    .filter((v): v is string => !!v && typeof v === 'string');
+
+  return Array.from(new Set(urls));
+};
+
 const ProductImage = ({
   uri,
   style,
-  resizeMode = 'contain',
+  contentFit = 'contain',
   iconSize = 34,
+  placeholderIcon = 'phone-portrait-outline',
 }: {
   uri?: string | null;
   style: any;
-  resizeMode?: 'cover' | 'contain' | 'stretch' | 'repeat' | 'center';
+  contentFit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
   iconSize?: number;
+  placeholderIcon?: keyof typeof Ionicons.glyphMap;
 }) => {
   if (!uri) {
     return (
       <View style={[style, styles.imagePlaceholder]}>
-        <Ionicons name="phone-portrait-outline" size={iconSize} color={COLORS.textMuted} />
+        <Ionicons name={placeholderIcon} size={iconSize} color={COLORS.textMuted} />
       </View>
     );
   }
 
-  return <Image key={uri} source={{ uri }} style={style} resizeMode={resizeMode} />;
+  return (
+    <ExpoImage
+      source={{ uri }}
+      style={style}
+      contentFit={contentFit}
+      cachePolicy="memory-disk"
+      transition={120}
+      priority="high"
+      recyclingKey={uri}
+      allowDownscaling
+    />
+  );
 };
 
 const FALLBACK_PRODUCTS: MobileProduct[] = [
@@ -442,6 +464,19 @@ export default function MobileShopScreen() {
   const featuredProduct = React.useMemo(() => {
     return allProducts[0] || null;
   }, [allProducts]);
+
+  React.useEffect(() => {
+    const urls = getAllImageUrls(allProducts);
+    if (urls.length) {
+      ExpoImage.prefetch(urls).catch(() => {});
+    }
+  }, [allProducts]);
+
+  React.useEffect(() => {
+    if (featuredProduct?.image_url) {
+      ExpoImage.prefetch([featuredProduct.image_url]).catch(() => {});
+    }
+  }, [featuredProduct?.image_url]);
 
   const filteredProducts = React.useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -770,11 +805,19 @@ export default function MobileShopScreen() {
           </TouchableOpacity>
         </View>
 
-        <ProductImage uri={item.image_url} style={styles.productImage} resizeMode="contain" />
+        <ProductImage uri={item.image_url} style={styles.productImage} contentFit="contain" iconSize={34} />
 
         <View style={styles.brandRow}>
           <Text style={styles.brandText}>{getBrandLabel(item.brand)}</Text>
-          {!!item.logo_url ? <Image source={{ uri: item.logo_url }} style={styles.brandLogo} resizeMode="contain" /> : null}
+          {!!item.logo_url ? (
+            <ProductImage
+              uri={item.logo_url}
+              style={styles.brandLogo}
+              contentFit="contain"
+              iconSize={14}
+              placeholderIcon="image-outline"
+            />
+          ) : null}
         </View>
 
         <Text numberOfLines={2} style={styles.productName}>
@@ -931,7 +974,12 @@ export default function MobileShopScreen() {
             </View>
 
             <View style={styles.heroImageWrap}>
-              <ProductImage uri={featuredProduct?.image_url} style={styles.heroImage} resizeMode="contain" iconSize={42} />
+              <ProductImage
+                uri={featuredProduct?.image_url}
+                style={styles.heroImage}
+                contentFit="contain"
+                iconSize={42}
+              />
             </View>
           </LinearGradient>
 
@@ -967,6 +1015,11 @@ export default function MobileShopScreen() {
             numColumns={2}
             scrollEnabled={false}
             columnWrapperStyle={styles.gridRow}
+            removeClippedSubviews={Platform.OS !== 'web'}
+            initialNumToRender={6}
+            maxToRenderPerBatch={8}
+            windowSize={7}
+            updateCellsBatchingPeriod={40}
             ListEmptyComponent={
               <View style={styles.emptyWrap}>
                 <Ionicons name="phone-portrait-outline" size={34} color={COLORS.textMuted} />
@@ -1019,7 +1072,11 @@ export default function MobileShopScreen() {
                 {selectedProduct ? (
                   <>
                     <View style={styles.selectedCard}>
-                      <ProductImage uri={selectedProduct.image_url} style={styles.selectedImage} resizeMode="contain" />
+                      <ProductImage
+                        uri={selectedProduct.image_url}
+                        style={styles.selectedImage}
+                        contentFit="contain"
+                      />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.selectedName}>{selectedProduct.name}</Text>
                         <Text style={styles.selectedSub}>
@@ -1564,8 +1621,9 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   heroImage: {
-    width: 130,
-    height: 130,
+    width: '100%',
+    height: '100%',
+    borderRadius: 26,
   },
 
   walletCard: {
@@ -1671,7 +1729,7 @@ const styles = StyleSheet.create({
   },
   productImage: {
     width: '100%',
-    height: 125,
+    height: 140,
     marginBottom: 8,
     borderRadius: 16,
     backgroundColor: '#F7FAFF',
