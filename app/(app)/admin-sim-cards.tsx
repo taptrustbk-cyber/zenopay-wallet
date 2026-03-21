@@ -35,8 +35,19 @@ type SimCardRow = {
 
 type FilterType = 'all' | 'available' | 'unavailable';
 type SortType = 'newest' | 'oldest' | 'price_low' | 'price_high' | 'name_az';
+type AdminTab = 'providers' | 'cards';
+
+type ProviderRow = {
+  key: string;
+  label: string;
+  logo: string;
+  count: number;
+  activeCount: number;
+};
 
 const BUCKET_NAME = 'product-images';
+const FALLBACK_IMAGE =
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png';
 
 const UI = {
   bg: '#07122B',
@@ -58,12 +69,36 @@ const UI = {
 };
 
 const PROVIDERS = [
-  { key: 'korek', label: 'Korek', logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uu16k1t8p3uz3dpr3k6ic' },
-  { key: 'zain', label: 'Zain', logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uq8qjx7d0g47h9rv2jvzz' },
-  { key: 'asiacell', label: 'AsiaCell', logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/q8puaw0dyshx6jruwg83i' },
-  { key: 'ftth', label: 'FTTH', logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/1ogdfkyuisk5c6unchj2s' },
-  { key: 'reber', label: 'Reber', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png' },
-  { key: 'kurdtel', label: 'Kurdtel', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png' },
+  {
+    key: 'korek',
+    label: 'Korek',
+    logo: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773717052421.jpg',
+  },
+  {
+    key: 'zain',
+    label: 'Zain',
+    logo: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773716686562.jpg',
+  },
+  {
+    key: 'asiacell',
+    label: 'AsiaCell',
+    logo: 'https://wzjnwgygmiznavrdgppo.supabase.co/storage/v1/object/public/product-images/sim-card-1773716476782.png',
+  },
+  {
+    key: 'ftth',
+    label: 'FTTH',
+    logo: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/1ogdfkyuisk5c6unchj2s',
+  },
+  {
+    key: 'reber',
+    label: 'Reber',
+    logo: FALLBACK_IMAGE,
+  },
+  {
+    key: 'kurdtel',
+    label: 'Kurdtel',
+    logo: FALLBACK_IMAGE,
+  },
 ];
 
 function formatIQD(value?: number | null) {
@@ -82,7 +117,7 @@ function getProviderInfo(provider?: string | null) {
     PROVIDERS.find((p) => p.key === key) || {
       key,
       label: provider || 'Provider',
-      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png',
+      logo: FALLBACK_IMAGE,
     }
   );
 }
@@ -105,6 +140,8 @@ function getSortLabel(sort: SortType) {
 export default function AdminSimCardScreen() {
   const router = useRouter();
 
+  const [activeTab, setActiveTab] = useState<AdminTab>('providers');
+
   const [cards, setCards] = useState<SimCardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -116,24 +153,29 @@ export default function AdminSimCardScreen() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  const [selectedProvider, setSelectedProvider] = useState('korek');
+
   const [provider, setProvider] = useState('korek');
   const [title, setTitle] = useState('');
   const [amountIqd, setAmountIqd] = useState('');
   const [priceIqd, setPriceIqd] = useState('');
   const [notes, setNotes] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [sortOrder, setSortOrder] = useState('0');
   const [isAvailable, setIsAvailable] = useState(true);
 
   const selectedProviderInfo = getProviderInfo(provider);
+  const selectedCategoryInfo = getProviderInfo(selectedProvider);
 
   const resetForm = () => {
     setEditingId(null);
-    setProvider('korek');
+    setProvider(selectedProvider || 'korek');
     setTitle('');
     setAmountIqd('');
     setPriceIqd('');
     setNotes('');
     setImageUrl('');
+    setSortOrder('0');
     setIsAvailable(true);
   };
 
@@ -142,10 +184,16 @@ export default function AdminSimCardScreen() {
       const { data, error } = await supabase
         .from('topup_cards')
         .select('*')
+        .order('sort_order', { ascending: true })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCards((data || []) as SimCardRow[]);
+      const rows = (data || []) as SimCardRow[];
+      setCards(rows);
+
+      if (!rows.some((x) => normalizeProvider(String(x.provider || '')) === selectedProvider)) {
+        setSelectedProvider(selectedProvider || 'korek');
+      }
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Could not load SIM cards.');
     } finally {
@@ -158,10 +206,28 @@ export default function AdminSimCardScreen() {
     fetchCards();
   }, []);
 
+  useEffect(() => {
+    if (!provider) setProvider(selectedProvider || 'korek');
+  }, [selectedProvider, provider]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchCards();
   };
+
+  const providerRows = useMemo<ProviderRow[]>(() => {
+    return PROVIDERS.map((item) => {
+      const related = cards.filter(
+        (card) => normalizeProvider(String(card.provider || '')) === item.key
+      );
+
+      return {
+        ...item,
+        count: related.length,
+        activeCount: related.filter((x) => !!x.is_active).length,
+      };
+    });
+  }, [cards]);
 
   const stats = useMemo(() => {
     const all = cards.length;
@@ -173,12 +239,19 @@ export default function AdminSimCardScreen() {
   const filteredCards = useMemo(() => {
     let rows = [...cards];
 
+    rows = rows.filter(
+      (x) => normalizeProvider(String(x.provider || '')) === normalizeProvider(selectedProvider)
+    );
+
     if (filter === 'available') rows = rows.filter((x) => !!x.is_active);
     if (filter === 'unavailable') rows = rows.filter((x) => !x.is_active);
 
     switch (sortBy) {
       case 'oldest':
-        rows.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+        rows.sort(
+          (a, b) =>
+            new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+        );
         break;
       case 'price_low':
         rows.sort((a, b) => Number(a.price_iqd || 0) - Number(b.price_iqd || 0));
@@ -190,12 +263,17 @@ export default function AdminSimCardScreen() {
         rows.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
         break;
       default:
-        rows.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        rows.sort((a, b) => {
+          const aOrder = Number(a.sort_order || 0);
+          const bOrder = Number(b.sort_order || 0);
+          if (aOrder !== bOrder) return aOrder - bOrder;
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        });
         break;
     }
 
     return rows;
-  }, [cards, filter, sortBy]);
+  }, [cards, filter, sortBy, selectedProvider]);
 
   const cycleSort = () => {
     setSortBy((prev) => {
@@ -289,6 +367,7 @@ export default function AdminSimCardScreen() {
         price_usd: Number(String(priceIqd).replace(/,/g, '')) / 1530,
         image_url: imageUrl.trim() || null,
         notes: notes.trim() || null,
+        sort_order: Number(String(sortOrder).replace(/,/g, '')) || 0,
         is_active: isAvailable,
       };
 
@@ -301,9 +380,7 @@ export default function AdminSimCardScreen() {
         if (error) throw error;
         Alert.alert('Updated', 'SIM card updated successfully.');
       } else {
-        const { error } = await supabase
-          .from('topup_cards')
-          .insert(payload);
+        const { error } = await supabase.from('topup_cards').insert(payload);
 
         if (error) throw error;
         Alert.alert('Added', 'SIM card added successfully.');
@@ -319,13 +396,16 @@ export default function AdminSimCardScreen() {
   };
 
   const handleEdit = (card: SimCardRow) => {
+    setActiveTab('cards');
     setEditingId(card.id);
     setProvider(String(card.provider || 'korek'));
+    setSelectedProvider(String(card.provider || 'korek'));
     setTitle(String(card.title || ''));
     setAmountIqd(String(card.amount_iqd || ''));
     setPriceIqd(String(card.price_iqd || ''));
     setNotes(String(card.notes || ''));
     setImageUrl(String(card.image_url || ''));
+    setSortOrder(String(card.sort_order ?? 0));
     setIsAvailable(!!card.is_active);
   };
 
@@ -362,6 +442,114 @@ export default function AdminSimCardScreen() {
     }
   };
 
+  const renderFilterBar = () => (
+    <View style={styles.filterBar}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={[styles.filterItem, filter === 'all' && styles.filterItemActive]}
+        onPress={() => setFilter('all')}
+      >
+        <Text style={[styles.filterItemText, filter === 'all' && styles.filterItemTextActive]}>
+          All
+        </Text>
+        <View style={styles.filterCount}>
+          <Text style={styles.filterCountText}>{stats.all}</Text>
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.filterDivider} />
+
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={[styles.filterItem, filter === 'available' && styles.filterItemActive]}
+        onPress={() => setFilter('available')}
+      >
+        <Ionicons name="albums-outline" size={18} color="rgba(255,255,255,0.72)" />
+        <Text
+          style={[
+            styles.filterItemText,
+            filter === 'available' && styles.filterItemTextActive,
+          ]}
+        >
+          Available
+        </Text>
+        <View style={styles.filterCount}>
+          <Text style={styles.filterCountText}>{stats.available}</Text>
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.filterDivider} />
+
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={[styles.filterItem, filter === 'unavailable' && styles.filterItemActive]}
+        onPress={() => setFilter('unavailable')}
+      >
+        <Ionicons name="ellipsis-vertical" size={18} color="rgba(255,255,255,0.72)" />
+        <Text
+          style={[
+            styles.filterItemText,
+            filter === 'unavailable' && styles.filterItemTextActive,
+          ]}
+        >
+          Unavailable
+        </Text>
+        <View style={styles.filterCount}>
+          <Text style={styles.filterCountText}>{stats.unavailable}</Text>
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.filterDivider} />
+
+      <TouchableOpacity activeOpacity={0.9} style={styles.sortItem} onPress={cycleSort}>
+        <Ionicons name="filter-outline" size={18} color="rgba(255,255,255,0.72)" />
+        <Text style={styles.filterItemText}>{getSortLabel(sortBy)}</Text>
+        <Ionicons name="chevron-down" size={18} color="rgba(255,255,255,0.72)" />
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderTabSwitch = () => (
+    <View style={styles.tabSwitchWrap}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={[styles.tabSwitchBtn, activeTab === 'providers' && styles.tabSwitchBtnActive]}
+        onPress={() => setActiveTab('providers')}
+      >
+        <Ionicons
+          name="images-outline"
+          size={18}
+          color={activeTab === 'providers' ? UI.goldDark : '#FFFFFF'}
+        />
+        <Text
+          style={[
+            styles.tabSwitchText,
+            activeTab === 'providers' && styles.tabSwitchTextActive,
+          ]}
+        >
+          Providers
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={[styles.tabSwitchBtn, activeTab === 'cards' && styles.tabSwitchBtnActive]}
+        onPress={() => setActiveTab('cards')}
+      >
+        <Ionicons
+          name="card-outline"
+          size={18}
+          color={activeTab === 'cards' ? UI.goldDark : '#FFFFFF'}
+        />
+        <Text
+          style={[styles.tabSwitchText, activeTab === 'cards' && styles.tabSwitchTextActive]}
+        >
+          Cards
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -386,266 +574,302 @@ export default function AdminSimCardScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+          }
         >
-          <View style={styles.formCard}>
-            <Text style={styles.formTitle}>
-              {editingId ? 'Edit Card' : 'Add New Card'}
-            </Text>
+          {renderTabSwitch()}
 
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={styles.providerPicker}
-              onPress={() => {
-                const currentIndex = PROVIDERS.findIndex((x) => x.key === normalizeProvider(provider));
-                const next = PROVIDERS[(currentIndex + 1) % PROVIDERS.length];
-                setProvider(next.key);
-              }}
-            >
-              <Image source={{ uri: selectedProviderInfo.logo }} style={styles.providerLogoSmall} resizeMode="contain" />
-              <Text style={styles.providerPickerText}>{selectedProviderInfo.label}</Text>
-              <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.72)" />
-            </TouchableOpacity>
+          {activeTab === 'providers' ? (
+            <>
+              <Text style={styles.listTitle}>All Providers</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Card title (e.g. Korek Telekom 1000 IQD)"
-              placeholderTextColor="rgba(255,255,255,0.42)"
-              value={title}
-              onChangeText={setTitle}
-            />
-
-            <View style={styles.doubleRow}>
-              <TextInput
-                style={[styles.input, styles.halfInput]}
-                placeholder="1,000 IQD"
-                placeholderTextColor="rgba(255,255,255,0.42)"
-                keyboardType="numeric"
-                value={amountIqd}
-                onChangeText={setAmountIqd}
-              />
-              <TextInput
-                style={[styles.input, styles.halfInput]}
-                placeholder="1,400 IQD"
-                placeholderTextColor="rgba(255,255,255,0.42)"
-                keyboardType="numeric"
-                value={priceIqd}
-                onChangeText={setPriceIqd}
-              />
-            </View>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Enter any notes here..."
-              placeholderTextColor="rgba(255,255,255,0.42)"
-              value={notes}
-              onChangeText={setNotes}
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Or paste image URL here..."
-              placeholderTextColor="rgba(255,255,255,0.42)"
-              value={imageUrl}
-              onChangeText={setImageUrl}
-              autoCapitalize="none"
-            />
-
-            <View style={styles.statusRow}>
-              <TouchableOpacity
-                activeOpacity={0.9}
-                style={[styles.statusPill, isAvailable && styles.statusPillActive]}
-                onPress={() => setIsAvailable(true)}
-              >
-                <Text style={[styles.statusPillText, isAvailable && styles.statusPillTextActive]}>
-                  Available
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.9}
-                style={[styles.statusPill, !isAvailable && styles.statusPillInactive]}
-                onPress={() => setIsAvailable(false)}
-              >
-                <Text style={[styles.statusPillText, !isAvailable && styles.statusPillTextInactive]}>
-                  Unavailable
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {!!imageUrl && (
-              <Image
-                source={{ uri: imageUrl }}
-                style={styles.previewImage}
-                resizeMode="cover"
-              />
-            )}
-
-            <TouchableOpacity
-              activeOpacity={0.92}
-              style={styles.uploadButton}
-              onPress={pickAndUploadImage}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <ActivityIndicator color={UI.goldDark} />
+              {loading ? (
+                <View style={styles.loaderWrap}>
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                </View>
               ) : (
-                <>
-                  <Ionicons name="camera" size={24} color={UI.goldDark} />
-                  <Text style={styles.uploadButtonText}>Upload Image</Text>
-                </>
+                providerRows.map((item) => (
+                  <TouchableOpacity
+                    key={item.key}
+                    activeOpacity={0.92}
+                    style={styles.providerListItem}
+                    onPress={() => {
+                      setSelectedProvider(item.key);
+                      setProvider(item.key);
+                      setActiveTab('cards');
+                      if (!editingId) {
+                        setTitle('');
+                        setAmountIqd('');
+                        setPriceIqd('');
+                        setNotes('');
+                        setImageUrl('');
+                        setSortOrder('0');
+                        setIsAvailable(true);
+                      }
+                    }}
+                  >
+                    <Image source={{ uri: item.logo || FALLBACK_IMAGE }} style={styles.providerThumb} />
+
+                    <View style={styles.providerInfo}>
+                      <Text style={styles.providerTitle}>{item.label}</Text>
+                      <Text style={styles.providerSub}>
+                        Total cards: {item.count}
+                      </Text>
+                      <Text style={styles.providerSub}>
+                        Available: {item.activeCount}
+                      </Text>
+                    </View>
+
+                    <View style={styles.providerOpenPill}>
+                      <Text style={styles.providerOpenText}>Open</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
               )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.92}
-              style={styles.addButton}
-              onPress={handleSubmit}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <ActivityIndicator color={UI.goldDark} />
-              ) : (
-                <Text style={styles.addButtonText}>
-                  {editingId ? 'Update Card' : 'Add Card'}
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            {editingId && (
-              <TouchableOpacity
-                activeOpacity={0.92}
-                style={styles.cancelEditButton}
-                onPress={resetForm}
-              >
-                <Text style={styles.cancelEditButtonText}>Cancel Edit</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <Text style={styles.listTitle}>All Cards</Text>
-
-          <View style={styles.filterBar}>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={[styles.filterItem, filter === 'all' && styles.filterItemActive]}
-              onPress={() => setFilter('all')}
-            >
-              <Text style={[styles.filterItemText, filter === 'all' && styles.filterItemTextActive]}>
-                All
-              </Text>
-              <View style={styles.filterCount}><Text style={styles.filterCountText}>{stats.all}</Text></View>
-            </TouchableOpacity>
-
-            <View style={styles.filterDivider} />
-
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={styles.filterItem}
-              onPress={() => setFilter('available')}
-            >
-              <Ionicons name="albums-outline" size={18} color="rgba(255,255,255,0.72)" />
-              <Text style={[styles.filterItemText, filter === 'available' && styles.filterItemTextActive]}>
-                Available
-              </Text>
-              <View style={styles.filterCount}><Text style={styles.filterCountText}>{stats.available}</Text></View>
-            </TouchableOpacity>
-
-            <View style={styles.filterDivider} />
-
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={styles.filterItem}
-              onPress={() => setFilter('unavailable')}
-            >
-              <Ionicons name="ellipsis-vertical" size={18} color="rgba(255,255,255,0.72)" />
-              <Text style={[styles.filterItemText, filter === 'unavailable' && styles.filterItemTextActive]}>
-                Unavailable
-              </Text>
-              <View style={styles.filterCount}><Text style={styles.filterCountText}>{stats.unavailable}</Text></View>
-            </TouchableOpacity>
-
-            <View style={styles.filterDivider} />
-
-            <TouchableOpacity activeOpacity={0.9} style={styles.sortItem} onPress={cycleSort}>
-              <Ionicons name="filter-outline" size={18} color="rgba(255,255,255,0.72)" />
-              <Text style={styles.filterItemText}>{getSortLabel(sortBy)}</Text>
-              <Ionicons name="chevron-down" size={18} color="rgba(255,255,255,0.72)" />
-            </TouchableOpacity>
-          </View>
-
-          {loading ? (
-            <View style={styles.loaderWrap}>
-              <ActivityIndicator size="large" color="#FFFFFF" />
-            </View>
-          ) : filteredCards.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Ionicons name="card-outline" size={42} color={UI.gold} />
-              <Text style={styles.emptyTitle}>No cards found</Text>
-              <Text style={styles.emptyText}>Add your first SIM card from the form above.</Text>
-            </View>
+            </>
           ) : (
-            filteredCards.map((card) => {
-              const providerInfo = getProviderInfo(card.provider);
+            <>
+              <View style={styles.formCard}>
+                <Text style={styles.formTitle}>
+                  {editingId ? 'Edit Card' : 'Add New Card'}
+                </Text>
 
-              return (
-                <View key={card.id} style={styles.cardListItem}>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={styles.providerPicker}
+                  onPress={() => {
+                    const currentIndex = PROVIDERS.findIndex(
+                      (x) => x.key === normalizeProvider(provider)
+                    );
+                    const next = PROVIDERS[(currentIndex + 1 + PROVIDERS.length) % PROVIDERS.length];
+                    setProvider(next.key);
+                    setSelectedProvider(next.key);
+                  }}
+                >
                   <Image
-                    source={{ uri: card.image_url || providerInfo.logo }}
-                    style={styles.cardThumb}
+                    source={{ uri: selectedProviderInfo.logo || FALLBACK_IMAGE }}
+                    style={styles.providerLogoSmall}
                     resizeMode="cover"
                   />
+                  <Text style={styles.providerPickerText}>{selectedProviderInfo.label}</Text>
+                  <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.72)" />
+                </TouchableOpacity>
 
-                  <View style={styles.cardInfo}>
-                    <Text style={styles.cardItemTitle}>{card.title || '-'}</Text>
-                    <Text style={styles.cardItemPrice}>Price {formatIQD(card.price_iqd)} IQD</Text>
-                    {!!card.notes && (
-                      <Text numberOfLines={2} style={styles.cardItemNotes}>
-                        {card.notes}
-                      </Text>
-                    )}
+                <TextInput
+                  style={styles.input}
+                  placeholder="Card title (e.g. Korek Telekom 1000 IQD)"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  value={title}
+                  onChangeText={setTitle}
+                />
 
-                    <TouchableOpacity
-                      activeOpacity={0.9}
-                      onPress={() => quickToggleAvailability(card)}
-                      style={[
-                        styles.availabilityBadge,
-                        card.is_active ? styles.availabilityBadgeOn : styles.availabilityBadgeOff,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.availabilityBadgeText,
-                          card.is_active ? styles.availabilityBadgeTextOn : styles.availabilityBadgeTextOff,
-                        ]}
-                      >
-                        {card.is_active ? 'Available' : 'Unavailable'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.actionsBox}>
-                    <TouchableOpacity
-                      activeOpacity={0.9}
-                      style={styles.actionBtn}
-                      onPress={() => handleEdit(card)}
-                    >
-                      <Ionicons name="pencil" size={18} color="#E8C35A" />
-                    </TouchableOpacity>
-
-                    <View style={styles.actionDivider} />
-
-                    <TouchableOpacity
-                      activeOpacity={0.9}
-                      style={styles.actionBtn}
-                      onPress={() => handleDelete(card.id)}
-                    >
-                      <Ionicons name="trash" size={18} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
+                <View style={styles.doubleRow}>
+                  <TextInput
+                    style={[styles.input, styles.halfInput]}
+                    placeholder="Amount IQD"
+                    placeholderTextColor="rgba(255,255,255,0.42)"
+                    keyboardType="numeric"
+                    value={amountIqd}
+                    onChangeText={setAmountIqd}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.halfInput]}
+                    placeholder="Price IQD"
+                    placeholderTextColor="rgba(255,255,255,0.42)"
+                    keyboardType="numeric"
+                    value={priceIqd}
+                    onChangeText={setPriceIqd}
+                  />
                 </View>
-              );
-            })
+
+                <View style={styles.doubleRow}>
+                  <TextInput
+                    style={[styles.input, styles.halfInput]}
+                    placeholder="Sort order"
+                    placeholderTextColor="rgba(255,255,255,0.42)"
+                    keyboardType="numeric"
+                    value={sortOrder}
+                    onChangeText={setSortOrder}
+                  />
+                  <View style={styles.halfInput} />
+                </View>
+
+                <TextInput
+                  style={[styles.input, styles.textarea]}
+                  placeholder="Notes / Description"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  value={notes}
+                  onChangeText={setNotes}
+                  multiline
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Item image URL for this card"
+                  placeholderTextColor="rgba(255,255,255,0.42)"
+                  value={imageUrl}
+                  onChangeText={setImageUrl}
+                  autoCapitalize="none"
+                />
+
+                <View style={styles.statusRow}>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={[styles.statusPill, isAvailable && styles.statusPillActive]}
+                    onPress={() => setIsAvailable(true)}
+                  >
+                    <Text style={[styles.statusPillText, isAvailable && styles.statusPillTextActive]}>
+                      Available
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={[styles.statusPill, !isAvailable && styles.statusPillInactive]}
+                    onPress={() => setIsAvailable(false)}
+                  >
+                    <Text
+                      style={[styles.statusPillText, !isAvailable && styles.statusPillTextInactive]}
+                    >
+                      Unavailable
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {!!imageUrl && (
+                  <Image source={{ uri: imageUrl }} style={styles.previewImage} resizeMode="cover" />
+                )}
+
+                <TouchableOpacity
+                  activeOpacity={0.92}
+                  style={styles.uploadButton}
+                  onPress={pickAndUploadImage}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <ActivityIndicator color={UI.goldDark} />
+                  ) : (
+                    <>
+                      <Ionicons name="camera" size={24} color={UI.goldDark} />
+                      <Text style={styles.uploadButtonText}>Upload Item Image</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.92}
+                  style={styles.addButton}
+                  onPress={handleSubmit}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <ActivityIndicator color={UI.goldDark} />
+                  ) : (
+                    <Text style={styles.addButtonText}>
+                      {editingId ? 'Update Card' : 'Add Card'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                {editingId && (
+                  <TouchableOpacity
+                    activeOpacity={0.92}
+                    style={styles.cancelEditButton}
+                    onPress={resetForm}
+                  >
+                    <Text style={styles.cancelEditButtonText}>Cancel Edit</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <Text style={styles.listTitle}>{selectedCategoryInfo.label} Cards</Text>
+              {renderFilterBar()}
+
+              {loading ? (
+                <View style={styles.loaderWrap}>
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                </View>
+              ) : filteredCards.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Ionicons name="card-outline" size={42} color={UI.gold} />
+                  <Text style={styles.emptyTitle}>No cards found</Text>
+                  <Text style={styles.emptyText}>
+                    Add your first {selectedCategoryInfo.label} card from the form above.
+                  </Text>
+                </View>
+              ) : (
+                filteredCards.map((card) => {
+                  const providerInfo = getProviderInfo(card.provider);
+
+                  return (
+                    <View key={card.id} style={styles.cardListItem}>
+                      <Image
+                        source={{ uri: card.image_url || providerInfo.logo || FALLBACK_IMAGE }}
+                        style={styles.cardThumb}
+                        resizeMode="cover"
+                      />
+
+                      <View style={styles.cardInfo}>
+                        <Text style={styles.cardItemTitle}>{card.title || '-'}</Text>
+                        <Text style={styles.cardItemPrice}>
+                          Price {formatIQD(card.price_iqd)} IQD
+                        </Text>
+                        <Text style={styles.cardItemAmount}>
+                          Amount {formatIQD(card.amount_iqd)} IQD
+                        </Text>
+
+                        {!!card.notes && (
+                          <Text numberOfLines={2} style={styles.cardItemNotes}>
+                            {card.notes}
+                          </Text>
+                        )}
+
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          onPress={() => quickToggleAvailability(card)}
+                          style={[
+                            styles.availabilityBadge,
+                            card.is_active ? styles.availabilityBadgeOn : styles.availabilityBadgeOff,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.availabilityBadgeText,
+                              card.is_active
+                                ? styles.availabilityBadgeTextOn
+                                : styles.availabilityBadgeTextOff,
+                            ]}
+                          >
+                            {card.is_active ? 'Available' : 'Unavailable'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <View style={styles.actionsBox}>
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          style={styles.actionBtn}
+                          onPress={() => handleEdit(card)}
+                        >
+                          <Ionicons name="pencil" size={18} color="#E8C35A" />
+                        </TouchableOpacity>
+
+                        <View style={styles.actionDivider} />
+
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          style={styles.actionBtn}
+                          onPress={() => handleDelete(card.id)}
+                        >
+                          <Ionicons name="trash" size={18} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </>
           )}
 
           <View style={{ height: 36 }} />
@@ -699,6 +923,36 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     paddingBottom: 20,
+  },
+
+  tabSwitchWrap: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 18,
+  },
+  tabSwitchBtn: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: UI.softBorder,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  tabSwitchBtnActive: {
+    backgroundColor: UI.gold,
+    borderColor: UI.goldBorder,
+  },
+  tabSwitchText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  tabSwitchTextActive: {
+    color: UI.goldDark,
   },
 
   formCard: {
@@ -756,6 +1010,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     marginBottom: 14,
+  },
+  textarea: {
+    minHeight: 100,
+    paddingTop: 16,
+    textAlignVertical: 'top',
   },
 
   doubleRow: {
@@ -822,7 +1081,7 @@ const styles = StyleSheet.create({
   },
   uploadButtonText: {
     color: UI.goldDark,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
   },
 
@@ -861,6 +1120,57 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '800',
     marginBottom: 12,
+  },
+
+  providerListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(17,30,73,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 24,
+    padding: 14,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.20,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  providerThumb: {
+    width: 90,
+    height: 90,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+  },
+  providerInfo: {
+    flex: 1,
+    paddingHorizontal: 14,
+  },
+  providerTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  providerSub: {
+    color: 'rgba(255,255,255,0.62)',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  providerOpenPill: {
+    minHeight: 38,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: UI.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  providerOpenText: {
+    color: UI.goldDark,
+    fontSize: 14,
+    fontWeight: '800',
   },
 
   filterBar: {
@@ -989,6 +1299,12 @@ const styles = StyleSheet.create({
   cardItemPrice: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  cardItemAmount: {
+    color: '#F4D981',
+    fontSize: 14,
     fontWeight: '700',
     marginBottom: 8,
   },
