@@ -24,6 +24,7 @@ import i18n from '@/lib/i18n';
 import { Stack, useRouter } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as Clipboard from 'expo-clipboard';
 
 const UI = {
   bg: '#EEF4FF',
@@ -146,6 +147,7 @@ type TxUi = {
   detailProvider?: string | null;
   detailCategory?: string | null;
   detailCardValue?: string | null;
+  detailPaymentMethod?: string | null;
 
   kind:
     | 'send'
@@ -404,8 +406,23 @@ export default function TransactionsScreen() {
   const [selectedTx, setSelectedTx] = useState<TransactionData | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
 
+  const copyText = useCallback(async (text: string, successText?: string) => {
+    try {
+      await Clipboard.setStringAsync(text);
+      Alert.alert(
+        tOr('success', 'Success'),
+        successText || tOr('transactions_copied', 'Copied successfully')
+      );
+    } catch {
+      Alert.alert(
+        tOr('error', 'Error'),
+        tOr('transactions_copyFailed', 'Copy failed')
+      );
+    }
+  }, []);
+
   const transactionsQuery = useQuery({
-    queryKey: ['transactions-rich-final-v4', myId],
+    queryKey: ['transactions-rich-final-v5', myId],
     enabled: !!myId,
     staleTime: 0,
     gcTime: 0,
@@ -503,7 +520,8 @@ export default function TransactionsScreen() {
         safe(meta.image_url) ||
         safe(meta.image) ||
         safe(meta.card_image_url) ||
-        safe(meta.photo_url);
+        safe(meta.photo_url) ||
+        displayImage;
 
       const metaStorage = safe(meta.storage);
       const metaRam = safe(meta.ram);
@@ -532,6 +550,7 @@ export default function TransactionsScreen() {
         Math.abs(Number(tx.amount || 0));
 
       const metaQuantity = toNum(meta.quantity, 1);
+
       const metaDescription =
         safe(meta.description_snapshot) ||
         safe(meta.note) ||
@@ -548,6 +567,11 @@ export default function TransactionsScreen() {
         safe(meta.note_from_admin) ||
         safe(meta.approval_note) ||
         safe(meta.delivery_note);
+
+      const metaPaymentMethod =
+        safe(meta.payment_method_name) ||
+        paymentMethodName ||
+        safe(meta.method_name);
 
       const cardValueRaw =
         safe(meta.card_value) ||
@@ -604,7 +628,10 @@ export default function TransactionsScreen() {
       if (isAdminAddTransaction(tx)) {
         return {
           title: tOr('transactions_zenopayAddMoney', 'Zenopay Add Money'),
-          subtitleLine1: tOr('transactions_youReceivedMoneyFromZenopayApp', 'You received money from Zenopay app'),
+          subtitleLine1: tOr(
+            'transactions_youReceivedMoneyFromZenopayApp',
+            'You received money from Zenopay app'
+          ),
           subtitleLine2: undefined,
           iconName: APP_SYSTEM_ICON,
           isOutgoing: false,
@@ -627,7 +654,10 @@ export default function TransactionsScreen() {
       if (isAdminWithdrawTransaction(tx)) {
         return {
           title: tOr('transactions_zenopayWithdrawMoney', 'Zenopay Withdraw Money'),
-          subtitleLine1: tOr('transactions_zenopayWithdrewMoneyFromWallet', 'Zenopay withdrew money from your wallet'),
+          subtitleLine1: tOr(
+            'transactions_zenopayWithdrewMoneyFromWallet',
+            'Zenopay withdrew money from your wallet'
+          ),
           subtitleLine2: undefined,
           iconName: APP_SYSTEM_ICON,
           isOutgoing: true,
@@ -648,19 +678,19 @@ export default function TransactionsScreen() {
       }
 
       if (type === 'deposit' || type === 'admin_add' || type === 'agent_add') {
-        const titleText = paymentMethodName
-          ? `${tOr('transactions_depositFrom', 'Deposit from')} ${paymentMethodName}`
+        const titleText = metaPaymentMethod
+          ? `${tOr('transactions_depositFrom', 'Deposit from')} ${metaPaymentMethod}`
           : tOr('transactions_depositFromZenopay', 'Deposit from Zenopay');
 
         return {
           title: titleText,
           subtitleLine1: APP_SYSTEM_NAME,
-          subtitleLine2: undefined,
+          subtitleLine2: metaPaymentMethod || undefined,
           iconName: 'download-outline',
           isOutgoing: false,
           verified: true,
           displayName: APP_SYSTEM_NAME,
-          displaySecondary: paymentMethodName || undefined,
+          displaySecondary: metaPaymentMethod || undefined,
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
@@ -668,24 +698,25 @@ export default function TransactionsScreen() {
           transactionTypeLabel: tOr('transactions_typeDeposit', 'Deposit'),
           note: desc || titleText,
           adminNote: metaAdminNote || undefined,
+          detailPaymentMethod: metaPaymentMethod || null,
           kind: 'deposit',
         };
       }
 
       if (type === 'withdraw' || type === 'admin_withdraw' || type === 'agent_withdraw') {
-        const titleText = paymentMethodName
-          ? `${tOr('transactions_withdrawTo', 'Withdraw to')} ${paymentMethodName}`
+        const titleText = metaPaymentMethod
+          ? `${tOr('transactions_withdrawTo', 'Withdraw to')} ${metaPaymentMethod}`
           : tOr('transactions_withdrawToZenopay', 'Withdraw to Zenopay');
 
         return {
           title: titleText,
           subtitleLine1: APP_SYSTEM_NAME,
-          subtitleLine2: undefined,
+          subtitleLine2: metaPaymentMethod || undefined,
           iconName: 'cash-outline',
           isOutgoing: true,
           verified: true,
           displayName: APP_SYSTEM_NAME,
-          displaySecondary: paymentMethodName || undefined,
+          displaySecondary: metaPaymentMethod || undefined,
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
@@ -693,6 +724,7 @@ export default function TransactionsScreen() {
           transactionTypeLabel: tOr('transactions_typeWithdraw', 'Withdraw'),
           note: desc || titleText,
           adminNote: metaAdminNote || undefined,
+          detailPaymentMethod: metaPaymentMethod || null,
           kind: 'withdraw',
         };
       }
@@ -726,8 +758,8 @@ export default function TransactionsScreen() {
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
-          displayImage: metaImage || displayImage || null,
-          detailImage: metaImage || displayImage || null,
+          displayImage: metaImage || null,
+          detailImage: metaImage || null,
           detailBrand: metaProductBrand || null,
           detailModel: modelName,
           detailStorage: metaStorage || null,
@@ -771,8 +803,8 @@ export default function TransactionsScreen() {
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
-          displayImage: metaImage || displayImage || null,
-          detailImage: metaImage || displayImage || null,
+          displayImage: metaImage || null,
+          detailImage: metaImage || null,
           detailBrand: metaProductBrand || null,
           detailModel: modelName,
           detailStorage: metaStorage || null,
@@ -802,7 +834,7 @@ export default function TransactionsScreen() {
         return {
           title: tOr('transactions_purchasedVirtualCard', 'Purchased Virtual Card'),
           subtitleLine1: APP_SYSTEM_NAME,
-          subtitleLine2: undefined,
+          subtitleLine2: formatIQD(metaCashTotal || Math.abs(Number(tx.amount || 0))),
           iconName: 'card-outline',
           isOutgoing: true,
           verified: false,
@@ -838,12 +870,12 @@ export default function TransactionsScreen() {
         const providerPretty = normalizeProviderName(
           providerName || safe(meta.provider_name) || displaySubtitle
         );
-        const cardImage = getProviderImage(providerPretty, metaImage || displayImage || null);
+        const cardImage = getProviderImage(providerPretty, metaImage || null);
 
         return {
           title: tOr('transactions_topupCardPurchased', 'Topup Card Purchased'),
           subtitleLine1: providerPretty || tOr('transactions_topupCard', 'Topup Card'),
-          subtitleLine2: undefined,
+          subtitleLine2: cardValueRaw || undefined,
           iconName: 'cellular-outline',
           isOutgoing: true,
           verified: false,
@@ -864,7 +896,10 @@ export default function TransactionsScreen() {
           detailCategory: tOr('transactions_typeTopupCardPurchased', 'Topup Card Purchased'),
           detailCardValue: cardValueRaw || null,
           transactionTypeLabel: tOr('transactions_typeTopupCardPurchased', 'Topup Card Purchased'),
-          note: metaDescription || desc || tOr('transactions_noteSimCard', 'Card purchased successfully'),
+          note:
+            metaDescription ||
+            desc ||
+            tOr('transactions_noteSimCard', 'Card purchased successfully'),
           adminNote: metaAdminNote || undefined,
           kind: 'sim',
         };
@@ -888,8 +923,8 @@ export default function TransactionsScreen() {
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
-          displayImage: metaImage || displayImage || null,
-          detailImage: metaImage || displayImage || null,
+          displayImage: metaImage || null,
+          detailImage: metaImage || null,
           detailModel: giftName,
           detailCashTotal: metaCashTotal || Math.abs(Number(tx.amount || 0)),
           detailPaidNow: metaPaidNow,
@@ -899,16 +934,20 @@ export default function TransactionsScreen() {
           detailProvider: providerName || displaySubtitle || null,
           detailCategory: tOr('transactions_typeGiftCardPurchased', 'Gift Card Purchased'),
           transactionTypeLabel: tOr('transactions_typeGiftCardPurchased', 'Gift Card Purchased'),
-          note: metaDescription || desc || tOr('transactions_noteGiftCard', 'Gift card purchased successfully'),
+          note:
+            metaDescription ||
+            desc ||
+            tOr('transactions_noteGiftCard', 'Gift card purchased successfully'),
           adminNote: metaAdminNote || undefined,
           kind: 'giftcard',
         };
       }
 
       return {
-        title: Number(tx.amount || 0) < 0
-          ? tOr('transactions_purchase', 'Purchase')
-          : tOr('transactions_youReceivedMoney', 'You Received Money'),
+        title:
+          Number(tx.amount || 0) < 0
+            ? tOr('transactions_purchase', 'Purchase')
+            : tOr('transactions_youReceivedMoney', 'You Received Money'),
         subtitleLine1: displayTitle || desc || tOr('transactions_purchase', 'Purchase'),
         subtitleLine2: undefined,
         iconName: 'pricetag-outline',
@@ -968,6 +1007,7 @@ export default function TransactionsScreen() {
         ui.detailPinCode,
         ui.detailProvider,
         ui.detailCardValue,
+        ui.detailPaymentMethod,
         meta.product_name,
         meta.product_brand,
         meta.storage,
@@ -1011,6 +1051,45 @@ export default function TransactionsScreen() {
       const dateText = formatFullDate(tx.created_at);
       const timeText = formatTime(tx.created_at);
       const shortId = makeShortTransactionId(tx.id);
+
+      const extraRows = [
+        ui.detailPaymentMethod
+          ? `
+          <div class="row">
+            <div>
+              <div class="label">${tOr('transactions_paymentMethod', 'Payment Method')}</div>
+              <div class="value">${ui.detailPaymentMethod}</div>
+            </div>
+          </div>`
+          : '',
+        ui.detailProvider
+          ? `
+          <div class="row">
+            <div>
+              <div class="label">${tOr('transactions_provider', 'Provider')}</div>
+              <div class="value">${ui.detailProvider}</div>
+            </div>
+          </div>`
+          : '',
+        ui.detailCardValue
+          ? `
+          <div class="row">
+            <div>
+              <div class="label">${tOr('transactions_cardValue', 'Card Value')}</div>
+              <div class="value">${ui.detailCardValue}</div>
+            </div>
+          </div>`
+          : '',
+        ui.detailPinCode
+          ? `
+          <div class="row">
+            <div>
+              <div class="label">${tOr('transactions_pinCode', 'PIN Code')}</div>
+              <div class="value">${ui.detailPinCode}</div>
+            </div>
+          </div>`
+          : '',
+      ].join('');
 
       return `
       <html>
@@ -1072,6 +1151,8 @@ export default function TransactionsScreen() {
                 ${ui.displayCity ? `<div>${ui.displayCity}</div>` : ''}
               </div>
             </div>
+
+            ${extraRows}
 
             <div class="row">
               <div>
@@ -1173,7 +1254,12 @@ export default function TransactionsScreen() {
     } else if (ui.kind === 'mobile_refund') {
       bg = UI.blueSoft;
       iconColor = UI.blue;
-    } else if (ui.kind === 'deposit' || ui.kind === 'withdraw' || ui.kind === 'admin_add' || ui.kind === 'admin_withdraw') {
+    } else if (
+      ui.kind === 'deposit' ||
+      ui.kind === 'withdraw' ||
+      ui.kind === 'admin_add' ||
+      ui.kind === 'admin_withdraw'
+    ) {
       bg = UI.blueSoft;
       iconColor = UI.blue;
       icon = APP_SYSTEM_ICON;
@@ -1253,6 +1339,182 @@ export default function TransactionsScreen() {
           </View>
         </View>
       </TouchableOpacity>
+    );
+  };
+
+  const renderCopyRow = (label: string, value: string, color?: string) => {
+    return (
+      <View style={styles.detailRow}>
+        <Text style={styles.detailLabel}>{label}</Text>
+
+        <View style={styles.detailValueCopyWrap}>
+          <Text
+            style={[styles.detailValue, styles.detailValueNoFlex, color ? { color } : null]}
+            numberOfLines={3}
+          >
+            {value}
+          </Text>
+
+          <TouchableOpacity
+            style={styles.copyMiniBtn}
+            activeOpacity={0.88}
+            onPress={() => copyText(value)}
+          >
+            <Ionicons name="copy-outline" size={16} color={UI.blue} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  const renderProductLikeDetailSection = (ui: TxUi, tx: TransactionData) => {
+    if (
+      ui.kind !== 'mobile' &&
+      ui.kind !== 'mobile_refund' &&
+      ui.kind !== 'sim' &&
+      ui.kind !== 'giftcard' &&
+      ui.kind !== 'virtual_card' &&
+      ui.kind !== 'deposit' &&
+      ui.kind !== 'withdraw'
+    ) {
+      return null;
+    }
+
+    const purchaseModeLabel =
+      ui.detailPurchaseMode === 'installment'
+        ? tOr('transactions_installment', 'Installment')
+        : ui.detailPurchaseMode === 'cash'
+        ? tOr('transactions_cash', 'Cash')
+        : ui.detailPurchaseMode
+        ? upperFirst(ui.detailPurchaseMode)
+        : '';
+
+    return (
+      <View style={styles.mobileExtraCard}>
+        {ui.detailPaymentMethod
+          ? renderDetailRow(
+              tOr('transactions_paymentMethod', 'Payment Method'),
+              ui.detailPaymentMethod,
+              false,
+              UI.blue
+            )
+          : null}
+
+        {ui.kind === 'sim' && ui.detailProvider
+          ? renderDetailRow(
+              tOr('transactions_provider', 'Provider'),
+              ui.detailProvider,
+              false,
+              UI.blue
+            )
+          : null}
+
+        {ui.kind === 'sim' && ui.detailCardValue
+          ? renderDetailRow(
+              tOr('transactions_cardValue', 'Card Value'),
+              ui.detailCardValue,
+              false,
+              UI.text
+            )
+          : null}
+
+        {ui.kind !== 'sim' && ui.kind !== 'deposit' && ui.kind !== 'withdraw' && ui.kind !== 'virtual_card' && ui.detailModel
+          ? renderDetailRow(tOr('transactions_item', 'Item'), ui.detailModel, false, UI.text)
+          : null}
+
+        {ui.detailProvider && ui.kind !== 'sim'
+          ? renderDetailRow(tOr('transactions_provider', 'Provider'), ui.detailProvider, false, UI.primaryDark)
+          : null}
+
+        {ui.detailBrand
+          ? renderDetailRow(tOr('transactions_brand', 'Brand'), ui.detailBrand, false, UI.primaryDark)
+          : null}
+
+        {purchaseModeLabel
+          ? renderDetailRow(
+              tOr('transactions_purchaseType', 'Purchase Type'),
+              purchaseModeLabel,
+              false,
+              ui.detailPurchaseMode === 'installment' ? UI.purple : UI.blue
+            )
+          : null}
+
+        {ui.detailQuantity && ui.kind === 'mobile'
+          ? renderDetailRow(tOr('transactions_quantity', 'Quantity'), String(ui.detailQuantity), false, UI.text)
+          : null}
+
+        {ui.detailStorage
+          ? renderDetailRow(tOr('transactions_storage', 'Storage'), ui.detailStorage, false, UI.text)
+          : null}
+
+        {ui.detailRam
+          ? renderDetailRow(tOr('transactions_ram', 'RAM'), ui.detailRam, false, UI.text)
+          : null}
+
+        {ui.detailColor
+          ? renderDetailRow(tOr('transactions_color', 'Color'), ui.detailColor, false, UI.text)
+          : null}
+
+        {ui.kind === 'mobile' && ui.detailPurchaseMode === 'cash' && ui.detailCashTotal
+          ? renderDetailRow(tOr('transactions_cashPrice', 'Cash Price'), formatIQD(ui.detailCashTotal), false, UI.blue)
+          : null}
+
+        {ui.kind === 'mobile' && ui.detailPurchaseMode === 'installment' && ui.detailMonthsCount
+          ? renderDetailRow(tOr('transactions_months', 'Months'), String(ui.detailMonthsCount), false, UI.purple)
+          : null}
+
+        {ui.kind === 'mobile' && ui.detailPurchaseMode === 'installment' && ui.detailMonthlyPrice
+          ? renderDetailRow(
+              tOr('transactions_monthlyInstallment', 'Monthly Installment'),
+              formatIQD(ui.detailMonthlyPrice),
+              false,
+              UI.purple
+            )
+          : null}
+
+        {ui.kind === 'mobile' && ui.detailPurchaseMode === 'installment' && ui.detailContractTotal
+          ? renderDetailRow(
+              tOr('transactions_installmentContractTotal', 'Installment Contract Total'),
+              formatIQD(ui.detailContractTotal),
+              false,
+              UI.purple
+            )
+          : null}
+
+        {ui.detailPaidNow !== null && ui.detailPaidNow !== undefined
+          ? renderDetailRow(
+              ui.kind === 'mobile_refund'
+                ? tOr('transactions_refundAmount', 'Refund Amount')
+                : tOr('transactions_transactionAmount', 'Transaction Amount'),
+              formatIQD(ui.detailPaidNow),
+              false,
+              ui.isOutgoing ? UI.red : UI.green
+            )
+          : null}
+
+        {ui.kind === 'mobile' &&
+        ui.detailPurchaseMode === 'installment' &&
+        ui.detailRemaining !== null &&
+        ui.detailRemaining !== undefined
+          ? renderDetailRow(
+              tOr('transactions_remainingAmount', 'Remaining Amount'),
+              formatIQD(ui.detailRemaining),
+              false,
+              UI.amber
+            )
+          : null}
+
+        {ui.detailOrderId
+          ? renderDetailRow(tOr('transactions_orderId', 'Order ID'), ui.detailOrderId, false, UI.text)
+          : null}
+
+        {renderDetailRow(
+          tOr('transactions_status', 'Status'),
+          tOr(`transactions_status_${statusLabel(tx.status)}`, statusLabel(tx.status)),
+          false,
+          getStatusColors(tx.status).color
+        )}
+      </View>
     );
   };
 
@@ -1342,7 +1604,10 @@ export default function TransactionsScreen() {
             <TextInput
               value={searchText}
               onChangeText={setSearchText}
-              placeholder={tOr('transactions_searchByTransactionId', 'Search transaction by transaction id')}
+              placeholder={tOr(
+                'transactions_searchByTransactionId',
+                'Search transaction by transaction id'
+              )}
               placeholderTextColor={UI.text2}
               style={styles.searchInput}
             />
@@ -1410,10 +1675,9 @@ export default function TransactionsScreen() {
                   <Text style={styles.detailTimeText}>{formatTime(selectedTx.created_at)}</Text>
                 </View>
 
-                {renderDetailRow(
+                {renderCopyRow(
                   tOr('transactions_transactionId', 'Transaction ID'),
                   makeShortTransactionId(selectedTx.id),
-                  false,
                   UI.green
                 )}
 
@@ -1430,7 +1694,9 @@ export default function TransactionsScreen() {
                   <Text style={styles.detailLabel}>
                     {selectedUi.kind === 'send'
                       ? tOr('transactions_sentTo', 'Sent To')
-                      : selectedUi.kind === 'receive' || selectedUi.kind === 'deposit' || selectedUi.kind === 'admin_add'
+                      : selectedUi.kind === 'receive' ||
+                        selectedUi.kind === 'deposit' ||
+                        selectedUi.kind === 'admin_add'
                       ? tOr('transactions_receivedFrom', 'Received From')
                       : selectedUi.kind === 'withdraw' || selectedUi.kind === 'admin_withdraw'
                       ? tOr('transactions_sentTo', 'Sent To')
@@ -1438,22 +1704,34 @@ export default function TransactionsScreen() {
                   </Text>
 
                   <View style={styles.detailPartyBox}>
-                    <View style={styles.partyFallbackAvatar}>
-                      <Ionicons
-                        name={
-                          selectedUi.kind === 'deposit' ||
-                          selectedUi.kind === 'withdraw' ||
-                          selectedUi.kind === 'admin_add' ||
-                          selectedUi.kind === 'admin_withdraw'
-                            ? APP_SYSTEM_ICON
-                            : selectedUi.kind === 'virtual_card'
-                            ? 'card-outline'
-                            : selectedUi.iconName
-                        }
-                        size={26}
-                        color={UI.blue}
-                      />
-                    </View>
+                    {(selectedUi.kind === 'send' || selectedUi.kind === 'receive') && selectedUi.displayAvatar ? (
+                      <Image source={{ uri: selectedUi.displayAvatar }} style={styles.partyAvatarImage} />
+                    ) : selectedUi.displayImage ? (
+                      <Image source={{ uri: selectedUi.displayImage }} style={styles.partyAvatarImage} />
+                    ) : (
+                      <View style={styles.partyFallbackAvatar}>
+                        <Ionicons
+                          name={
+                            selectedUi.kind === 'deposit' ||
+                            selectedUi.kind === 'withdraw' ||
+                            selectedUi.kind === 'admin_add' ||
+                            selectedUi.kind === 'admin_withdraw'
+                              ? APP_SYSTEM_ICON
+                              : selectedUi.kind === 'virtual_card'
+                              ? 'card-outline'
+                              : selectedUi.iconName
+                          }
+                          size={26}
+                          color={
+                            selectedUi.kind === 'mobile'
+                              ? UI.purple
+                              : selectedUi.kind === 'mobile_refund'
+                              ? UI.blue
+                              : UI.blue
+                          }
+                        />
+                      </View>
+                    )}
 
                     <View style={{ flex: 1 }}>
                       <View style={styles.partyNameRow}>
@@ -1481,19 +1759,39 @@ export default function TransactionsScreen() {
                   </View>
                 </View>
 
-                {renderDetailRow(
-                  tOr('transactions_transactionAmount', 'Transaction Amount'),
-                  formatIQD(Math.abs(Number(selectedTx.amount || 0))),
-                  false,
-                  selectedUi.isOutgoing ? UI.red : UI.green
-                )}
+                {renderProductLikeDetailSection(selectedUi, selectedTx)}
 
-                {renderDetailRow(
-                  tOr('transactions_status', 'Status'),
-                  tOr(`transactions_status_${statusLabel(selectedTx.status)}`, statusLabel(selectedTx.status)),
-                  false,
-                  getStatusColors(selectedTx.status).color
-                )}
+                {selectedUi.kind !== 'mobile' &&
+                  selectedUi.kind !== 'mobile_refund' &&
+                  selectedUi.kind !== 'sim' &&
+                  selectedUi.kind !== 'giftcard' &&
+                  selectedUi.kind !== 'virtual_card' &&
+                  renderDetailRow(
+                    tOr('transactions_transactionAmount', 'Transaction Amount'),
+                    formatIQD(Math.abs(Number(selectedTx.amount || 0))),
+                    false,
+                    selectedUi.isOutgoing ? UI.red : UI.green
+                  )}
+
+                {selectedUi.kind !== 'mobile' &&
+                  selectedUi.kind !== 'mobile_refund' &&
+                  selectedUi.kind !== 'sim' &&
+                  selectedUi.kind !== 'giftcard' &&
+                  selectedUi.kind !== 'virtual_card' &&
+                  renderDetailRow(
+                    tOr('transactions_transactionFee', 'Transaction Fee'),
+                    formatIQD(Number(selectedTx.fee_amount || 0)),
+                    false,
+                    UI.green
+                  )}
+
+                {selectedUi.detailPinCode
+                  ? renderCopyRow(
+                      tOr('transactions_pinCode', 'PIN Code'),
+                      selectedUi.detailPinCode,
+                      UI.primaryDark
+                    )
+                  : null}
 
                 {!!selectedUi.note && (
                   <View style={styles.noteBox}>
@@ -1851,8 +2149,29 @@ const styles = StyleSheet.create({
     color: UI.text,
   },
 
+  detailValueNoFlex: {
+    flex: 0,
+  },
+
   detailValueMono: {
     color: UI.green,
+  },
+
+  detailValueCopyWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  copyMiniBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: UI.blueSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   typeBadge: {
@@ -1878,6 +2197,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
+  },
+
+  partyAvatarImage: {
+    width: 66,
+    height: 66,
+    borderRadius: 18,
+    backgroundColor: '#EFF5FF',
   },
 
   partyFallbackAvatar: {
@@ -1920,6 +2246,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: UI.text3,
+  },
+
+  mobileExtraCard: {
+    paddingTop: 0,
+    paddingBottom: 0,
   },
 
   noteBox: {
