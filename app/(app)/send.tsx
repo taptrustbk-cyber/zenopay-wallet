@@ -248,39 +248,45 @@ export default function SendMoneyScreen() {
             <View style={styles.headerBtnGhost} />
           </View>
 
+          {/* compact balance card */}
           <LinearGradient
-            colors={['#5DA8FF', '#3B82F6', '#2563EB']}
+            colors={['#77B6FF', '#4D8EF7', '#2563EB']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.heroCard}
+            style={styles.balanceCard}
           >
-            <View style={styles.heroGlowOne} />
-            <View style={styles.heroGlowTwo} />
+            <View style={styles.balanceGlowOne} />
+            <View style={styles.balanceGlowTwo} />
 
-            <View style={styles.heroTopRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.heroEyebrow}>
+            <View style={styles.balanceCardTop}>
+              <View style={styles.balanceTextBlock}>
+                <Text style={styles.balanceLabel}>
                   {String(i18n.t('accountBalance') || 'Account Balance')}
                 </Text>
-                <Text style={styles.heroBalance}>
-                  {walletQuery.isLoading ? '...' : formatMoneyText(walletBalanceNumber)}
-                </Text>
+
+                {walletQuery.isLoading ? (
+                  <Text style={styles.balanceValue}>...</Text>
+                ) : (
+                  <Text style={styles.balanceValue} numberOfLines={1}>
+                    {formatMoneyText(walletBalanceNumber)}
+                  </Text>
+                )}
               </View>
 
-              <View style={styles.heroIconWrap}>
-                <Ionicons name="paper-plane-outline" size={26} color="#FFFFFF" />
+              <View style={styles.balanceIconWrap}>
+                <Ionicons name="wallet-outline" size={22} color="#FFFFFF" />
               </View>
             </View>
 
             {walletQuery.isError ? (
-              <View style={styles.heroErrorRow}>
-                <Ionicons name="alert-circle-outline" size={18} color="#fff" />
-                <Text style={styles.heroErrorText}>
+              <View style={styles.balanceErrorRow}>
+                <Ionicons name="alert-circle-outline" size={16} color="#fff" />
+                <Text style={styles.balanceErrorText}>
                   {String(i18n.t('failedToLoadBalance') || 'Failed to load balance')}
                 </Text>
               </View>
             ) : (
-              <Text style={styles.heroSubtext}>
+              <Text style={styles.balanceHint}>
                 {String(i18n.t('sendMoneySubtitle') || 'Secure Iraqi Dinar transfer')}
               </Text>
             )}
@@ -310,6 +316,7 @@ export default function SendMoneyScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                textAlign={isRTL ? 'right' : 'left'}
               />
             </View>
 
@@ -368,7 +375,12 @@ export default function SendMoneyScreen() {
               {String(i18n.t('note') || 'Note')}
             </Text>
             <View style={[styles.inputWrap, styles.noteWrap]}>
-              <Ionicons name="document-text-outline" size={20} color={UI.text2} style={{ marginTop: 2 }} />
+              <Ionicons
+                name="document-text-outline"
+                size={20}
+                color={UI.text2}
+                style={styles.noteIcon}
+              />
               <TextInput
                 style={[styles.input, styles.noteInput]}
                 placeholder={String(i18n.t('addNoteOptional') || 'Add note (optional)')}
@@ -378,6 +390,7 @@ export default function SendMoneyScreen() {
                 multiline
                 textAlignVertical="top"
                 maxLength={250}
+                textAlign={isRTL ? 'right' : 'left'}
               />
             </View>
 
@@ -486,66 +499,65 @@ const styles = StyleSheet.create({
     color: UI.text,
   },
 
-  heroCard: {
-    borderRadius: 28,
-    padding: 20,
+  balanceCard: {
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     marginBottom: 14,
     overflow: 'hidden',
+    minHeight: 112,
     ...SHADOWS.card,
   },
 
-  heroGlowOne: {
+  balanceGlowOne: {
     position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    left: -70,
-    bottom: -90,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    left: -50,
+    bottom: -85,
   },
 
-  heroGlowTwo: {
+  balanceGlowTwo: {
     position: 'absolute',
-    width: 190,
-    height: 190,
-    borderRadius: 95,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    right: -30,
-    top: -40,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    right: -35,
+    top: -45,
   },
 
-  heroTopRow: {
+  balanceCardTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 16,
+    gap: 12,
   },
 
-  heroEyebrow: {
-    color: 'rgba(255,255,255,0.88)',
-    fontSize: 14,
+  balanceTextBlock: {
+    flex: 1,
+  },
+
+  balanceLabel: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 13,
     fontWeight: '800',
   },
 
-  heroBalance: {
-    marginTop: 10,
+  balanceValue: {
+    marginTop: 8,
     color: '#FFFFFF',
-    fontSize: 34,
+    fontSize: 31,
     fontWeight: '900',
     letterSpacing: -0.4,
   },
 
-  heroSubtext: {
-    marginTop: 10,
-    color: 'rgba(255,255,255,0.84)',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  heroIconWrap: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
+  balanceIconWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -553,16 +565,23 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.18)',
   },
 
-  heroErrorRow: {
-    marginTop: 12,
+  balanceHint: {
+    marginTop: 8,
+    color: 'rgba(255,255,255,0.84)',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  balanceErrorRow: {
+    marginTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
 
-  heroErrorText: {
+  balanceErrorText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
 
@@ -733,6 +752,10 @@ const styles = StyleSheet.create({
   noteWrap: {
     alignItems: 'flex-start',
     paddingTop: 12,
+  },
+
+  noteIcon: {
+    marginTop: 2,
   },
 
   noteInput: {
