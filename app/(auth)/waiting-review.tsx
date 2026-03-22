@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Platform,
 } from 'react-native';
 import { Clock, Mail, RefreshCw } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -92,16 +93,21 @@ export default function WaitingReviewScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.iconContainer}>
-          <Clock size={72} color="#16A34A" strokeWidth={1.8} />
-        </View>
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlowOne} />
+          <View style={styles.heroGlowTwo} />
 
-        <Text style={styles.title}>{i18n.t('pendingAdminReview')}</Text>
-        <Text style={styles.subtitle}>{i18n.t('accountUnderReview')}</Text>
+          <View style={styles.iconContainer}>
+            <Clock size={62} color="#FFFFFF" strokeWidth={1.8} />
+          </View>
+
+          <Text style={styles.title}>{i18n.t('pendingAdminReview')}</Text>
+          <Text style={styles.subtitle}>{i18n.t('accountUnderReview')}</Text>
+        </View>
 
         <View style={styles.infoCard}>
           <View style={styles.infoIconWrap}>
-            <Mail size={22} color="#16A34A" />
+            <Mail size={20} color={UI.primary} />
           </View>
 
           <View style={styles.cardContent}>
@@ -118,10 +124,10 @@ export default function WaitingReviewScreen() {
 
         <TouchableOpacity style={styles.primaryButton} onPress={checkStatus} disabled={checking}>
           {checking ? (
-            <ActivityIndicator color="#000" />
+            <ActivityIndicator color="#FFFFFF" />
           ) : (
             <>
-              <RefreshCw size={20} color="#000" />
+              <RefreshCw size={18} color="#FFFFFF" />
               <Text style={styles.primaryButtonText}>{i18n.t('checkStatus')}</Text>
             </>
           )}
@@ -131,19 +137,19 @@ export default function WaitingReviewScreen() {
           <Text style={styles.kycTitle}>{i18n.t('kycDocuments')}</Text>
           <Text style={styles.kycSubtitle}>{i18n.t('uploadDocsToComplete')}</Text>
 
-          <TouchableOpacity onPress={() => pickImage(setIdFront)} style={styles.uploadBtn}>
+          <TouchableOpacity onPress={() => pickImage(setIdFront)} style={styles.uploadBtn} activeOpacity={0.9}>
             <Text style={styles.uploadText}>
               {idFront ? `${i18n.t('idFrontSelected')} ✅` : i18n.t('uploadIDFront')}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => pickImage(setIdBack)} style={styles.uploadBtn}>
+          <TouchableOpacity onPress={() => pickImage(setIdBack)} style={styles.uploadBtn} activeOpacity={0.9}>
             <Text style={styles.uploadText}>
               {idBack ? `${i18n.t('idBackSelected')} ✅` : i18n.t('uploadIDBack')}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => pickImage(setSelfie)} style={styles.uploadBtn}>
+          <TouchableOpacity onPress={() => pickImage(setSelfie)} style={styles.uploadBtn} activeOpacity={0.9}>
             <Text style={styles.uploadText}>
               {selfie ? `${i18n.t('selfieSelected')} ✅` : i18n.t('uploadSelfie')}
             </Text>
@@ -157,16 +163,17 @@ export default function WaitingReviewScreen() {
             ]}
             onPress={uploadKYCDocuments}
             disabled={!idFront || !idBack || !selfie || uploading}
+            activeOpacity={0.9}
           >
             {uploading ? (
-              <ActivityIndicator color="#000" />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.primaryButtonText}>{i18n.t('uploadDocuments')}</Text>
             )}
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} activeOpacity={0.85}>
           <Text style={styles.signOutText}>{i18n.t('signOut')}</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -174,74 +181,118 @@ export default function WaitingReviewScreen() {
   );
 }
 
-const GREEN = '#16A34A';
-const BORDER = '#E5E7EB';
-const TEXT = '#111827';
-const MUTED = '#6B7280';
+const UI = {
+  bg: '#EEF4FF',
+  card: '#FFFFFF',
+  soft: '#F8FBFF',
+  text: '#0F172A',
+  text2: '#64748B',
+  border: '#D9E5F6',
+  primary: '#2563EB',
+  primaryDark: '#1D4ED8',
+  primarySoft: '#EAF2FF',
+  greenSoft: '#EAF8EF',
+  shadow: 'rgba(15, 23, 42, 0.08)',
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.bg,
   },
+
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 32,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 56 : 34,
     paddingBottom: 28,
     alignItems: 'center',
   },
 
-  iconContainer: {
-    marginBottom: 18,
-    width: 104,
-    height: 104,
+  heroCard: {
+    width: '100%',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    backgroundColor: UI.primary,
+    alignItems: 'center',
+    marginBottom: 16,
+    overflow: 'hidden',
+    shadowColor: UI.primary,
+    shadowOpacity: 0.22,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 5,
+  },
+  heroGlowOne: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
     borderRadius: 999,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    top: -60,
+    right: -20,
+  },
+  heroGlowTwo: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    bottom: -16,
+    left: -18,
+  },
+
+  iconContainer: {
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    backgroundColor: 'rgba(255,255,255,0.14)',
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 16,
   },
 
   title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: TEXT,
+    fontSize: 25,
+    fontWeight: '900',
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 8,
     letterSpacing: 0.2,
   },
   subtitle: {
-    fontSize: 15,
-    color: MUTED,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.88)',
     textAlign: 'center',
-    marginBottom: 18,
-    lineHeight: 22,
+    lineHeight: 21,
+    fontWeight: '700',
   },
 
   infoCard: {
     flexDirection: 'row',
     width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: UI.card,
+    borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: UI.border,
     marginBottom: 14,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    shadowColor: UI.shadow,
+    shadowOpacity: 1,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
   },
   infoIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#F0FDF4',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: UI.primarySoft,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -251,85 +302,105 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 15,
-    fontWeight: '800',
-    color: TEXT,
+    fontWeight: '900',
+    color: UI.text,
     marginBottom: 4,
   },
   cardDescription: {
     fontSize: 13.5,
-    color: MUTED,
+    color: UI.text2,
     lineHeight: 20,
+    fontWeight: '700',
   },
 
   infoBox: {
     width: '100%',
-    backgroundColor: '#FAFAFA',
-    borderRadius: 16,
+    backgroundColor: UI.card,
+    borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: UI.border,
     marginBottom: 16,
-    gap: 10,
+    shadowColor: UI.shadow,
+    shadowOpacity: 1,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
   },
   infoText: {
     fontSize: 13.5,
-    color: MUTED,
+    color: UI.text2,
     lineHeight: 20,
+    fontWeight: '700',
+    marginBottom: 10,
   },
 
   primaryButton: {
     width: '100%',
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: GREEN,
+    minHeight: 54,
+    borderRadius: 18,
+    backgroundColor: UI.primary,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
+    shadowColor: UI.primary,
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
   },
   primaryButtonText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '800',
+    color: '#FFFFFF',
+    fontSize: 15.5,
+    fontWeight: '900',
     letterSpacing: 0.2,
   },
 
   kycSection: {
     marginTop: 18,
     width: '100%',
+    backgroundColor: UI.card,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: UI.border,
+    padding: 16,
+    shadowColor: UI.shadow,
+    shadowOpacity: 1,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
   },
   kycTitle: {
     fontSize: 18,
     fontWeight: '900',
-    color: TEXT,
+    color: UI.text,
     marginBottom: 6,
   },
   kycSubtitle: {
     fontSize: 13.5,
-    color: MUTED,
+    color: UI.text2,
     marginBottom: 14,
+    fontWeight: '700',
+    lineHeight: 20,
   },
 
   uploadBtn: {
     width: '100%',
-    borderRadius: 14,
-    paddingVertical: 14,
+    borderRadius: 16,
+    paddingVertical: 15,
     paddingHorizontal: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
-    backgroundColor: '#F0FDF4',
+    borderColor: UI.border,
+    backgroundColor: UI.primarySoft,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   uploadText: {
     fontSize: 14.5,
-    color: TEXT,
-    fontWeight: '800',
+    color: UI.text,
+    fontWeight: '900',
   },
 
   uploadButton: {
@@ -340,11 +411,11 @@ const styles = StyleSheet.create({
   },
 
   signOutButton: {
-    marginTop: 14,
+    marginTop: 16,
     paddingVertical: 10,
   },
   signOutText: {
-    color: MUTED,
+    color: UI.text2,
     fontSize: 14.5,
     fontWeight: '800',
   },
