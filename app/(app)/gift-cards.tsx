@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
- Image,
+  Image,
   Platform,
   RefreshControl,
   ScrollView,
@@ -64,17 +64,57 @@ interface GiftCategory {
 }
 
 const UI = {
-  bg: '#FFFDF8',
-  headerBg: '#FFF9E8',
+  bg: '#EEF4FF',
+  page: '#F7FAFF',
+  headerBg: '#F7FAFF',
   card: '#FFFFFF',
-  text: '#221C0B',
-  text2: '#806A12',
-  text3: '#8A7B49',
-  border: '#EFE3B3',
-  border2: '#F3E3A7',
-  yellow: '#FDE68A',
-  yellowDark: '#9A7B00',
-  yellowSoft: '#FFF6D9',
+  cardSoft: '#F8FBFF',
+  text: '#0F172A',
+  text2: '#64748B',
+  text3: '#94A3B8',
+  border: '#D9E5F6',
+  border2: '#DCEBFF',
+
+  blue: '#2563EB',
+  blue2: '#3B82F6',
+  blue3: '#60A5FA',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
+
+  purple: '#7C3AED',
+  purpleSoft: '#F5F3FF',
+
+  green: '#16A34A',
+  greenSoft: '#EAF8EF',
+
+  red: '#DC2626',
+  redSoft: '#FEF2F2',
+
+  orange: '#EA580C',
+  orangeSoft: '#FFF4ED',
+
+  amber: '#F59E0B',
+  amberSoft: '#FEF3C7',
+
+  darkSoft: '#F3F4F6',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: '#7DA8E6',
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: '#7DA8E6',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
 };
 
 function getCurrentLang() {
@@ -227,7 +267,7 @@ function pickThemeFromSlug(slug?: string | null) {
     return { color: '#DC2626', soft: '#FEF2F2', border: '#FECACA' };
   }
 
-  return { color: '#8B5CF6', soft: '#F5F3FF', border: '#E9D5FF' };
+  return { color: '#7C3AED', soft: '#F5F3FF', border: '#E9D5FF' };
 }
 
 function getCategoryPreviewImage(card: GiftCardRow, category?: GiftCardCategoryRow | null) {
@@ -531,10 +571,10 @@ export default function GiftCardsScreen() {
             }
             router.back();
           }}
-          activeOpacity={0.85}
+          activeOpacity={0.9}
           style={styles.iconButton}
         >
-          <Ionicons name="arrow-back" size={22} color="#5A4700" />
+          <Ionicons name="arrow-back" size={22} color={UI.blueDark} />
         </TouchableOpacity>
 
         <Text numberOfLines={1} style={styles.headerTitle}>
@@ -543,10 +583,10 @@ export default function GiftCardsScreen() {
 
         <TouchableOpacity
           onPress={openNotifications}
-          activeOpacity={0.85}
+          activeOpacity={0.9}
           style={styles.iconButton}
         >
-          <Ionicons name="notifications-outline" size={21} color="#5A4700" />
+          <Ionicons name="notifications-outline" size={21} color={UI.blueDark} />
         </TouchableOpacity>
       </View>
 
@@ -554,9 +594,14 @@ export default function GiftCardsScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={UI.blue} colors={[UI.blue]} />
+        }
       >
         <View style={styles.heroCard}>
+          <View style={styles.heroGlowOne} />
+          <View style={styles.heroGlowTwo} />
+
           <Text style={styles.heroTitle}>
             {selectedMeta ? selectedMeta.title : t.heroTitle}
           </Text>
@@ -566,29 +611,29 @@ export default function GiftCardsScreen() {
         </View>
 
         <View style={styles.searchBox}>
-          <Ionicons name="search-outline" size={22} color="#8C8C8C" />
+          <Ionicons name="search-outline" size={22} color={UI.text3} />
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder={t.searchCategories}
-            placeholderTextColor="#A0A0A0"
+            placeholderTextColor={UI.text3}
             style={styles.searchInput}
           />
           {!!search && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={20} color="#B0B0B0" />
+              <Ionicons name="close-circle" size={20} color={UI.text3} />
             </TouchableOpacity>
           )}
         </View>
 
         {loading ? (
           <View style={styles.loaderWrap}>
-            <ActivityIndicator size="large" color="#C99700" />
+            <ActivityIndicator size="large" color={UI.blue} />
           </View>
         ) : !selectedCategory ? (
           filteredCategories.length === 0 ? (
             <View style={styles.emptyCard}>
-              <Ionicons name="gift-outline" size={36} color="#B08A00" />
+              <Ionicons name="gift-outline" size={36} color={UI.blue} />
               <Text style={styles.emptyTitle}>{t.noCategories}</Text>
               <Text style={styles.emptyText}>{t.noCategoriesSub}</Text>
             </View>
@@ -655,7 +700,7 @@ export default function GiftCardsScreen() {
           )
         ) : filteredItems.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Ionicons name="gift-outline" size={36} color="#B08A00" />
+            <Ionicons name="gift-outline" size={36} color={UI.blue} />
             <Text style={styles.emptyTitle}>{t.noCategories}</Text>
             <Text style={styles.emptyText}>{t.noCategoriesSub}</Text>
 
@@ -683,7 +728,7 @@ export default function GiftCardsScreen() {
                 activeOpacity={0.85}
                 style={styles.backProvidersMini}
               >
-                <Ionicons name="grid-outline" size={14} color="#5A4700" />
+                <Ionicons name="grid-outline" size={14} color={UI.blueDark} />
                 <Text style={styles.backProvidersMiniText}>{t.providers}</Text>
               </TouchableOpacity>
             </View>
@@ -705,8 +750,8 @@ export default function GiftCardsScreen() {
                         style={[
                           styles.cardImageWrap,
                           {
-                            backgroundColor: selectedMeta?.soft || '#FFF7E6',
-                            borderColor: selectedMeta?.border || '#F4D9A6',
+                            backgroundColor: selectedMeta?.soft || UI.blueSoft,
+                            borderColor: selectedMeta?.border || UI.border,
                           },
                         ]}
                       >
@@ -718,15 +763,15 @@ export default function GiftCardsScreen() {
                           styles.cardImageWrap,
                           styles.fallbackCenter,
                           {
-                            backgroundColor: selectedMeta?.soft || '#FFF7E6',
-                            borderColor: selectedMeta?.border || '#F4D9A6',
+                            backgroundColor: selectedMeta?.soft || UI.blueSoft,
+                            borderColor: selectedMeta?.border || UI.border,
                           },
                         ]}
                       >
                         <Ionicons
                           name={selectedMeta?.icon || 'gift-outline'}
                           size={34}
-                          color={selectedMeta?.color || '#B7791F'}
+                          color={selectedMeta?.color || UI.blue}
                         />
                       </View>
                     )}
@@ -758,7 +803,7 @@ export default function GiftCardsScreen() {
                       </Text>
 
                       <View style={styles.buyMiniButton}>
-                        <Ionicons name="cart-outline" size={14} color="#5A4700" />
+                        <Ionicons name="cart-outline" size={14} color={UI.blueDark} />
                         <Text style={styles.buyMiniButtonText}>{t.buyNow}</Text>
                       </View>
                     </View>
@@ -785,22 +830,23 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 54 : 38,
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: '#FFF9E8',
+    backgroundColor: UI.headerBg,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2E4B4',
+    borderBottomColor: UI.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   iconButton: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.card,
     borderWidth: 1,
-    borderColor: '#F0E1AF',
+    borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOWS.soft,
   },
   headerTitle: {
     flex: 1,
@@ -808,7 +854,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     fontSize: 18,
     fontWeight: '900',
-    color: '#2A2412',
+    color: UI.text,
   },
 
   content: {
@@ -821,27 +867,47 @@ const styles = StyleSheet.create({
   },
 
   heroCard: {
-    borderRadius: 22,
+    borderRadius: 24,
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#FFF6D9',
+    paddingVertical: 18,
+    backgroundColor: UI.blueSoft,
     borderWidth: 1,
-    borderColor: '#F3E3A7',
+    borderColor: UI.border2,
     marginBottom: 14,
     alignItems: 'center',
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+  heroGlowOne: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(59,130,246,0.10)',
+    left: -40,
+    bottom: -80,
+  },
+  heroGlowTwo: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(37,99,235,0.08)',
+    right: -20,
+    top: -25,
   },
   heroTitle: {
     fontSize: 21,
     lineHeight: 28,
     fontWeight: '900',
-    color: '#221C0B',
+    color: UI.text,
     textAlign: 'center',
   },
   heroSubtitle: {
     marginTop: 5,
     fontSize: 13,
     fontWeight: '700',
-    color: '#8A6E08',
+    color: UI.text2,
     lineHeight: 20,
     textAlign: 'center',
   },
@@ -849,18 +915,19 @@ const styles = StyleSheet.create({
   searchBox: {
     minHeight: 54,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.card,
     borderWidth: 1,
-    borderColor: '#EFE3B3',
+    borderColor: UI.border,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 15,
     marginBottom: 14,
+    ...SHADOWS.soft,
   },
   searchInput: {
     flex: 1,
     marginLeft: 10,
-    color: '#1F1B12',
+    color: UI.text,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -875,7 +942,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#241E0E',
+    color: UI.text,
   },
 
   loaderWrap: {
@@ -886,24 +953,25 @@ const styles = StyleSheet.create({
 
   emptyCard: {
     marginTop: 8,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    backgroundColor: UI.card,
     borderWidth: 1,
-    borderColor: '#EFE3B3',
+    borderColor: UI.border,
     paddingVertical: 34,
     paddingHorizontal: 20,
     alignItems: 'center',
+    ...SHADOWS.soft,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#2C2410',
+    color: UI.text,
     marginTop: 10,
   },
   emptyText: {
     marginTop: 8,
     textAlign: 'center',
-    color: '#7B7460',
+    color: UI.text2,
     fontSize: 13,
     lineHeight: 20,
     fontWeight: '700',
@@ -919,14 +987,10 @@ const styles = StyleSheet.create({
     width: '48%',
     borderRadius: 22,
     overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.card,
     borderWidth: 1,
-    borderColor: '#EFE3B3',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    borderColor: UI.border,
+    ...SHADOWS.soft,
   },
   providerImageWrap: {
     marginTop: 10,
@@ -949,12 +1013,12 @@ const styles = StyleSheet.create({
   providerName: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#232011',
+    color: UI.text,
   },
   providerCount: {
     marginTop: 4,
     fontSize: 12,
-    color: '#8A7B4A',
+    color: UI.text2,
     fontWeight: '800',
   },
 
@@ -962,15 +1026,15 @@ const styles = StyleSheet.create({
     marginTop: 14,
     minHeight: 44,
     borderRadius: 16,
-    backgroundColor: '#FDE68A',
+    backgroundColor: UI.blueSoft,
     borderWidth: 1,
-    borderColor: '#F4D461',
+    borderColor: UI.blueSoft2,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 18,
   },
   backToCategoriesButtonText: {
-    color: '#5A4700',
+    color: UI.blueDark,
     fontSize: 14,
     fontWeight: '900',
   },
@@ -979,15 +1043,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FFF8D8',
+    backgroundColor: UI.blueSoft,
     borderWidth: 1,
-    borderColor: '#F1DA85',
+    borderColor: UI.blueSoft2,
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 12,
   },
   backProvidersMiniText: {
-    color: '#5A4700',
+    color: UI.blueDark,
     fontSize: 12,
     fontWeight: '900',
   },
@@ -998,16 +1062,12 @@ const styles = StyleSheet.create({
   cardRow: {
     borderRadius: 22,
     padding: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.card,
     borderWidth: 1,
-    borderColor: '#EFE3B3',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    borderColor: UI.border,
     flexDirection: 'row',
     alignItems: 'center',
+    ...SHADOWS.soft,
   },
   cardImageWrap: {
     width: 96,
@@ -1033,20 +1093,20 @@ const styles = StyleSheet.create({
   cardName: {
     fontSize: 15,
     lineHeight: 21,
-    color: '#201B10',
+    color: UI.text,
     fontWeight: '900',
     marginBottom: 6,
   },
   cardAmountText: {
     fontSize: 13,
-    color: '#8B7C49',
+    color: UI.text2,
     fontWeight: '800',
     marginBottom: 4,
   },
   cardDescription: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7B7460',
+    color: UI.text2,
     fontWeight: '700',
   },
 
@@ -1058,14 +1118,14 @@ const styles = StyleSheet.create({
   cardPriceValue: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#7C6100',
+    color: UI.blueDark,
   },
   buyMiniButton: {
     minHeight: 38,
     borderRadius: 12,
-    backgroundColor: '#FDE68A',
+    backgroundColor: UI.blueSoft,
     borderWidth: 1,
-    borderColor: '#F4D461',
+    borderColor: UI.blueSoft2,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -1073,7 +1133,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   buyMiniButtonText: {
-    color: '#5A4700',
+    color: UI.blueDark,
     fontSize: 12,
     fontWeight: '900',
   },
