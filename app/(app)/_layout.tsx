@@ -110,13 +110,12 @@ function MainBottomNav() {
         pathname === '/dashboard',
     },
     {
-      key: 'cards',
+      key: 'Cards',
       label: i18n.t('Cards'),
       icon: 'card' as const,
-      path: '/(app)/cards',
+      path: '/Cards',
       active:
-        pathname === '/(app)/cards' ||
-        pathname === '/cards',
+         pathname === '/Cards',
     },
     {
       key: 'consulate',
@@ -177,15 +176,11 @@ export default function AppLayout() {
   const pathname = usePathname();
 
   const mainNavPaths = [
-    '/(app)/dashboard',
-    '/dashboard',
-    '/(app)/cards',
-    '/cards',
-    '/(app)/consulate',
-    '/consulate',
-    '/(app)/settings',
-    '/settings',
-  ];
+  '/dashboard',
+  '/Cards',
+  '/consulate',
+  '/settings',
+];
 
   const showMainBottomNav = mainNavPaths.includes(pathname);
 
@@ -224,7 +219,7 @@ export default function AppLayout() {
             }}
           >
             <Stack.Screen name="dashboard" options={{ headerShown: false }} />
-            <Stack.Screen name="cards" options={{ headerShown: false }} />
+            <Stack.Screen name="Cards" options={{ headerShown: false }} />
             <Stack.Screen name="settings" options={{ headerShown: false }} />
             <Stack.Screen
               name="consulate"
