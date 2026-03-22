@@ -85,29 +85,63 @@ const providerConfig: Record<string, { color: string; bgColor: string; logo: str
 };
 
 const UI = {
-  bg: '#FFFDF8',
+  bg: '#EEF4FF',
+  page: '#F7FAFF',
+  headerBg: '#F7FAFF',
   card: '#FFFFFF',
-  text: '#1F1B12',
-  textSoft: '#7A715B',
-  border: '#EFE3B3',
-  gold: '#FDE68A',
-  goldBorder: '#F4D461',
-  goldDark: '#5A4700',
-  softGold: '#FFF8D8',
-  dangerBg: '#FEF3F2',
+  cardSoft: '#F8FBFF',
+  text: '#0F172A',
+  textSoft: '#64748B',
+  text3: '#94A3B8',
+  border: '#D9E5F6',
+  border2: '#DCEBFF',
+
+  blue: '#2563EB',
+  blue2: '#3B82F6',
+  blue3: '#60A5FA',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
+
+  gold: '#EAF2FF',
+  goldBorder: '#DCEBFF',
+  goldDark: '#1D4ED8',
+  softGold: '#F4F8FF',
+
+  dangerBg: '#FEF2F2',
   dangerBorder: '#FECACA',
   dangerText: '#B42318',
+
   success: '#16A34A',
-  black: '#111827',
+  successSoft: '#EAF8EF',
+
+  black: '#0F172A',
   white: '#FFFFFF',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: '#7DA8E6',
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: '#7DA8E6',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
 };
 
 function getProviderStyle(provider?: string | null) {
   const key = String(provider || '').toLowerCase();
   return (
     providerConfig[key] || {
-      color: '#9A7B00',
-      bgColor: '#FFFBEF',
+      color: '#2563EB',
+      bgColor: '#EAF2FF',
       logo: '',
     }
   );
@@ -298,7 +332,7 @@ export default function BuyCardScreen() {
         .eq('id', cardId)
         .maybeSingle();
 
-      if (error) throw error;
+        if (error) throw error;
       return data as TopupCardRow | null;
     },
   });
@@ -569,8 +603,8 @@ export default function BuyCardScreen() {
         <StatusBar barStyle="dark-content" />
 
         <View style={styles.header}>
-          <TouchableOpacity onPress={goBack} activeOpacity={0.85} style={styles.headerBackBtn}>
-            <Ionicons name="arrow-back" size={18} color={UI.goldDark} />
+          <TouchableOpacity onPress={goBack} activeOpacity={0.9} style={styles.headerBackBtn}>
+            <Ionicons name="arrow-back" size={18} color={UI.blueDark} />
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>{i18n.t('buyCard.title') || 'Buy Card'}</Text>
@@ -624,7 +658,7 @@ export default function BuyCardScreen() {
           </View>
 
           <TouchableOpacity style={styles.primaryButton} onPress={openNotifications} activeOpacity={0.9}>
-            <Ionicons name="notifications-outline" size={18} color={UI.goldDark} />
+            <Ionicons name="notifications-outline" size={18} color={UI.white} />
             <Text style={styles.primaryButtonText}>
               {i18n.t('buyCard.openNotifications') || 'Open Notifications'}
             </Text>
@@ -644,8 +678,8 @@ export default function BuyCardScreen() {
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={goBack} activeOpacity={0.85} style={styles.headerBackBtn}>
-          <Ionicons name="arrow-back" size={18} color={UI.goldDark} />
+        <TouchableOpacity onPress={goBack} activeOpacity={0.9} style={styles.headerBackBtn}>
+          <Ionicons name="arrow-back" size={18} color={UI.blueDark} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{i18n.t('buyCard.title') || 'Buy Card'}</Text>
@@ -655,11 +689,13 @@ export default function BuyCardScreen() {
 
       {showPageLoader ? (
         <View style={styles.centerLoader}>
-          <ActivityIndicator color={UI.goldDark} size="large" />
+          <ActivityIndicator color={UI.blue} size="large" />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.topCard}>
+            <View style={styles.topGlowOne} />
+            <View style={styles.topGlowTwo} />
             <Text style={styles.topCardMini}>{cardTypeLabel}</Text>
             <Text style={styles.topCardTitle}>
               {i18n.t('buyCard.reviewYourOrder') || 'Review your order'}
@@ -721,10 +757,10 @@ export default function BuyCardScreen() {
             activeOpacity={0.9}
           >
             {purchaseMutation.isPending ? (
-              <ActivityIndicator color={UI.goldDark} />
+              <ActivityIndicator color={UI.white} />
             ) : (
               <>
-                <Ionicons name="cart-outline" size={18} color={UI.goldDark} />
+                <Ionicons name="cart-outline" size={18} color={UI.white} />
                 <Text style={styles.primaryButtonText}>
                   {i18n.t('buyCard.buyNow') || 'Buy Now'}
                 </Text>
@@ -750,7 +786,7 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    backgroundColor: '#FFF9E8',
+    backgroundColor: UI.headerBg,
     paddingHorizontal: 16,
     paddingTop: Platform.OS === 'ios' ? 10 : 6,
     paddingBottom: 12,
@@ -760,25 +796,26 @@ const styles = StyleSheet.create({
     borderBottomColor: UI.border,
   },
   headerBackBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     backgroundColor: UI.white,
     borderWidth: 1,
-    borderColor: UI.goldBorder,
+    borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOWS.soft,
   },
   headerTitle: {
     flex: 1,
     textAlign: 'center',
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '900',
     color: UI.text,
   },
   headerRightSpacer: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
   },
 
   centerLoader: {
@@ -793,17 +830,37 @@ const styles = StyleSheet.create({
   },
 
   topCard: {
-    backgroundColor: '#FFF6D9',
-    borderRadius: 22,
+    backgroundColor: UI.blueSoft,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: UI.border,
+    borderColor: UI.border2,
     padding: 16,
     marginBottom: 14,
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+  topGlowOne: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(59,130,246,0.10)',
+    left: -40,
+    bottom: -80,
+  },
+  topGlowTwo: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(37,99,235,0.08)',
+    right: -20,
+    top: -25,
   },
   topCardMini: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#B08900',
+    color: UI.blueDark,
     marginBottom: 6,
   },
   topCardTitle: {
@@ -821,6 +878,7 @@ const styles = StyleSheet.create({
     padding: 22,
     alignItems: 'center',
     marginBottom: 14,
+    ...SHADOWS.soft,
   },
   cardIconContainer: {
     width: 150,
@@ -831,7 +889,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F2E8C7',
+    borderColor: UI.border,
   },
   cardImage: {
     width: '100%',
@@ -847,7 +905,7 @@ const styles = StyleSheet.create({
   cardPriceIqd: {
     fontSize: 28,
     fontWeight: '900',
-    color: '#9B7600',
+    color: UI.blueDark,
   },
 
   infoCard: {
@@ -857,6 +915,7 @@ const styles = StyleSheet.create({
     borderColor: UI.border,
     padding: 14,
     marginBottom: 14,
+    ...SHADOWS.soft,
   },
   infoRow: {
     flexDirection: 'row',
@@ -867,7 +926,7 @@ const styles = StyleSheet.create({
   infoLabel: {
     flex: 1,
     fontSize: 13,
-    color: '#8A7B49',
+    color: UI.textSoft,
     fontWeight: '800',
   },
   infoValue: {
@@ -882,20 +941,21 @@ const styles = StyleSheet.create({
     backgroundColor: UI.softGold,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: UI.goldBorder,
+    borderColor: UI.border2,
     padding: 16,
     marginBottom: 14,
+    ...SHADOWS.soft,
   },
   balanceLabel: {
     fontSize: 13,
     marginBottom: 8,
-    color: '#8E6F07',
+    color: UI.blueDark,
     fontWeight: '800',
   },
   balanceAmount: {
     fontSize: 28,
     fontWeight: '900',
-    color: '#3A2E00',
+    color: UI.text,
   },
 
   insufficientWarning: {
@@ -917,7 +977,7 @@ const styles = StyleSheet.create({
   },
 
   primaryButton: {
-    backgroundColor: UI.gold,
+    backgroundColor: UI.blue,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -927,10 +987,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: UI.goldBorder,
+    borderColor: UI.blueDark,
+    ...SHADOWS.card,
   },
   primaryButtonText: {
-    color: UI.goldDark,
+    color: UI.white,
     fontSize: 16,
     fontWeight: '900',
   },
@@ -984,6 +1045,7 @@ const styles = StyleSheet.create({
     borderColor: UI.border,
     padding: 16,
     marginBottom: 16,
+    ...SHADOWS.soft,
   },
   summaryTitle: {
     fontSize: 16,
