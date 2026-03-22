@@ -10,14 +10,42 @@ import i18n from '@/lib/i18n';
 export const options = { headerShown: false };
 
 const COLORS = {
-  bg: '#FFFFFF',
+  bg: '#EEF4FF',
+  page: '#F7FAFF',
   card: '#FFFFFF',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  border: '#E5E7EB',
+  cardSoft: '#F8FBFF',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  textLight: '#94A3B8',
+  border: '#D9E5F6',
+
+  blue: '#2563EB',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
+
   green: '#16A34A',
-  greenSoft: '#EAF7EF',
+  greenSoft: '#EAF8EF',
+
   danger: '#DC2626',
+  dangerSoft: '#FEF2F2',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: '#7DA8E6',
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: '#7DA8E6',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
 };
 
 const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v1';
@@ -223,6 +251,26 @@ export default function ConfirmScreen() {
       </View>
 
       <View style={styles.container}>
+        <View style={styles.topCard}>
+          <View style={styles.topGlowOne} />
+          <View style={styles.topGlowTwo} />
+          <Text style={styles.topMini}>
+            {i18n.t('confirmEmail') || 'Confirm Email'}
+          </Text>
+          <Text style={styles.topTitle}>
+            {state === 'success'
+              ? (i18n.t('success') || 'Success')
+              : state === 'error'
+              ? (i18n.t('error') || 'Error')
+              : (i18n.t('workingOnIt') || 'Working on it...')}
+          </Text>
+          <Text style={styles.topSubtitle}>
+            {state === 'error'
+              ? errorText
+              : message}
+          </Text>
+        </View>
+
         <View style={styles.card}>
           <View style={[styles.iconWrap, state === 'error' && styles.iconWrapError]}>
             {state === 'success' ? (
@@ -230,7 +278,7 @@ export default function ConfirmScreen() {
             ) : state === 'error' ? (
               <XCircle size={62} color={COLORS.danger} strokeWidth={1.8} />
             ) : (
-              <ActivityIndicator />
+              <ActivityIndicator color={COLORS.blue} size="large" />
             )}
           </View>
 
@@ -254,7 +302,9 @@ export default function ConfirmScreen() {
               onPress={() => router.replace('/auth/login' as any)}
               activeOpacity={0.9}
             >
-              <Text style={styles.primaryButtonText}>{i18n.t('backToLogin') || 'Back to Login'}</Text>
+              <Text style={styles.primaryButtonText}>
+                {i18n.t('backToLogin') || 'Back to Login'}
+              </Text>
             </TouchableOpacity>
           ) : null}
 
@@ -270,7 +320,10 @@ export default function ConfirmScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.bg },
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+  },
 
   header: {
     paddingTop: Platform.OS === 'ios' ? 54 : 40,
@@ -278,14 +331,82 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.bg,
+    backgroundColor: COLORS.headerBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '900' as const, color: COLORS.text },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '900' as const,
+    color: COLORS.text,
+  },
 
-  container: { flex: 1, paddingHorizontal: 20, paddingTop: 18, justifyContent: 'center' },
-  card: { backgroundColor: COLORS.card, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: COLORS.border },
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
+    justifyContent: 'center',
+  },
+
+  topCard: {
+    backgroundColor: COLORS.blueSoft,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: COLORS.blueSoft2,
+    padding: 18,
+    marginBottom: 14,
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+  topGlowOne: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(59,130,246,0.10)',
+    left: -40,
+    bottom: -80,
+  },
+  topGlowTwo: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(37,99,235,0.08)',
+    right: -20,
+    top: -25,
+  },
+  topMini: {
+    fontSize: 13,
+    fontWeight: '800' as const,
+    color: COLORS.blueDark,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  topTitle: {
+    fontSize: 22,
+    fontWeight: '900' as const,
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  topSubtitle: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.soft,
+  },
 
   iconWrap: {
     alignSelf: 'center',
@@ -299,14 +420,54 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(22,163,74,0.25)',
     marginBottom: 14,
   },
-  iconWrapError: { backgroundColor: '#FEF2F2', borderColor: 'rgba(220,38,38,0.25)' },
+  iconWrapError: {
+    backgroundColor: COLORS.dangerSoft,
+    borderColor: 'rgba(220,38,38,0.25)',
+  },
 
-  title: { fontSize: 22, fontWeight: '900' as const, color: COLORS.text, textAlign: 'center' as const, marginBottom: 8 },
-  subtitle: { fontSize: 14, fontWeight: '800' as const, color: COLORS.textSecondary, textAlign: 'center' as const, lineHeight: 20 },
-  subtitleError: { fontSize: 13, fontWeight: '900' as const, color: COLORS.danger, textAlign: 'center' as const, lineHeight: 20 },
+  title: {
+    fontSize: 22,
+    fontWeight: '900' as const,
+    color: COLORS.text,
+    textAlign: 'center' as const,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    fontWeight: '800' as const,
+    color: COLORS.textSecondary,
+    textAlign: 'center' as const,
+    lineHeight: 20,
+  },
+  subtitleError: {
+    fontSize: 13,
+    fontWeight: '900' as const,
+    color: COLORS.danger,
+    textAlign: 'center' as const,
+    lineHeight: 20,
+  },
 
-  primaryButton: { backgroundColor: COLORS.green, borderRadius: 14, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginTop: 14 },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' as const },
+  primaryButton: {
+    backgroundColor: COLORS.blue,
+    borderRadius: 16,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    ...SHADOWS.card,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900' as const,
+  },
 
-  hintText: { marginTop: 12, color: COLORS.textSecondary, fontSize: 12, fontWeight: '600' as const, textAlign: 'center' as const, lineHeight: 18 },
+  hintText: {
+    marginTop: 14,
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    fontWeight: '700' as const,
+    textAlign: 'center' as const,
+    lineHeight: 18,
+  },
 });
