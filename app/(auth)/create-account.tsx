@@ -20,24 +20,43 @@ import i18n from '@/lib/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 
-// ✅ remove default header
 export const options = {
   headerShown: false,
 };
 
-// 🎨 white + green + black
 const COLORS = {
-  bg: '#FFFFFF',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  border: '#E5E7EB',
-  inputBg: '#F3FBF6',
-  green: '#16A34A',
-  greenSoft: '#EAF7EF',
+  bg: '#EEF4FF',
+  page: '#F7FAFF',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  border: '#D9E5F6',
+  inputBg: '#F8FBFF',
+  blue: '#2563EB',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
   white: '#FFFFFF',
+  danger: '#DC2626',
+  shadow: '#7DA8E6',
 };
 
-// ✅ store pending profile safely (for confirm page after deep link)
+const SHADOWS = {
+  card: {
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+};
+
 const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v1';
 
 function isAtLeast18(dob: Date): boolean {
@@ -47,7 +66,6 @@ function isAtLeast18(dob: Date): boolean {
 }
 
 function toISODateOnly(d: Date) {
-  // YYYY-MM-DD (safe for DB date column)
   return d.toISOString().split('T')[0];
 }
 
@@ -73,6 +91,7 @@ function normalizeIraqPhoneToE164(input: string) {
 
 export default function CreateAccount() {
   const router = useRouter();
+
   const [fullName, setFullName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -110,7 +129,14 @@ export default function CreateAccount() {
     const cleanCountry = country.trim() || 'Iraq';
     const cleanPassword = password;
 
-    if (!cleanFullName || !cleanEmail || !cleanPassword || !cleanCity || !phone.trim() || !cleanCountry) {
+    if (
+      !cleanFullName ||
+      !cleanEmail ||
+      !cleanPassword ||
+      !cleanCity ||
+      !phone.trim() ||
+      !cleanCountry
+    ) {
       Alert.alert(i18n.t('error'), i18n.t('completeAllFields'));
       return;
     }
@@ -121,7 +147,10 @@ export default function CreateAccount() {
     }
 
     if (cleanPassword.length < 6) {
-      Alert.alert(i18n.t('error'), i18n.t('passwordTooShort') || 'Password must be at least 6 characters');
+      Alert.alert(
+        i18n.t('error'),
+        i18n.t('passwordTooShort') || 'Password must be at least 6 characters'
+      );
       return;
     }
 
@@ -130,7 +159,10 @@ export default function CreateAccount() {
       return;
     }
 
-    const age = Math.floor((new Date().getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    const age = Math.floor(
+      (new Date().getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+    );
+
     if (age < 18) {
       Alert.alert(i18n.t('error'), i18n.t('mustBe18'));
       return;
@@ -143,11 +175,10 @@ export default function CreateAccount() {
     }
 
     setIsCreating(true);
+
     try {
       const dobISO = toISODateOnly(dob);
 
-      // ✅ Save pending profile locally so /confirm can insert into profiles after email confirm
-      // IMPORTANT: your column name is date_of_brith (typo)
       await AsyncStorage.setItem(
         PENDING_PROFILE_KEY,
         JSON.stringify({
@@ -157,14 +188,12 @@ export default function CreateAccount() {
           country: cleanCountry,
           phone: phoneE164,
           date_of_brith: dobISO,
-          pending_profile_created_at: new Date().toISOString(), // ✅ added
+          pending_profile_created_at: new Date().toISOString(),
         })
       );
 
-      // ✅ deep link to confirm page
-      const emailRedirectTo = Linking.createURL('confirm'); // zenopay://confirm
+      const emailRedirectTo = Linking.createURL('confirm');
 
-      // ✅ Sign up
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: cleanPassword,
@@ -180,7 +209,6 @@ export default function CreateAccount() {
         return;
       }
 
-      // ✅ If email confirmation is OFF (session exists), write profile now
       const userId = data?.user?.id;
       const hasSession = !!data?.session;
 
@@ -200,7 +228,6 @@ export default function CreateAccount() {
         if (profileError) {
           console.log('Profile upsert error:', profileError.message);
         } else {
-          // ✅ clean pending storage (not needed if profile saved already)
           await AsyncStorage.removeItem(PENDING_PROFILE_KEY);
         }
       }
@@ -225,15 +252,39 @@ export default function CreateAccount() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backIconBtn} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.green} />
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backIconBtn}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="arrow-back" size={22} color={COLORS.blueDark} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{i18n.t('createAccount')}</Text>
-        <View style={{ width: 24 }} />
+
+        <View style={styles.headerRightSpacer} />
       </View>
 
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlowOne} />
+          <View style={styles.heroGlowTwo} />
+
+          <View style={styles.heroIconWrap}>
+            <Ionicons name="person-add-outline" size={26} color="#FFFFFF" />
+          </View>
+
+          <Text style={styles.heroTitle}>{i18n.t('createAccount')}</Text>
+          <Text style={styles.heroSubtitle}>
+            {i18n.t('completeAllFields') || 'Complete all fields to create your account'}
+          </Text>
+        </View>
+
         <View style={styles.card}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{i18n.t('fullName')}</Text>
@@ -284,10 +335,14 @@ export default function CreateAccount() {
             >
               <Text style={styles.dobText}>
                 {dob
-                  ? dob.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                  ? dob.toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })
                   : i18n.t('dateOfBirth')}
               </Text>
-              <Ionicons name="calendar-outline" size={18} color={COLORS.green} />
+              <Ionicons name="calendar-outline" size={18} color={COLORS.blueDark} />
             </TouchableOpacity>
           </View>
 
@@ -306,17 +361,21 @@ export default function CreateAccount() {
               />
             ) : null
           ) : Platform.OS === 'web' ? (
-            <Modal visible={openDob} transparent animationType="fade" onRequestClose={() => setOpenDob(false)}>
-              <Pressable testID="dob-backdrop" style={styles.dobModalBackdrop} onPress={() => setOpenDob(false)}>
+            <Modal
+              visible={openDob}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setOpenDob(false)}
+            >
+              <Pressable
+                testID="dob-backdrop"
+                style={styles.dobModalBackdrop}
+                onPress={() => setOpenDob(false)}
+              >
                 <Pressable style={styles.dobModalCard} onPress={() => null}>
                   <Text style={styles.dobModalTitle}>{i18n.t('dateOfBirth')}</Text>
 
                   <View style={styles.webDatePickerContainer}>
-                    {/*
-                      ✅ IMPORTANT BUILD FIX:
-                      use React.createElement('input') instead of <input />
-                      so native builds don't fail parsing DOM JSX.
-                    */}
                     {React.createElement('input', {
                       type: 'date',
                       value: webDateValue,
@@ -336,7 +395,8 @@ export default function CreateAccount() {
                         border: `1px solid ${COLORS.border}`,
                         backgroundColor: COLORS.white,
                         color: COLORS.text,
-                        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial',
+                        fontFamily:
+                          'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial',
                         outline: 'none',
                         appearance: 'none',
                         cursor: 'pointer',
@@ -372,8 +432,17 @@ export default function CreateAccount() {
               </Pressable>
             </Modal>
           ) : (
-            <Modal visible={openDob} transparent animationType="fade" onRequestClose={() => setOpenDob(false)}>
-              <Pressable testID="dob-backdrop" style={styles.dobModalBackdrop} onPress={() => setOpenDob(false)}>
+            <Modal
+              visible={openDob}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setOpenDob(false)}
+            >
+              <Pressable
+                testID="dob-backdrop"
+                style={styles.dobModalBackdrop}
+                onPress={() => setOpenDob(false)}
+              >
                 <Pressable style={styles.dobModalCard} onPress={() => null}>
                   <Text style={styles.dobModalTitle}>{i18n.t('dateOfBirth')}</Text>
 
@@ -461,14 +530,20 @@ export default function CreateAccount() {
 
           <TouchableOpacity
             onPress={createAccount}
-            style={[styles.createBtn, (isCreating || !!dobError || !dob) && styles.createBtnDisabled]}
+            style={[
+              styles.createBtn,
+              (isCreating || !!dobError || !dob) && styles.createBtnDisabled,
+            ]}
             disabled={isCreating || !!dobError || !dob}
             activeOpacity={0.9}
           >
             {isCreating ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>
+              <>
+                <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
+                <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>
+              </>
             )}
           </TouchableOpacity>
 
@@ -484,7 +559,10 @@ export default function CreateAccount() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.bg },
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+  },
 
   header: {
     flexDirection: 'row',
@@ -497,36 +575,115 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
     backgroundColor: COLORS.bg,
   },
-  backIconBtn: { padding: 6, borderRadius: 10 },
-  headerTitle: { fontSize: 20, fontWeight: '900' as const, color: COLORS.text },
+  backIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.soft,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '900' as const,
+    color: COLORS.text,
+  },
+  headerRightSpacer: {
+    width: 44,
+    height: 44,
+  },
 
-  container: { flex: 1 },
-  content: { padding: 20, paddingTop: 18 },
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.page,
+  },
+  content: {
+    padding: 20,
+    paddingTop: 18,
+  },
+
+  heroCard: {
+    borderRadius: 28,
+    padding: 20,
+    backgroundColor: COLORS.blue,
+    marginBottom: 16,
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+  heroGlowOne: {
+    position: 'absolute',
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    right: -30,
+    top: -45,
+  },
+  heroGlowTwo: {
+    position: 'absolute',
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    left: -50,
+    bottom: -75,
+  },
+  heroIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '900' as const,
+    color: '#FFFFFF',
+  },
+  heroSubtitle: {
+    marginTop: 6,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700' as const,
+    color: 'rgba(255,255,255,0.84)',
+  },
 
   card: {
     backgroundColor: COLORS.white,
-    borderRadius: 18,
+    borderRadius: 24,
     padding: 18,
     borderWidth: 1,
     borderColor: COLORS.border,
+    ...SHADOWS.soft,
   },
 
-  inputGroup: { marginBottom: 14 },
+  inputGroup: {
+    marginBottom: 14,
+  },
   label: {
     fontSize: 13,
-    fontWeight: '800' as const,
+    fontWeight: '900' as const,
     color: COLORS.text,
     marginBottom: 8,
   },
   input: {
     backgroundColor: COLORS.inputBg,
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderRadius: 16,
+    paddingVertical: 14,
     paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
     fontSize: 16,
     color: COLORS.text,
+    fontWeight: '700' as const,
+    ...SHADOWS.soft,
   },
 
   dobButton: {
@@ -534,46 +691,77 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORS.inputBg,
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderRadius: 16,
+    paddingVertical: 14,
     paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
+    ...SHADOWS.soft,
   },
-  dobText: { fontSize: 16, color: COLORS.text, fontWeight: '700' as const },
+  dobText: {
+    fontSize: 16,
+    color: COLORS.text,
+    fontWeight: '700' as const,
+  },
 
   phoneContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.inputBg,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
     paddingHorizontal: 14,
+    ...SHADOWS.soft,
   },
-  phonePrefix: { fontSize: 16, fontWeight: '800' as const, color: COLORS.text, marginRight: 8 },
-  phoneInput: { flex: 1, paddingVertical: 12, fontSize: 16, color: COLORS.text },
+  phonePrefix: {
+    fontSize: 16,
+    fontWeight: '900' as const,
+    color: COLORS.blueDark,
+    marginRight: 8,
+  },
+  phoneInput: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: COLORS.text,
+    fontWeight: '700' as const,
+  },
 
   createBtn: {
-    backgroundColor: COLORS.green,
-    paddingVertical: 14,
-    borderRadius: 14,
+    backgroundColor: COLORS.blue,
+    paddingVertical: 16,
+    borderRadius: 18,
     marginTop: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    ...SHADOWS.card,
   },
-  createBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' as const },
-  createBtnDisabled: { opacity: 0.5 },
+  createBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '900' as const,
+  },
+  createBtnDisabled: {
+    opacity: 0.5,
+  },
 
-  backBtn: { marginTop: 14, alignItems: 'center', paddingVertical: 6 },
+  backBtn: {
+    marginTop: 14,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
   backText: {
-    color: COLORS.text,
+    color: COLORS.blueDark,
     fontSize: 14,
     fontWeight: '800' as const,
     textDecorationLine: 'underline' as const,
   },
 
   errorText: {
-    color: '#DC2626',
+    color: COLORS.danger,
     fontSize: 13,
     marginTop: -8,
     marginBottom: 10,
@@ -584,12 +772,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: -6,
     marginBottom: 12,
-    fontWeight: '600' as const,
+    fontWeight: '700' as const,
   },
 
   dobModalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(2, 6, 23, 0.42)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 18,
@@ -597,37 +785,64 @@ const styles = StyleSheet.create({
   dobModalCard: {
     width: '100%',
     maxWidth: 420,
-    borderRadius: 16,
+    borderRadius: 22,
     backgroundColor: COLORS.white,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(17,24,39,0.08)',
+    borderColor: COLORS.border,
+    ...SHADOWS.card,
   },
-  dobModalTitle: { fontSize: 16, fontWeight: '900' as const, color: COLORS.text, marginBottom: 12 },
+  dobModalTitle: {
+    fontSize: 16,
+    fontWeight: '900' as const,
+    color: COLORS.text,
+    marginBottom: 12,
+  },
 
-  iosPickerContainer: { backgroundColor: COLORS.white, borderRadius: 12, overflow: 'hidden' },
-  webDatePickerContainer: { backgroundColor: COLORS.white, borderRadius: 12, overflow: 'visible', marginBottom: 8 },
+  iosPickerContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  webDatePickerContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    overflow: 'visible',
+    marginBottom: 8,
+  },
 
-  // ✅ BUILD FIX: removed gap
-  dobModalActions: { flexDirection: 'row', marginTop: 14 },
-  dobActionLeft: { marginRight: 12 },
+  dobModalActions: {
+    flexDirection: 'row',
+    marginTop: 14,
+  },
+  dobActionLeft: {
+    marginRight: 12,
+  },
 
   dobActionSecondary: {
     flex: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingVertical: 13,
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: COLORS.blueSoft,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  dobActionSecondaryText: { fontSize: 15, fontWeight: '900' as const, color: COLORS.text },
+  dobActionSecondaryText: {
+    fontSize: 15,
+    fontWeight: '900' as const,
+    color: COLORS.blueDark,
+  },
   dobActionPrimary: {
     flex: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingVertical: 13,
     alignItems: 'center',
-    backgroundColor: COLORS.green,
+    backgroundColor: COLORS.blue,
   },
-  dobActionPrimaryText: { fontSize: 15, fontWeight: '900' as const, color: '#FFFFFF' },
+  dobActionPrimaryText: {
+    fontSize: 15,
+    fontWeight: '900' as const,
+    color: '#FFFFFF',
+  },
 });
