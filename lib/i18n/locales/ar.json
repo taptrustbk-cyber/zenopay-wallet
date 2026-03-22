@@ -1,5 +1,8 @@
 {
   "home": "الرئيسية",
+  "cards.virtual_brand": "بطاقة زينو باي الافتراضية",
+  "cards.one_card_inline": "بطاقتك الافتراضية مفعلة. يمكنك امتلاك بطاقة واحدة فقط.",
+  "cards.created_success_iqd": "تم إنشاء البطاقة بنجاح. تم خصم 25.000 دينار عراقي من رصيدك.",
   "transactions_topupCard": "بطاقة تعبئة",
   "transactions_cardValue": "قيمة البطاقة",
   "transactions_topupCardPurchased": "تم شراء بطاقة التعبئة",
