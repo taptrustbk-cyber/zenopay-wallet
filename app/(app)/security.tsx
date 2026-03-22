@@ -8,12 +8,53 @@ import {
   ScrollView,
   Alert,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 import { useAuth } from '@/contexts/AuthContext';
+
+const UI = {
+  bg: '#EEF4FF',
+  page: '#F7FAFF',
+  card: '#FFFFFF',
+  cardSoft: '#F8FBFF',
+  text: '#0F172A',
+  text2: '#64748B',
+  text3: '#94A3B8',
+  border: '#D9E5F6',
+
+  blue: '#2563EB',
+  blue2: '#3B82F6',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
+
+  danger: '#EF4444',
+  dangerSoft: '#FFF1F4',
+
+  white: '#FFFFFF',
+  shadow: '#7DA8E6',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: UI.shadow,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: UI.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+};
 
 export default function SecurityScreen() {
   const router = useRouter();
@@ -154,37 +195,41 @@ export default function SecurityScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header (same like terms-conditions) */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={24} color="#111111" />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.9}>
+          <Ionicons name="arrow-back" size={22} color={UI.blueDark} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{i18n.t('security')}</Text>
 
-        <View style={{ width: 24 }} />
+        <View style={styles.headerGhost} />
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
-        {/* Top card (same like terms-conditions) */}
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.topCard}>
+          <View style={styles.topGlowOne} />
+          <View style={styles.topGlowTwo} />
+
           <View style={styles.iconCircle}>
-            <Ionicons name="lock-closed" size={30} color="#16a34a" />
+            <Ionicons name="lock-closed" size={30} color={UI.blue} />
           </View>
 
           <Text style={styles.mainTitle}>{i18n.t('resetPassword')}</Text>
           <Text style={styles.subTitle}>{i18n.t('resetPasswordDesc2')}</Text>
         </View>
 
-        {/* Form */}
-        <View style={styles.form}>
+        <View style={styles.formCard}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{i18n.t('currentPassword')}</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
                 placeholder={i18n.t('enterCurrentPassword')}
-                placeholderTextColor="#6B7280"
+                placeholderTextColor={UI.text3}
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
                 secureTextEntry={!showCurrentPassword}
@@ -195,7 +240,11 @@ export default function SecurityScreen() {
                 activeOpacity={0.8}
                 style={styles.eyeBtn}
               >
-                <Ionicons name={showCurrentPassword ? 'eye-off' : 'eye'} size={22} color="#6B7280" />
+                <Ionicons
+                  name={showCurrentPassword ? 'eye-off' : 'eye'}
+                  size={22}
+                  color={UI.text2}
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -206,7 +255,7 @@ export default function SecurityScreen() {
               <TextInput
                 style={styles.input}
                 placeholder={i18n.t('enterNewPassword')}
-                placeholderTextColor="#6B7280"
+                placeholderTextColor={UI.text3}
                 value={newPassword}
                 onChangeText={setNewPassword}
                 secureTextEntry={!showNewPassword}
@@ -217,7 +266,11 @@ export default function SecurityScreen() {
                 activeOpacity={0.8}
                 style={styles.eyeBtn}
               >
-                <Ionicons name={showNewPassword ? 'eye-off' : 'eye'} size={22} color="#6B7280" />
+                <Ionicons
+                  name={showNewPassword ? 'eye-off' : 'eye'}
+                  size={22}
+                  color={UI.text2}
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -228,7 +281,7 @@ export default function SecurityScreen() {
               <TextInput
                 style={styles.input}
                 placeholder={i18n.t('confirmNewPassword')}
-                placeholderTextColor="#6B7280"
+                placeholderTextColor={UI.text3}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirmPassword}
@@ -239,43 +292,57 @@ export default function SecurityScreen() {
                 activeOpacity={0.8}
                 style={styles.eyeBtn}
               >
-                <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={22} color="#6B7280" />
+                <Ionicons
+                  name={showConfirmPassword ? 'eye-off' : 'eye'}
+                  size={22}
+                  color={UI.text2}
+                />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Green button (same like terms-conditions) */}
           <TouchableOpacity
-            style={[styles.primaryButton, loading && { opacity: 0.7 }]}
+            style={[styles.primaryButton, loading && styles.buttonDisabled]}
             onPress={handleResetPassword}
             disabled={loading}
-            activeOpacity={0.9}
+            activeOpacity={0.92}
           >
-            <Text style={styles.primaryButtonText}>
-              {loading ? i18n.t('loading') : i18n.t('resetPassword')}
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryButtonText}>
+                {i18n.t('resetPassword')}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
 
-        {/* Danger zone (keep red button) */}
         <View style={styles.dangerZone}>
           <View style={styles.dangerHeader}>
-            <Ionicons name="warning" size={22} color="#EF4444" />
+            <View style={styles.dangerIconWrap}>
+              <Ionicons name="warning" size={20} color={UI.danger} />
+            </View>
             <Text style={styles.dangerTitle}>{i18n.t('dangerZone')}</Text>
           </View>
 
           <Text style={styles.dangerDesc}>{i18n.t('deleteAccountDesc')}</Text>
 
           <TouchableOpacity
-            style={[styles.deleteButton, loading && { opacity: 0.7 }]}
+            style={[styles.deleteButton, loading && styles.buttonDisabled]}
             onPress={handleDeleteAccount}
             disabled={loading}
-            activeOpacity={0.9}
+            activeOpacity={0.92}
           >
-            <Ionicons name="trash" size={20} color="#FFFFFF" />
-            <Text style={styles.deleteButtonText}>
-              {loading ? i18n.t('deletingAccount') : i18n.t('deleteAccount')}
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="trash" size={20} color="#FFFFFF" />
+                <Text style={styles.deleteButtonText}>
+                  {i18n.t('deleteAccount')}
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -286,10 +353,9 @@ export default function SecurityScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Same base like terms-conditions
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.bg,
   },
 
   header: {
@@ -300,22 +366,33 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 54 : 46,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderBottomColor: UI.border,
+    backgroundColor: UI.page,
   },
   backButton: {
-    padding: 6,
-    borderRadius: 10,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: UI.card,
+    borderWidth: 1,
+    borderColor: UI.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.soft,
+  },
+  headerGhost: {
+    width: 42,
+    height: 42,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '800' as const,
-    color: '#111111',
+    fontWeight: '900',
+    color: UI.text,
   },
 
   content: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.bg,
   },
   contentContainer: {
     paddingBottom: 10,
@@ -324,43 +401,70 @@ const styles = StyleSheet.create({
   topCard: {
     marginHorizontal: 20,
     marginTop: 18,
-    padding: 18,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderRadius: 22,
+    backgroundColor: UI.blueSoft,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: UI.border,
     alignItems: 'center',
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+  topGlowOne: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(59,130,246,0.10)',
+    left: -45,
+    bottom: -90,
+  },
+  topGlowTwo: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(37,99,235,0.08)',
+    right: -25,
+    top: -30,
   },
   iconCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: UI.white,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
+    ...SHADOWS.soft,
   },
   mainTitle: {
     fontSize: 22,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     textAlign: 'center',
     lineHeight: 30,
-    color: '#111111',
+    color: UI.text,
   },
   subTitle: {
     marginTop: 8,
     textAlign: 'center',
-    color: '#6B7280',
+    color: UI.text2,
     fontSize: 14,
-    fontWeight: '600' as const,
+    fontWeight: '700',
     lineHeight: 20,
   },
 
-  form: {
-    paddingHorizontal: 20,
+  formCard: {
+    marginHorizontal: 20,
     marginTop: 18,
+    padding: 18,
+    borderRadius: 22,
+    backgroundColor: UI.card,
+    borderWidth: 1,
+    borderColor: UI.border,
+    ...SHADOWS.soft,
   },
 
   inputGroup: {
@@ -368,88 +472,100 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '800' as const,
+    fontWeight: '800',
     marginBottom: 8,
-    color: '#111111',
+    color: UI.text,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderColor: UI.border,
+    backgroundColor: UI.cardSoft,
     paddingHorizontal: 14,
-    height: 52,
+    height: 54,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#111111',
-    fontWeight: '600' as const,
+    color: UI.text,
+    fontWeight: '700',
   },
   eyeBtn: {
     padding: 6,
     borderRadius: 10,
   },
 
-  // Green button
   primaryButton: {
     marginTop: 8,
-    height: 50,
-    borderRadius: 14,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#16a34a',
+    backgroundColor: UI.blue,
+    ...SHADOWS.card,
   },
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '800' as const,
+    fontWeight: '900',
   },
 
-  // Danger zone keeps red button
   dangerZone: {
     marginHorizontal: 20,
     marginTop: 22,
     marginBottom: 40,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#EF4444',
+    padding: 18,
+    borderRadius: 22,
+    backgroundColor: UI.card,
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
+    ...SHADOWS.soft,
   },
   dangerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
   },
+  dangerIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: UI.dangerSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
   dangerTitle: {
     fontSize: 18,
-    fontWeight: '900' as const,
-    marginLeft: 8,
-    color: '#EF4444',
+    fontWeight: '900',
+    color: UI.danger,
   },
   dangerDesc: {
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 14,
-    color: '#6B7280',
-    fontWeight: '600' as const,
+    color: UI.text2,
+    fontWeight: '700',
   },
 
   deleteButton: {
-    backgroundColor: '#EF4444',
+    backgroundColor: UI.danger,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 50,
-    borderRadius: 14,
+    height: 52,
+    borderRadius: 16,
     gap: 8,
   },
   deleteButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '800' as const,
+    fontWeight: '900',
+  },
+
+  buttonDisabled: {
+    opacity: 0.7,
   },
 });
