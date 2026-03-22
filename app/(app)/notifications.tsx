@@ -48,6 +48,53 @@ interface CardLookupRow {
   category?: string | null;
 }
 
+const UI = {
+  bg: '#EEF4FF',
+  page: '#F7FAFF',
+  card: '#FFFFFF',
+  cardSoft: '#F8FBFF',
+  text: '#0F172A',
+  text2: '#64748B',
+  text3: '#94A3B8',
+  border: '#D9E5F6',
+
+  blue: '#2563EB',
+  blue2: '#3B82F6',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
+
+  success: '#16A34A',
+  successSoft: '#EAF8EF',
+  warning: '#F59E0B',
+  warningSoft: '#FEF3C7',
+  danger: '#F43F5E',
+  dangerSoft: '#FFF1F4',
+
+  purple: '#7C3AED',
+  purpleSoft: '#F5F3FF',
+
+  white: '#FFFFFF',
+  shadow: '#7DA8E6',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: UI.shadow,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: UI.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+};
+
 const providerConfig: Record<
   string,
   {
@@ -61,43 +108,43 @@ const providerConfig: Record<
   korek: {
     label: 'Korek',
     color: '#1570A6',
-    soft: '#F1F9FF',
-    border: '#D8EEFF',
+    soft: '#EEF7FF',
+    border: '#CDE5F7',
     icon: 'phone-portrait-outline',
   },
   zain: {
     label: 'Zain',
-    color: '#6E3CBC',
-    soft: '#F6F1FF',
-    border: '#E8DFFF',
+    color: '#7C3AED',
+    soft: '#F5F3FF',
+    border: '#DDD6FE',
     icon: 'radio-outline',
   },
   asiacell: {
     label: 'AsiaCell',
     color: '#D53434',
-    soft: '#FFF3F2',
-    border: '#FFDCD8',
+    soft: '#FFF1F1',
+    border: '#F6CACA',
     icon: 'cellular-outline',
   },
   ftth: {
     label: 'FTTH',
-    color: '#2269D1',
-    soft: '#F2F7FF',
-    border: '#DCE8FF',
+    color: '#2563EB',
+    soft: '#EFF6FF',
+    border: '#BFDBFE',
     icon: 'wifi-outline',
   },
   fasthope: {
     label: 'Fast Hope',
-    color: '#E03E84',
-    soft: '#FFF1F7',
-    border: '#FFD9E8',
+    color: '#DB2777',
+    soft: '#FDF2F8',
+    border: '#FBCFE8',
     icon: 'heart-outline',
   },
   kurdtel: {
     label: 'Kurdtel',
-    color: '#333333',
-    soft: '#F7F7F7',
-    border: '#E8E8E8',
+    color: '#475569',
+    soft: '#F8FAFC',
+    border: '#E2E8F0',
     icon: 'call-outline',
   },
 };
@@ -113,9 +160,9 @@ function getProviderStyle(provider?: string | null, source?: OrderSource) {
       (source === 'gift'
         ? String(i18n.t('notifications.giftCardLabel') || 'Gift Card')
         : String(i18n.t('notifications.unknownCard') || 'Unknown Card')),
-    color: source === 'gift' ? '#8B5CF6' : '#9A7B00',
-    soft: source === 'gift' ? '#F5F3FF' : '#FFFBEF',
-    border: source === 'gift' ? '#E9D5FF' : '#F3E1A2',
+    color: source === 'gift' ? UI.purple : UI.blue,
+    soft: source === 'gift' ? UI.purpleSoft : UI.blueSoft,
+    border: source === 'gift' ? '#E9D5FF' : UI.border,
     icon: source === 'gift' ? ('gift-outline' as const) : ('card-outline' as const),
   };
 }
@@ -484,8 +531,8 @@ export default function NotificationsScreen() {
 
     if (normalized === 'success') {
       return {
-        bg: '#ECFDF3',
-        text: '#027A48',
+        bg: UI.successSoft,
+        text: UI.success,
         icon: 'checkmark-circle' as const,
         label: i18n.t('notifications.statusSuccess'),
       };
@@ -493,16 +540,16 @@ export default function NotificationsScreen() {
 
     if (normalized === 'cancelled') {
       return {
-        bg: '#FEF3F2',
-        text: '#D92D20',
+        bg: UI.dangerSoft,
+        text: UI.danger,
         icon: 'close-circle' as const,
         label: i18n.t('notifications.statusCancelled'),
       };
     }
 
     return {
-      bg: '#FFF8E8',
-      text: '#B58103',
+      bg: UI.warningSoft,
+      text: UI.warning,
       icon: 'time' as const,
       label: i18n.t('notifications.statusPending'),
     };
@@ -512,18 +559,18 @@ export default function NotificationsScreen() {
     if (source === 'gift') {
       return {
         label: i18n.t('notifications.giftCardLabel') || 'Gift Card',
-        bg: '#F5F3FF',
+        bg: UI.purpleSoft,
         border: '#E9D5FF',
-        text: '#7C3AED',
+        text: UI.purple,
         icon: 'gift-outline' as const,
       };
     }
 
     return {
       label: i18n.t('notifications.mobileCards') || 'Mobile Card',
-      bg: '#FFF8E8',
-      border: '#F3E1A2',
-      text: '#9A7B00',
+      bg: UI.blueSoft,
+      border: UI.border,
+      text: UI.blueDark,
       icon: 'phone-portrait-outline' as const,
     };
   };
@@ -556,10 +603,10 @@ export default function NotificationsScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
-          activeOpacity={0.85}
+          activeOpacity={0.9}
           style={styles.iconButton}
         >
-          <Ionicons name="arrow-back" size={22} color="#5A4700" />
+          <Ionicons name="arrow-back" size={22} color={UI.blueDark} />
         </TouchableOpacity>
 
         <Text numberOfLines={1} style={styles.headerTitle}>
@@ -573,9 +620,19 @@ export default function NotificationsScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={UI.blue}
+            colors={[UI.blue]}
+          />
+        }
       >
         <View style={styles.heroCard}>
+          <View style={styles.heroGlowOne} />
+          <View style={styles.heroGlowTwo} />
+
           <Text style={styles.heroMini}>
             {i18n.t('notifications.mobileCards')}
           </Text>
@@ -596,11 +653,11 @@ export default function NotificationsScreen() {
 
         {loading ? (
           <View style={styles.loaderWrap}>
-            <ActivityIndicator size="large" color="#C99700" />
+            <ActivityIndicator size="large" color={UI.blue} />
           </View>
         ) : filteredOrders.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Ionicons name="notifications-off-outline" size={38} color="#B08A00" />
+            <Ionicons name="notifications-off-outline" size={38} color={UI.blue} />
             <Text style={styles.emptyTitle}>{i18n.t('notifications.emptyTitle')}</Text>
             <Text style={styles.emptyText}>{i18n.t('notifications.emptyText')}</Text>
           </View>
@@ -760,33 +817,34 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFDF8',
+    backgroundColor: UI.bg,
   },
 
   header: {
     paddingTop: Platform.OS === 'ios' ? 54 : 38,
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: '#FFF9E8',
+    backgroundColor: UI.page,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2E4B4',
+    borderBottomColor: UI.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   iconButton: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.white,
     borderWidth: 1,
-    borderColor: '#F0E1AF',
+    borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOWS.soft,
   },
   iconButtonPlaceholder: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
   },
   headerTitle: {
     flex: 1,
@@ -794,7 +852,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     fontSize: 18,
     fontWeight: '900',
-    color: '#2A2412',
+    color: UI.text,
   },
 
   content: {
@@ -807,32 +865,52 @@ const styles = StyleSheet.create({
   },
 
   heroCard: {
-    borderRadius: 22,
+    borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#FFF6D9',
+    backgroundColor: UI.blueSoft,
     borderWidth: 1,
-    borderColor: '#F3E3A7',
+    borderColor: UI.border,
     marginBottom: 14,
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+  heroGlowOne: {
+    position: 'absolute',
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: 'rgba(59,130,246,0.10)',
+    left: -35,
+    bottom: -80,
+  },
+  heroGlowTwo: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(37,99,235,0.08)',
+    right: -20,
+    top: -25,
   },
   heroMini: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#B08900',
+    color: UI.blue,
     marginBottom: 6,
   },
   heroTitle: {
     fontSize: 20,
     lineHeight: 27,
     fontWeight: '900',
-    color: '#221C0B',
+    color: UI.text,
   },
   heroText: {
     marginTop: 6,
     fontSize: 13,
     lineHeight: 20,
     fontWeight: '700',
-    color: '#806A12',
+    color: UI.text2,
   },
 
   tabsRow: {
@@ -844,45 +922,46 @@ const styles = StyleSheet.create({
   tabButton: {
     minHeight: 42,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.white,
     borderWidth: 1,
-    borderColor: '#EFE3B3',
+    borderColor: UI.border,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
+    ...SHADOWS.soft,
   },
   tabButtonActive: {
-    backgroundColor: '#FDE68A',
-    borderColor: '#F3D35C',
+    backgroundColor: UI.blueSoft,
+    borderColor: UI.blueSoft2,
   },
   tabButtonText: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#6E644B',
+    color: UI.text2,
   },
   tabButtonTextActive: {
-    color: '#5A4700',
+    color: UI.blueDark,
   },
   tabCount: {
     marginLeft: 8,
     minWidth: 24,
     height: 24,
     borderRadius: 999,
-    backgroundColor: '#F7F7F7',
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
   },
   tabCountActive: {
-    backgroundColor: '#FFF8D8',
+    backgroundColor: UI.white,
   },
   tabCountText: {
     fontSize: 12,
     fontWeight: '900',
-    color: '#7A715A',
+    color: UI.text2,
   },
   tabCountTextActive: {
-    color: '#5A4700',
+    color: UI.blueDark,
   },
 
   loaderWrap: {
@@ -893,24 +972,25 @@ const styles = StyleSheet.create({
 
   emptyCard: {
     marginTop: 8,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    backgroundColor: UI.white,
     borderWidth: 1,
-    borderColor: '#EFE3B3',
+    borderColor: UI.border,
     paddingVertical: 34,
     paddingHorizontal: 20,
     alignItems: 'center',
+    ...SHADOWS.soft,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#2C2410',
+    color: UI.text,
     marginTop: 10,
   },
   emptyText: {
     marginTop: 8,
     textAlign: 'center',
-    color: '#7B7460',
+    color: UI.text2,
     fontSize: 13,
     lineHeight: 20,
     fontWeight: '700',
@@ -921,15 +1001,11 @@ const styles = StyleSheet.create({
   },
   orderCard: {
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.white,
     borderWidth: 1,
-    borderColor: '#EFE3B3',
+    borderColor: UI.border,
     padding: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    ...SHADOWS.soft,
   },
   orderTopRow: {
     flexDirection: 'row',
@@ -986,7 +1062,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 24,
     fontWeight: '900',
-    color: '#211C11',
+    color: UI.text,
     marginBottom: 12,
   },
 
@@ -1000,43 +1076,43 @@ const styles = StyleSheet.create({
   infoBox: {
     width: '48.5%',
     borderRadius: 16,
-    backgroundColor: '#FFFCF2',
+    backgroundColor: UI.cardSoft,
     borderWidth: 1,
-    borderColor: '#F4E8BF',
+    borderColor: UI.border,
     paddingVertical: 10,
     paddingHorizontal: 10,
   },
   infoBoxWide: {
     width: '100%',
     borderRadius: 16,
-    backgroundColor: '#FFFCF2',
+    backgroundColor: UI.cardSoft,
     borderWidth: 1,
-    borderColor: '#F4E8BF',
+    borderColor: UI.border,
     paddingVertical: 10,
     paddingHorizontal: 10,
   },
   infoLabel: {
     fontSize: 11,
-    color: '#8A7B49',
+    color: UI.text2,
     fontWeight: '800',
     marginBottom: 4,
   },
   infoValue: {
     fontSize: 14,
-    color: '#241E0E',
+    color: UI.text,
     fontWeight: '900',
   },
   infoValueSmall: {
     fontSize: 12,
-    color: '#241E0E',
+    color: UI.text,
     fontWeight: '800',
   },
 
   deliveryCard: {
     borderRadius: 18,
-    backgroundColor: '#FFFDF7',
+    backgroundColor: UI.cardSoft,
     borderWidth: 1,
-    borderColor: '#F0E2B2',
+    borderColor: UI.border,
     padding: 12,
   },
   deliveryTop: {
@@ -1049,7 +1125,7 @@ const styles = StyleSheet.create({
   deliveryTitle: {
     fontSize: 14,
     fontWeight: '900',
-    color: '#241E0F',
+    color: UI.text,
   },
   deliveryStateBadge: {
     paddingHorizontal: 10,
@@ -1057,45 +1133,45 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   deliveryStateBadgeSuccess: {
-    backgroundColor: '#ECFDF3',
+    backgroundColor: UI.successSoft,
   },
   deliveryStateBadgePending: {
-    backgroundColor: '#FFF8E8',
+    backgroundColor: UI.warningSoft,
   },
   deliveryStateBadgeCancelled: {
-    backgroundColor: '#FEF3F2',
+    backgroundColor: UI.dangerSoft,
   },
   deliveryStateBadgeText: {
     fontSize: 11,
     fontWeight: '900',
   },
   deliveryStateBadgeTextSuccess: {
-    color: '#027A48',
+    color: UI.success,
   },
   deliveryStateBadgeTextPending: {
-    color: '#B58103',
+    color: UI.warning,
   },
   deliveryStateBadgeTextCancelled: {
-    color: '#D92D20',
+    color: UI.danger,
   },
 
   pinCodeBox: {
     borderRadius: 16,
-    backgroundColor: '#FFF8D8',
+    backgroundColor: UI.blueSoft,
     borderWidth: 1,
-    borderColor: '#F1DA85',
+    borderColor: UI.blueSoft2,
     paddingVertical: 10,
     paddingHorizontal: 12,
   },
   pinCodeLabel: {
     fontSize: 11,
-    color: '#8E6F07',
+    color: UI.blueDark,
     fontWeight: '800',
     marginBottom: 4,
   },
   pinCodeValue: {
     fontSize: 17,
-    color: '#3A2E00',
+    color: UI.text,
     fontWeight: '900',
     letterSpacing: 0.4,
   },
@@ -1103,29 +1179,29 @@ const styles = StyleSheet.create({
   deliveryText: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#6E644B',
+    color: UI.text2,
     fontWeight: '700',
   },
 
   notesBox: {
     marginTop: 10,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.white,
     borderWidth: 1,
-    borderColor: '#EFE5C6',
+    borderColor: UI.border,
     paddingVertical: 10,
     paddingHorizontal: 10,
   },
   notesLabel: {
     fontSize: 11,
-    color: '#8A7B49',
+    color: UI.text2,
     fontWeight: '800',
     marginBottom: 4,
   },
   notesText: {
     fontSize: 13,
     lineHeight: 19,
-    color: '#2A2412',
+    color: UI.text,
     fontWeight: '700',
   },
 });
