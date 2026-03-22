@@ -1,5 +1,8 @@
 {
   "home": "سەرەکی",
+  "cards.virtual_brand": "کارتی ڤێرتواڵی زینوپەی",
+  "cards.one_card_inline": "کارتی ڤێرتواڵی تۆ چالاکە. تەنها دەتوانیت یەک کارت هەبێت.",
+  "cards.created_success_iqd": "کارتەکە بە سەرکەوتوویی دروستکرا. 25.000 دیناری عێراقی لە باڵانسەکەت کەم کرایەوە.",
   "transactions_topupCard": "کارتی پرکردنەوە",
   "transactions_cardValue": "بڕی کارت",
   "transactions_topupCardPurchased": "کارتی تۆپئەپ کڕدرا",
