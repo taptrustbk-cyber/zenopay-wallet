@@ -25,14 +25,40 @@ import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 
 const COLORS = {
-  bg: '#FFFFFF',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  border: '#E5E7EB',
-  inputBg: '#F9FAFB',
-  green: '#16A34A',
-  greenSoft: '#EAF7EF',
+  bg: '#EEF4FF',
+  bgSoft: '#F7FAFF',
+  card: '#FFFFFF',
+  cardSoft: '#F8FBFF',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  textMuted: '#94A3B8',
+  border: '#D9E5F6',
+
+  blue: '#2563EB',
+  blue2: '#3B82F6',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
+
   white: '#FFFFFF',
+  overlay: 'rgba(15, 23, 42, 0.28)',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: '#7DA8E6',
+    shadowOpacity: 0.10,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: '#8BA9D6',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
 };
 
 function safeText(v: any) {
@@ -248,7 +274,7 @@ export default function ProfileScreen() {
     try {
       setSavingAvatar(true);
 
-      // نیشاندانی وێنەکە دەستبەجێ لەسەر شاشە
+      // instant preview
       setLocalAvatarUri(uri);
 
       const response = await fetch(uri);
@@ -350,13 +376,13 @@ export default function ProfileScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.85}>
+          <Ionicons name="arrow-back" size={22} color={COLORS.blueDark} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{i18n.t('profile') || 'Profile'}</Text>
 
-        <View style={{ width: 24 }} />
+        <View style={{ width: 40 }} />
       </View>
 
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -367,9 +393,12 @@ export default function ProfileScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.card}>
+            <View style={styles.heroGlowOne} />
+            <View style={styles.heroGlowTwo} />
+
             <View style={styles.avatarWrap}>
               <TouchableOpacity
-                activeOpacity={0.9}
+                activeOpacity={0.92}
                 style={styles.avatarBtn}
                 onPress={() => setPickerOpen(true)}
                 disabled={savingAvatar}
@@ -378,7 +407,7 @@ export default function ProfileScreen() {
                   <>
                     {!avatarLoaded && (
                       <View style={styles.avatarLoadingLayer}>
-                        <ActivityIndicator size="small" color={COLORS.green} />
+                        <ActivityIndicator size="small" color={COLORS.blue} />
                       </View>
                     )}
 
@@ -386,7 +415,7 @@ export default function ProfileScreen() {
                       source={{ uri: avatarPreview }}
                       style={styles.avatarImg}
                       contentFit="cover"
-                      transition={120}
+                      transition={80}
                       cachePolicy="memory-disk"
                       onLoadStart={() => setAvatarLoaded(false)}
                       onLoad={() => setAvatarLoaded(true)}
@@ -395,7 +424,7 @@ export default function ProfileScreen() {
                   </>
                 ) : (
                   <View style={styles.avatarFallback}>
-                    <Ionicons name="person" size={34} color={COLORS.green} />
+                    <Ionicons name="person" size={34} color={COLORS.blue} />
                   </View>
                 )}
 
@@ -417,7 +446,7 @@ export default function ProfileScreen() {
             <TextInput
               style={styles.input}
               placeholder={i18n.t('fullNamePlaceholder')}
-              placeholderTextColor={COLORS.textSecondary}
+              placeholderTextColor={COLORS.textMuted}
               value={fullName}
               onChangeText={setFullName}
               autoCapitalize="words"
@@ -427,7 +456,7 @@ export default function ProfileScreen() {
             <TextInput
               style={styles.input}
               placeholder={i18n.t('dateOfBirthPlaceholder')}
-              placeholderTextColor={COLORS.textSecondary}
+              placeholderTextColor={COLORS.textMuted}
               value={dob}
               onChangeText={setDob}
             />
@@ -436,7 +465,7 @@ export default function ProfileScreen() {
             <TextInput
               style={styles.input}
               placeholder={i18n.t('phoneNumberPlaceholder')}
-              placeholderTextColor={COLORS.textSecondary}
+              placeholderTextColor={COLORS.textMuted}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
@@ -451,7 +480,7 @@ export default function ProfileScreen() {
             <TextInput
               style={styles.input}
               placeholder={i18n.t('countryPlaceholder')}
-              placeholderTextColor={COLORS.textSecondary}
+              placeholderTextColor={COLORS.textMuted}
               value={country}
               onChangeText={setCountry}
             />
@@ -463,16 +492,23 @@ export default function ProfileScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.primaryButton, (updateMutation.isPending || savingAvatar) && styles.buttonDisabled]}
+              style={[styles.primaryButtonWrap, (updateMutation.isPending || savingAvatar) && styles.buttonDisabled]}
               onPress={() => updateMutation.mutate()}
               disabled={updateMutation.isPending || savingAvatar}
-              activeOpacity={0.9}
+              activeOpacity={0.92}
             >
-              {updateMutation.isPending ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.primaryButtonText}>{i18n.t('save') || 'Save'}</Text>
-              )}
+              <LinearGradient
+                colors={['#79B7FF', '#4C92F7', '#2563EB']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.primaryButton}
+              >
+                {updateMutation.isPending ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>{i18n.t('save') || 'Save'}</Text>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
           </View>
 
@@ -486,14 +522,14 @@ export default function ProfileScreen() {
           <Text style={styles.modalTitle}>{i18n.t('changePhoto') || 'Change photo'}</Text>
 
           <TouchableOpacity style={styles.sheetButton} activeOpacity={0.9} onPress={pickFromGallery}>
-            <Ionicons name="images" size={18} color={COLORS.text} />
+            <Ionicons name="images" size={18} color={COLORS.blueDark} />
             <Text style={styles.sheetButtonText}>
               {i18n.t('selectExistingPhoto') || 'Select existing photo'}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.sheetButton} activeOpacity={0.9} onPress={takeNewPhoto}>
-            <Ionicons name="camera" size={18} color={COLORS.text} />
+            <Ionicons name="camera" size={18} color={COLORS.blueDark} />
             <Text style={styles.sheetButtonText}>{i18n.t('takeNewPhoto') || 'Take new photo'}</Text>
           </TouchableOpacity>
 
@@ -517,38 +553,71 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 54 : 46,
     paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
     backgroundColor: COLORS.bg,
   },
-  backButton: { padding: 6, borderRadius: 10 },
-  headerTitle: { fontSize: 20, fontWeight: '900', color: COLORS.text },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.soft,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: COLORS.text,
+  },
 
   content: { flex: 1, backgroundColor: COLORS.bg },
   contentContainer: { paddingBottom: 10 },
 
   card: {
     marginHorizontal: 20,
-    marginTop: 18,
+    marginTop: 12,
     padding: 18,
-    borderRadius: 16,
-    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    backgroundColor: COLORS.card,
     borderWidth: 1,
     borderColor: COLORS.border,
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+  heroGlowOne: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(220,235,255,0.32)',
+    right: -40,
+    top: -30,
+  },
+  heroGlowTwo: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(234,242,255,0.7)',
+    left: -50,
+    top: 60,
   },
 
-  avatarWrap: { alignItems: 'center', marginBottom: 14 },
+  avatarWrap: { alignItems: 'center', marginBottom: 18 },
   avatarBtn: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 106,
+    height: 106,
+    borderRadius: 53,
     borderWidth: 2,
-    borderColor: '#BBF7D0',
-    backgroundColor: '#F0FDF4',
+    borderColor: '#CFE1FF',
+    backgroundColor: COLORS.blueSoft,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    ...SHADOWS.soft,
   },
   avatarImg: {
     width: '100%',
@@ -557,7 +626,7 @@ const styles = StyleSheet.create({
   avatarLoadingLayer: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 2,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.blueSoft,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -571,16 +640,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 6,
     bottom: 6,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.green,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: COLORS.blue,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 3,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   avatarHint: {
-    marginTop: 10,
+    marginTop: 12,
     fontSize: 13,
     color: COLORS.textSecondary,
     fontWeight: '700',
@@ -594,27 +665,29 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.inputBg,
+    backgroundColor: COLORS.cardSoft,
     paddingHorizontal: 14,
-    height: 52,
+    height: 54,
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.text,
     marginBottom: 16,
+    ...SHADOWS.soft,
   },
 
   infoBox: {
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.inputBg,
+    backgroundColor: COLORS.cardSoft,
     paddingHorizontal: 14,
-    height: 52,
+    height: 54,
     justifyContent: 'center',
     marginBottom: 16,
+    ...SHADOWS.soft,
   },
   infoText: {
     fontSize: 16,
@@ -623,22 +696,22 @@ const styles = StyleSheet.create({
   },
 
   statusBox: {
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.greenSoft,
+    borderColor: '#CFE1FF',
+    backgroundColor: COLORS.blueSoft,
     paddingHorizontal: 14,
-    height: 52,
+    height: 54,
     flexDirection: 'row',
     alignItems: 'center',
     columnGap: 10,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   statusDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.green,
+    backgroundColor: COLORS.blue,
   },
   statusText: {
     fontSize: 15,
@@ -646,13 +719,17 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
 
+  primaryButtonWrap: {
+    marginTop: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
   primaryButton: {
-    marginTop: 6,
-    height: 50,
-    borderRadius: 14,
+    height: 54,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.green,
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -665,7 +742,7 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: COLORS.overlay,
   },
   modalSheet: {
     position: 'absolute',
@@ -673,10 +750,11 @@ const styles = StyleSheet.create({
     right: 16,
     bottom: 16,
     backgroundColor: COLORS.white,
-    borderRadius: 18,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 14,
+    ...SHADOWS.card,
   },
   modalTitle: {
     fontSize: 16,
@@ -686,16 +764,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sheetButton: {
-    height: 52,
-    borderRadius: 14,
+    height: 54,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.cardSoft,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     columnGap: 10,
     marginTop: 10,
+    ...SHADOWS.soft,
   },
   sheetButtonText: {
     fontSize: 15,
@@ -703,16 +782,18 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   cancelBtn: {
-    height: 50,
-    borderRadius: 14,
+    height: 52,
+    borderRadius: 16,
     marginTop: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F3F7FF',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   cancelText: {
     fontSize: 15,
     fontWeight: '900',
-    color: COLORS.text,
+    color: COLORS.blueDark,
   },
 });
