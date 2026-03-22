@@ -1,5 +1,8 @@
 {
   "home": "سەرەکی",
+  "cards.virtual_brand": "کارتا ڤێرتوالا زینوپەی",
+  "cards.one_card_inline": "کارتا تەیا چالاکە. بتنێ تو دشێی ئێک کارتێ دروست بکەی و تە هەبیت.",
+  "cards.created_success_iqd": "کارت ب سەرکەفتی هاتە دروست کردن 25.000 دینار ژ هژمارا هاتنە کێمکرن."
   "installmentTotalPrice": "هەمی بهایێ قستی",
   "transactions_topupCard": "کارتا بارکرنێ",
   "transactions_cardValue": "بڕا کارتێ",
