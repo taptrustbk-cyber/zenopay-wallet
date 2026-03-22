@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
@@ -23,22 +24,46 @@ import i18n from '@/lib/i18n';
 import { Wallet } from '@/lib/types';
 
 const UI = {
-  bg: '#EEF4FB',
-  page: '#F4F8FC',
+  bg: '#EEF4FF',
+  page: '#F7FAFF',
   card: '#FFFFFF',
-  soft: '#F8FBFF',
+  cardSoft: '#F8FBFF',
   text: '#0F172A',
   text2: '#64748B',
   text3: '#94A3B8',
-  border: '#D9E6F2',
-  primary: '#1D4ED8',
-  primaryDark: '#1E3A8A',
-  primarySoft: '#EAF2FF',
-  success: '#10B981',
-  successSoft: '#EAFBF5',
+  border: '#D9E5F6',
+
+  blue: '#2563EB',
+  blue2: '#3B82F6',
+  blue3: '#60A5FA',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
+
+  success: '#16A34A',
+  successSoft: '#EAF8EF',
   danger: '#F43F5E',
   dangerSoft: '#FFF1F4',
-  shadow: '#0F172A',
+
+  white: '#FFFFFF',
+  shadow: '#7DA8E6',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: UI.shadow,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: UI.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
 };
 
 const STEP_AMOUNT = 1000;
@@ -99,7 +124,6 @@ export default function SendMoneyScreen() {
   });
 
   const walletBalanceNumber = Number(walletQuery.data?.balance || 0);
-
   const amountNumber = useMemo(() => safeNumber(amount), [amount]);
 
   const onChangeAmount = (text: string) => {
@@ -209,8 +233,12 @@ export default function SendMoneyScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.88}>
-              <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={22} color={UI.primaryDark} />
+            <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.9}>
+              <Ionicons
+                name={isRTL ? 'chevron-forward' : 'chevron-back'}
+                size={22}
+                color={UI.blueDark}
+              />
             </TouchableOpacity>
 
             <Text style={styles.headerTitle}>
@@ -220,9 +248,17 @@ export default function SendMoneyScreen() {
             <View style={styles.headerBtnGhost} />
           </View>
 
-          <View style={styles.heroCard}>
+          <LinearGradient
+            colors={['#5DA8FF', '#3B82F6', '#2563EB']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroCard}
+          >
+            <View style={styles.heroGlowOne} />
+            <View style={styles.heroGlowTwo} />
+
             <View style={styles.heroTopRow}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.heroEyebrow}>
                   {String(i18n.t('accountBalance') || 'Account Balance')}
                 </Text>
@@ -232,7 +268,7 @@ export default function SendMoneyScreen() {
               </View>
 
               <View style={styles.heroIconWrap}>
-                <Ionicons name="wallet-outline" size={28} color="#FFFFFF" />
+                <Ionicons name="paper-plane-outline" size={26} color="#FFFFFF" />
               </View>
             </View>
 
@@ -248,7 +284,7 @@ export default function SendMoneyScreen() {
                 {String(i18n.t('sendMoneySubtitle') || 'Secure Iraqi Dinar transfer')}
               </Text>
             )}
-          </View>
+          </LinearGradient>
 
           <View style={styles.formCard}>
             <View style={styles.sectionHead}>
@@ -293,7 +329,7 @@ export default function SendMoneyScreen() {
 
               <View style={styles.amountControlRow}>
                 <TouchableOpacity style={styles.stepBtn} onPress={decreaseAmount} activeOpacity={0.9}>
-                  <Ionicons name="remove" size={22} color={UI.primaryDark} />
+                  <Ionicons name="remove" size={22} color={UI.blueDark} />
                 </TouchableOpacity>
 
                 <View style={styles.amountInputWrap}>
@@ -310,7 +346,7 @@ export default function SendMoneyScreen() {
                 </View>
 
                 <TouchableOpacity style={styles.stepBtn} onPress={increaseAmount} activeOpacity={0.9}>
-                  <Ionicons name="add" size={22} color={UI.primaryDark} />
+                  <Ionicons name="add" size={22} color={UI.blueDark} />
                 </TouchableOpacity>
               </View>
 
@@ -332,7 +368,7 @@ export default function SendMoneyScreen() {
               {String(i18n.t('note') || 'Note')}
             </Text>
             <View style={[styles.inputWrap, styles.noteWrap]}>
-              <Ionicons name="document-text-outline" size={20} color={UI.text2} />
+              <Ionicons name="document-text-outline" size={20} color={UI.text2} style={{ marginTop: 2 }} />
               <TextInput
                 style={[styles.input, styles.noteInput]}
                 placeholder={String(i18n.t('addNoteOptional') || 'Add note (optional)')}
@@ -359,7 +395,7 @@ export default function SendMoneyScreen() {
                 <Text style={styles.summaryLabel}>
                   {String(i18n.t('transactionFee') || 'Transaction Fee')}
                 </Text>
-                <Text style={[styles.summaryValue, { color: UI.success }]}>
+                <Text style={[styles.summaryValue, styles.feeValue]}>
                   {formatMoneyText(0)}
                 </Text>
               </View>
@@ -376,23 +412,30 @@ export default function SendMoneyScreen() {
 
             <TouchableOpacity
               style={[
-                styles.sendButton,
+                styles.sendButtonWrap,
                 (sendMutation.isPending || walletQuery.isLoading) && styles.sendButtonDisabled,
               ]}
               onPress={() => sendMutation.mutate()}
               disabled={sendMutation.isPending || walletQuery.isLoading}
               activeOpacity={0.92}
             >
-              {sendMutation.isPending ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <>
-                  <Ionicons name="paper-plane-outline" size={20} color="#fff" />
-                  <Text style={styles.sendButtonText}>
-                    {String(i18n.t('send') || 'Send')}
-                  </Text>
-                </>
-              )}
+              <LinearGradient
+                colors={['#79B7FF', '#4C92F7', '#2563EB']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.sendButton}
+              >
+                {sendMutation.isPending ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <>
+                    <Ionicons name="paper-plane-outline" size={20} color="#fff" />
+                    <Text style={styles.sendButtonText}>
+                      {String(i18n.t('send') || 'Send')}
+                    </Text>
+                  </>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
           </View>
 
@@ -423,12 +466,13 @@ const styles = StyleSheet.create({
   headerBtn: {
     width: 48,
     height: 48,
-    borderRadius: 18,
-    backgroundColor: '#fff',
+    borderRadius: 22,
+    backgroundColor: UI.card,
     borderWidth: 1,
     borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOWS.soft,
   },
 
   headerBtnGhost: {
@@ -439,19 +483,35 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: UI.primaryDark,
+    color: UI.text,
   },
 
   heroCard: {
     borderRadius: 28,
     padding: 20,
-    backgroundColor: UI.primary,
     marginBottom: 14,
-    shadowColor: UI.shadow,
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+
+  heroGlowOne: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    left: -70,
+    bottom: -90,
+  },
+
+  heroGlowTwo: {
+    position: 'absolute',
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    right: -30,
+    top: -40,
   },
 
   heroTopRow: {
@@ -472,6 +532,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 34,
     fontWeight: '900',
+    letterSpacing: -0.4,
   },
 
   heroSubtext: {
@@ -488,6 +549,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
 
   heroErrorRow: {
@@ -509,6 +572,7 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderColor: UI.border,
+    ...SHADOWS.soft,
   },
 
   sectionHead: {
@@ -538,7 +602,7 @@ const styles = StyleSheet.create({
 
   inputWrap: {
     minHeight: 58,
-    backgroundColor: UI.soft,
+    backgroundColor: UI.cardSoft,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: UI.border,
@@ -547,6 +611,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginBottom: 14,
+    ...SHADOWS.soft,
   },
 
   input: {
@@ -558,10 +623,10 @@ const styles = StyleSheet.create({
   },
 
   amountCard: {
-    backgroundColor: UI.primarySoft,
+    backgroundColor: UI.blueSoft,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#D8E5FF',
+    borderColor: UI.border,
     padding: 14,
     marginBottom: 14,
   },
@@ -576,7 +641,7 @@ const styles = StyleSheet.create({
   amountHeaderTitle: {
     fontSize: 14,
     fontWeight: '900',
-    color: UI.primaryDark,
+    color: UI.blueDark,
   },
 
   currencyPill: {
@@ -585,13 +650,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#D8E5FF',
+    borderColor: UI.border,
   },
 
   currencyPillText: {
     fontSize: 13,
     fontWeight: '900',
-    color: UI.primaryDark,
+    color: UI.blueDark,
   },
 
   amountControlRow: {
@@ -606,28 +671,30 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D8E5FF',
+    borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOWS.soft,
   },
 
   amountInputWrap: {
     flex: 1,
-    minHeight: 64,
+    minHeight: 68,
     borderRadius: 22,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D8E5FF',
+    borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
+    ...SHADOWS.soft,
   },
 
   amountInput: {
     width: '100%',
     fontSize: 28,
     fontWeight: '900',
-    color: UI.primaryDark,
+    color: UI.blueDark,
     paddingTop: 10,
     textAlign: 'center',
   },
@@ -653,13 +720,14 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D8E5FF',
+    borderColor: UI.border,
+    ...SHADOWS.soft,
   },
 
   quickAmountChipText: {
     fontSize: 13,
     fontWeight: '900',
-    color: UI.primaryDark,
+    color: UI.blueDark,
   },
 
   noteWrap: {
@@ -676,10 +744,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 14,
     borderRadius: 22,
-    backgroundColor: '#F8FBFF',
+    backgroundColor: UI.cardSoft,
     borderWidth: 1,
     borderColor: UI.border,
     padding: 14,
+    ...SHADOWS.soft,
   },
 
   summaryRow: {
@@ -714,16 +783,25 @@ const styles = StyleSheet.create({
     color: UI.text,
   },
 
+  feeValue: {
+    color: UI.success,
+  },
+
   summaryValueStrong: {
     fontSize: 17,
     fontWeight: '900',
-    color: UI.primaryDark,
+    color: UI.blueDark,
+  },
+
+  sendButtonWrap: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    ...SHADOWS.card,
   },
 
   sendButton: {
     minHeight: 58,
     borderRadius: 20,
-    backgroundColor: UI.primary,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
