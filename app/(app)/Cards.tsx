@@ -388,11 +388,9 @@ export default function CardsScreen() {
           </View>
 
           <View style={styles.brandMarksRow}>
-            <View style={styles.masterMarkWrap}>
-              <View style={[styles.brandCircle, styles.brandCircleRed]} />
-              <View style={[styles.brandCircle, styles.brandCircleOrange]} />
-            </View>
-            <Text style={styles.visaText}>VISA</Text>
+            <Text style={styles.virtualBrandText}>
+              {t('cards.virtual_brand', 'ZENOPAY VIRTUAL')}
+            </Text>
           </View>
 
           <Text style={styles.itemNumber} numberOfLines={1}>
@@ -488,7 +486,7 @@ export default function CardsScreen() {
             {hasCard ? (
               <View style={[styles.warnRow, { marginTop: 10 }]}>
                 <Ionicons name="checkmark-circle" size={18} color={UI.blue} />
-                <Text style={[styles.warnText, { color: UI.text }]}>
+                <Text style={styles.oneCardInlineText}>
                   {t('cards.one_card_inline', 'Your virtual card is active. You can only have one card.')}
                 </Text>
               </View>
@@ -688,6 +686,13 @@ const styles = StyleSheet.create({
 
   warnRow: { marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
   warnText: { color: UI.danger, fontWeight: '800', flexShrink: 1 },
+  oneCardInlineText: {
+    color: UI.text,
+    fontWeight: '900',
+    fontSize: 14,
+    lineHeight: 21,
+    flex: 1,
+  },
 
   listWrap: { marginTop: 14, paddingHorizontal: 16 },
   listHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
@@ -769,31 +774,14 @@ const styles = StyleSheet.create({
     marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
   },
-  masterMarkWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  brandCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-  },
-  brandCircleRed: {
-    backgroundColor: '#EF4444',
-    marginRight: -8,
-    opacity: 0.95,
-  },
-  brandCircleOrange: {
-    backgroundColor: '#F59E0B',
-    opacity: 0.95,
-  },
-  visaText: {
+  virtualBrandText: {
     color: '#FFFFFF',
     fontWeight: '900',
-    fontSize: 14,
-    letterSpacing: 1.1,
+    fontSize: 13,
+    letterSpacing: 1,
+    opacity: 0.96,
   },
 
   itemNumber: {
