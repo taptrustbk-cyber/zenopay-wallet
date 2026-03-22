@@ -14,6 +14,7 @@ import {
   Modal,
   RefreshControl,
   Image,
+  I18nManager,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -38,31 +39,48 @@ const MIN_WITHDRAW_IQD = 1000;
 const MAX_WITHDRAW_IQD = 1000000;
 
 const UI = {
-  bg: '#F4F7FB',
+  bg: '#EEF4FF',
+  page: '#F7FAFF',
   card: '#FFFFFF',
+  cardSoft: '#F8FBFF',
   text: '#0F172A',
   text2: '#64748B',
   text3: '#94A3B8',
-  border: '#E2E8F0',
-
-  green: '#0EA772',
-  green2: '#10B981',
-  greenSoft: '#E9FBF4',
+  border: '#D9E5F6',
 
   blue: '#2563EB',
+  blue2: '#3B82F6',
+  blue3: '#60A5FA',
+  blueDark: '#1D4ED8',
   blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
 
-  purple: '#7C3AED',
-  purple2: '#8B5CF6',
-  purple3: '#A78BFA',
-  purpleSoft: '#F3E8FF',
-
+  success: '#16A34A',
+  successSoft: '#EAF8EF',
   warning: '#F59E0B',
   warningSoft: '#FEF3C7',
-  danger: '#EF4444',
-  dangerSoft: '#FEE2E2',
-  dark: '#0B1220',
-  shadow: 'rgba(15, 23, 42, 0.08)',
+  danger: '#F43F5E',
+  dangerSoft: '#FFF1F4',
+
+  white: '#FFFFFF',
+  shadow: '#7DA8E6',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: UI.shadow,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: UI.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
 };
 
 type PaymentMethod = {
@@ -118,8 +136,8 @@ function getStatusMeta(status?: string) {
   switch ((status || '').toLowerCase()) {
     case 'approved':
       return {
-        bg: UI.greenSoft,
-        text: UI.green,
+        bg: UI.successSoft,
+        text: UI.success,
         label: i18n.t('approved') || 'Approved',
       };
     case 'rejected':
@@ -142,7 +160,9 @@ export default function WithdrawScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { theme } = useTheme();
+  useTheme();
+
+  const isRTL = I18nManager.isRTL;
 
   const [showMethodModal, setShowMethodModal] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
@@ -357,9 +377,7 @@ export default function WithdrawScreen() {
         );
       }
 
-      const receiptUrl = receiptImage
-        ? await uploadReceiptToStorage(receiptImage)
-        : null;
+      const receiptUrl = receiptImage ? await uploadReceiptToStorage(receiptImage) : null;
 
       const { error } = await supabase.from('withdraw_orders').insert({
         user_id: user.id,
@@ -418,7 +436,7 @@ export default function WithdrawScreen() {
             {method.logo_url ? (
               <Image source={{ uri: method.logo_url }} style={styles.methodLogo} resizeMode="cover" />
             ) : (
-              <Landmark size={22} color={selected ? UI.green : UI.blue} />
+              <Landmark size={22} color={selected ? UI.blueDark : UI.blue} />
             )}
           </View>
 
@@ -458,8 +476,8 @@ export default function WithdrawScreen() {
                 walletQuery.refetch();
                 paymentMethodsQuery.refetch();
               }}
-              tintColor={UI.purple}
-              colors={[UI.purple]}
+              tintColor={UI.blue}
+              colors={[UI.blue]}
             />
           }
         >
@@ -467,56 +485,57 @@ export default function WithdrawScreen() {
             <TouchableOpacity
               style={styles.headerBtn}
               onPress={() => router.back()}
-              activeOpacity={0.85}
+              activeOpacity={0.9}
             >
-              <Ionicons name="chevron-back" size={22} color={UI.text} />
-              <Text style={styles.headerBack}>{i18n.t('back') || 'Back'}</Text>
+              <Ionicons
+                name={isRTL ? 'chevron-forward' : 'chevron-back'}
+                size={22}
+                color={UI.blueDark}
+              />
             </TouchableOpacity>
 
-            <View style={styles.headerTitleWrap}>
-              <Text style={styles.headerTitle}>{i18n.t('withdraw') || 'Withdraw'}</Text>
-            </View>
+            <Text style={styles.headerTitle}>{i18n.t('withdraw') || 'Withdraw'}</Text>
 
-            <View style={styles.headerRightSpace} />
+            <View style={styles.headerBtnGhost} />
           </View>
 
-          <View style={styles.heroCard}>
-            <View style={styles.heroGlowOne} />
-            <View style={styles.heroGlowTwo} />
+          {/* compact balance card */}
+          <View style={styles.balanceCardWrap}>
+            <View style={styles.balanceCard}>
+              <View style={styles.balanceGlowOne} />
+              <View style={styles.balanceGlowTwo} />
 
-            <View style={styles.balanceTopRow}>
-              <View>
-                <Text style={styles.balanceTitle}>
-                  {i18n.t('accountBalance') || 'Account Balance'}
-                </Text>
-                <Text style={styles.balanceSub}>
-                  {i18n.t('createWithdrawRequestSub') || 'Create a withdraw request to send money'}
-                </Text>
+              <View style={styles.balanceCardTop}>
+                <View style={styles.balanceTextBlock}>
+                  <Text style={styles.balanceLabel}>
+                    {i18n.t('accountBalance') || 'Account Balance'}
+                  </Text>
+
+                  {walletQuery.isLoading ? (
+                    <Text style={styles.balanceValue}>...</Text>
+                  ) : walletQuery.isError ? (
+                    <View style={styles.balanceErrorRow}>
+                      <Ionicons name="alert-circle-outline" size={16} color="#fff" />
+                      <Text style={styles.balanceErrorText}>
+                        {i18n.t('failedToLoadBalance') || 'Failed to load balance'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.balanceValue} numberOfLines={1}>
+                      {balanceText} {i18n.t('iqdShort') || 'IQD'}
+                    </Text>
+                  )}
+                </View>
+
+                <View style={styles.balanceIconWrap}>
+                  <Wallet2 size={18} color="#fff" />
+                </View>
               </View>
 
-              <View style={styles.currencyChip}>
-                <Wallet2 size={16} color="#fff" />
-                <Text style={styles.currencyChipText}>{i18n.t('iqdShort') || 'IQD'}</Text>
-              </View>
+              <Text style={styles.balanceHint}>
+                {i18n.t('createWithdrawRequestSub') || 'Create a withdraw request to send money'}
+              </Text>
             </View>
-
-            {walletQuery.isLoading ? (
-              <View style={{ paddingTop: 20 }}>
-                <ActivityIndicator color="#fff" />
-              </View>
-            ) : walletQuery.isError ? (
-              <View style={styles.balanceErrorRow}>
-                <Ionicons name="alert-circle" size={22} color="#fff" />
-                <Text style={styles.balanceErrorText}>
-                  {i18n.t('failedToLoadBalance') || 'Failed to load balance'}
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.balanceValueWrap}>
-                <Text style={styles.balanceValue}>{balanceText}</Text>
-                <Text style={styles.balanceCurrencyBig}>{i18n.t('iqdShort') || 'IQD'}</Text>
-              </View>
-            )}
           </View>
 
           <View style={styles.formCard}>
@@ -550,7 +569,7 @@ export default function WithdrawScreen() {
                         style={styles.selectedMethodLogoImg}
                       />
                     ) : (
-                      <Landmark size={18} color={UI.green} />
+                      <Landmark size={18} color={UI.blue} />
                     )}
                   </View>
 
@@ -647,7 +666,11 @@ export default function WithdrawScreen() {
             >
               {receiptImage ? (
                 <>
-                  <Image source={{ uri: receiptImage }} style={styles.uploadPreview} resizeMode="contain" />
+                  <Image
+                    source={{ uri: receiptImage }}
+                    style={styles.uploadPreview}
+                    resizeMode="contain"
+                  />
                   <View style={styles.uploadOverlay}>
                     <Text style={styles.uploadOverlayText}>
                       {i18n.t('changeImage') || 'Change Image'}
@@ -657,7 +680,7 @@ export default function WithdrawScreen() {
               ) : (
                 <View style={styles.uploadEmpty}>
                   <View style={styles.uploadIconWrap}>
-                    <ImageIcon size={22} color={UI.green} />
+                    <ImageIcon size={22} color={UI.blue} />
                   </View>
                   <Text style={styles.uploadTitle}>
                     {i18n.t('uploadQrCode') || 'Upload your QR code Payment'}
@@ -687,23 +710,25 @@ export default function WithdrawScreen() {
 
             <TouchableOpacity
               style={[
-                styles.primaryButton,
+                styles.primaryButtonWrap,
                 (withdrawMutation.isPending || walletQuery.isLoading) && { opacity: 0.7 },
               ]}
               onPress={() => withdrawMutation.mutate()}
               disabled={withdrawMutation.isPending || walletQuery.isLoading}
               activeOpacity={0.92}
             >
-              {withdrawMutation.isPending ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <>
-                  <Ionicons name="paper-plane-outline" size={18} color="#fff" />
-                  <Text style={styles.primaryButtonText}>
-                    {i18n.t('submitWithdrawRequest') || 'Submit Withdraw Request'}
-                  </Text>
-                </>
-              )}
+              <View style={styles.primaryButton}>
+                {withdrawMutation.isPending ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <>
+                    <Ionicons name="paper-plane-outline" size={18} color="#fff" />
+                    <Text style={styles.primaryButtonText}>
+                      {i18n.t('submitWithdrawRequest') || 'Submit Withdraw Request'}
+                    </Text>
+                  </>
+                )}
+              </View>
             </TouchableOpacity>
           </View>
 
@@ -721,7 +746,7 @@ export default function WithdrawScreen() {
             </View>
 
             {withdrawHistoryQuery.isLoading ? (
-              <ActivityIndicator color={UI.green} size="large" style={{ marginVertical: 18 }} />
+              <ActivityIndicator color={UI.blue} size="large" style={{ marginVertical: 18 }} />
             ) : withdrawHistoryQuery.error ? (
               <Text style={[styles.centerText, { color: UI.danger }]}>
                 {(withdrawHistoryQuery.error as Error).message}
@@ -871,7 +896,7 @@ export default function WithdrawScreen() {
 
               <ScrollView showsVerticalScrollIndicator={false}>
                 {paymentMethodsQuery.isLoading ? (
-                  <ActivityIndicator color={UI.green} style={{ marginVertical: 20 }} />
+                  <ActivityIndicator color={UI.blue} style={{ marginVertical: 20 }} />
                 ) : paymentMethodsQuery.error ? (
                   <Text style={[styles.centerText, { color: UI.danger }]}>
                     {(paymentMethodsQuery.error as Error).message}
@@ -931,149 +956,124 @@ const styles = StyleSheet.create({
   keyboardView: { flex: 1 },
 
   scrollContent: {
-    padding: 16,
-    paddingTop: 6,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 14,
-    position: 'relative',
-    minHeight: 44,
   },
   headerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    width: 90,
-    zIndex: 2,
-  },
-  headerBack: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: UI.text,
-  },
-  headerTitleWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    width: 48,
+    height: 48,
+    borderRadius: 22,
+    backgroundColor: UI.card,
+    borderWidth: 1,
+    borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
-    pointerEvents: 'none',
+    ...SHADOWS.soft,
+  },
+  headerBtnGhost: {
+    width: 48,
+    height: 48,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '900',
     color: UI.text,
-    textAlign: 'center',
-  },
-  headerRightSpace: {
-    width: 90,
-    marginLeft: 'auto',
   },
 
-  heroCard: {
-    borderRadius: 30,
-    padding: 20,
-    backgroundColor: UI.purple,
+  balanceCardWrap: {
+    marginBottom: 14,
+  },
+  balanceCard: {
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    minHeight: 112,
+    backgroundColor: UI.blue,
     overflow: 'hidden',
-    shadowColor: UI.purple,
-    shadowOpacity: 0.24,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
+    ...SHADOWS.card,
   },
-  heroGlowOne: {
+  balanceGlowOne: {
     position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 999,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    left: -50,
+    bottom: -85,
+  },
+  balanceGlowTwo: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     backgroundColor: 'rgba(255,255,255,0.10)',
-    top: -70,
-    right: -70,
+    right: -35,
+    top: -45,
   },
-  heroGlowTwo: {
-    position: 'absolute',
-    width: 240,
-    height: 240,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    bottom: -120,
-    left: -90,
-  },
-  balanceTopRow: {
+  balanceCardTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 14,
-  },
-  balanceTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  balanceSub: {
-    color: 'rgba(255,255,255,0.76)',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 6,
-  },
-  currencyChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-  },
-  currencyChipText: {
-    color: '#fff',
-    fontWeight: '900',
-    fontSize: 13,
-  },
-  balanceValueWrap: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
     gap: 12,
-    marginTop: 26,
+  },
+  balanceTextBlock: {
+    flex: 1,
+  },
+  balanceLabel: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 13,
+    fontWeight: '800',
   },
   balanceValue: {
-    color: '#fff',
-    fontSize: 52,
-    lineHeight: 56,
+    marginTop: 8,
+    color: '#FFFFFF',
+    fontSize: 31,
     fontWeight: '900',
+    letterSpacing: -0.4,
   },
-  balanceCurrencyBig: {
-    color: 'rgba(255,255,255,0.92)',
-    fontSize: 20,
-    fontWeight: '900',
-    marginBottom: 6,
+  balanceIconWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  balanceHint: {
+    marginTop: 8,
+    color: 'rgba(255,255,255,0.84)',
+    fontSize: 13,
+    fontWeight: '700',
   },
   balanceErrorRow: {
+    marginTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 12,
   },
   balanceErrorText: {
     color: '#fff',
+    fontSize: 13,
     fontWeight: '800',
   },
 
   formCard: {
-    marginTop: 16,
-    borderRadius: 24,
+    borderRadius: 28,
     backgroundColor: UI.card,
-    padding: 16,
+    padding: 18,
     borderWidth: 1,
     borderColor: UI.border,
-    shadowColor: UI.shadow,
-    shadowOpacity: 1,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
+    ...SHADOWS.soft,
   },
   sectionHead: {
     marginBottom: 16,
@@ -1098,7 +1098,7 @@ const styles = StyleSheet.create({
   },
 
   selector: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: UI.cardSoft,
     borderWidth: 1,
     borderColor: UI.border,
     borderRadius: 18,
@@ -1109,6 +1109,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 10,
+    ...SHADOWS.soft,
   },
   selectedMethodInline: {
     flex: 1,
@@ -1120,7 +1121,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: UI.greenSoft,
+    backgroundColor: UI.blueSoft,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -1147,10 +1148,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
+    ...SHADOWS.soft,
   },
   methodListItemActive: {
-    borderColor: UI.green,
-    backgroundColor: '#F5FFFA',
+    borderColor: UI.blue,
+    backgroundColor: '#F7FBFF',
   },
   methodListLeft: {
     flex: 1,
@@ -1168,7 +1170,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   methodLogoWrapActive: {
-    backgroundColor: UI.greenSoft,
+    backgroundColor: UI.blueSoft2,
   },
   methodLogo: {
     width: '100%',
@@ -1191,13 +1193,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   radioOuterActive: {
-    borderColor: UI.green,
+    borderColor: UI.blue,
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 999,
-    backgroundColor: UI.green,
+    backgroundColor: UI.blue,
   },
 
   amountWrap: {
@@ -1207,7 +1209,7 @@ const styles = StyleSheet.create({
   },
   amountInput: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: UI.cardSoft,
     borderWidth: 1,
     borderColor: UI.border,
     borderTopLeftRadius: 18,
@@ -1222,7 +1224,7 @@ const styles = StyleSheet.create({
   },
   amountSuffix: {
     minWidth: 82,
-    backgroundColor: UI.greenSoft,
+    backgroundColor: UI.blueSoft,
     borderWidth: 1,
     borderLeftWidth: 0,
     borderColor: UI.border,
@@ -1235,7 +1237,7 @@ const styles = StyleSheet.create({
   amountSuffixText: {
     fontSize: 13,
     fontWeight: '900',
-    color: UI.green,
+    color: UI.blueDark,
   },
 
   limitBox: {
@@ -1257,7 +1259,7 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: UI.cardSoft,
     borderWidth: 1,
     borderColor: UI.border,
     borderRadius: 18,
@@ -1267,6 +1269,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: UI.text,
     marginBottom: 14,
+    ...SHADOWS.soft,
   },
   noteInput: {
     minHeight: 96,
@@ -1277,8 +1280,8 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: '#B7E4D3',
-    backgroundColor: '#F7FFFB',
+    borderColor: '#BFD7FF',
+    backgroundColor: '#F7FBFF',
     overflow: 'hidden',
     marginBottom: 12,
   },
@@ -1292,7 +1295,7 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 999,
-    backgroundColor: UI.greenSoft,
+    backgroundColor: UI.blueSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -1321,7 +1324,7 @@ const styles = StyleSheet.create({
     left: 10,
     right: 10,
     bottom: 10,
-    backgroundColor: 'rgba(15,23,42,0.65)',
+    backgroundColor: 'rgba(37,99,235,0.88)',
     borderRadius: 14,
     paddingVertical: 10,
     alignItems: 'center',
@@ -1349,20 +1352,20 @@ const styles = StyleSheet.create({
     color: UI.blue,
   },
 
+  primaryButtonWrap: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginTop: 6,
+    ...SHADOWS.card,
+  },
   primaryButton: {
-    backgroundColor: UI.green,
-    borderRadius: 18,
-    paddingVertical: 16,
+    minHeight: 58,
+    borderRadius: 20,
+    backgroundColor: UI.blue,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 8,
-    marginTop: 6,
-    shadowColor: UI.green,
-    shadowOpacity: 0.2,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
   },
   primaryButtonText: {
     color: '#FFFFFF',
@@ -1377,11 +1380,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: UI.border,
-    shadowColor: UI.shadow,
-    shadowOpacity: 1,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
+    ...SHADOWS.soft,
   },
   historyHeader: {
     marginBottom: 12,
@@ -1399,12 +1398,13 @@ const styles = StyleSheet.create({
   },
 
   historyItem: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: UI.cardSoft,
     borderWidth: 1,
     borderColor: UI.border,
     borderRadius: 20,
     padding: 14,
     marginBottom: 12,
+    ...SHADOWS.soft,
   },
   historyTop: {
     flexDirection: 'row',
@@ -1526,7 +1526,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(15,23,42,0.65)',
+    backgroundColor: 'rgba(37,99,235,0.88)',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
