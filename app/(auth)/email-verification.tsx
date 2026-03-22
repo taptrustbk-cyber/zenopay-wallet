@@ -16,17 +16,40 @@ import i18n from '@/lib/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 
-// 🎨 white + green + black
 const COLORS = {
-  bg: '#FFFFFF',
+  bg: '#EEF4FF',
+  page: '#F7FAFF',
   card: '#FFFFFF',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  border: '#E5E7EB',
-  inputBg: '#F3FBF6',
-  green: '#16A34A',
-  greenSoft: '#EAF7EF',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  border: '#D9E5F6',
+  inputBg: '#F8FBFF',
+  blue: '#2563EB',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
+  success: '#16A34A',
+  successSoft: '#EAF8EF',
   danger: '#DC2626',
+  white: '#FFFFFF',
+  shadow: '#7DA8E6',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
 };
 
 const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v1';
@@ -47,7 +70,7 @@ type PendingProfile = {
   city?: string;
   country?: string;
   phone?: string;
-  date_of_brith?: string; // your DB typo column
+  date_of_brith?: string;
   pending_profile_created_at?: string;
 };
 
@@ -62,20 +85,18 @@ export default function EmailVerificationScreen() {
   const [userEmail, setUserEmail] = useState<string>(emailParam || '');
   const [resending, setResending] = useState(false);
 
-  // prevent double redirects
   const redirectedRef = useRef(false);
   const savingProfileRef = useRef(false);
   const mountedRef = useRef(true);
 
-  // Cooldown to avoid resend spam
   const [cooldown, setCooldown] = useState(0);
+
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setInterval(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
     return () => clearInterval(t);
   }, [cooldown]);
 
-  // Load email if missing
   useEffect(() => {
     const loadEmail = async () => {
       if (emailParam) {
@@ -96,7 +117,6 @@ export default function EmailVerificationScreen() {
     if (redirectedRef.current) return;
     redirectedRef.current = true;
 
-    // ✅ MUST go to /(auth)/login.tsx
     router.replace({
       pathname: '/(auth)/login' as any,
       params: {
@@ -107,15 +127,12 @@ export default function EmailVerificationScreen() {
     } as any);
   }, [router, userEmail, emailParam]);
 
-  // ✅ unified: user confirmed?
   function isUserConfirmed(user: any): boolean {
     return Boolean(user?.email_confirmed_at || user?.confirmed_at);
   }
 
-  // ✅ session check (fast if confirm link opened inside app)
   async function checkIfVerifiedWithSession(): Promise<boolean> {
     try {
-      // refresh helps a lot after returning from email app
       await supabase.auth.refreshSession().catch(() => null);
 
       const { data } = await supabase.auth.getSession();
@@ -126,7 +143,6 @@ export default function EmailVerificationScreen() {
     }
   }
 
-  // ✅ server check (your edge function)
   async function checkIfVerifiedFromServer(email: string): Promise<boolean> {
     if (!email) return false;
 
@@ -142,7 +158,6 @@ export default function EmailVerificationScreen() {
     return !!data?.confirmed;
   }
 
-  // ✅ try to save pending profile into "profiles" if we have a session user.id
   async function tryUpsertPendingProfileIfSession(): Promise<boolean> {
     if (savingProfileRef.current) return false;
     savingProfileRef.current = true;
@@ -155,7 +170,6 @@ export default function EmailVerificationScreen() {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData?.session?.user?.id;
 
-      // If no session, we cannot write to profiles yet
       if (!userId) return false;
 
       const payload = {
@@ -164,7 +178,7 @@ export default function EmailVerificationScreen() {
         city: pending.city ?? null,
         country: pending.country ?? null,
         phone: pending.phone ?? null,
-        date_of_brith: pending.date_of_brith ?? null, // your DB column name
+        date_of_brith: pending.date_of_brith ?? null,
       };
 
       const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
@@ -174,7 +188,6 @@ export default function EmailVerificationScreen() {
         return false;
       }
 
-      // ✅ only remove pending after successful save
       await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
       return true;
     } catch (e: any) {
@@ -190,10 +203,8 @@ export default function EmailVerificationScreen() {
 
     setVerified(true);
 
-    // ✅ If app has a session, save profile now
     await tryUpsertPendingProfileIfSession();
 
-    // ✅ If session exists, sign out then go login (keep your old behavior)
     const { data } = await supabase.auth.getSession();
     if (data?.session) {
       await sleep(250);
@@ -201,16 +212,13 @@ export default function EmailVerificationScreen() {
       await sleep(150);
     }
 
-    // ✅ IMPORTANT: instant redirect (no waiting for OK)
     goToLoginWithSuccess();
   }
 
-  // ✅ The ONE function used by auto-check + button check
   const runCheck = useCallback(
     async (showNotConfirmedAlert: boolean) => {
       const emailToCheck = userEmail || emailParam;
 
-      // 1) session check
       const okSession = await checkIfVerifiedWithSession();
       if (!mountedRef.current) return;
       if (okSession) {
@@ -218,7 +226,6 @@ export default function EmailVerificationScreen() {
         return;
       }
 
-      // 2) server check
       if (emailToCheck) {
         const okServer = await checkIfVerifiedFromServer(emailToCheck);
         if (!mountedRef.current) return;
@@ -240,28 +247,23 @@ export default function EmailVerificationScreen() {
     [userEmail, emailParam, verified, goToLoginWithSuccess]
   );
 
-  // ✅ Auto check: on mount + polling + when app becomes active (return from email app)
   useEffect(() => {
     mountedRef.current = true;
 
     let pollingInterval: ReturnType<typeof setInterval> | undefined;
 
-    // first check immediately (silent)
     runCheck(false);
 
-    // polling (silent)
     pollingInterval = setInterval(() => {
       if (!verified) runCheck(false);
     }, 6000);
 
-    // when user returns from email app, check instantly (silent)
     const appStateSub = AppState.addEventListener('change', (state) => {
       if (state === 'active' && !verified) {
         runCheck(false);
       }
     });
 
-    // auth events (extra safety)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -287,7 +289,7 @@ export default function EmailVerificationScreen() {
   const checkStatus = async () => {
     setChecking(true);
     try {
-      await runCheck(true); // show alert only for button
+      await runCheck(true);
     } catch (error: any) {
       Alert.alert(i18n.t('error') || 'Error', error?.message || 'Failed to check status');
     } finally {
@@ -303,12 +305,14 @@ export default function EmailVerificationScreen() {
       const emailToUse = userEmail || emailParam;
 
       if (!emailToUse) {
-        Alert.alert(i18n.t('error') || 'Error', i18n.t('noEmailFound') || 'No email address found');
+        Alert.alert(
+          i18n.t('error') || 'Error',
+          i18n.t('noEmailFound') || 'No email address found'
+        );
         return;
       }
 
-      // ✅ still ok to use confirm link
-      const emailRedirectTo = Linking.createURL('confirm'); // zenopay://confirm
+      const emailRedirectTo = Linking.createURL('confirm');
 
       const { error } = await supabase.auth.resend({
         type: 'signup',
@@ -319,7 +323,10 @@ export default function EmailVerificationScreen() {
       if (error) throw error;
 
       setCooldown(30);
-      Alert.alert(i18n.t('success') || 'Success', i18n.t('verificationEmailResent') || 'Verification email resent.');
+      Alert.alert(
+        i18n.t('success') || 'Success',
+        i18n.t('verificationEmailResent') || 'Verification email resent.'
+      );
     } catch (error: any) {
       Alert.alert(i18n.t('error') || 'Error', error?.message || 'Failed to resend email');
     } finally {
@@ -331,29 +338,37 @@ export default function EmailVerificationScreen() {
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{i18n.t('verifyYourEmail')}</Text>
       </View>
 
       <View style={styles.container}>
-        <View style={styles.card}>
-          <View style={[styles.iconContainer, verified ? styles.iconContainerVerified : null]}>
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlowOne} />
+          <View style={styles.heroGlowTwo} />
+
+          <View style={styles.iconContainer}>
             {verified ? (
-              <CheckCircle2 size={56} color={COLORS.green} strokeWidth={1.8} />
+              <CheckCircle2 size={56} color="#FFFFFF" strokeWidth={1.8} />
             ) : (
-              <Mail size={56} color={COLORS.green} strokeWidth={1.8} />
+              <Mail size={56} color="#FFFFFF" strokeWidth={1.8} />
             )}
           </View>
 
-          <Text style={styles.title}>{verified ? i18n.t('emailVerified') : i18n.t('verifyYourEmail')}</Text>
+          <Text style={styles.title}>
+            {verified ? i18n.t('emailVerified') : i18n.t('verifyYourEmail')}
+          </Text>
 
           <Text style={styles.subtitle}>
-            {verified ? (i18n.t('redirectingToLogin') || 'Redirecting to login...') : i18n.t('verificationEmailSent')}
+            {verified
+              ? i18n.t('redirectingToLogin') || 'Redirecting to login...'
+              : i18n.t('verificationEmailSent')}
           </Text>
 
           {!!userEmail && !verified ? <Text style={styles.emailText}>{userEmail}</Text> : null}
+        </View>
 
+        <View style={styles.card}>
           {!verified ? (
             <View style={styles.infoBox}>
               <Text style={[styles.infoText, styles.infoRow]}>• {i18n.t('checkEmailInbox')}</Text>
@@ -394,7 +409,7 @@ export default function EmailVerificationScreen() {
                 activeOpacity={0.9}
               >
                 {resending ? (
-                  <ActivityIndicator color={COLORS.green} />
+                  <ActivityIndicator color={COLORS.blue} />
                 ) : (
                   <Text style={styles.secondaryButtonText}>
                     {cooldown > 0 ? `${i18n.t('resendEmail')} (${cooldown}s)` : i18n.t('resendEmail')}
@@ -421,7 +436,9 @@ export default function EmailVerificationScreen() {
             </>
           ) : (
             <TouchableOpacity style={styles.primaryButton} onPress={goToLoginWithSuccess} activeOpacity={0.9}>
-              <Text style={styles.primaryButtonText}>{i18n.t('continueToLogin') || 'Continue to login'}</Text>
+              <Text style={styles.primaryButtonText}>
+                {i18n.t('continueToLogin') || 'Continue to login'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -431,7 +448,10 @@ export default function EmailVerificationScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.bg },
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+  },
 
   header: {
     paddingTop: Platform.OS === 'ios' ? 54 : 40,
@@ -443,7 +463,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '900' as const, color: COLORS.text },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '900' as const,
+    color: COLORS.text,
+  },
 
   container: {
     flex: 1,
@@ -452,12 +476,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  heroCard: {
+    borderRadius: 26,
+    padding: 20,
+    backgroundColor: COLORS.blue,
+    overflow: 'hidden',
+    marginBottom: 16,
+    alignItems: 'center',
+    ...SHADOWS.card,
+  },
+  heroGlowOne: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    left: -45,
+    bottom: -80,
+  },
+  heroGlowTwo: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    right: -35,
+    top: -45,
+  },
+
   card: {
     backgroundColor: COLORS.card,
-    borderRadius: 18,
+    borderRadius: 24,
     padding: 18,
     borderWidth: 1,
     borderColor: COLORS.border,
+    ...SHADOWS.soft,
   },
 
   iconContainer: {
@@ -465,44 +518,39 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: COLORS.greenSoft,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: 'rgba(22,163,74,0.22)',
-  },
-  iconContainerVerified: {
-    backgroundColor: COLORS.greenSoft,
-    borderColor: 'rgba(22,163,74,0.28)',
+    borderColor: 'rgba(255,255,255,0.22)',
   },
 
   title: {
     fontSize: 22,
     fontWeight: '900' as const,
-    color: COLORS.text,
+    color: '#FFFFFF',
     textAlign: 'center' as const,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    fontWeight: '600' as const,
-    color: COLORS.textSecondary,
+    fontWeight: '700' as const,
+    color: 'rgba(255,255,255,0.86)',
     textAlign: 'center' as const,
     lineHeight: 20,
     marginBottom: 10,
   },
   emailText: {
     fontSize: 14,
-    fontWeight: '800' as const,
-    color: COLORS.text,
+    fontWeight: '900' as const,
+    color: '#FFFFFF',
     textAlign: 'center' as const,
-    marginBottom: 14,
   },
 
   infoBox: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 14,
+    backgroundColor: COLORS.blueSoft,
+    borderRadius: 16,
     padding: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -518,8 +566,8 @@ const styles = StyleSheet.create({
   },
 
   successBox: {
-    backgroundColor: COLORS.greenSoft,
-    borderRadius: 14,
+    backgroundColor: COLORS.successSoft,
+    borderRadius: 16,
     padding: 14,
     borderWidth: 1,
     borderColor: 'rgba(22,163,74,0.25)',
@@ -528,47 +576,68 @@ const styles = StyleSheet.create({
   successText: {
     fontSize: 14,
     fontWeight: '900' as const,
-    color: COLORS.text,
+    color: COLORS.success,
     textAlign: 'center' as const,
   },
 
   primaryButton: {
     flexDirection: 'row',
-    backgroundColor: COLORS.green,
-    borderRadius: 14,
-    paddingVertical: 14,
+    backgroundColor: COLORS.blue,
+    borderRadius: 16,
+    paddingVertical: 15,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 6,
+    ...SHADOWS.soft,
   },
   primaryButtonIcon: {
     marginRight: 8,
   },
-  primaryButtonDisabled: { opacity: 0.55 },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' as const },
+  primaryButtonDisabled: {
+    opacity: 0.55,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900' as const,
+  },
 
   secondaryButton: {
     marginTop: 10,
-    borderRadius: 14,
-    paddingVertical: 12,
+    borderRadius: 16,
+    paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(22,163,74,0.35)',
-    backgroundColor: COLORS.bg,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.blueSoft,
   },
-  secondaryButtonDisabled: { opacity: 0.6 },
-  secondaryButtonText: { color: COLORS.green, fontSize: 14, fontWeight: '900' as const },
+  secondaryButtonDisabled: {
+    opacity: 0.6,
+  },
+  secondaryButtonText: {
+    color: COLORS.blueDark,
+    fontSize: 14,
+    fontWeight: '900' as const,
+  },
 
-  backButton: { marginTop: 10, alignItems: 'center', paddingVertical: 8 },
-  backText: { color: COLORS.textSecondary, fontSize: 14, fontWeight: '800' as const },
+  backButton: {
+    marginTop: 10,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  backText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    fontWeight: '800' as const,
+  },
 
   hintText: {
     marginTop: 10,
     color: COLORS.textSecondary,
     fontSize: 12,
-    fontWeight: '600' as const,
+    fontWeight: '700' as const,
     textAlign: 'center' as const,
     lineHeight: 18,
   },
