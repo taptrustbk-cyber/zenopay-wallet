@@ -585,7 +585,7 @@ export default function DashboardScreen() {
         <NavItem
           icon="card"
           label={i18n.t('Cards')}
-          onPress={() => router.push('/(app)/Cards' as any)}
+          onPress={() => router.push('/Cards' as any)}
         />
         <NavItem
           icon="chatbox"
