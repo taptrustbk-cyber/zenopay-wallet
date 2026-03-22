@@ -51,6 +51,8 @@ const UI = {
   successSoft: '#EAF8EF',
   yellowSoft: '#FFF8DA',
   yellowBorder: '#F4D98B',
+  yellowText: '#8A6A18',
+  purple: '#7C3AED',
   purpleSoft: '#F4F3FF',
 };
 
@@ -102,23 +104,6 @@ const ActionCircle = ({
       <Ionicons name={icon} size={22} color={UI.blueDark} />
     </View>
     <Text style={styles.quickLabel}>{label}</Text>
-  </TouchableOpacity>
-);
-
-const NavItem = ({
-  icon,
-  label,
-  active,
-  onPress,
-}: {
-  icon: any;
-  label: string;
-  active?: boolean;
-  onPress: () => void;
-}) => (
-  <TouchableOpacity style={styles.navItem} onPress={onPress} activeOpacity={0.85}>
-    <Ionicons name={icon} size={22} color={active ? UI.blue : '#9CA3AF'} />
-    <Text style={[styles.navText, active && { color: UI.blue }]}>{label}</Text>
   </TouchableOpacity>
 );
 
@@ -284,6 +269,7 @@ export default function DashboardScreen() {
     <View style={[styles.container, { backgroundColor: UI.bg }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -293,7 +279,6 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.profileChip}
@@ -319,7 +304,6 @@ export default function DashboardScreen() {
           <View style={styles.headerRight} />
         </View>
 
-        {/* Balance Card */}
         <LinearGradient
           colors={['#5DA8FF', '#3B82F6', '#2563EB']}
           start={{ x: 0, y: 0 }}
@@ -371,7 +355,6 @@ export default function DashboardScreen() {
           )}
         </LinearGradient>
 
-        {/* Quick actions */}
         <View style={styles.quickRow}>
           <ActionCircle
             icon="send"
@@ -395,13 +378,13 @@ export default function DashboardScreen() {
           />
         </View>
 
-        {/* Mobile Shop Ad */}
         <TouchableOpacity
           style={styles.mobileAd}
           activeOpacity={0.92}
           onPress={() => router.push('/(app)/mobile-shop' as any)}
         >
           <View style={styles.mobileAdGlass} />
+
           <View style={[styles.mobileAdTopBadge, isRTL && styles.mobileAdTopBadgeRTL]}>
             <Text
               style={[styles.mobileAdTopBadgeText, isRTL && styles.textRTL]}
@@ -412,7 +395,6 @@ export default function DashboardScreen() {
           </View>
 
           <View style={[styles.mobileAdMain, isRTL && styles.mobileAdMainRTL]}>
-            {/* Image side */}
             <View style={styles.mobileAdImageSide}>
               <View style={styles.phonesStage}>
                 {adAssetsReady && (
@@ -439,19 +421,23 @@ export default function DashboardScreen() {
                   </>
                 )}
 
-                <View style={[styles.discountTag, isRTL && styles.discountTagRTL]}>
+                <LinearGradient
+                  colors={['#8B5CF6', '#3B82F6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.discountTag, isRTL && styles.discountTagRTL]}
+                >
                   <Text style={styles.discountTagTop}>-10%</Text>
                   <Text style={styles.discountTagBottom} numberOfLines={1}>
                     {i18n.t('mobileShopAdDiscount')}
                   </Text>
-                </View>
+                </LinearGradient>
               </View>
             </View>
 
-            {/* Text side */}
             <View style={[styles.mobileAdTextSide, isRTL && styles.mobileAdTextSideRTL]}>
               <Text
-                style={[styles.mobileAdTitle, isRTL && styles.textRTL]}
+                style={[styles.mobileAdTitle, isRTL && styles.mobileAdTitleRTL]}
                 numberOfLines={3}
               >
                 {i18n.t('mobileShopAdTitle')}
@@ -483,9 +469,11 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          {/* Bottom CTA row */}
           <View style={[styles.mobileAdBottomRow, isRTL && styles.mobileAdBottomRowRTL]}>
-            <View
+            <LinearGradient
+              colors={['#79B7FF', '#4C92F7', '#2563EB']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
               style={[
                 styles.mobileAdPriceBox,
                 isRTL ? styles.mobileAdPriceBoxRTL : styles.mobileAdPriceBoxLTR,
@@ -502,7 +490,7 @@ export default function DashboardScreen() {
               >
                 {i18n.t('mobileShopAdInstallmentPrice')}
               </Text>
-            </View>
+            </LinearGradient>
 
             <LinearGradient
               colors={['#79B7FF', '#4C92F7', '#2563EB']}
@@ -522,7 +510,6 @@ export default function DashboardScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* Market Shop section */}
         <View style={styles.marketLightCard}>
           <View style={styles.marketHeader}>
             <Text style={styles.marketTitle}>{i18n.t('marketShop')}</Text>
@@ -575,35 +562,16 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
-
-        <View style={{ height: 120 }} />
       </ScrollView>
-
-      {/* Bottom nav */}
-      <View style={[styles.bottomNav, { borderColor: UI.border, backgroundColor: UI.card }]}>
-        <NavItem icon="home" label={i18n.t('home')} active onPress={() => {}} />
-        <NavItem
-          icon="card"
-          label={i18n.t('Cards')}
-          onPress={() => router.push('/Cards' as any)}
-        />
-        <NavItem
-          icon="chatbox"
-          label={i18n.t('consulateInfo')}
-          onPress={() => router.push('/(app)/consulate' as any)}
-        />
-        <NavItem
-          icon="settings"
-          label={i18n.t('settings')}
-          onPress={() => router.push('/(app)/settings' as any)}
-        />
-      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  scrollContent: {
+    paddingBottom: 28,
+  },
 
   header: {
     paddingHorizontal: 16,
@@ -757,7 +725,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     marginBottom: 10,
-    maxWidth: '82%',
+    maxWidth: '88%',
     borderWidth: 1,
     borderColor: UI.yellowBorder,
   },
@@ -765,7 +733,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   mobileAdTopBadgeText: {
-    color: '#8A6A18',
+    color: UI.yellowText,
     fontSize: 13,
     fontWeight: '900',
   },
@@ -795,10 +763,15 @@ const styles = StyleSheet.create({
 
   mobileAdTitle: {
     color: UI.text,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 23,
     fontWeight: '900',
-    letterSpacing: 0.1,
+    letterSpacing: 0,
+    minHeight: 68,
+  },
+  mobileAdTitleRTL: {
+    textAlign: 'right',
+    lineHeight: 25,
   },
   textRTL: {
     textAlign: 'right',
@@ -808,7 +781,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 9,
+    marginTop: 8,
     marginBottom: 8,
   },
   mobileAdPillsWrapRTL: {
@@ -902,7 +875,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     bottom: 8,
-    backgroundColor: UI.orange,
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 12,
@@ -910,7 +882,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFFFFF',
     zIndex: 3,
-    minWidth: 56,
+    minWidth: 58,
   },
   discountTagRTL: {
     right: 4,
@@ -941,12 +913,12 @@ const styles = StyleSheet.create({
 
   mobileAdPriceBox: {
     minHeight: 52,
-    backgroundColor: '#0F1F3D',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 16,
     justifyContent: 'center',
     flex: 1,
+    ...SHADOWS.soft,
   },
   mobileAdPriceBoxLTR: {
     alignSelf: 'stretch',
@@ -1057,18 +1029,4 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.25)',
   },
   retryText: { color: '#fff', fontWeight: '900', fontSize: 14 },
-
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-  },
-  navItem: { alignItems: 'center' },
-  navText: {
-    color: '#9CA3AF',
-    fontSize: 13,
-    fontWeight: '800',
-    marginTop: 4,
-  },
 });
