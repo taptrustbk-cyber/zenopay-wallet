@@ -25,15 +25,38 @@ type PickedImage = {
 };
 
 const UI = {
-  bg: '#FFFFFF',
+  bg: '#EEF4FF',
+  page: '#F7FAFF',
   card: '#FFFFFF',
-  text: '#111827',
-  text2: '#6B7280',
-  border: '#E5E7EB',
-  green: '#16A34A',
-  greenSoft: '#EAF7EF',
+  cardSoft: '#F8FBFF',
+  text: '#0F172A',
+  text2: '#64748B',
+  text3: '#94A3B8',
+  border: '#D9E5F6',
+  blue: '#2563EB',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
   danger: '#DC2626',
-  shadow: '#000000',
+  dangerSoft: '#FEF2F2',
+  shadow: '#7DA8E6',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: UI.shadow,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: UI.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
+  },
 };
 
 const KYC_BUCKET = 'kyc-documents';
@@ -91,19 +114,14 @@ export default function KycWait() {
     if (type === 'selfie') setSelfie(null);
   };
 
-  // ✅ convert any picked image to JPEG bytes and upload with a fixed name: id_front.jpeg etc
   const uploadAsJpeg = async (imageData: PickedImage, fixedBaseName: 'id_front' | 'id_back' | 'selfie') => {
     if (!user) throw new Error('No user');
 
-    // Always write .jpeg (even if source is png/heic). This keeps your bucket consistent.
     const filename = `${fixedBaseName}.jpeg`;
     const path = `${user.id}/${filename}`;
 
     const response = await fetch(imageData.uri);
     const blob = await response.blob();
-
-    // NOTE: On iOS/Android, expo-image-picker usually returns JPEG already,
-    // but we still upload as image/jpeg to force consistency.
     const arrayBuffer = await new Response(blob).arrayBuffer();
     const file = new Uint8Array(arrayBuffer);
 
@@ -115,7 +133,7 @@ export default function KycWait() {
 
     if (error) throw error;
 
-    return path; // return "userId/id_front.jpeg" etc
+    return path;
   };
 
   const submitKycDocuments = async () => {
@@ -124,12 +142,10 @@ export default function KycWait() {
     setLoading(true);
 
     try {
-      // ✅ upload files (fixed names)
       const idFrontPath = await uploadAsJpeg(idFront!, 'id_front');
       const idBackPath = await uploadAsJpeg(idBack!, 'id_back');
       const selfiePath = await uploadAsJpeg(selfie!, 'selfie');
 
-      // ✅ update profiles table with file paths + mark kyc pending
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -211,7 +227,7 @@ export default function KycWait() {
           ) : (
             <View style={styles.placeholder}>
               <View style={styles.iconCircle}>
-                <Upload size={22} color={UI.green} />
+                <Upload size={22} color={UI.blue} />
               </View>
               <Text style={styles.placeholderTitle}>{i18n.t('tapToUpload')}</Text>
               <Text style={styles.placeholderSub}>{i18n.t('uploadHint')}</Text>
@@ -228,7 +244,7 @@ export default function KycWait() {
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={styles.center}>
             <View style={styles.successCircle}>
-              <CheckCircle size={62} color={UI.green} strokeWidth={2.2} />
+              <CheckCircle size={62} color={UI.blue} strokeWidth={2.2} />
             </View>
 
             <Text style={styles.successTitle}>{i18n.t('kycDocsSubmitted')}</Text>
@@ -242,7 +258,6 @@ export default function KycWait() {
 
             <Text style={styles.securityText}>{i18n.t('docsSecure')}</Text>
 
-            {/* ✅ new text above button */}
             <Text style={styles.approvalTimeNote}>{i18n.t('approvalTimeNote')}</Text>
 
             <TouchableOpacity style={styles.primaryBtn} onPress={handleBackToLogin} activeOpacity={0.9}>
@@ -257,9 +272,13 @@ export default function KycWait() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.brand}>ZenoPay</Text>
+        <View style={styles.brandWrap}>
+          <Text style={styles.brand}>ZenoPay</Text>
+        </View>
 
-        <View style={styles.headerCard}>
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlowOne} />
+          <View style={styles.heroGlowTwo} />
           <Text style={styles.title}>{i18n.t('uploadKycDocs')}</Text>
           <Text style={styles.desc}>{i18n.t('approveAccountPrompt')}</Text>
         </View>
@@ -308,39 +327,69 @@ export default function KycWait() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: UI.bg },
+  container: {
+    flex: 1,
+    backgroundColor: UI.bg,
+  },
   scroll: {
     padding: 18,
     paddingTop: Platform.select({ ios: 54, android: 34, default: 34 }),
     paddingBottom: 28,
   },
 
+  brandWrap: {
+    alignItems: 'center',
+    marginBottom: 14,
+  },
   brand: {
     fontSize: 28,
     fontWeight: '900',
     color: UI.text,
-    textAlign: 'center',
-    marginBottom: 14,
     letterSpacing: 0.3,
   },
 
-  headerCard: {
-    backgroundColor: UI.card,
-    borderWidth: 1,
-    borderColor: UI.border,
-    borderRadius: 18,
-    padding: 16,
+  heroCard: {
+    backgroundColor: UI.blue,
+    borderRadius: 24,
+    padding: 18,
     marginBottom: 14,
-    shadowColor: UI.shadow,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 2,
+    overflow: 'hidden',
+    ...SHADOWS.card,
   },
-  title: { fontSize: 18, fontWeight: '800', color: UI.text, marginBottom: 6 },
-  desc: { fontSize: 13.5, color: UI.text2, lineHeight: 19 },
+  heroGlowOne: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    left: -40,
+    bottom: -90,
+  },
+  heroGlowTwo: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    right: -20,
+    top: -40,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 6,
+  },
+  desc: {
+    fontSize: 13.5,
+    color: 'rgba(255,255,255,0.88)',
+    lineHeight: 19,
+    fontWeight: '700',
+  },
 
-  section: { marginTop: 12 },
+  section: {
+    marginTop: 12,
+  },
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -348,9 +397,16 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 8,
   },
-  label: { fontSize: 14.5, fontWeight: '700', color: UI.text },
+  label: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: UI.text,
+  },
 
-  actionsRow: { flexDirection: 'row', gap: 8 },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   smallBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -362,36 +418,39 @@ const styles = StyleSheet.create({
     borderColor: UI.border,
     backgroundColor: '#FFFFFF',
   },
-  smallBtnDanger: { borderColor: '#FECACA', backgroundColor: '#FFF7F7' },
-  smallBtnText: { fontSize: 12.5, color: UI.text, fontWeight: '700' },
+  smallBtnDanger: {
+    borderColor: '#FECACA',
+    backgroundColor: '#FFF7F7',
+  },
+  smallBtnText: {
+    fontSize: 12.5,
+    color: UI.text,
+    fontWeight: '700',
+  },
 
   uploadBox: {
-    borderRadius: 18,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: UI.border,
     overflow: 'hidden',
     backgroundColor: '#FFFFFF',
-    shadowColor: UI.shadow,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
-    elevation: 2,
+    ...SHADOWS.soft,
   },
   uploadBoxEmpty: {},
   uploadBoxFilled: {},
 
   placeholder: {
-    paddingVertical: 18,
+    paddingVertical: 20,
     paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 170,
-    backgroundColor: UI.greenSoft,
+    backgroundColor: UI.blueSoft,
   },
   iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: UI.border,
@@ -399,8 +458,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 10,
   },
-  placeholderTitle: { fontSize: 14.5, fontWeight: '800', color: UI.text },
-  placeholderSub: { marginTop: 4, fontSize: 12.5, color: UI.text2, textAlign: 'center' },
+  placeholderTitle: {
+    fontSize: 14.5,
+    fontWeight: '800',
+    color: UI.text,
+  },
+  placeholderSub: {
+    marginTop: 4,
+    fontSize: 12.5,
+    color: UI.text2,
+    textAlign: 'center',
+    fontWeight: '700',
+  },
 
   previewWrap: {
     padding: 10,
@@ -411,27 +480,33 @@ const styles = StyleSheet.create({
   previewImage: {
     width: '100%',
     borderRadius: 14,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: UI.cardSoft,
     borderWidth: 1,
     borderColor: UI.border,
   },
 
   primaryBtn: {
     marginTop: 18,
-    backgroundColor: UI.green,
-    paddingVertical: 14,
-    borderRadius: 14,
+    backgroundColor: UI.blue,
+    paddingVertical: 15,
+    borderRadius: 18,
     alignItems: 'center',
-    shadowColor: UI.green,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    elevation: 3,
+    ...SHADOWS.card,
   },
-  primaryBtnDisabled: { opacity: 0.55 },
-  primaryBtnText: { color: '#FFFFFF', fontSize: 15.5, fontWeight: '800' },
+  primaryBtnDisabled: {
+    opacity: 0.55,
+  },
+  primaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15.5,
+    fontWeight: '800',
+  },
 
-  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
 
   footerNote: {
     marginTop: 12,
@@ -439,14 +514,19 @@ const styles = StyleSheet.create({
     color: UI.text2,
     textAlign: 'center',
     lineHeight: 18,
+    fontWeight: '700',
   },
 
-  center: { alignItems: 'center', paddingTop: 30, paddingBottom: 24 },
+  center: {
+    alignItems: 'center',
+    paddingTop: 30,
+    paddingBottom: 24,
+  },
   successCircle: {
     width: 92,
     height: 92,
     borderRadius: 46,
-    backgroundColor: UI.greenSoft,
+    backgroundColor: UI.blueSoft,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -466,9 +546,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 10,
+    fontWeight: '700',
   },
-  emailText: { color: UI.green, fontWeight: '800', textDecorationLine: 'underline' },
-  securityText: { fontSize: 12.5, color: UI.text2, textAlign: 'center', marginTop: 2, marginBottom: 14 },
+  emailText: {
+    color: UI.blue,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
+  securityText: {
+    fontSize: 12.5,
+    color: UI.text2,
+    textAlign: 'center',
+    marginTop: 2,
+    marginBottom: 14,
+    fontWeight: '700',
+  },
 
   approvalTimeNote: {
     fontSize: 13.5,
