@@ -27,6 +27,7 @@ import {
   Receipt,
   Wallet2,
 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -499,44 +500,45 @@ export default function WithdrawScreen() {
             <View style={styles.headerBtnGhost} />
           </View>
 
-          {/* compact balance card */}
-          <View style={styles.balanceCardWrap}>
-            <View style={styles.balanceCard}>
-              <View style={styles.balanceGlowOne} />
-              <View style={styles.balanceGlowTwo} />
+          <LinearGradient
+            colors={['#5DA8FF', '#3B82F6', '#2563EB']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroCard}
+          >
+            <View style={styles.heroGlowOne} />
+            <View style={styles.heroGlowTwo} />
 
-              <View style={styles.balanceCardTop}>
-                <View style={styles.balanceTextBlock}>
-                  <Text style={styles.balanceLabel}>
-                    {i18n.t('accountBalance') || 'Account Balance'}
-                  </Text>
-
-                  {walletQuery.isLoading ? (
-                    <Text style={styles.balanceValue}>...</Text>
-                  ) : walletQuery.isError ? (
-                    <View style={styles.balanceErrorRow}>
-                      <Ionicons name="alert-circle-outline" size={16} color="#fff" />
-                      <Text style={styles.balanceErrorText}>
-                        {i18n.t('failedToLoadBalance') || 'Failed to load balance'}
-                      </Text>
-                    </View>
-                  ) : (
-                    <Text style={styles.balanceValue} numberOfLines={1}>
-                      {balanceText} {i18n.t('iqdShort') || 'IQD'}
+            <View style={styles.heroTopRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.heroEyebrow}>
+                  {i18n.t('accountBalance') || 'Account Balance'}
+                </Text>
+                {walletQuery.isLoading ? (
+                  <Text style={styles.heroBalance}>...</Text>
+                ) : walletQuery.isError ? (
+                  <View style={styles.heroErrorRow}>
+                    <Ionicons name="alert-circle-outline" size={18} color="#fff" />
+                    <Text style={styles.heroErrorText}>
+                      {i18n.t('failedToLoadBalance') || 'Failed to load balance'}
                     </Text>
-                  )}
-                </View>
-
-                <View style={styles.balanceIconWrap}>
-                  <Wallet2 size={18} color="#fff" />
-                </View>
+                  </View>
+                ) : (
+                  <Text style={styles.heroBalance} numberOfLines={1}>
+                    {balanceText} {i18n.t('iqdShort') || 'IQD'}
+                  </Text>
+                )}
               </View>
 
-              <Text style={styles.balanceHint}>
-                {i18n.t('createWithdrawRequestSub') || 'Create a withdraw request to send money'}
-              </Text>
+              <View style={styles.heroIconWrap}>
+                <Wallet2 size={22} color="#FFFFFF" />
+              </View>
             </View>
-          </View>
+
+            <Text style={styles.heroSubtext}>
+              {i18n.t('createWithdrawRequestSub') || 'Create a withdraw request to send money'}
+            </Text>
+          </LinearGradient>
 
           <View style={styles.formCard}>
             <View style={styles.sectionHead}>
@@ -717,7 +719,12 @@ export default function WithdrawScreen() {
               disabled={withdrawMutation.isPending || walletQuery.isLoading}
               activeOpacity={0.92}
             >
-              <View style={styles.primaryButton}>
+              <LinearGradient
+                colors={['#79B7FF', '#4C92F7', '#2563EB']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.primaryButton}
+              >
                 {withdrawMutation.isPending ? (
                   <ActivityIndicator color="#FFF" />
                 ) : (
@@ -728,7 +735,7 @@ export default function WithdrawScreen() {
                     </Text>
                   </>
                 )}
-              </View>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
 
@@ -988,82 +995,74 @@ const styles = StyleSheet.create({
     color: UI.text,
   },
 
-  balanceCardWrap: {
+  heroCard: {
+    borderRadius: 28,
+    padding: 20,
     marginBottom: 14,
-  },
-  balanceCard: {
-    borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    minHeight: 112,
-    backgroundColor: UI.blue,
     overflow: 'hidden',
     ...SHADOWS.card,
   },
-  balanceGlowOne: {
+  heroGlowOne: {
     position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    left: -50,
-    bottom: -85,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    left: -70,
+    bottom: -90,
   },
-  balanceGlowTwo: {
+  heroGlowTwo: {
     position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 190,
+    height: 190,
+    borderRadius: 95,
     backgroundColor: 'rgba(255,255,255,0.10)',
-    right: -35,
-    top: -45,
+    right: -30,
+    top: -40,
   },
-  balanceCardTop: {
+  heroTopRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 16,
   },
-  balanceTextBlock: {
-    flex: 1,
-  },
-  balanceLabel: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 13,
+  heroEyebrow: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 14,
     fontWeight: '800',
   },
-  balanceValue: {
-    marginTop: 8,
+  heroBalance: {
+    marginTop: 10,
     color: '#FFFFFF',
-    fontSize: 31,
+    fontSize: 34,
     fontWeight: '900',
     letterSpacing: -0.4,
   },
-  balanceIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
+  heroSubtext: {
+    marginTop: 10,
+    color: 'rgba(255,255,255,0.84)',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  heroIconWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.18)',
   },
-  balanceHint: {
-    marginTop: 8,
-    color: 'rgba(255,255,255,0.84)',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  balanceErrorRow: {
-    marginTop: 10,
+  heroErrorRow: {
+    marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  balanceErrorText: {
+  heroErrorText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
   },
 
@@ -1361,7 +1360,6 @@ const styles = StyleSheet.create({
   primaryButton: {
     minHeight: 58,
     borderRadius: 20,
-    backgroundColor: UI.blue,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
