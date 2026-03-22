@@ -1,6 +1,9 @@
 {
   "home": "Home",
   "buyNow": "Buy Now",
+  "cards.virtual_brand": "ZENOPAY VIRTUAL",
+  "cards.one_card_inline": "Your virtual card is active. You can only have one card.",
+  "cards.created_success_iqd": "Card created successfully. 25.000 IQD was deducted from your balance.",
   "installmentTotalPrice": "Installment Total Price",
   "transactions_topupCard": "Topup Card",
   "transactions_cardValue": "Card Value",
