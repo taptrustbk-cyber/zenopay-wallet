@@ -17,21 +17,43 @@ import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import * as Linking from 'expo-linking';
 
-// ✅ Remove default header (if any) to avoid double header
 export const options = {
   headerShown: false,
 };
 
-// 🎨 Light theme: white background, green buttons, black text
-const COLORS = {
-  bg: '#FFFFFF',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  border: '#E5E7EB',
-  inputBg: '#F3FBF6',
-  green: '#16A34A',
-  greenSoft: '#EAF7EF',
+const UI = {
+  bg: '#EEF4FF',
+  page: '#F7FAFF',
+  card: '#FFFFFF',
+  cardSoft: '#F8FBFF',
+  text: '#0F172A',
+  text2: '#64748B',
+  text3: '#94A3B8',
+  border: '#D9E5F6',
+
+  blue: '#2563EB',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+
   white: '#FFFFFF',
+  shadow: '#7DA8E6',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: UI.shadow,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: UI.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
+  },
 };
 
 export default function ResetPasswordScreen() {
@@ -48,11 +70,9 @@ export default function ResetPasswordScreen() {
     );
   }, [router]);
 
-  // ✅ Handle redirect URL from email (code / tokens)
   const handleIncomingUrl = useCallback(
     async (url: string) => {
       try {
-        // 1) PKCE code flow: ?code=xxxxx
         const parsed = Linking.parse(url);
         const code = (parsed?.queryParams?.code as string | undefined) ?? undefined;
 
@@ -63,8 +83,6 @@ export default function ResetPasswordScreen() {
           return;
         }
 
-        // 2) Hash token flow: #access_token=...&refresh_token=...
-        // Linking.parse doesn't always parse hash, so do manual parse too
         const hash = url.includes('#') ? url.split('#')[1] : '';
         if (hash) {
           const params = new URLSearchParams(hash);
@@ -79,7 +97,6 @@ export default function ResetPasswordScreen() {
           }
         }
 
-        // If no usable token/code:
         const { data } = await supabase.auth.getSession();
         if (data.session) {
           setIsReady(true);
@@ -99,18 +116,15 @@ export default function ResetPasswordScreen() {
     let sub: any;
 
     const init = async () => {
-      // ✅ 1) if app opened by email link -> get initial URL
       const initialUrl = await Linking.getInitialURL();
       if (initialUrl) {
         await handleIncomingUrl(initialUrl);
       } else {
-        // ✅ 2) If user already has session (rare but possible)
         const { data } = await supabase.auth.getSession();
         if (data.session) setIsReady(true);
         else failAndGoBack();
       }
 
-      // ✅ 3) Listen for incoming links while app is open
       sub = Linking.addEventListener('url', ({ url }) => {
         handleIncomingUrl(url);
       });
@@ -149,8 +163,14 @@ export default function ResetPasswordScreen() {
     return (
       <View style={styles.loadingContainer}>
         <Stack.Screen options={{ headerShown: false }} />
-        <ActivityIndicator size="large" color={COLORS.green} />
-        <Text style={styles.loadingText}>Verifying reset link...</Text>
+        <View style={styles.loadingGlow} />
+        <View style={styles.loadingCard}>
+          <View style={styles.loadingIconWrap}>
+            <ActivityIndicator size="large" color={UI.blue} />
+          </View>
+          <Text style={styles.loadingTitle}>Verifying reset link...</Text>
+          <Text style={styles.loadingText}>Please wait while we prepare your password reset.</Text>
+        </View>
       </View>
     );
   }
@@ -160,44 +180,62 @@ export default function ResetPasswordScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.screen}>
+        <View style={styles.topGlowOne} />
+        <View style={styles.topGlowTwo} />
+
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backIconBtn} activeOpacity={0.8}>
-              <Ionicons name="arrow-back" size={22} color={COLORS.green} />
+              <Ionicons name="arrow-back" size={22} color={UI.blueDark} />
             </TouchableOpacity>
 
             <Text style={styles.headerTitle}>Reset Password</Text>
-            <View style={{ width: 24 }} />
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={styles.heroCard}>
+            <View style={styles.heroIconWrap}>
+              <Ionicons name="shield-checkmark-outline" size={28} color={UI.blue} />
+            </View>
+            <Text style={styles.heroTitle}>Set New Password</Text>
+            <Text style={styles.heroSubtitle}>Choose a strong new password for your account.</Text>
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.title}>Set New Password</Text>
-            <Text style={styles.description}>Enter your new password below</Text>
-
             <View style={styles.inputGroup}>
               <Text style={styles.label}>New Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="New Password"
-                placeholderTextColor={COLORS.textSecondary}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
+              <View style={styles.inputWrap}>
+                <View style={styles.inputIconBox}>
+                  <Ionicons name="lock-closed-outline" size={18} color={UI.blue} />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="New Password"
+                  placeholderTextColor={UI.text3}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              </View>
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Confirm Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm Password"
-                placeholderTextColor={COLORS.textSecondary}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
+              <View style={styles.inputWrap}>
+                <View style={styles.inputIconBox}>
+                  <Ionicons name="checkmark-done-outline" size={18} color={UI.blue} />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm Password"
+                  placeholderTextColor={UI.text3}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              </View>
             </View>
 
             <TouchableOpacity
@@ -209,7 +247,10 @@ export default function ResetPasswordScreen() {
               {resetMutation.isPending ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.resetButtonText}>Update Password</Text>
+                <>
+                  <Ionicons name="key-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.resetButtonText}>Update Password</Text>
+                </>
               )}
             </TouchableOpacity>
 
@@ -230,20 +271,75 @@ const styles = StyleSheet.create({
 
   screen: {
     flex: 1,
-    backgroundColor: COLORS.bg,
+    backgroundColor: UI.page,
+  },
+
+  topGlowOne: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(37,99,235,0.08)',
+    top: -40,
+    left: -60,
+  },
+  topGlowTwo: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(37,99,235,0.06)',
+    top: 110,
+    right: -50,
   },
 
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.bg,
+    backgroundColor: UI.page,
+    paddingHorizontal: 20,
+  },
+  loadingGlow: {
+    position: 'absolute',
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(37,99,235,0.07)',
+  },
+  loadingCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: UI.card,
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: UI.border,
+    alignItems: 'center',
+    ...SHADOWS.card,
+  },
+  loadingIconWrap: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: UI.blueSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  loadingTitle: {
+    fontSize: 20,
+    fontWeight: '900' as const,
+    color: UI.text,
+    textAlign: 'center',
+    marginBottom: 8,
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: COLORS.textSecondary,
-    fontWeight: '600' as const,
+    fontSize: 14,
+    color: UI.text2,
+    fontWeight: '700' as const,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 
   scrollContent: {
@@ -259,67 +355,111 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 14,
     marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.bg,
   },
   backIconBtn: {
-    padding: 6,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: UI.white,
+    borderWidth: 1,
+    borderColor: UI.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.soft,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '800' as const,
-    color: COLORS.text,
+    fontWeight: '900' as const,
+    color: UI.text,
+  },
+
+  heroCard: {
+    backgroundColor: UI.card,
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: UI.border,
+    alignItems: 'center',
+    marginBottom: 14,
+    ...SHADOWS.card,
+  },
+  heroIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: UI.blueSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '900' as const,
+    color: UI.text,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    color: UI.text2,
+    textAlign: 'center',
+    fontWeight: '700' as const,
+    lineHeight: 20,
   },
 
   card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 18,
+    backgroundColor: UI.card,
+    borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-
-  title: {
-    fontSize: 22,
-    fontWeight: '900' as const,
-    color: COLORS.text,
-    textAlign: 'center' as const,
-    marginBottom: 8,
-  },
-  description: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center' as const,
-    fontWeight: '600' as const,
-    marginBottom: 18,
+    borderColor: UI.border,
+    ...SHADOWS.card,
   },
 
   inputGroup: { marginBottom: 14 },
   label: {
     fontSize: 13,
-    fontWeight: '700' as const,
-    color: COLORS.text,
+    fontWeight: '800' as const,
+    color: UI.text,
     marginBottom: 8,
   },
-  input: {
-    backgroundColor: COLORS.inputBg,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    fontSize: 16,
-    color: COLORS.text,
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: UI.cardSoft,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: UI.border,
+    paddingHorizontal: 12,
+    minHeight: 54,
+  },
+  inputIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: UI.blueSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: UI.text,
+    fontWeight: '700' as const,
   },
 
   resetButton: {
-    backgroundColor: COLORS.green,
-    borderRadius: 14,
-    paddingVertical: 14,
+    backgroundColor: UI.blue,
+    borderRadius: 16,
+    paddingVertical: 15,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 6,
+    flexDirection: 'row',
+    gap: 8,
+    ...SHADOWS.card,
   },
   resetButtonText: {
     color: '#FFFFFF',
@@ -333,9 +473,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   backToLoginText: {
-    color: COLORS.text,
+    color: UI.blue,
     fontSize: 14,
-    fontWeight: '800' as const,
+    fontWeight: '900' as const,
     textDecorationLine: 'underline' as const,
   },
 });
