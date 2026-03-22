@@ -29,8 +29,45 @@ type PendingProfile = {
   city?: string;
   country?: string;
   phone?: string;
-  date_of_brith?: string; // ✅ your DB column name (typo)
+  date_of_brith?: string;
   pending_profile_created_at?: string;
+};
+
+const UI = {
+  bg: '#EEF4FF',
+  page: '#F7FAFF',
+  card: '#FFFFFF',
+  cardSoft: '#F8FBFF',
+  text: '#0F172A',
+  text2: '#64748B',
+  text3: '#94A3B8',
+  border: '#D9E5F6',
+
+  blue: '#2563EB',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
+
+  white: '#FFFFFF',
+  black: '#0F172A',
+  shadow: '#7DA8E6',
+};
+
+const SHADOWS = {
+  card: {
+    shadowColor: UI.shadow,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: UI.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
+  },
 };
 
 export default function LoginScreen() {
@@ -51,26 +88,23 @@ export default function LoginScreen() {
       const pending: PendingProfile | null = JSON.parse(pendingRaw);
       if (!pending) return;
 
-      // Optional safety: ensure pending belongs to this email (if available)
       const cleanLoginEmail = (email || '').trim().toLowerCase();
       const pendingEmail = (pending.email || '').trim().toLowerCase();
       if (pendingEmail && cleanLoginEmail && pendingEmail !== cleanLoginEmail) {
         return;
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .upsert(
-          {
-            id: userId,
-            full_name: pending.full_name ?? null,
-            city: pending.city ?? null,
-            country: pending.country ?? null,
-            phone: pending.phone ?? null,
-            date_of_brith: pending.date_of_brith ?? null,
-          },
-          { onConflict: 'id' }
-        );
+      const { error } = await supabase.from('profiles').upsert(
+        {
+          id: userId,
+          full_name: pending.full_name ?? null,
+          city: pending.city ?? null,
+          country: pending.country ?? null,
+          phone: pending.phone ?? null,
+          date_of_brith: pending.date_of_brith ?? null,
+        },
+        { onConflict: 'id' }
+      );
 
       if (error) {
         console.log('applyPendingProfile upsert error:', error.message);
@@ -100,7 +134,7 @@ export default function LoginScreen() {
           errorMessage.includes('email not confirmed') ||
           errorMessage.includes('email confirmation') ||
           errorMessage.includes('confirm your email') ||
-          (error.status === 400 && errorMessage.includes('email'))
+          ((error as any).status === 400 && errorMessage.includes('email'))
         ) {
           setTimeout(() => {
             router.push(`/(auth)/email-verification?email=${encodeURIComponent(email)}` as any);
@@ -114,7 +148,6 @@ export default function LoginScreen() {
         throw new Error('Login failed');
       }
 
-      // ✅ after login success, save pending signup details to profiles (if pending exists)
       await applyPendingProfileIfExists(data.user.id);
 
       console.log('Login successful, AuthContext will handle profile loading and navigation');
@@ -167,7 +200,6 @@ export default function LoginScreen() {
     },
   });
 
-  // ✅ works with react-query v4 or v5
   const isSubmitting =
     (loginMutation as any).isPending ?? (loginMutation as any).isLoading ?? false;
 
@@ -203,51 +235,52 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <LinearGradient
-        colors={['#FFFFFF', '#FFFFFF']}
+        colors={[UI.bg, UI.page, UI.bg]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
       >
+        <View style={styles.topGlowOne} />
+        <View style={styles.topGlowTwo} />
+
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Language button top-right */}
           <View style={styles.languageButtonContainer}>
             <TouchableOpacity style={styles.langButton} onPress={toggleLanguage} activeOpacity={0.85}>
-              <Ionicons name="globe-outline" size={18} color="#111827" />
+              <Ionicons name="globe-outline" size={18} color={UI.blueDark} />
               <Text style={[styles.langText, isRTL ? styles.mr8 : styles.ml8]}>
                 {getLanguageDisplayText()}
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Center logo + app name */}
           <View style={styles.header}>
-            <View style={styles.logoCircle}>
-              <LinearGradient
-                colors={['#22C55E', '#16A34A', '#0E7A35']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.logoGradient}
-              >
-                <Text style={styles.logoText}>Z</Text>
-              </LinearGradient>
+            <View style={styles.logoOuterRing}>
+              <View style={styles.logoCircle}>
+                <LinearGradient
+                  colors={[UI.blue, UI.blueDark]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.logoGradient}
+                >
+                  <Text style={styles.logoText}>Z</Text>
+                </LinearGradient>
+              </View>
             </View>
 
             <Text style={styles.appName}>ZenoPay</Text>
             <Text style={styles.welcomeBack}>Welcome Back!</Text>
-
-            {/* ✅ translated line (selected in your image) */}
             <Text style={styles.subWelcome}>{i18n.t('loginSubWelcome')}</Text>
           </View>
 
-          {/* Card */}
           <View style={styles.card}>
-            {/* Email */}
             <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color="#111827" style={styles.inputIcon} />
+              <View style={styles.inputIconWrap}>
+                <Ionicons name="mail-outline" size={18} color={UI.blue} />
+              </View>
               <TextInput
                 style={styles.input}
                 placeholder={i18n.t('email')}
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={UI.text3}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -255,13 +288,14 @@ export default function LoginScreen() {
               />
             </View>
 
-            {/* Password */}
             <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#111827" style={styles.inputIcon} />
+              <View style={styles.inputIconWrap}>
+                <Ionicons name="lock-closed-outline" size={18} color={UI.blue} />
+              </View>
               <TextInput
                 style={styles.input}
                 placeholder={i18n.t('password')}
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={UI.text3}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -275,19 +309,17 @@ export default function LoginScreen() {
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={20}
-                  color="#111827"
+                  color={UI.text2}
                 />
               </TouchableOpacity>
             </View>
 
-            {/* Remember + Forgot */}
             <View style={styles.rowBetween}>
               <Pressable onPress={() => setRememberMe((v) => !v)} style={styles.rememberRow} hitSlop={10}>
                 <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
                   {rememberMe ? <Text style={styles.checkMark}>✓</Text> : null}
                 </View>
 
-                {/* ✅ translated */}
                 <Text style={[styles.rememberText, isRTL ? styles.mr10 : styles.ml10]}>
                   {i18n.t('rememberMe')}
                 </Text>
@@ -302,7 +334,6 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Sign In */}
             <TouchableOpacity
               style={styles.loginButton}
               onPress={() => (loginMutation as any).mutate()}
@@ -316,7 +347,6 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Create New Account */}
             <TouchableOpacity
               onPress={() => router.push('/(auth)/create-account' as any)}
               style={styles.createAccountButton}
@@ -326,11 +356,10 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Need help */}
           <View style={styles.helpCard}>
             <View style={styles.helpIconCircle}>
               <LinearGradient
-                colors={['#22C55E', '#16A34A']}
+                colors={[UI.blue, UI.blueDark]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.helpIconCircleInner}
@@ -359,11 +388,29 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   gradient: { flex: 1 },
 
-  // spacing helpers (replace gap)
   ml8: { marginLeft: 8 },
   mr8: { marginRight: 8 },
   ml10: { marginLeft: 10 },
   mr10: { marginRight: 10 },
+
+  topGlowOne: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(37,99,235,0.08)',
+    top: -40,
+    left: -70,
+  },
+  topGlowTwo: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(37,99,235,0.06)',
+    top: 90,
+    right: -50,
+  },
 
   scrollContent: {
     flexGrow: 1,
@@ -379,84 +426,107 @@ const styles = StyleSheet.create({
   langButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: UI.card,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: UI.border,
+    ...SHADOWS.soft,
   },
   langText: {
-    color: '#111827',
+    color: UI.text,
     fontSize: 14,
     fontWeight: '800' as const,
   },
 
-  header: { alignItems: 'center', marginBottom: 18 },
+  header: {
+    alignItems: 'center',
+    marginBottom: 18,
+    marginTop: 6,
+  },
+  logoOuterRing: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: UI.blueSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
   logoCircle: {
     width: 76,
     height: 76,
     borderRadius: 38,
     overflow: 'hidden',
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(22,163,74,0.22)',
   },
-  logoGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  logoGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   logoText: {
-    fontSize: 38,
+    fontSize: 40,
     fontWeight: '900' as const,
     color: '#FFFFFF',
+    letterSpacing: -1,
   },
   appName: {
     fontSize: 30,
     fontWeight: '900' as const,
-    color: '#111827',
+    color: UI.text,
     marginBottom: 10,
   },
   welcomeBack: {
     fontSize: 22,
     fontWeight: '900' as const,
-    color: '#111827',
+    color: UI.text,
     marginBottom: 4,
   },
   subWelcome: {
     fontSize: 13,
-    color: '#6B7280',
+    color: UI.text2,
     fontWeight: '700' as const,
+    textAlign: 'center',
   },
 
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    backgroundColor: UI.card,
+    borderRadius: 24,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.06,
-    shadowRadius: 18,
-    elevation: 4,
+    borderColor: UI.border,
+    ...SHADOWS.card,
     marginTop: 14,
   },
 
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 14,
+    backgroundColor: UI.cardSoft,
+    borderRadius: 16,
     marginBottom: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    minHeight: 52,
+    borderColor: UI.border,
+    minHeight: 54,
   },
-  inputIcon: { marginRight: 10 },
+  inputIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: UI.blueSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
   input: {
     flex: 1,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#111827',
+    color: UI.text,
     fontWeight: '700' as const,
   },
   eyeIcon: { padding: 8 },
@@ -469,38 +539,49 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  rememberRow: { flexDirection: 'row', alignItems: 'center' },
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 6,
+    borderRadius: 7,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: UI.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.white,
   },
   checkboxChecked: {
-    backgroundColor: '#16A34A',
-    borderColor: '#16A34A',
+    backgroundColor: UI.blue,
+    borderColor: UI.blue,
   },
-  checkMark: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' as const },
+  checkMark: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900' as const,
+  },
 
-  rememberText: { color: '#6B7280', fontSize: 13.5, fontWeight: '700' as const },
+  rememberText: {
+    color: UI.text2,
+    fontSize: 13.5,
+    fontWeight: '700' as const,
+  },
 
   forgotButton: { paddingVertical: 6, paddingHorizontal: 6 },
-  forgotText: { color: '#16A34A', fontSize: 13.5, fontWeight: '900' as const },
+  forgotText: {
+    color: UI.blue,
+    fontSize: 13.5,
+    fontWeight: '900' as const,
+  },
 
   loginButton: {
-    backgroundColor: '#16A34A',
-    borderRadius: 14,
-    paddingVertical: 14,
+    backgroundColor: UI.blue,
+    borderRadius: 16,
+    paddingVertical: 15,
     alignItems: 'center',
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 6,
+    ...SHADOWS.card,
   },
   loginButtonText: {
     color: '#FFFFFF',
@@ -510,32 +591,33 @@ const styles = StyleSheet.create({
 
   createAccountButton: {
     marginTop: 12,
-    borderRadius: 14,
-    paddingVertical: 12,
+    borderRadius: 16,
+    paddingVertical: 13,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: UI.white,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: UI.border,
   },
   createAccountText: {
-    color: '#16A34A',
+    color: UI.blue,
     fontSize: 14.5,
     fontWeight: '900' as const,
   },
 
   helpCard: {
     marginTop: 14,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    backgroundColor: UI.card,
+    borderRadius: 22,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: UI.border,
     flexDirection: 'row',
     alignItems: 'center',
+    ...SHADOWS.soft,
   },
   helpIconCircle: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     borderRadius: 14,
     overflow: 'hidden',
     marginRight: 12,
@@ -549,16 +631,16 @@ const styles = StyleSheet.create({
   helpTitle: {
     fontSize: 16,
     fontWeight: '900' as const,
-    color: '#111827',
+    color: UI.text,
     marginBottom: 2,
   },
   helpText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: UI.text2,
     fontWeight: '700' as const,
   },
   helpEmail: {
-    color: '#16A34A',
+    color: UI.blue,
     fontWeight: '900' as const,
   },
 });
