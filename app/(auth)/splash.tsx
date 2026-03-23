@@ -1,55 +1,116 @@
 import { useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   StyleSheet,
   View,
   Text,
   Animated,
   Easing,
-  Image,
 } from "react-native";
+import { Image } from "expo-image";
+import { Asset } from "expo-asset";
 import { supabase } from "@/lib/supabase";
+
+const splashIcon = require("@/assets/images/splash-icon.png");
 
 export default function SplashScreen() {
   const router = useRouter();
+  const [ready, setReady] = useState(false);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.92)).current;
-  const textFadeAnim = useRef(new Animated.Value(0)).current;
-  const textTranslateAnim = useRef(new Animated.Value(10)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.92)).current;
+  const logoFloat = useRef(new Animated.Value(0)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const textTranslate = useRef(new Animated.Value(12)).current;
+  const glowOpacity = useRef(new Animated.Value(0.18)).current;
 
   useEffect(() => {
+    let mounted = true;
+
+    const preload = async () => {
+      try {
+        await Asset.loadAsync([splashIcon]);
+      } catch {}
+      if (mounted) setReady(true);
+    };
+
+    preload();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+
     Animated.parallel([
-      Animated.timing(fadeAnim, {
+      Animated.timing(logoOpacity, {
         toValue: 1,
-        duration: 700,
+        duration: 420,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
-      Animated.spring(scaleAnim, {
+      Animated.spring(logoScale, {
         toValue: 1,
         friction: 7,
-        tension: 45,
+        tension: 48,
         useNativeDriver: true,
       }),
-      Animated.timing(textFadeAnim, {
+      Animated.timing(textOpacity, {
         toValue: 1,
-        duration: 700,
+        duration: 500,
         delay: 180,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
-      Animated.timing(textTranslateAnim, {
+      Animated.timing(textTranslate, {
         toValue: 0,
-        duration: 700,
+        duration: 500,
         delay: 180,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, scaleAnim, textFadeAnim, textTranslateAnim]);
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoFloat, {
+          toValue: -8,
+          duration: 1400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoFloat, {
+          toValue: 0,
+          duration: 1400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowOpacity, {
+          toValue: 0.34,
+          duration: 1300,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowOpacity, {
+          toValue: 0.18,
+          duration: 1300,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [ready, logoOpacity, logoScale, logoFloat, textOpacity, textTranslate, glowOpacity]);
 
   useEffect(() => {
+    if (!ready) return;
+
     const checkSession = async () => {
       await new Promise((resolve) => setTimeout(resolve, 1800));
 
@@ -68,36 +129,43 @@ export default function SplashScreen() {
     };
 
     checkSession();
-  }, [router]);
+  }, [ready, router]);
 
   return (
     <View style={styles.container}>
-      <Animated.View
-        style={[
-          styles.content,
-          {
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-          },
-        ]}
-      >
-        <Image
-          source={require("@/assets/images/splash-icon.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+      <Animated.View style={[styles.glow, { opacity: glowOpacity }]} />
 
+      {ready ? (
         <Animated.View
-          style={{
-            opacity: textFadeAnim,
-            transform: [{ translateY: textTranslateAnim }],
-            alignItems: "center",
-          }}
+          style={[
+            styles.center,
+            {
+              opacity: logoOpacity,
+              transform: [{ scale: logoScale }, { translateY: logoFloat }],
+            },
+          ]}
         >
-          <Text style={styles.appName}>ZenoPay Wallet</Text>
-          <Text style={styles.tagline}>Safe • Fast • Trusted Wallet</Text>
+          <Image
+            source={splashIcon}
+            style={styles.logo}
+            contentFit="contain"
+            cachePolicy="memory-disk"
+          />
+
+          <Animated.View
+            style={{
+              opacity: textOpacity,
+              transform: [{ translateY: textTranslate }],
+              alignItems: "center",
+            }}
+          >
+            <Text style={styles.appName}>ZenoPay Wallet</Text>
+            <Text style={styles.tagline}>Safe • Fast • Trusted Wallet</Text>
+          </Animated.View>
         </Animated.View>
-      </Animated.View>
+      ) : (
+        <View style={styles.center} />
+      )}
     </View>
   );
 }
@@ -110,15 +178,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  content: {
+  center: {
     alignItems: "center",
     justifyContent: "center",
   },
 
+  glow: {
+    position: "absolute",
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: "#1D4ED8",
+    opacity: 0.22,
+  },
+
   logo: {
-    width: 240,
-    height: 240,
-    marginBottom: 22,
+    width: 250,
+    height: 250,
+    marginBottom: 20,
   },
 
   appName: {
