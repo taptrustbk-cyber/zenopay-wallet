@@ -4,14 +4,14 @@
     "slug": "zenopay-wallet",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon.PNG",
     "scheme": "zenopay",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-screen.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#2563EB"
+      "image": "./assets/images/splash-icon.PNG",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A1F44"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -31,8 +31,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#2563EB"
+        "foregroundImage": "./assets/images/adaptive-icon.PNG",
+        "backgroundColor": "#0A1F44"
       },
       "package": "app.rork.zenopay_wallet",
       "permissions": [
