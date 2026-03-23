@@ -1,171 +1,234 @@
-import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import {
-  StyleSheet,
-  View,
-  Text,
-  Animated,
-  Easing,
-} from "react-native";
-import { Image } from "expo-image";
-import { Asset } from "expo-asset";
-import { supabase } from "@/lib/supabase";
+import { useRouter } from 'expo-router';
+import { useEffect, useRef } from 'react';
+import { StyleSheet, View, Text, Animated, Dimensions, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '@/lib/supabase';
 
-const splashIcon = require("@/assets/images/splash-icon.png");
+const { width, height } = Dimensions.get('window');
 
 export default function SplashScreen() {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
 
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.92)).current;
-  const logoFloat = useRef(new Animated.Value(0)).current;
-  const textOpacity = useRef(new Animated.Value(0)).current;
-  const textTranslate = useRef(new Animated.Value(12)).current;
-  const glowOpacity = useRef(new Animated.Value(0.18)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.96)).current;
+  const ringAnim = useRef(new Animated.Value(0.85)).current;
+  const ringOpacity = useRef(new Animated.Value(0.35)).current;
 
-  useEffect(() => {
-    let mounted = true;
-
-    const preload = async () => {
-      try {
-        await Asset.loadAsync([splashIcon]);
-      } catch {}
-      if (mounted) setReady(true);
-    };
-
-    preload();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const particle1 = useRef(new Animated.Value(0)).current;
+  const particle2 = useRef(new Animated.Value(0)).current;
+  const particle3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!ready) return;
-
     Animated.parallel([
-      Animated.timing(logoOpacity, {
+      Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 420,
-        easing: Easing.out(Easing.ease),
+        duration: 700,
         useNativeDriver: true,
       }),
-      Animated.spring(logoScale, {
+      Animated.spring(scaleAnim, {
         toValue: 1,
         friction: 7,
-        tension: 48,
-        useNativeDriver: true,
-      }),
-      Animated.timing(textOpacity, {
-        toValue: 1,
-        duration: 500,
-        delay: 180,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.timing(textTranslate, {
-        toValue: 0,
-        duration: 500,
-        delay: 180,
-        easing: Easing.out(Easing.ease),
+        tension: 35,
         useNativeDriver: true,
       }),
     ]).start();
 
     Animated.loop(
-      Animated.sequence([
-        Animated.timing(logoFloat, {
-          toValue: -8,
-          duration: 1400,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(logoFloat, {
-          toValue: 0,
-          duration: 1400,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(ringAnim, {
+            toValue: 1.08,
+            duration: 1400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(ringAnim, {
+            toValue: 0.85,
+            duration: 1400,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.timing(ringOpacity, {
+            toValue: 0.12,
+            duration: 1400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(ringOpacity, {
+            toValue: 0.35,
+            duration: 1400,
+            useNativeDriver: true,
+          }),
+        ]),
       ])
     ).start();
 
     Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowOpacity, {
-          toValue: 0.34,
-          duration: 1300,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowOpacity, {
-          toValue: 0.18,
-          duration: 1300,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
+      Animated.timing(particle1, {
+        toValue: 1,
+        duration: 3200,
+        useNativeDriver: true,
+      })
     ).start();
-  }, [ready, logoOpacity, logoScale, logoFloat, textOpacity, textTranslate, glowOpacity]);
+
+    Animated.loop(
+      Animated.timing(particle2, {
+        toValue: 1,
+        duration: 4200,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    Animated.loop(
+      Animated.timing(particle3, {
+        toValue: 1,
+        duration: 5200,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, [fadeAnim, scaleAnim, ringAnim, ringOpacity, particle1, particle2, particle3]);
 
   useEffect(() => {
-    if (!ready) return;
-
     const checkSession = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1800));
+      await new Promise((resolve) => setTimeout(resolve, 2200));
 
       try {
         const { data, error } = await supabase.auth.getSession();
 
         if (error || !data?.session) {
-          router.replace("/(auth)/login" as any);
+          router.replace('/(auth)/login' as any);
           return;
         }
 
-        router.replace("/(app)/dashboard" as any);
+        router.replace('/(app)/dashboard' as any);
       } catch {
-        router.replace("/(auth)/login" as any);
+        router.replace('/(auth)/login' as any);
       }
     };
 
     checkSession();
-  }, [ready, router]);
+  }, [router]);
+
+  const particle1Y = particle1.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -height * 0.55],
+  });
+
+  const particle1Opacity = particle1.interpolate({
+    inputRange: [0, 0.2, 0.8, 1],
+    outputRange: [0, 0.9, 0.9, 0],
+  });
+
+  const particle2Y = particle2.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -height * 0.62],
+  });
+
+  const particle2Opacity = particle2.interpolate({
+    inputRange: [0, 0.2, 0.8, 1],
+    outputRange: [0, 0.7, 0.7, 0],
+  });
+
+  const particle3Y = particle3.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -height * 0.48],
+  });
+
+  const particle3Opacity = particle3.interpolate({
+    inputRange: [0, 0.2, 0.8, 1],
+    outputRange: [0, 0.65, 0.65, 0],
+  });
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.glow, { opacity: glowOpacity }]} />
+      <LinearGradient
+        colors={['#2F64F5', '#2D5FEA', '#2196E8']}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
 
-      {ready ? (
-        <Animated.View
-          style={[
-            styles.center,
-            {
-              opacity: logoOpacity,
-              transform: [{ scale: logoScale }, { translateY: logoFloat }],
-            },
-          ]}
-        >
-          <Image
-            source={splashIcon}
-            style={styles.logo}
-            contentFit="contain"
-            cachePolicy="memory-disk"
-          />
+      <View style={styles.circleTopRight} />
+      <View style={styles.circleLeft} />
+      <View style={styles.circleBottomLeft} />
 
+      <Animated.View
+        style={[
+          styles.particle,
+          {
+            left: width * 0.17,
+            bottom: 135,
+            opacity: particle1Opacity,
+            transform: [{ translateY: particle1Y }],
+          },
+        ]}
+      >
+        <View style={[styles.dot, { width: 10, height: 10 }]} />
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.particle,
+          {
+            right: width * 0.18,
+            bottom: 200,
+            opacity: particle2Opacity,
+            transform: [{ translateY: particle2Y }],
+          },
+        ]}
+      >
+        <View style={[styles.dot, { width: 8, height: 8 }]} />
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.particle,
+          {
+            left: width * 0.35,
+            bottom: 240,
+            opacity: particle3Opacity,
+            transform: [{ translateY: particle3Y }],
+          },
+        ]}
+      >
+        <View style={[styles.dot, { width: 7, height: 7 }]} />
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}
+      >
+        <View style={styles.logoWrap}>
           <Animated.View
-            style={{
-              opacity: textOpacity,
-              transform: [{ translateY: textTranslate }],
-              alignItems: "center",
-            }}
-          >
-            <Text style={styles.appName}>ZenoPay Wallet</Text>
-            <Text style={styles.tagline}>Safe • Fast • Trusted Wallet</Text>
-          </Animated.View>
-        </Animated.View>
-      ) : (
-        <View style={styles.center} />
-      )}
+            style={[
+              styles.ring,
+              {
+                opacity: ringOpacity,
+                transform: [{ scale: ringAnim }],
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.ring2,
+              {
+                opacity: ringOpacity,
+                transform: [{ scale: ringAnim }],
+              },
+            ]}
+          />
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoLetter}>Z</Text>
+          </View>
+        </View>
+
+        <Text style={styles.appName}>ZenoPay</Text>
+        <Text style={styles.tagline}>Safe • Fast • Trusted Wallet</Text>
+      </Animated.View>
     </View>
   );
 }
@@ -173,43 +236,106 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0A1F44",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: '#0B2458',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
-  center: {
-    alignItems: "center",
-    justifyContent: "center",
+  content: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  glow: {
-    position: "absolute",
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    backgroundColor: "#1D4ED8",
-    opacity: 0.22,
+  logoWrap: {
+    width: 220,
+    height: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
   },
 
-  logo: {
-    width: 250,
-    height: 250,
-    marginBottom: 20,
+  ring: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.28)',
+  },
+
+  ring2: {
+    position: 'absolute',
+    width: 176,
+    height: 176,
+    borderRadius: 88,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+
+  logoCircle: {
+    width: 132,
+    height: 132,
+    borderRadius: 66,
+    backgroundColor: '#F2F4F8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  logoLetter: {
+    fontSize: 58,
+    fontWeight: '900',
+    color: '#2F64F5',
   },
 
   appName: {
-    fontSize: 30,
-    fontWeight: "900",
-    color: "#FFFFFF",
-    letterSpacing: 0.2,
+    fontSize: 40,
+    fontWeight: '900',
+    color: 'rgba(255,255,255,0.82)',
+    marginBottom: 10,
   },
 
   tagline: {
-    marginTop: 8,
-    fontSize: 14,
-    fontWeight: "700",
-    color: "rgba(255,255,255,0.88)",
-    letterSpacing: 0.2,
+    fontSize: 17,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.72)',
+  },
+
+  circleTopRight: {
+    position: 'absolute',
+    top: -40,
+    right: -80,
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+
+  circleLeft: {
+    position: 'absolute',
+    left: -100,
+    top: 360,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+
+  circleBottomLeft: {
+    position: 'absolute',
+    left: -140,
+    bottom: -120,
+    width: 440,
+    height: 440,
+    borderRadius: 220,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+  },
+
+  particle: {
+    position: 'absolute',
+  },
+
+  dot: {
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.65)',
   },
 });
