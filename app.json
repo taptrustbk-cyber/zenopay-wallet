@@ -6,8 +6,13 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "zenopay",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-screen.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B2458"
+    },
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
@@ -27,7 +32,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0A1F44"
+        "backgroundColor": "#0B2458"
       },
       "package": "app.rork.zenopay_wallet",
       "permissions": [
@@ -59,16 +64,7 @@
           "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
       ],
-      "expo-localization",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "backgroundColor": "#0A1F44",
-          "resizeMode": "contain",
-          "imageWidth": 220
-        }
-      ]
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true
