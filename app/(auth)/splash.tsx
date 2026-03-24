@@ -24,17 +24,22 @@ export default function SplashScreen() {
   const ringRotateAnim = useRef(new Animated.Value(0)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
 
+  // particles
   const particle1 = useRef(new Animated.Value(0)).current;
   const particle2 = useRef(new Animated.Value(0)).current;
   const particle3 = useRef(new Animated.Value(0)).current;
   const particle4 = useRef(new Animated.Value(0)).current;
+
+  // ✅ animated dots (FIXED)
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 950,
-        easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
@@ -57,6 +62,7 @@ export default function SplashScreen() {
       }),
     ]).start();
 
+    // glow
     Animated.loop(
       Animated.sequence([
         Animated.timing(logoGlowAnim, {
@@ -72,6 +78,7 @@ export default function SplashScreen() {
       ])
     ).start();
 
+    // rotate ring
     Animated.loop(
       Animated.timing(ringRotateAnim, {
         toValue: 1,
@@ -81,6 +88,7 @@ export default function SplashScreen() {
       })
     ).start();
 
+    // floating
     Animated.loop(
       Animated.sequence([
         Animated.timing(floatAnim, {
@@ -96,40 +104,42 @@ export default function SplashScreen() {
       ])
     ).start();
 
-    Animated.loop(
-      Animated.timing(particle1, {
-        toValue: 1,
-        duration: 3200,
-        useNativeDriver: true,
-      })
-    ).start();
+    // particles
+    [particle1, particle2, particle3, particle4].forEach((p, i) => {
+      Animated.loop(
+        Animated.timing(p, {
+          toValue: 1,
+          duration: 3200 + i * 800,
+          useNativeDriver: true,
+        })
+      ).start();
+    });
 
-    Animated.loop(
-      Animated.timing(particle2, {
-        toValue: 1,
-        duration: 4200,
-        useNativeDriver: true,
-      })
-    ).start();
+    // ✅ dots animation (PRO)
+    const animateDot = (anim: Animated.Value, delay: number) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(anim, {
+            toValue: -10,
+            duration: 400,
+            delay,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    };
 
-    Animated.loop(
-      Animated.timing(particle3, {
-        toValue: 1,
-        duration: 5200,
-        useNativeDriver: true,
-      })
-    ).start();
-
-    Animated.loop(
-      Animated.timing(particle4, {
-        toValue: 1,
-        duration: 3800,
-        useNativeDriver: true,
-      })
-    ).start();
+    animateDot(dot1, 0);
+    animateDot(dot2, 150);
+    animateDot(dot3, 300);
   }, []);
 
-  // ✅ FIXED ROUTING
+  // ✅ FIXED ROUTING (IMPORTANT)
   useEffect(() => {
     const checkSession = async () => {
       await new Promise((r) => setTimeout(r, 2600));
@@ -198,26 +208,48 @@ export default function SplashScreen() {
 
       {/* logo */}
       <Animated.View
-        style={{
-          opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }, { translateY: floatAnim }],
-        }}
+        style={[
+          styles.logoContainer,
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }, { translateY: floatAnim }],
+          },
+        ]}
       >
-        <Animated.View style={[styles.logoGlow, { opacity: logoGlow }]} />
+        <View style={styles.logoWrapper}>
+          <Animated.View style={[styles.logoGlow, { opacity: logoGlow }]} />
+          <Animated.View style={[styles.outerRing, { transform: [{ rotate }] }]} />
 
-        <Animated.View style={[styles.ring, { transform: [{ rotate }] }]} />
-
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>Z</Text>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoText}>Z</Text>
+          </View>
         </View>
 
-        <Animated.Text style={[styles.title, { opacity: textFadeAnim }]}>
-          ZenoPay
-        </Animated.Text>
+        <Animated.View
+          style={{
+            opacity: textFadeAnim,
+            transform: [{ translateY: textSlideAnim }],
+            alignItems: 'center',
+          }}
+        >
+          <Text style={styles.appName}>ZenoPay</Text>
+          <Text style={styles.tagline}>Safe • Fast • Trusted Wallet</Text>
+        </Animated.View>
 
-        <Animated.Text style={[styles.subtitle, { opacity: textFadeAnim }]}>
-          Safe • Fast • Trusted Wallet
-        </Animated.Text>
+        {/* ✅ NEW BEAUTIFUL DOTS */}
+        <View style={styles.dots}>
+          {[dot1, dot2, dot3].map((d, i) => (
+            <Animated.View
+              key={i}
+              style={[
+                styles.dot,
+                {
+                  transform: [{ translateY: d }],
+                },
+              ]}
+            />
+          ))}
+        </View>
       </Animated.View>
     </View>
   );
@@ -226,7 +258,15 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  logo: {
+  logoContainer: { alignItems: 'center' },
+
+  logoWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+
+  logoCircle: {
     width: 140,
     height: 140,
     borderRadius: 70,
@@ -241,20 +281,7 @@ const styles = StyleSheet.create({
     color: '#2563EB',
   },
 
-  title: {
-    marginTop: 16,
-    fontSize: 34,
-    color: '#fff',
-    fontWeight: '900',
-  },
-
-  subtitle: {
-    marginTop: 6,
-    fontSize: 14,
-    color: '#fff',
-  },
-
-  ring: {
+  outerRing: {
     position: 'absolute',
     width: 180,
     height: 180,
@@ -269,6 +296,31 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 110,
     backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+
+  appName: {
+    fontSize: 34,
+    color: '#fff',
+    fontWeight: '900',
+  },
+
+  tagline: {
+    marginTop: 6,
+    fontSize: 14,
+    color: '#fff',
+  },
+
+  dots: {
+    flexDirection: 'row',
+    marginTop: 40,
+  },
+
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 50,
+    backgroundColor: '#fff',
+    marginHorizontal: 6,
   },
 
   particle: {
