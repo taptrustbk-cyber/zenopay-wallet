@@ -42,7 +42,6 @@ interface CardLookupRow {
   title?: string | null;
   provider?: string | null;
   amount_iqd?: number | null;
-  amount?: number | null;
   price_iqd?: number | null;
   image_url?: string | null;
   brand?: string | null;
@@ -150,41 +149,6 @@ const providerConfig: Record<
   },
 };
 
-function isBadTranslationValue(value: unknown, originalKey?: string) {
-  const str = String(value ?? '').trim();
-
-  if (!str) return true;
-  if (originalKey && str === originalKey) return true;
-
-  const lower = str.toLowerCase();
-
-  return (
-    lower.includes('[missing') ||
-    lower.includes('translation]') ||
-    lower.includes('missing "') ||
-    lower.includes('missing translation')
-  );
-}
-
-function tSafe(key: string, fallback: string) {
-  try {
-    const direct = i18n.t(key);
-    if (!isBadTranslationValue(direct, key)) {
-      return String(direct).trim();
-    }
-
-    const flatKey = key.replace(/\./g, '_');
-    const flat = i18n.t(flatKey);
-    if (!isBadTranslationValue(flat, flatKey)) {
-      return String(flat).trim();
-    }
-
-    return fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 function getProviderStyle(provider?: string | null, source?: OrderSource) {
   const key = String(provider || '').toLowerCase();
 
@@ -194,8 +158,8 @@ function getProviderStyle(provider?: string | null, source?: OrderSource) {
     label:
       provider ||
       (source === 'gift'
-        ? tSafe('notifications.giftCardLabel', 'Gift Card')
-        : tSafe('notifications.unknownCard', 'Unknown Card')),
+        ? String(i18n.t('notifications.giftCardLabel') || 'Gift Card')
+        : String(i18n.t('notifications.unknownCard') || 'Unknown Card')),
     color: source === 'gift' ? UI.purple : UI.blue,
     soft: source === 'gift' ? UI.purpleSoft : UI.blueSoft,
     border: source === 'gift' ? '#E9D5FF' : UI.border,
@@ -357,17 +321,6 @@ function removeSubmittedInfoFromNotes(notes?: string | null) {
   return cleanLines.join('\n').trim();
 }
 
-function buildGiftAmount(order: NotificationOrderRow, fallbackProvider?: string) {
-  const raw = Number(order.amount_iqd || 0);
-  const joined = `${String(order.card_title || '')} ${String(order.provider || fallbackProvider || '')}`.toLowerCase();
-
-  if (joined.includes('pubg') || joined.includes('uc')) return `${formatIQD(raw)} UC`;
-  if (joined.includes('tiktok') || joined.includes('coin')) return `${formatIQD(raw)} Coins`;
-  if (joined.includes('free fire') || joined.includes('diamond')) return `${formatIQD(raw)} Diamonds`;
-
-  return `${formatIQD(raw)}`;
-}
-
 function buildDisplaySubtitle(order: NotificationOrderRow) {
   const providerStyle = getProviderStyle(order.provider, order.source);
   const amountText =
@@ -384,6 +337,17 @@ function buildDisplaySubtitle(order: NotificationOrderRow) {
 
   if (amountText) return `${providerStyle.label} • ${amountText}`;
   return providerStyle.label;
+}
+
+function buildGiftAmount(order: NotificationOrderRow, fallbackProvider?: string) {
+  const raw = Number(order.amount_iqd || 0);
+  const joined = `${String(order.card_title || '')} ${String(order.provider || fallbackProvider || '')}`.toLowerCase();
+
+  if (joined.includes('pubg') || joined.includes('uc')) return `${formatIQD(raw)} UC`;
+  if (joined.includes('tiktok') || joined.includes('coin')) return `${formatIQD(raw)} Coins`;
+  if (joined.includes('free fire') || joined.includes('diamond')) return `${formatIQD(raw)} Diamonds`;
+
+  return `${formatIQD(raw)}`;
 }
 
 async function syncSuccessfulOrdersToTransactions(orders: NotificationOrderRow[]) {
@@ -581,8 +545,8 @@ export default function NotificationsScreen() {
               ? order.amount_iqd
               : card?.amount_iqd !== null && card?.amount_iqd !== undefined
               ? Number(card.amount_iqd)
-              : card?.amount !== null && card?.amount !== undefined
-              ? Number(card.amount)
+              : (card as any)?.amount !== null && (card as any)?.amount !== undefined
+              ? Number((card as any).amount)
               : null,
           price_iqd:
             order.price_iqd !== null && order.price_iqd !== undefined
@@ -601,12 +565,13 @@ export default function NotificationsScreen() {
       });
 
       setOrders(merged);
+
       await syncSuccessfulOrdersToTransactions(merged);
     } catch (error: any) {
       console.log('notifications screen error:', error);
       Alert.alert(
-        tSafe('common.error', 'Error'),
-        error?.message || tSafe('notifications.loadFailed', 'Could not load notifications.')
+        String(i18n.t('common.error') || 'Error'),
+        error?.message || String(i18n.t('notifications.loadFailed') || 'Could not load notifications.')
       );
     } finally {
       setLoading(false);
@@ -652,7 +617,7 @@ export default function NotificationsScreen() {
         bg: UI.successSoft,
         text: UI.success,
         icon: 'checkmark-circle' as const,
-        label: tSafe('notifications.statusSuccess', 'Success'),
+        label: i18n.t('notifications.statusSuccess'),
       };
     }
 
@@ -661,7 +626,7 @@ export default function NotificationsScreen() {
         bg: UI.dangerSoft,
         text: UI.danger,
         icon: 'close-circle' as const,
-        label: tSafe('notifications.statusCancelled', 'Cancelled'),
+        label: i18n.t('notifications.statusCancelled'),
       };
     }
 
@@ -669,7 +634,27 @@ export default function NotificationsScreen() {
       bg: UI.warningSoft,
       text: UI.warning,
       icon: 'time' as const,
-      label: tSafe('notifications.statusPending', 'Pending'),
+      label: i18n.t('notifications.statusPending'),
+    };
+  };
+
+  const getTypeBadge = (source: OrderSource) => {
+    if (source === 'gift') {
+      return {
+        label: i18n.t('notifications.giftCardLabel') || 'Gift Card',
+        bg: UI.purpleSoft,
+        border: '#E9D5FF',
+        text: UI.purple,
+        icon: 'gift-outline' as const,
+      };
+    }
+
+    return {
+      label: i18n.t('notifications.mobileCards') || 'Mobile Card',
+      bg: UI.blueSoft,
+      border: UI.border,
+      text: UI.blueDark,
+      icon: 'phone-portrait-outline' as const,
     };
   };
 
@@ -708,7 +693,7 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
 
         <Text numberOfLines={1} style={styles.headerTitle}>
-          {tSafe('notifications.title', 'Notifications')}
+          {i18n.t('notifications.title')}
         </Text>
 
         <View style={styles.iconButtonPlaceholder} />
@@ -732,17 +717,10 @@ export default function NotificationsScreen() {
           <View style={styles.heroGlowTwo} />
 
           <Text style={styles.heroMini}>
-            {tSafe('notifications.mobileCards', 'Card Orders')}
+            {i18n.t('notifications.mobileCards')}
           </Text>
-          <Text style={styles.heroTitle}>
-            {tSafe('notifications.subtitle', 'Track your purchased cards')}
-          </Text>
-          <Text style={styles.heroText}>
-            {tSafe(
-              'notifications.description',
-              'See all your card orders, delivery status, PIN codes, and admin updates in one place.'
-            )}
-          </Text>
+          <Text style={styles.heroTitle}>{i18n.t('notifications.subtitle')}</Text>
+          <Text style={styles.heroText}>{i18n.t('notifications.description')}</Text>
         </View>
 
         <ScrollView
@@ -750,10 +728,10 @@ export default function NotificationsScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabsRow}
         >
-          {renderTab('all', tSafe('notifications.filterAll', 'All'), counts.all)}
-          {renderTab('pending', tSafe('notifications.filterPending', 'Pending'), counts.pending)}
-          {renderTab('success', tSafe('notifications.filterSuccess', 'Success'), counts.success)}
-          {renderTab('cancelled', tSafe('notifications.filterCancelled', 'Cancelled'), counts.cancelled)}
+          {renderTab('all', String(i18n.t('notifications.filterAll')), counts.all)}
+          {renderTab('pending', String(i18n.t('notifications.filterPending')), counts.pending)}
+          {renderTab('success', String(i18n.t('notifications.filterSuccess')), counts.success)}
+          {renderTab('cancelled', String(i18n.t('notifications.filterCancelled')), counts.cancelled)}
         </ScrollView>
 
         {loading ? (
@@ -763,12 +741,8 @@ export default function NotificationsScreen() {
         ) : filteredOrders.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="notifications-off-outline" size={38} color={UI.blue} />
-            <Text style={styles.emptyTitle}>
-              {tSafe('notifications.emptyTitle', 'No notifications yet')}
-            </Text>
-            <Text style={styles.emptyText}>
-              {tSafe('notifications.emptyText', 'You have not purchased any cards yet.')}
-            </Text>
+            <Text style={styles.emptyTitle}>{i18n.t('notifications.emptyTitle')}</Text>
+            <Text style={styles.emptyText}>{i18n.t('notifications.emptyText')}</Text>
           </View>
         ) : (
           <View style={styles.listWrap}>
@@ -777,6 +751,7 @@ export default function NotificationsScreen() {
               const status = statusStyle(order.status);
               const hasPin = !!order.pin_code;
               const normalized = normalizeStatus(order.status);
+              const typeBadge = getTypeBadge(order.source);
 
               const parsedInfo = parseOrderExtraInfo(order.notes);
               const adminOnlyNote = removeSubmittedInfoFromNotes(order.notes);
@@ -801,6 +776,26 @@ export default function NotificationsScreen() {
                           {provider.label}
                         </Text>
                       </View>
+
+                      <View
+                        style={[
+                          styles.typeBadge,
+                          {
+                            backgroundColor: typeBadge.bg,
+                            borderColor: typeBadge.border,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={typeBadge.icon}
+                          size={13}
+                          color={typeBadge.text}
+                          style={{ marginRight: 5 }}
+                        />
+                        <Text style={[styles.typeBadgeText, { color: typeBadge.text }]}>
+                          {typeBadge.label}
+                        </Text>
+                      </View>
                     </View>
 
                     <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
@@ -812,14 +807,12 @@ export default function NotificationsScreen() {
                   </View>
 
                   <Text style={styles.cardTitle}>
-                    {buildDisplayTitle(order) || tSafe('notifications.unknownCard', 'Unknown card')}
+                    {buildDisplayTitle(order) || i18n.t('notifications.unknownCard')}
                   </Text>
 
                   <View style={styles.infoGrid}>
                     <View style={styles.infoBox}>
-                      <Text style={styles.infoLabel}>
-                        {tSafe('notifications.amount', 'Amount')}
-                      </Text>
+                      <Text style={styles.infoLabel}>{i18n.t('notifications.amount')}</Text>
                       <Text style={styles.infoValue}>
                         {order.source === 'gift'
                           ? buildGiftAmount(order, provider.label)
@@ -828,16 +821,12 @@ export default function NotificationsScreen() {
                     </View>
 
                     <View style={styles.infoBox}>
-                      <Text style={styles.infoLabel}>
-                        {tSafe('notifications.priceIqd', 'Price (IQD)')}
-                      </Text>
+                      <Text style={styles.infoLabel}>{i18n.t('notifications.priceIqd')}</Text>
                       <Text style={styles.infoValue}>{formatIQD(order.price_iqd)} IQD</Text>
                     </View>
 
                     <View style={styles.infoBoxWide}>
-                      <Text style={styles.infoLabel}>
-                        {tSafe('notifications.date', 'Date')}
-                      </Text>
+                      <Text style={styles.infoLabel}>{i18n.t('notifications.date')}</Text>
                       <Text style={styles.infoValueSmall}>{formatDate(order.created_at)}</Text>
                     </View>
                   </View>
@@ -845,7 +834,7 @@ export default function NotificationsScreen() {
                   <View style={styles.deliveryCard}>
                     <View style={styles.deliveryTop}>
                       <Text style={styles.deliveryTitle}>
-                        {tSafe('notifications.deliveryInfo', 'Delivery information')}
+                        {i18n.t('notifications.deliveryInfo')}
                       </Text>
 
                       <View
@@ -869,10 +858,10 @@ export default function NotificationsScreen() {
                           ]}
                         >
                           {hasPin
-                            ? tSafe('notifications.pinReady', 'PIN ready')
+                            ? i18n.t('notifications.pinReady')
                             : normalized === 'cancelled'
-                            ? tSafe('notifications.cancelledShort', 'Cancelled')
-                            : tSafe('notifications.pendingShort', 'Pending')}
+                            ? i18n.t('notifications.cancelledShort')
+                            : i18n.t('notifications.pendingShort')}
                         </Text>
                       </View>
                     </View>
@@ -880,7 +869,7 @@ export default function NotificationsScreen() {
                     {hasPin ? (
                       <View style={styles.pinCodeBox}>
                         <Text style={styles.pinCodeLabel}>
-                          {tSafe('notifications.pinCode', 'PIN code')}
+                          {i18n.t('notifications.pinCode')}
                         </Text>
                         <Text selectable style={styles.pinCodeValue}>
                           {order.pin_code}
@@ -889,21 +878,21 @@ export default function NotificationsScreen() {
                     ) : (
                       <Text style={styles.deliveryText}>
                         {normalized === 'cancelled'
-                          ? tSafe('notifications.cancelledMessage', 'This order was cancelled.')
-                          : tSafe('notifications.pendingMessage', 'Your order is under review.')}
+                          ? i18n.t('notifications.cancelledMessage')
+                          : i18n.t('notifications.pendingMessage')}
                       </Text>
                     )}
 
                     {(!!parsedInfo.playerId || !!parsedInfo.accountName || !!parsedInfo.profileUrl) && (
                       <View style={styles.notesBox}>
                         <Text style={styles.notesLabel}>
-                          {tSafe('notifications.submittedInfo', 'Submitted Info')}
+                          {i18n.t('notifications.submittedInfo')}
                         </Text>
 
                         {!!parsedInfo.playerId && (
                           <View style={styles.submittedRow}>
                             <Text style={styles.submittedKey}>
-                              {tSafe('notifications.playerId', 'Player ID')}:
+                              {i18n.t('notifications.playerId')}:
                             </Text>
                             <Text selectable style={styles.submittedValue}>
                               {parsedInfo.playerId}
@@ -914,7 +903,7 @@ export default function NotificationsScreen() {
                         {!!parsedInfo.accountName && (
                           <View style={styles.submittedRow}>
                             <Text style={styles.submittedKey}>
-                              {tSafe('notifications.accountName', 'Account Name')}:
+                              {i18n.t('notifications.accountName')}:
                             </Text>
                             <Text selectable style={styles.submittedValue}>
                               {parsedInfo.accountName}
@@ -925,7 +914,7 @@ export default function NotificationsScreen() {
                         {!!parsedInfo.profileUrl && (
                           <View style={styles.submittedRowColumn}>
                             <Text style={styles.submittedKey}>
-                              {tSafe('notifications.profileUrl', 'Profile URL')}:
+                              {i18n.t('notifications.profileUrl')}:
                             </Text>
                             <Text selectable style={styles.submittedValue}>
                               {parsedInfo.profileUrl}
@@ -938,7 +927,7 @@ export default function NotificationsScreen() {
                     {!!adminOnlyNote && (
                       <View style={styles.notesBox}>
                         <Text style={styles.notesLabel}>
-                          {tSafe('notifications.adminNote', 'Admin note')}
+                          {i18n.t('notifications.adminNote')}
                         </Text>
                         <Text style={styles.notesText}>{adminOnlyNote}</Text>
                       </View>
@@ -1173,6 +1162,18 @@ const styles = StyleSheet.create({
   },
   providerBadgeText: {
     fontSize: 12,
+    fontWeight: '900',
+  },
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  typeBadgeText: {
+    fontSize: 11,
     fontWeight: '900',
   },
   statusBadge: {

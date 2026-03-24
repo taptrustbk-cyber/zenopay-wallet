@@ -1,6 +1,5 @@
 {
   "home": "Home",
-  "notifications_giftCardLabel": "Gift Card"
   "cards.virtual_brand": "ZENOPAY VIRTUAL",
   "cards.one_card_inline": "Your virtual card is active. You can only have one card.",
   "cards.created_success_iqd": "Card created successfully. 25.000 IQD was deducted from your balance.",
@@ -764,13 +763,8 @@
   },
 
   "notifications": {
-    "giftCardLabel": "Gift Card",
     "title": "Notifications",
-  "mobileCards": "Mobile Card Orders",
-"submittedInfo": "Submitted Info",
-"playerId": "Player ID",
-"accountName": "Account Name",
-    "profileUrl": "Profile URL",
+    "mobileCards": "Mobile Card Orders",
     "subtitle": "Track your purchased cards",
     "description": "See all your card orders, delivery status, PIN codes, and admin updates in one place.",
     "filterAll": "All",
