@@ -150,13 +150,39 @@ const providerConfig: Record<
   },
 };
 
+function isBadTranslationValue(value: unknown, originalKey?: string) {
+  const str = String(value ?? '').trim();
+
+  if (!str) return true;
+  if (originalKey && str === originalKey) return true;
+
+  const lower = str.toLowerCase();
+
+  return (
+    lower.includes('[missing') ||
+    lower.includes('translation]') ||
+    lower.includes('missing "') ||
+    lower.includes('missing translation')
+  );
+}
+
 function tSafe(key: string, fallback: string) {
-  const value = String(i18n.t(key) ?? '').trim();
-  if (!value) return fallback;
-  if (value.startsWith('[missing "') && value.endsWith('" translation]')) {
+  try {
+    const direct = i18n.t(key);
+    if (!isBadTranslationValue(direct, key)) {
+      return String(direct).trim();
+    }
+
+    const flatKey = key.replace(/\./g, '_');
+    const flat = i18n.t(flatKey);
+    if (!isBadTranslationValue(flat, flatKey)) {
+      return String(flat).trim();
+    }
+
+    return fallback;
+  } catch {
     return fallback;
   }
-  return value;
 }
 
 function getProviderStyle(provider?: string | null, source?: OrderSource) {
@@ -555,8 +581,8 @@ export default function NotificationsScreen() {
               ? order.amount_iqd
               : card?.amount_iqd !== null && card?.amount_iqd !== undefined
               ? Number(card.amount_iqd)
-              : (card as any)?.amount !== null && (card as any)?.amount !== undefined
-              ? Number((card as any).amount)
+              : card?.amount !== null && card?.amount !== undefined
+              ? Number(card.amount)
               : null,
           price_iqd:
             order.price_iqd !== null && order.price_iqd !== undefined
@@ -575,7 +601,6 @@ export default function NotificationsScreen() {
       });
 
       setOrders(merged);
-
       await syncSuccessfulOrdersToTransactions(merged);
     } catch (error: any) {
       console.log('notifications screen error:', error);
