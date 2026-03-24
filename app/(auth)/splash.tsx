@@ -4,6 +4,7 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
+  Text,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -20,7 +21,6 @@ export default function Splash() {
   const particle2 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Main animation
     Animated.parallel([
       Animated.timing(fade, {
         toValue: 1,
@@ -34,7 +34,6 @@ export default function Splash() {
       }),
     ]).start();
 
-    // Glow loop
     Animated.loop(
       Animated.sequence([
         Animated.timing(glow, {
@@ -50,7 +49,6 @@ export default function Splash() {
       ])
     ).start();
 
-    // Particles
     Animated.loop(
       Animated.timing(particle1, {
         toValue: 1,
@@ -67,7 +65,6 @@ export default function Splash() {
       })
     ).start();
 
-    // Navigate
     setTimeout(() => {
       router.replace('/(tabs)');
     }, 3000);
@@ -90,7 +87,7 @@ export default function Splash() {
 
   return (
     <View style={styles.container}>
-      
+
       {/* particles */}
       <Animated.View
         style={[
@@ -105,7 +102,7 @@ export default function Splash() {
         ]}
       />
 
-      {/* logo */}
+      {/* LOGO (no image) */}
       <Animated.View
         style={[
           styles.logoWrap,
@@ -115,18 +112,13 @@ export default function Splash() {
           },
         ]}
       >
-        <Animated.View
-          style={[
-            styles.glow,
-            { opacity: glowOpacity },
-          ]}
-        />
+        <Animated.View style={[styles.glow, { opacity: glowOpacity }]} />
 
-        <Animated.Image
-          source={require('@/assets/images/splash.PNG')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+        <View style={styles.logoCircle}>
+          <Text style={styles.logoText}>Z</Text>
+        </View>
+
+        <Text style={styles.appName}>ZenoPay</Text>
       </Animated.View>
     </View>
   );
@@ -145,17 +137,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  logo: {
-    width: 220,
-    height: 220,
+  logoCircle: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: '#1D4ED8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#3B82F6',
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+
+  logoText: {
+    color: '#fff',
+    fontSize: 48,
+    fontWeight: '900',
+  },
+
+  appName: {
+    marginTop: 12,
+    fontSize: 20,
+    color: '#fff',
+    fontWeight: '800',
   },
 
   glow: {
     position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(59,130,246,0.25)',
   },
 
   particle: {
