@@ -108,6 +108,82 @@ function buildGiftDisplayTitle(order: GiftCardOrder) {
   return provider || title || 'Gift Card';
 }
 
+function extractValueFromNotes(notes?: string | null, labels: string[] = []) {
+  const text = String(notes || '');
+  if (!text.trim()) return '';
+
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    for (const label of labels) {
+      const normalizedLine = line.toLowerCase();
+      const normalizedLabel = `${label.toLowerCase()}:`;
+
+      if (normalizedLine.startsWith(normalizedLabel)) {
+        return line.slice(normalizedLabel.length).trim();
+      }
+    }
+  }
+
+  return '';
+}
+
+function parseOrderExtraInfo(notes?: string | null) {
+  const playerId = extractValueFromNotes(notes, [
+    'Player ID',
+    'Game ID',
+    'Player Id',
+  ]);
+
+  const pubgAccountName = extractValueFromNotes(notes, [
+    'PUBG Account Name',
+    'Pubg Account Name',
+    'Account Name',
+    'Profile Name',
+  ]);
+
+  const profileUrl = extractValueFromNotes(notes, [
+    'Profile URL',
+    'Profile Url',
+    'URL',
+    'Url',
+  ]);
+
+  return {
+    playerId,
+    pubgAccountName,
+    profileUrl,
+  };
+}
+
+function removeParsedLinesFromNotes(notes?: string | null) {
+  const text = String(notes || '');
+  if (!text.trim()) return '';
+
+  const removablePrefixes = [
+    'player id:',
+    'game id:',
+    'pubg account name:',
+    'account name:',
+    'profile name:',
+    'profile url:',
+    'url:',
+  ];
+
+  const cleaned = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => {
+      const lower = line.toLowerCase();
+      return !removablePrefixes.some((prefix) => lower.startsWith(prefix));
+    });
+
+  return cleaned.join('\n').trim();
+}
+
 export default function AdminGiftCardOrdersScreen() {
   const router = useRouter();
 
@@ -182,6 +258,8 @@ export default function AdminGiftCardOrdersScreen() {
     const q = search.trim().toLowerCase();
 
     return orders.filter((item) => {
+      const parsed = parseOrderExtraInfo(item.notes);
+
       const matchesSearch =
         !q ||
         item.card_title?.toLowerCase().includes(q) ||
@@ -192,6 +270,9 @@ export default function AdminGiftCardOrdersScreen() {
         item.user_phone?.toLowerCase().includes(q) ||
         item.notes?.toLowerCase().includes(q) ||
         item.pin_code?.toLowerCase().includes(q) ||
+        parsed.playerId.toLowerCase().includes(q) ||
+        parsed.pubgAccountName.toLowerCase().includes(q) ||
+        parsed.profileUrl.toLowerCase().includes(q) ||
         String(item.amount || '').includes(q) ||
         String(item.price_iqd || '').includes(q);
 
@@ -253,7 +334,7 @@ export default function AdminGiftCardOrdersScreen() {
 
       setSavingId(order.id);
 
-      const { data, error } = await supabase.rpc('admin_process_gift_card_order', {
+      const { error } = await supabase.rpc('admin_process_gift_card_order', {
         p_order_id: order.id,
         p_status: nextStatus,
         p_pin_code: draft.pin_code.trim() || null,
@@ -262,12 +343,7 @@ export default function AdminGiftCardOrdersScreen() {
 
       if (error) throw error;
 
-      await sendStatusEmail(
-        order,
-        nextStatus,
-        draft.pin_code.trim(),
-        draft.notes.trim()
-      );
+      await sendStatusEmail(order, nextStatus, draft.pin_code.trim(), draft.notes.trim());
 
       await fetchOrders();
 
@@ -409,7 +485,7 @@ export default function AdminGiftCardOrdersScreen() {
 
           <TextInput
             style={styles.input}
-            placeholder="Search by card, user, email, provider, pin..."
+            placeholder="Search by card, user, email, provider, player id, profile url..."
             value={search}
             onChangeText={setSearch}
             placeholderTextColor="#9CA3AF"
@@ -448,6 +524,8 @@ export default function AdminGiftCardOrdersScreen() {
             };
 
             const statusColors = getStatusColors(draft.status);
+            const parsed = parseOrderExtraInfo(order.notes);
+            const cleanNotes = removeParsedLinesFromNotes(order.notes);
 
             return (
               <View key={order.id} style={styles.orderCard}>
@@ -532,10 +610,43 @@ export default function AdminGiftCardOrdersScreen() {
                     <Text style={styles.infoValue}>{formatIQD(order.price_iqd)} IQD</Text>
                   </View>
 
+                  {!!parsed.playerId && (
+                    <View style={styles.infoBox}>
+                      <Text style={styles.infoLabel}>Player ID</Text>
+                      <Text style={styles.infoValue}>{parsed.playerId}</Text>
+                    </View>
+                  )}
+
+                  {!!parsed.pubgAccountName && (
+                    <View style={styles.infoBox}>
+                      <Text style={styles.infoLabel}>Account Name</Text>
+                      <Text style={styles.infoValue}>{parsed.pubgAccountName}</Text>
+                    </View>
+                  )}
+
+                  {!!parsed.profileUrl && (
+                    <View style={styles.infoBoxFull}>
+                      <Text style={styles.infoLabel}>Profile URL</Text>
+                      <Text style={styles.infoValue}>{parsed.profileUrl}</Text>
+                    </View>
+                  )}
+
                   <View style={styles.infoBoxFull}>
                     <Text style={styles.infoLabel}>Created At</Text>
                     <Text style={styles.infoValue}>{formatDate(order.created_at)}</Text>
                   </View>
+
+                  <View style={styles.infoBoxFull}>
+                    <Text style={styles.infoLabel}>Order ID</Text>
+                    <Text style={styles.infoValue}>{order.id}</Text>
+                  </View>
+
+                  {!!cleanNotes && (
+                    <View style={styles.infoBoxFull}>
+                      <Text style={styles.infoLabel}>Customer Notes</Text>
+                      <Text style={styles.infoValue}>{cleanNotes}</Text>
+                    </View>
+                  )}
                 </View>
 
                 <Text style={styles.inputLabel}>Status</Text>
