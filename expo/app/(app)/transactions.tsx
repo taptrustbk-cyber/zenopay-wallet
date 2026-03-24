@@ -12,11 +12,11 @@ import {
   Modal,
   ScrollView,
   Alert,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
@@ -361,7 +361,9 @@ const isAdminAddTransaction = (tx: TransactionData) => {
     text.includes('admin add money') ||
     text.includes('zenopay add money') ||
     text.includes('admin_adjustment_add') ||
-    text.includes('balance added by admin')
+    text.includes('balance added by admin') ||
+    text.includes('add balance via admin') ||
+    text.includes('add balance via zenopay')
   );
 };
 
@@ -390,9 +392,96 @@ const isAdminWithdrawTransaction = (tx: TransactionData) => {
     text.includes('admin withdraw money') ||
     text.includes('zenopay withdraw money') ||
     text.includes('admin_adjustment_withdraw') ||
-    text.includes('balance withdrawn by admin')
+    text.includes('balance withdrawn by admin') ||
+    text.includes('withdraw balance via admin') ||
+    text.includes('withdraw balance via zenopay')
   );
 };
+
+function ZenopayZIcon({ size = 26 }: { size?: number }) {
+  return (
+    <View
+      style={{
+        width: size + 14,
+        height: size + 14,
+        borderRadius: 999,
+        backgroundColor: UI.primarySoft,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text
+        style={{
+          color: UI.primaryDark,
+          fontSize: size * 0.82,
+          fontWeight: '900',
+          lineHeight: size * 0.9,
+        }}
+      >
+        Z
+      </Text>
+    </View>
+  );
+}
+
+function CachedSquareImage({
+  uri,
+  size,
+  radius,
+  fallbackIcon,
+  fallbackZ,
+}: {
+  uri?: string | null;
+  size: number;
+  radius: number;
+  fallbackIcon?: keyof typeof Ionicons.glyphMap;
+  fallbackZ?: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+  const validUri = !!safe(uri) && !failed;
+
+  if (validUri) {
+    return (
+      <ExpoImage
+        source={{ uri: String(uri) }}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: radius,
+          backgroundColor: '#EFF5FF',
+        }}
+        contentFit="cover"
+        transition={0}
+        cachePolicy="memory-disk"
+        recyclingKey={String(uri)}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: radius,
+        backgroundColor: '#EFF5FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {fallbackZ ? (
+        <ZenopayZIcon size={Math.max(18, size * 0.34)} />
+      ) : (
+        <Ionicons
+          name={fallbackIcon || 'image-outline'}
+          size={Math.max(20, size * 0.34)}
+          color={UI.primary}
+        />
+      )}
+    </View>
+  );
+}
 
 export default function TransactionsScreen() {
   const router = useRouter();
@@ -422,7 +511,7 @@ export default function TransactionsScreen() {
   }, []);
 
   const transactionsQuery = useQuery({
-    queryKey: ['transactions-rich-final-v5', myId],
+    queryKey: ['transactions-rich-final-v6', myId],
     enabled: !!myId,
     staleTime: 0,
     gcTime: 0,
@@ -627,25 +716,34 @@ export default function TransactionsScreen() {
 
       if (isAdminAddTransaction(tx)) {
         return {
-          title: tOr('transactions_zenopayAddMoney', 'Zenopay Add Money'),
-          subtitleLine1: tOr(
-            'transactions_youReceivedMoneyFromZenopayApp',
-            'You received money from Zenopay app'
+          title: tOr('transactions_addBalanceViaAdmin', 'Add Balance via Zenopay'),
+          subtitleLine1: APP_SYSTEM_NAME,
+          subtitleLine2: tOr(
+            'transactions_balanceReceivedFromZenopay',
+            'Balance received from Zenopay'
           ),
-          subtitleLine2: undefined,
           iconName: APP_SYSTEM_ICON,
           isOutgoing: false,
           verified: true,
-          displayName: APP_SYSTEM_NAME,
-          displaySecondary: tOr('transactions_typeDeposit', 'Deposit'),
+          displayName: tOr('transactions_addBalanceViaAdmin', 'Add Balance via Zenopay'),
+          displaySecondary: tOr(
+            'transactions_balanceReceivedFromZenopay',
+            'Balance received from Zenopay'
+          ),
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
           displayImage: null,
-          transactionTypeLabel: tOr('transactions_typeDeposit', 'Deposit'),
+          transactionTypeLabel: tOr(
+            'transactions_balanceReceivedFromZenopay',
+            'Balance received from Zenopay'
+          ),
           note:
             desc ||
-            tOr('transactions_zenopayAddedMoneyToWallet', 'Zenopay added money to your wallet'),
+            tOr(
+              'transactions_zenopayAddedMoneyToWallet',
+              'Zenopay added money to your wallet'
+            ),
           adminNote: metaAdminNote || undefined,
           kind: 'admin_add',
         };
@@ -653,25 +751,34 @@ export default function TransactionsScreen() {
 
       if (isAdminWithdrawTransaction(tx)) {
         return {
-          title: tOr('transactions_zenopayWithdrawMoney', 'Zenopay Withdraw Money'),
-          subtitleLine1: tOr(
-            'transactions_zenopayWithdrewMoneyFromWallet',
-            'Zenopay withdrew money from your wallet'
+          title: tOr('transactions_withdrawBalanceViaAdmin', 'Withdraw Balance via Zenopay'),
+          subtitleLine1: APP_SYSTEM_NAME,
+          subtitleLine2: tOr(
+            'transactions_balanceWithdrawnByZenopay',
+            'Balance withdrawn by Zenopay'
           ),
-          subtitleLine2: undefined,
           iconName: APP_SYSTEM_ICON,
           isOutgoing: true,
           verified: true,
-          displayName: APP_SYSTEM_NAME,
-          displaySecondary: tOr('transactions_typeWithdraw', 'Withdraw'),
+          displayName: tOr('transactions_withdrawBalanceViaAdmin', 'Withdraw Balance via Zenopay'),
+          displaySecondary: tOr(
+            'transactions_balanceWithdrawnByZenopay',
+            'Balance withdrawn by Zenopay'
+          ),
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
           displayImage: null,
-          transactionTypeLabel: tOr('transactions_typeWithdraw', 'Withdraw'),
+          transactionTypeLabel: tOr(
+            'transactions_balanceWithdrawnByZenopay',
+            'Balance withdrawn by Zenopay'
+          ),
           note:
             desc ||
-            tOr('transactions_zenopayWithdrewMoneyFromWallet', 'Zenopay withdrew money from your wallet'),
+            tOr(
+              'transactions_zenopayWithdrewMoneyFromWallet',
+              'Zenopay withdrew money from your wallet'
+            ),
           adminNote: metaAdminNote || undefined,
           kind: 'admin_withdraw',
         };
@@ -1236,12 +1343,33 @@ export default function TransactionsScreen() {
   }, [selectedTx, buildTransactionHtml]);
 
   const renderLeadingVisual = (ui: TxUi) => {
+    const useZFallback =
+      ui.kind === 'deposit' ||
+      ui.kind === 'withdraw' ||
+      ui.kind === 'admin_add' ||
+      ui.kind === 'admin_withdraw';
+
     if ((ui.kind === 'send' || ui.kind === 'receive') && ui.displayAvatar) {
-      return <Image source={{ uri: ui.displayAvatar }} style={styles.txAvatarImage} />;
+      return (
+        <CachedSquareImage
+          uri={ui.displayAvatar}
+          size={56}
+          radius={18}
+          fallbackIcon="person-outline"
+        />
+      );
     }
 
     if (ui.displayImage) {
-      return <Image source={{ uri: ui.displayImage }} style={styles.txAvatarImage} />;
+      return (
+        <CachedSquareImage
+          uri={ui.displayImage}
+          size={56}
+          radius={18}
+          fallbackIcon={ui.iconName}
+          fallbackZ={useZFallback}
+        />
+      );
     }
 
     let bg = UI.blueSoft;
@@ -1271,7 +1399,11 @@ export default function TransactionsScreen() {
 
     return (
       <View style={[styles.txIconBox, { backgroundColor: bg }]}>
-        <Ionicons name={icon} size={22} color={iconColor} />
+        {useZFallback ? (
+          <ZenopayZIcon size={22} />
+        ) : (
+          <Ionicons name={icon} size={22} color={iconColor} />
+        )}
       </View>
     );
   };
@@ -1375,7 +1507,9 @@ export default function TransactionsScreen() {
       ui.kind !== 'giftcard' &&
       ui.kind !== 'virtual_card' &&
       ui.kind !== 'deposit' &&
-      ui.kind !== 'withdraw'
+      ui.kind !== 'withdraw' &&
+      ui.kind !== 'admin_add' &&
+      ui.kind !== 'admin_withdraw'
     ) {
       return null;
     }
@@ -1418,7 +1552,13 @@ export default function TransactionsScreen() {
             )
           : null}
 
-        {ui.kind !== 'sim' && ui.kind !== 'deposit' && ui.kind !== 'withdraw' && ui.kind !== 'virtual_card' && ui.detailModel
+        {ui.kind !== 'sim' &&
+        ui.kind !== 'deposit' &&
+        ui.kind !== 'withdraw' &&
+        ui.kind !== 'admin_add' &&
+        ui.kind !== 'admin_withdraw' &&
+        ui.kind !== 'virtual_card' &&
+        ui.detailModel
           ? renderDetailRow(tOr('transactions_item', 'Item'), ui.detailModel, false, UI.text)
           : null}
 
@@ -1439,7 +1579,7 @@ export default function TransactionsScreen() {
             )
           : null}
 
-        {ui.detailQuantity && ui.kind === 'mobile'
+        {ui.kind === 'mobile' && ui.detailQuantity
           ? renderDetailRow(tOr('transactions_quantity', 'Quantity'), String(ui.detailQuantity), false, UI.text)
           : null}
 
@@ -1705,31 +1845,49 @@ export default function TransactionsScreen() {
 
                   <View style={styles.detailPartyBox}>
                     {(selectedUi.kind === 'send' || selectedUi.kind === 'receive') && selectedUi.displayAvatar ? (
-                      <Image source={{ uri: selectedUi.displayAvatar }} style={styles.partyAvatarImage} />
+                      <CachedSquareImage
+                        uri={selectedUi.displayAvatar}
+                        size={66}
+                        radius={18}
+                        fallbackIcon="person-outline"
+                      />
                     ) : selectedUi.displayImage ? (
-                      <Image source={{ uri: selectedUi.displayImage }} style={styles.partyAvatarImage} />
+                      <CachedSquareImage
+                        uri={selectedUi.displayImage}
+                        size={66}
+                        radius={18}
+                        fallbackIcon={selectedUi.iconName}
+                        fallbackZ={
+                          selectedUi.kind === 'deposit' ||
+                          selectedUi.kind === 'withdraw' ||
+                          selectedUi.kind === 'admin_add' ||
+                          selectedUi.kind === 'admin_withdraw'
+                        }
+                      />
                     ) : (
                       <View style={styles.partyFallbackAvatar}>
-                        <Ionicons
-                          name={
-                            selectedUi.kind === 'deposit' ||
-                            selectedUi.kind === 'withdraw' ||
-                            selectedUi.kind === 'admin_add' ||
-                            selectedUi.kind === 'admin_withdraw'
-                              ? APP_SYSTEM_ICON
-                              : selectedUi.kind === 'virtual_card'
-                              ? 'card-outline'
-                              : selectedUi.iconName
-                          }
-                          size={26}
-                          color={
-                            selectedUi.kind === 'mobile'
-                              ? UI.purple
-                              : selectedUi.kind === 'mobile_refund'
-                              ? UI.blue
-                              : UI.blue
-                          }
-                        />
+                        {selectedUi.kind === 'deposit' ||
+                        selectedUi.kind === 'withdraw' ||
+                        selectedUi.kind === 'admin_add' ||
+                        selectedUi.kind === 'admin_withdraw' ? (
+                          <ZenopayZIcon size={26} />
+                        ) : (
+                          <Ionicons
+                            name={
+                              selectedUi.kind === 'virtual_card'
+                                ? 'card-outline'
+                                : selectedUi.iconName
+                            }
+                            size={26}
+                            color={
+                              selectedUi.kind === 'mobile'
+                                ? UI.purple
+                                : selectedUi.kind === 'mobile_refund'
+                                ? UI.blue
+                                : UI.blue
+                            }
+                          />
+                        )}
                       </View>
                     )}
 
@@ -1766,6 +1924,8 @@ export default function TransactionsScreen() {
                   selectedUi.kind !== 'sim' &&
                   selectedUi.kind !== 'giftcard' &&
                   selectedUi.kind !== 'virtual_card' &&
+                  selectedUi.kind !== 'admin_add' &&
+                  selectedUi.kind !== 'admin_withdraw' &&
                   renderDetailRow(
                     tOr('transactions_transactionAmount', 'Transaction Amount'),
                     formatIQD(Math.abs(Number(selectedTx.amount || 0))),
@@ -1778,6 +1938,8 @@ export default function TransactionsScreen() {
                   selectedUi.kind !== 'sim' &&
                   selectedUi.kind !== 'giftcard' &&
                   selectedUi.kind !== 'virtual_card' &&
+                  selectedUi.kind !== 'admin_add' &&
+                  selectedUi.kind !== 'admin_withdraw' &&
                   renderDetailRow(
                     tOr('transactions_transactionFee', 'Transaction Fee'),
                     formatIQD(Number(selectedTx.fee_amount || 0)),
@@ -1949,14 +2111,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-  },
-
-  txAvatarImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    marginRight: 12,
-    backgroundColor: '#EFF5FF',
   },
 
   txInfo: {
@@ -2197,13 +2351,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-  },
-
-  partyAvatarImage: {
-    width: 66,
-    height: 66,
-    borderRadius: 18,
-    backgroundColor: '#EFF5FF',
   },
 
   partyFallbackAvatar: {
