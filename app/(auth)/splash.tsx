@@ -330,6 +330,7 @@ export default function SplashScreen() {
             opacity: textFadeAnim,
             transform: [{ translateY: textSlideAnim }],
             alignItems: 'center',
+            marginTop: 34,
           }}
         >
           <Text style={styles.appName}>ZenoPay</Text>
@@ -356,7 +357,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 18,
+    marginBottom: 0,
   },
 
   logoCircle: {
