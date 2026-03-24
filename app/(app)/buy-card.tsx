@@ -8,6 +8,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -21,6 +22,7 @@ import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 
 type CardType = 'sim' | 'gift' | 'topup';
+type ExtraInputType = 'none' | 'player_id' | 'game_id' | 'profile_url' | 'text';
 
 type WalletRow = {
   id: string;
@@ -60,6 +62,60 @@ type TopupCardRow = {
   item_image_url?: string | null;
   provider_image_url?: string | null;
 };
+
+type GiftInputRule = {
+  keywords: string[];
+  type: ExtraInputType;
+  label: string;
+  placeholder: string;
+  keyboardType?: 'default' | 'url';
+  multiline?: boolean;
+};
+
+const GIFT_INPUT_RULES: GiftInputRule[] = [
+  {
+    keywords: ['pubg', 'uc'],
+    type: 'game_id',
+    label: 'Player ID / Game ID',
+    placeholder: 'Enter your PUBG Player ID',
+    keyboardType: 'default',
+  },
+  {
+    keywords: ['free fire', 'diamond'],
+    type: 'game_id',
+    label: 'Player ID / Game ID',
+    placeholder: 'Enter your Free Fire ID',
+    keyboardType: 'default',
+  },
+  {
+    keywords: ['instagram', 'insta'],
+    type: 'profile_url',
+    label: 'Profile URL',
+    placeholder: 'Paste your Instagram profile URL',
+    keyboardType: 'url',
+  },
+  {
+    keywords: ['tiktok'],
+    type: 'profile_url',
+    label: 'Profile URL',
+    placeholder: 'Paste your TikTok profile URL',
+    keyboardType: 'url',
+  },
+  {
+    keywords: ['facebook'],
+    type: 'profile_url',
+    label: 'Profile URL',
+    placeholder: 'Paste your Facebook profile URL',
+    keyboardType: 'url',
+  },
+  {
+    keywords: ['telegram'],
+    type: 'profile_url',
+    label: 'Profile URL',
+    placeholder: 'Paste your Telegram profile URL',
+    keyboardType: 'url',
+  },
+];
 
 const providerConfig: Record<string, { color: string; bgColor: string; logo: string }> = {
   korek: {
@@ -244,6 +300,59 @@ function buildGiftAmountLabel(params: {
   return formatNumberOnly(amount);
 }
 
+function detectGiftInputRule(params: {
+  type: CardType;
+  cardName?: string | null;
+  provider?: string | null;
+  brand?: string | null;
+  category?: string | null;
+}) {
+  if (params.type !== 'gift') {
+    return {
+      type: 'none' as ExtraInputType,
+      label: '',
+      placeholder: '',
+      keyboardType: 'default' as const,
+      multiline: false,
+    };
+  }
+
+  const joined = [
+    params.cardName,
+    params.provider,
+    params.brand,
+    params.category,
+  ]
+    .map((x) => normalizeText(x))
+    .join(' ');
+
+  const matched = GIFT_INPUT_RULES.find((rule) =>
+    rule.keywords.some((keyword) => joined.includes(normalizeText(keyword)))
+  );
+
+  if (!matched) {
+    return {
+      type: 'none' as ExtraInputType,
+      label: '',
+      placeholder: '',
+      keyboardType: 'default' as const,
+      multiline: false,
+    };
+  }
+
+  return {
+    type: matched.type,
+    label: matched.label,
+    placeholder: matched.placeholder,
+    keyboardType: matched.keyboardType || 'default',
+    multiline: !!matched.multiline,
+  };
+}
+
+function isValidProfileUrl(value: string) {
+  return /^https?:\/\/.+/i.test(String(value || '').trim());
+}
+
 export default function BuyCardScreen() {
   useTheme();
 
@@ -270,6 +379,7 @@ export default function BuyCardScreen() {
     toNumberSafe(params.price);
 
   const [orderCreated, setOrderCreated] = useState(false);
+  const [extraInputValue, setExtraInputValue] = useState('');
 
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
@@ -332,7 +442,7 @@ export default function BuyCardScreen() {
         .eq('id', cardId)
         .maybeSingle();
 
-        if (error) throw error;
+      if (error) throw error;
       return data as TopupCardRow | null;
     },
   });
@@ -434,6 +544,28 @@ export default function BuyCardScreen() {
     return i18n.t('buyCard.mobileCard') || 'Mobile Card';
   }, [type]);
 
+  const extraInputRule = useMemo(() => {
+    const giftCard = dbCard as GiftCardRow | null;
+
+    return detectGiftInputRule({
+      type,
+      cardName,
+      provider,
+      brand: giftCard?.brand,
+      category: giftCard?.category,
+    });
+  }, [type, cardName, provider, dbCard]);
+
+  const requiresExtraInput = extraInputRule.type !== 'none';
+
+  const extraInputSummaryLabel = useMemo(() => {
+    if (extraInputRule.type === 'game_id') return 'Game ID';
+    if (extraInputRule.type === 'player_id') return 'Player ID';
+    if (extraInputRule.type === 'profile_url') return 'Profile URL';
+    if (extraInputRule.type === 'text') return extraInputRule.label || 'Required Info';
+    return '';
+  }, [extraInputRule]);
+
   const purchaseMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) {
@@ -444,6 +576,14 @@ export default function BuyCardScreen() {
       }
       if (priceIqd <= 0) {
         throw new Error('Price IQD is missing. Please set price_iqd in admin.');
+      }
+
+      if (requiresExtraInput && !extraInputValue.trim()) {
+        throw new Error(`Please enter ${extraInputRule.label || 'required information'}.`);
+      }
+
+      if (extraInputRule.type === 'profile_url' && !isValidProfileUrl(extraInputValue)) {
+        throw new Error('Please enter a valid profile URL.');
       }
 
       const currentBalance = Number(walletQuery.data.balance || 0);
@@ -467,6 +607,10 @@ export default function BuyCardScreen() {
 
       try {
         if (type === 'gift') {
+          const extraNotes = requiresExtraInput
+            ? `${extraInputSummaryLabel}: ${extraInputValue.trim()}`
+            : null;
+
           const giftOrderPayload = {
             user_id: user.id,
             gift_card_id: cardId || null,
@@ -478,7 +622,7 @@ export default function BuyCardScreen() {
             image_url: finalImage || null,
             status: 'pending',
             pin_code: null,
-            notes: null,
+            notes: extraNotes,
             user_name: profile?.full_name || '',
             user_email: profile?.email || user.email || '',
             user_phone: profile?.phone || '',
@@ -551,11 +695,31 @@ export default function BuyCardScreen() {
       return;
     }
 
+    if (requiresExtraInput && !extraInputValue.trim()) {
+      Alert.alert(
+        i18n.t('common.error') || 'Error',
+        `Please enter ${extraInputRule.label || 'required information'}.`
+      );
+      return;
+    }
+
+    if (extraInputRule.type === 'profile_url' && !isValidProfileUrl(extraInputValue)) {
+      Alert.alert(
+        i18n.t('common.error') || 'Error',
+        'Please enter a valid profile URL.'
+      );
+      return;
+    }
+
+    const extraMessage = requiresExtraInput
+      ? `\n${extraInputSummaryLabel}: ${extraInputValue.trim()}`
+      : '';
+
     Alert.alert(
       i18n.t('buyCard.confirmPurchaseTitle') || 'Confirm Purchase',
       `${i18n.t('buyCard.purchaseConfirmMessage') || 'Do you want to buy'} ${cardName} ${
         i18n.t('buyCard.for') || 'for'
-      } ${formatIQDLocal(priceIqd)}?`,
+      } ${formatIQDLocal(priceIqd)}?${extraMessage}`,
       [
         {
           text: i18n.t('common.cancel') || 'Cancel',
@@ -655,6 +819,13 @@ export default function BuyCardScreen() {
               <Text style={styles.detailLabel}>{i18n.t('buyCard.priceIqd') || 'Price IQD'}</Text>
               <Text style={styles.detailValue}>{formatIQDLocal(priceIqd)}</Text>
             </View>
+
+            {requiresExtraInput && !!extraInputValue.trim() && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>{extraInputSummaryLabel}</Text>
+                <Text style={styles.detailValue}>{extraInputValue.trim()}</Text>
+              </View>
+            )}
           </View>
 
           <TouchableOpacity style={styles.primaryButton} onPress={openNotifications} activeOpacity={0.9}>
@@ -708,6 +879,11 @@ export default function BuyCardScreen() {
             </View>
 
             <Text style={styles.cardName}>{cardName}</Text>
+
+            {!!displayAmount && (
+              <Text style={styles.cardSubAmount}>{displayAmount}</Text>
+            )}
+
             <Text style={styles.cardPriceIqd}>{formatIQDLocal(priceIqd)}</Text>
           </View>
 
@@ -732,6 +908,34 @@ export default function BuyCardScreen() {
               <Text style={styles.infoValue}>{formatIQDLocal(priceIqd)}</Text>
             </View>
           </View>
+
+          {requiresExtraInput && (
+            <View style={styles.inputCard}>
+              <Text style={styles.inputTitle}>
+                {extraInputRule.label || 'Required information'}
+              </Text>
+              <Text style={styles.inputSubtitle}>
+                {extraInputRule.type === 'profile_url'
+                  ? 'This information will be sent to admin with your order.'
+                  : 'Enter the correct ID so admin can deliver your order correctly.'}
+              </Text>
+
+              <TextInput
+                value={extraInputValue}
+                onChangeText={setExtraInputValue}
+                placeholder={extraInputRule.placeholder || 'Enter required information'}
+                placeholderTextColor={UI.text3}
+                style={[
+                  styles.inputField,
+                  extraInputRule.multiline && styles.inputFieldMultiline,
+                ]}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType={extraInputRule.keyboardType === 'url' ? 'url' : 'default'}
+                multiline={extraInputRule.multiline}
+              />
+            </View>
+          )}
 
           <View style={styles.balanceCard}>
             <Text style={styles.balanceLabel}>{i18n.t('buyCard.yourBalance') || 'Your Balance'}</Text>
@@ -902,6 +1106,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: UI.text,
   },
+  cardSubAmount: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: UI.text,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
   cardPriceIqd: {
     fontSize: 28,
     fontWeight: '900',
@@ -935,6 +1146,45 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
     color: UI.text,
+  },
+
+  inputCard: {
+    backgroundColor: UI.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: UI.border,
+    padding: 14,
+    marginBottom: 14,
+    ...SHADOWS.soft,
+  },
+  inputTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: UI.text,
+    marginBottom: 6,
+  },
+  inputSubtitle: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: UI.textSoft,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  inputField: {
+    minHeight: 54,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: UI.border,
+    backgroundColor: '#F8FBFF',
+    paddingHorizontal: 14,
+    color: UI.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  inputFieldMultiline: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+    paddingTop: 14,
   },
 
   balanceCard: {
