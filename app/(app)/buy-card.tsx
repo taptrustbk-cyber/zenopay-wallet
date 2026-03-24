@@ -66,8 +66,11 @@ type TopupCardRow = {
 type GiftInputRule = {
   keywords: string[];
   type: ExtraInputType;
-  label: string;
-  placeholder: string;
+  labelKey: string;
+  placeholderKey: string;
+  subtitleKey?: string;
+  optionalNameKey?: string;
+  optionalNamePlaceholderKey?: string;
   keyboardType?: 'default' | 'url';
   multiline?: boolean;
 };
@@ -76,43 +79,51 @@ const GIFT_INPUT_RULES: GiftInputRule[] = [
   {
     keywords: ['pubg', 'uc'],
     type: 'game_id',
-    label: 'Player ID / Game ID',
-    placeholder: 'Enter your PUBG Player ID',
+    labelKey: 'buyCard.playerIdLabel',
+    placeholderKey: 'buyCard.enterYourPlayerId',
+    subtitleKey: 'buyCard.pubgPlayerIdHelp',
+    optionalNameKey: 'buyCard.pubgAccountNameOptional',
+    optionalNamePlaceholderKey: 'buyCard.enterPubgAccountNameOptional',
     keyboardType: 'default',
   },
   {
     keywords: ['free fire', 'diamond'],
     type: 'game_id',
-    label: 'Player ID / Game ID',
-    placeholder: 'Enter your Free Fire ID',
+    labelKey: 'buyCard.playerIdLabel',
+    placeholderKey: 'buyCard.enterYourPlayerId',
+    subtitleKey: 'buyCard.gameIdHelp',
     keyboardType: 'default',
   },
   {
     keywords: ['instagram', 'insta'],
     type: 'profile_url',
-    label: 'Profile URL',
-    placeholder: 'Paste your Instagram profile URL',
+    labelKey: 'buyCard.profileUrlLabel',
+    placeholderKey: 'buyCard.enterProfileUrl',
+    subtitleKey: 'buyCard.profileUrlHelp',
     keyboardType: 'url',
   },
   {
     keywords: ['tiktok'],
     type: 'profile_url',
-    label: 'Profile URL',
-    placeholder: 'Paste your TikTok profile URL',
+    labelKey: 'buyCard.profileUrlLabel',
+    placeholderKey: 'buyCard.enterProfileUrl',
+    subtitleKey: 'buyCard.profileUrlHelp',
     keyboardType: 'url',
   },
   {
     keywords: ['facebook'],
     type: 'profile_url',
-    label: 'Profile URL',
-    placeholder: 'Paste your Facebook profile URL',
+    labelKey: 'buyCard.profileUrlLabel',
+    placeholderKey: 'buyCard.enterProfileUrl',
+    subtitleKey: 'buyCard.profileUrlHelp',
     keyboardType: 'url',
   },
   {
     keywords: ['telegram'],
     type: 'profile_url',
-    label: 'Profile URL',
-    placeholder: 'Paste your Telegram profile URL',
+    labelKey: 'buyCard.profileUrlLabel',
+    placeholderKey: 'buyCard.enterProfileUrl',
+    subtitleKey: 'buyCard.profileUrlHelp',
     keyboardType: 'url',
   },
 ];
@@ -310,8 +321,11 @@ function detectGiftInputRule(params: {
   if (params.type !== 'gift') {
     return {
       type: 'none' as ExtraInputType,
-      label: '',
-      placeholder: '',
+      labelKey: '',
+      placeholderKey: '',
+      subtitleKey: '',
+      optionalNameKey: '',
+      optionalNamePlaceholderKey: '',
       keyboardType: 'default' as const,
       multiline: false,
     };
@@ -333,8 +347,11 @@ function detectGiftInputRule(params: {
   if (!matched) {
     return {
       type: 'none' as ExtraInputType,
-      label: '',
-      placeholder: '',
+      labelKey: '',
+      placeholderKey: '',
+      subtitleKey: '',
+      optionalNameKey: '',
+      optionalNamePlaceholderKey: '',
       keyboardType: 'default' as const,
       multiline: false,
     };
@@ -342,8 +359,11 @@ function detectGiftInputRule(params: {
 
   return {
     type: matched.type,
-    label: matched.label,
-    placeholder: matched.placeholder,
+    labelKey: matched.labelKey,
+    placeholderKey: matched.placeholderKey,
+    subtitleKey: matched.subtitleKey || '',
+    optionalNameKey: matched.optionalNameKey || '',
+    optionalNamePlaceholderKey: matched.optionalNamePlaceholderKey || '',
     keyboardType: matched.keyboardType || 'default',
     multiline: !!matched.multiline,
   };
@@ -380,6 +400,7 @@ export default function BuyCardScreen() {
 
   const [orderCreated, setOrderCreated] = useState(false);
   const [extraInputValue, setExtraInputValue] = useState('');
+  const [optionalAccountName, setOptionalAccountName] = useState('');
 
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
@@ -557,12 +578,16 @@ export default function BuyCardScreen() {
   }, [type, cardName, provider, dbCard]);
 
   const requiresExtraInput = extraInputRule.type !== 'none';
+  const showOptionalPubgName =
+    requiresExtraInput &&
+    extraInputRule.type === 'game_id' &&
+    !!extraInputRule.optionalNameKey;
 
   const extraInputSummaryLabel = useMemo(() => {
-    if (extraInputRule.type === 'game_id') return 'Game ID';
-    if (extraInputRule.type === 'player_id') return 'Player ID';
-    if (extraInputRule.type === 'profile_url') return 'Profile URL';
-    if (extraInputRule.type === 'text') return extraInputRule.label || 'Required Info';
+    if (extraInputRule.type === 'game_id') return i18n.t('buyCard.playerIdSummaryLabel') || 'Player ID';
+    if (extraInputRule.type === 'player_id') return i18n.t('buyCard.playerIdSummaryLabel') || 'Player ID';
+    if (extraInputRule.type === 'profile_url') return i18n.t('buyCard.profileUrlSummaryLabel') || 'Profile URL';
+    if (extraInputRule.type === 'text') return i18n.t('buyCard.requiredInfoSummaryLabel') || 'Required Info';
     return '';
   }, [extraInputRule]);
 
@@ -579,11 +604,13 @@ export default function BuyCardScreen() {
       }
 
       if (requiresExtraInput && !extraInputValue.trim()) {
-        throw new Error(`Please enter ${extraInputRule.label || 'required information'}.`);
+        throw new Error(
+          i18n.t('buyCard.enterRequiredInformation') || 'Please enter required information.'
+        );
       }
 
       if (extraInputRule.type === 'profile_url' && !isValidProfileUrl(extraInputValue)) {
-        throw new Error('Please enter a valid profile URL.');
+        throw new Error(i18n.t('buyCard.invalidProfileUrl') || 'Please enter a valid profile URL.');
       }
 
       const currentBalance = Number(walletQuery.data.balance || 0);
@@ -607,9 +634,19 @@ export default function BuyCardScreen() {
 
       try {
         if (type === 'gift') {
-          const extraNotes = requiresExtraInput
-            ? `${extraInputSummaryLabel}: ${extraInputValue.trim()}`
-            : null;
+          const noteLines: string[] = [];
+
+          if (requiresExtraInput && extraInputValue.trim()) {
+            noteLines.push(`${extraInputSummaryLabel}: ${extraInputValue.trim()}`);
+          }
+
+          if (showOptionalPubgName && optionalAccountName.trim()) {
+            noteLines.push(
+              `${i18n.t('buyCard.pubgAccountNameSummaryLabel') || 'PUBG Account Name'}: ${optionalAccountName.trim()}`
+            );
+          }
+
+          const extraNotes = noteLines.length ? noteLines.join('\n') : null;
 
           const giftOrderPayload = {
             user_id: user.id,
@@ -677,6 +714,7 @@ export default function BuyCardScreen() {
       await queryClient.invalidateQueries({ queryKey: ['notifications_orders', user?.id] });
       await queryClient.invalidateQueries({ queryKey: ['topup_orders'] });
       await queryClient.invalidateQueries({ queryKey: ['gift_card_orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['admin_gift_card_orders'] });
     },
     onError: (error: any) => {
       Alert.alert(
@@ -698,7 +736,7 @@ export default function BuyCardScreen() {
     if (requiresExtraInput && !extraInputValue.trim()) {
       Alert.alert(
         i18n.t('common.error') || 'Error',
-        `Please enter ${extraInputRule.label || 'required information'}.`
+        i18n.t('buyCard.enterRequiredInformation') || 'Please enter required information.'
       );
       return;
     }
@@ -706,14 +744,24 @@ export default function BuyCardScreen() {
     if (extraInputRule.type === 'profile_url' && !isValidProfileUrl(extraInputValue)) {
       Alert.alert(
         i18n.t('common.error') || 'Error',
-        'Please enter a valid profile URL.'
+        i18n.t('buyCard.invalidProfileUrl') || 'Please enter a valid profile URL.'
       );
       return;
     }
 
-    const extraMessage = requiresExtraInput
-      ? `\n${extraInputSummaryLabel}: ${extraInputValue.trim()}`
-      : '';
+    const confirmLines: string[] = [];
+
+    if (requiresExtraInput && extraInputValue.trim()) {
+      confirmLines.push(`${extraInputSummaryLabel}: ${extraInputValue.trim()}`);
+    }
+
+    if (showOptionalPubgName && optionalAccountName.trim()) {
+      confirmLines.push(
+        `${i18n.t('buyCard.pubgAccountNameSummaryLabel') || 'PUBG Account Name'}: ${optionalAccountName.trim()}`
+      );
+    }
+
+    const extraMessage = confirmLines.length ? `\n${confirmLines.join('\n')}` : '';
 
     Alert.alert(
       i18n.t('buyCard.confirmPurchaseTitle') || 'Confirm Purchase',
@@ -826,6 +874,15 @@ export default function BuyCardScreen() {
                 <Text style={styles.detailValue}>{extraInputValue.trim()}</Text>
               </View>
             )}
+
+            {showOptionalPubgName && !!optionalAccountName.trim() && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>
+                  {i18n.t('buyCard.pubgAccountNameSummaryLabel') || 'PUBG Account Name'}
+                </Text>
+                <Text style={styles.detailValue}>{optionalAccountName.trim()}</Text>
+              </View>
+            )}
           </View>
 
           <TouchableOpacity style={styles.primaryButton} onPress={openNotifications} activeOpacity={0.9}>
@@ -880,9 +937,7 @@ export default function BuyCardScreen() {
 
             <Text style={styles.cardName}>{cardName}</Text>
 
-            {!!displayAmount && (
-              <Text style={styles.cardSubAmount}>{displayAmount}</Text>
-            )}
+            {!!displayAmount && <Text style={styles.cardSubAmount}>{displayAmount}</Text>}
 
             <Text style={styles.cardPriceIqd}>{formatIQDLocal(priceIqd)}</Text>
           </View>
@@ -912,18 +967,23 @@ export default function BuyCardScreen() {
           {requiresExtraInput && (
             <View style={styles.inputCard}>
               <Text style={styles.inputTitle}>
-                {extraInputRule.label || 'Required information'}
+                {i18n.t(extraInputRule.labelKey) || i18n.t('buyCard.requiredInformation') || 'Required information'}
               </Text>
+
               <Text style={styles.inputSubtitle}>
-                {extraInputRule.type === 'profile_url'
-                  ? 'This information will be sent to admin with your order.'
-                  : 'Enter the correct ID so admin can deliver your order correctly.'}
+                {extraInputRule.subtitleKey
+                  ? i18n.t(extraInputRule.subtitleKey)
+                  : i18n.t('buyCard.defaultInputHelp') || 'This information will be sent to admin with your order.'}
               </Text>
 
               <TextInput
                 value={extraInputValue}
                 onChangeText={setExtraInputValue}
-                placeholder={extraInputRule.placeholder || 'Enter required information'}
+                placeholder={
+                  i18n.t(extraInputRule.placeholderKey) ||
+                  i18n.t('buyCard.enterRequiredInformation') ||
+                  'Please enter required information.'
+                }
                 placeholderTextColor={UI.text3}
                 style={[
                   styles.inputField,
@@ -934,6 +994,27 @@ export default function BuyCardScreen() {
                 keyboardType={extraInputRule.keyboardType === 'url' ? 'url' : 'default'}
                 multiline={extraInputRule.multiline}
               />
+
+              {showOptionalPubgName && (
+                <View style={styles.optionalBlock}>
+                  <Text style={styles.optionalLabel}>
+                    {i18n.t(extraInputRule.optionalNameKey) || 'Enter name your PUBG account (optional)'}
+                  </Text>
+
+                  <TextInput
+                    value={optionalAccountName}
+                    onChangeText={setOptionalAccountName}
+                    placeholder={
+                      i18n.t(extraInputRule.optionalNamePlaceholderKey) ||
+                      'Enter your PUBG account name (optional)'
+                    }
+                    placeholderTextColor={UI.text3}
+                    style={styles.inputField}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                  />
+                </View>
+              )}
             </View>
           )}
 
@@ -1185,6 +1266,16 @@ const styles = StyleSheet.create({
     minHeight: 100,
     textAlignVertical: 'top',
     paddingTop: 14,
+  },
+  optionalBlock: {
+    marginTop: 12,
+  },
+  optionalLabel: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: UI.textSoft,
+    fontWeight: '700',
+    marginBottom: 8,
   },
 
   balanceCard: {
