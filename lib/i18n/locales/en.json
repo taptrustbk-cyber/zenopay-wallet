@@ -765,6 +765,11 @@
   "notifications": {
     "title": "Notifications",
     "mobileCards": "Mobile Card Orders",
+    "giftCardLabel": "Gift Card",
+"submittedInfo": "Submitted Info",
+"playerId": "Player ID",
+"accountName": "Account Name",
+    "profileUrl": "Profile URL",
     "subtitle": "Track your purchased cards",
     "description": "See all your card orders, delivery status, PIN codes, and admin updates in one place.",
     "filterAll": "All",
