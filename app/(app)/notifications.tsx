@@ -42,6 +42,7 @@ interface CardLookupRow {
   title?: string | null;
   provider?: string | null;
   amount_iqd?: number | null;
+  amount?: number | null;
   price_iqd?: number | null;
   image_url?: string | null;
   brand?: string | null;
@@ -149,6 +150,15 @@ const providerConfig: Record<
   },
 };
 
+function tSafe(key: string, fallback: string) {
+  const value = String(i18n.t(key) ?? '').trim();
+  if (!value) return fallback;
+  if (value.startsWith('[missing "') && value.endsWith('" translation]')) {
+    return fallback;
+  }
+  return value;
+}
+
 function getProviderStyle(provider?: string | null, source?: OrderSource) {
   const key = String(provider || '').toLowerCase();
 
@@ -158,8 +168,8 @@ function getProviderStyle(provider?: string | null, source?: OrderSource) {
     label:
       provider ||
       (source === 'gift'
-        ? String(i18n.t('notifications.giftCardLabel') || 'Gift Card')
-        : String(i18n.t('notifications.unknownCard') || 'Unknown Card')),
+        ? tSafe('notifications.giftCardLabel', 'Gift Card')
+        : tSafe('notifications.unknownCard', 'Unknown Card')),
     color: source === 'gift' ? UI.purple : UI.blue,
     soft: source === 'gift' ? UI.purpleSoft : UI.blueSoft,
     border: source === 'gift' ? '#E9D5FF' : UI.border,
@@ -321,6 +331,17 @@ function removeSubmittedInfoFromNotes(notes?: string | null) {
   return cleanLines.join('\n').trim();
 }
 
+function buildGiftAmount(order: NotificationOrderRow, fallbackProvider?: string) {
+  const raw = Number(order.amount_iqd || 0);
+  const joined = `${String(order.card_title || '')} ${String(order.provider || fallbackProvider || '')}`.toLowerCase();
+
+  if (joined.includes('pubg') || joined.includes('uc')) return `${formatIQD(raw)} UC`;
+  if (joined.includes('tiktok') || joined.includes('coin')) return `${formatIQD(raw)} Coins`;
+  if (joined.includes('free fire') || joined.includes('diamond')) return `${formatIQD(raw)} Diamonds`;
+
+  return `${formatIQD(raw)}`;
+}
+
 function buildDisplaySubtitle(order: NotificationOrderRow) {
   const providerStyle = getProviderStyle(order.provider, order.source);
   const amountText =
@@ -337,17 +358,6 @@ function buildDisplaySubtitle(order: NotificationOrderRow) {
 
   if (amountText) return `${providerStyle.label} • ${amountText}`;
   return providerStyle.label;
-}
-
-function buildGiftAmount(order: NotificationOrderRow, fallbackProvider?: string) {
-  const raw = Number(order.amount_iqd || 0);
-  const joined = `${String(order.card_title || '')} ${String(order.provider || fallbackProvider || '')}`.toLowerCase();
-
-  if (joined.includes('pubg') || joined.includes('uc')) return `${formatIQD(raw)} UC`;
-  if (joined.includes('tiktok') || joined.includes('coin')) return `${formatIQD(raw)} Coins`;
-  if (joined.includes('free fire') || joined.includes('diamond')) return `${formatIQD(raw)} Diamonds`;
-
-  return `${formatIQD(raw)}`;
 }
 
 async function syncSuccessfulOrdersToTransactions(orders: NotificationOrderRow[]) {
