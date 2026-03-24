@@ -580,8 +580,8 @@ export default function NotificationsScreen() {
     } catch (error: any) {
       console.log('notifications screen error:', error);
       Alert.alert(
-        String(i18n.t('common.error') || 'Error'),
-        error?.message || String(i18n.t('notifications.loadFailed') || 'Could not load notifications.')
+        tSafe('common.error', 'Error'),
+        error?.message || tSafe('notifications.loadFailed', 'Could not load notifications.')
       );
     } finally {
       setLoading(false);
@@ -627,7 +627,7 @@ export default function NotificationsScreen() {
         bg: UI.successSoft,
         text: UI.success,
         icon: 'checkmark-circle' as const,
-        label: i18n.t('notifications.statusSuccess'),
+        label: tSafe('notifications.statusSuccess', 'Success'),
       };
     }
 
@@ -636,7 +636,7 @@ export default function NotificationsScreen() {
         bg: UI.dangerSoft,
         text: UI.danger,
         icon: 'close-circle' as const,
-        label: i18n.t('notifications.statusCancelled'),
+        label: tSafe('notifications.statusCancelled', 'Cancelled'),
       };
     }
 
@@ -644,27 +644,7 @@ export default function NotificationsScreen() {
       bg: UI.warningSoft,
       text: UI.warning,
       icon: 'time' as const,
-      label: i18n.t('notifications.statusPending'),
-    };
-  };
-
-  const getTypeBadge = (source: OrderSource) => {
-    if (source === 'gift') {
-      return {
-        label: i18n.t('notifications.giftCardLabel') || 'Gift Card',
-        bg: UI.purpleSoft,
-        border: '#E9D5FF',
-        text: UI.purple,
-        icon: 'gift-outline' as const,
-      };
-    }
-
-    return {
-      label: i18n.t('notifications.mobileCards') || 'Mobile Card',
-      bg: UI.blueSoft,
-      border: UI.border,
-      text: UI.blueDark,
-      icon: 'phone-portrait-outline' as const,
+      label: tSafe('notifications.statusPending', 'Pending'),
     };
   };
 
@@ -703,7 +683,7 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
 
         <Text numberOfLines={1} style={styles.headerTitle}>
-          {i18n.t('notifications.title')}
+          {tSafe('notifications.title', 'Notifications')}
         </Text>
 
         <View style={styles.iconButtonPlaceholder} />
@@ -727,10 +707,17 @@ export default function NotificationsScreen() {
           <View style={styles.heroGlowTwo} />
 
           <Text style={styles.heroMini}>
-            {i18n.t('notifications.mobileCards')}
+            {tSafe('notifications.mobileCards', 'Card Orders')}
           </Text>
-          <Text style={styles.heroTitle}>{i18n.t('notifications.subtitle')}</Text>
-          <Text style={styles.heroText}>{i18n.t('notifications.description')}</Text>
+          <Text style={styles.heroTitle}>
+            {tSafe('notifications.subtitle', 'Track your purchased cards')}
+          </Text>
+          <Text style={styles.heroText}>
+            {tSafe(
+              'notifications.description',
+              'See all your card orders, delivery status, PIN codes, and admin updates in one place.'
+            )}
+          </Text>
         </View>
 
         <ScrollView
@@ -738,10 +725,10 @@ export default function NotificationsScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabsRow}
         >
-          {renderTab('all', String(i18n.t('notifications.filterAll')), counts.all)}
-          {renderTab('pending', String(i18n.t('notifications.filterPending')), counts.pending)}
-          {renderTab('success', String(i18n.t('notifications.filterSuccess')), counts.success)}
-          {renderTab('cancelled', String(i18n.t('notifications.filterCancelled')), counts.cancelled)}
+          {renderTab('all', tSafe('notifications.filterAll', 'All'), counts.all)}
+          {renderTab('pending', tSafe('notifications.filterPending', 'Pending'), counts.pending)}
+          {renderTab('success', tSafe('notifications.filterSuccess', 'Success'), counts.success)}
+          {renderTab('cancelled', tSafe('notifications.filterCancelled', 'Cancelled'), counts.cancelled)}
         </ScrollView>
 
         {loading ? (
@@ -751,8 +738,12 @@ export default function NotificationsScreen() {
         ) : filteredOrders.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="notifications-off-outline" size={38} color={UI.blue} />
-            <Text style={styles.emptyTitle}>{i18n.t('notifications.emptyTitle')}</Text>
-            <Text style={styles.emptyText}>{i18n.t('notifications.emptyText')}</Text>
+            <Text style={styles.emptyTitle}>
+              {tSafe('notifications.emptyTitle', 'No notifications yet')}
+            </Text>
+            <Text style={styles.emptyText}>
+              {tSafe('notifications.emptyText', 'You have not purchased any cards yet.')}
+            </Text>
           </View>
         ) : (
           <View style={styles.listWrap}>
@@ -761,7 +752,6 @@ export default function NotificationsScreen() {
               const status = statusStyle(order.status);
               const hasPin = !!order.pin_code;
               const normalized = normalizeStatus(order.status);
-              const typeBadge = getTypeBadge(order.source);
 
               const parsedInfo = parseOrderExtraInfo(order.notes);
               const adminOnlyNote = removeSubmittedInfoFromNotes(order.notes);
@@ -786,26 +776,6 @@ export default function NotificationsScreen() {
                           {provider.label}
                         </Text>
                       </View>
-
-                      <View
-                        style={[
-                          styles.typeBadge,
-                          {
-                            backgroundColor: typeBadge.bg,
-                            borderColor: typeBadge.border,
-                          },
-                        ]}
-                      >
-                        <Ionicons
-                          name={typeBadge.icon}
-                          size={13}
-                          color={typeBadge.text}
-                          style={{ marginRight: 5 }}
-                        />
-                        <Text style={[styles.typeBadgeText, { color: typeBadge.text }]}>
-                          {typeBadge.label}
-                        </Text>
-                      </View>
                     </View>
 
                     <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
@@ -817,12 +787,14 @@ export default function NotificationsScreen() {
                   </View>
 
                   <Text style={styles.cardTitle}>
-                    {buildDisplayTitle(order) || i18n.t('notifications.unknownCard')}
+                    {buildDisplayTitle(order) || tSafe('notifications.unknownCard', 'Unknown card')}
                   </Text>
 
                   <View style={styles.infoGrid}>
                     <View style={styles.infoBox}>
-                      <Text style={styles.infoLabel}>{i18n.t('notifications.amount')}</Text>
+                      <Text style={styles.infoLabel}>
+                        {tSafe('notifications.amount', 'Amount')}
+                      </Text>
                       <Text style={styles.infoValue}>
                         {order.source === 'gift'
                           ? buildGiftAmount(order, provider.label)
@@ -831,12 +803,16 @@ export default function NotificationsScreen() {
                     </View>
 
                     <View style={styles.infoBox}>
-                      <Text style={styles.infoLabel}>{i18n.t('notifications.priceIqd')}</Text>
+                      <Text style={styles.infoLabel}>
+                        {tSafe('notifications.priceIqd', 'Price (IQD)')}
+                      </Text>
                       <Text style={styles.infoValue}>{formatIQD(order.price_iqd)} IQD</Text>
                     </View>
 
                     <View style={styles.infoBoxWide}>
-                      <Text style={styles.infoLabel}>{i18n.t('notifications.date')}</Text>
+                      <Text style={styles.infoLabel}>
+                        {tSafe('notifications.date', 'Date')}
+                      </Text>
                       <Text style={styles.infoValueSmall}>{formatDate(order.created_at)}</Text>
                     </View>
                   </View>
@@ -844,7 +820,7 @@ export default function NotificationsScreen() {
                   <View style={styles.deliveryCard}>
                     <View style={styles.deliveryTop}>
                       <Text style={styles.deliveryTitle}>
-                        {i18n.t('notifications.deliveryInfo')}
+                        {tSafe('notifications.deliveryInfo', 'Delivery information')}
                       </Text>
 
                       <View
@@ -868,10 +844,10 @@ export default function NotificationsScreen() {
                           ]}
                         >
                           {hasPin
-                            ? i18n.t('notifications.pinReady')
+                            ? tSafe('notifications.pinReady', 'PIN ready')
                             : normalized === 'cancelled'
-                            ? i18n.t('notifications.cancelledShort')
-                            : i18n.t('notifications.pendingShort')}
+                            ? tSafe('notifications.cancelledShort', 'Cancelled')
+                            : tSafe('notifications.pendingShort', 'Pending')}
                         </Text>
                       </View>
                     </View>
@@ -879,7 +855,7 @@ export default function NotificationsScreen() {
                     {hasPin ? (
                       <View style={styles.pinCodeBox}>
                         <Text style={styles.pinCodeLabel}>
-                          {i18n.t('notifications.pinCode')}
+                          {tSafe('notifications.pinCode', 'PIN code')}
                         </Text>
                         <Text selectable style={styles.pinCodeValue}>
                           {order.pin_code}
@@ -888,21 +864,21 @@ export default function NotificationsScreen() {
                     ) : (
                       <Text style={styles.deliveryText}>
                         {normalized === 'cancelled'
-                          ? i18n.t('notifications.cancelledMessage')
-                          : i18n.t('notifications.pendingMessage')}
+                          ? tSafe('notifications.cancelledMessage', 'This order was cancelled.')
+                          : tSafe('notifications.pendingMessage', 'Your order is under review.')}
                       </Text>
                     )}
 
                     {(!!parsedInfo.playerId || !!parsedInfo.accountName || !!parsedInfo.profileUrl) && (
                       <View style={styles.notesBox}>
                         <Text style={styles.notesLabel}>
-                          {i18n.t('notifications.submittedInfo')}
+                          {tSafe('notifications.submittedInfo', 'Submitted Info')}
                         </Text>
 
                         {!!parsedInfo.playerId && (
                           <View style={styles.submittedRow}>
                             <Text style={styles.submittedKey}>
-                              {i18n.t('notifications.playerId')}:
+                              {tSafe('notifications.playerId', 'Player ID')}:
                             </Text>
                             <Text selectable style={styles.submittedValue}>
                               {parsedInfo.playerId}
@@ -913,7 +889,7 @@ export default function NotificationsScreen() {
                         {!!parsedInfo.accountName && (
                           <View style={styles.submittedRow}>
                             <Text style={styles.submittedKey}>
-                              {i18n.t('notifications.accountName')}:
+                              {tSafe('notifications.accountName', 'Account Name')}:
                             </Text>
                             <Text selectable style={styles.submittedValue}>
                               {parsedInfo.accountName}
@@ -924,7 +900,7 @@ export default function NotificationsScreen() {
                         {!!parsedInfo.profileUrl && (
                           <View style={styles.submittedRowColumn}>
                             <Text style={styles.submittedKey}>
-                              {i18n.t('notifications.profileUrl')}:
+                              {tSafe('notifications.profileUrl', 'Profile URL')}:
                             </Text>
                             <Text selectable style={styles.submittedValue}>
                               {parsedInfo.profileUrl}
@@ -937,7 +913,7 @@ export default function NotificationsScreen() {
                     {!!adminOnlyNote && (
                       <View style={styles.notesBox}>
                         <Text style={styles.notesLabel}>
-                          {i18n.t('notifications.adminNote')}
+                          {tSafe('notifications.adminNote', 'Admin note')}
                         </Text>
                         <Text style={styles.notesText}>{adminOnlyNote}</Text>
                       </View>
@@ -1172,18 +1148,6 @@ const styles = StyleSheet.create({
   },
   providerBadgeText: {
     fontSize: 12,
-    fontWeight: '900',
-  },
-  typeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 999,
-  },
-  typeBadgeText: {
-    fontSize: 11,
     fontWeight: '900',
   },
   statusBadge: {
