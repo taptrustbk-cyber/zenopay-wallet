@@ -256,9 +256,79 @@ function buildDisplayTitle(order: NotificationOrderRow) {
   return providerStyle.label;
 }
 
+function extractValueFromNotes(notes?: string | null, labels: string[] = []) {
+  const text = String(notes || '');
+  if (!text.trim()) return '';
+
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    for (const label of labels) {
+      const lowerLine = line.toLowerCase();
+      const lowerLabel = `${label.toLowerCase()}:`;
+      if (lowerLine.startsWith(lowerLabel)) {
+        return line.slice(lowerLabel.length).trim();
+      }
+    }
+  }
+
+  return '';
+}
+
+function parseOrderExtraInfo(notes?: string | null) {
+  const playerId = extractValueFromNotes(notes, ['Player ID', 'Game ID', 'Player Id']);
+  const accountName = extractValueFromNotes(notes, [
+    'PUBG Account Name',
+    'Pubg Account Name',
+    'Account Name',
+    'Profile Name',
+  ]);
+  const profileUrl = extractValueFromNotes(notes, ['Profile URL', 'Profile Url', 'URL', 'Url']);
+
+  return {
+    playerId,
+    accountName,
+    profileUrl,
+  };
+}
+
+function removeSubmittedInfoFromNotes(notes?: string | null) {
+  const text = String(notes || '');
+  if (!text.trim()) return '';
+
+  const removablePrefixes = [
+    'player id:',
+    'game id:',
+    'pubg account name:',
+    'account name:',
+    'profile name:',
+    'profile url:',
+    'url:',
+  ];
+
+  const cleanLines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => {
+      const lower = line.toLowerCase();
+      return !removablePrefixes.some((prefix) => lower.startsWith(prefix));
+    });
+
+  return cleanLines.join('\n').trim();
+}
+
 function buildDisplaySubtitle(order: NotificationOrderRow) {
   const providerStyle = getProviderStyle(order.provider, order.source);
-  const amountText = order.amount_iqd ? `${formatIQD(order.amount_iqd)} IQD` : '';
+  const amountText =
+    order.source === 'gift'
+      ? String(order.amount_iqd ? buildGiftAmount(order, providerStyle.label) : '')
+      : order.amount_iqd
+      ? `${formatIQD(order.amount_iqd)} IQD`
+      : '';
   const priceText = order.price_iqd ? `${formatIQD(order.price_iqd)} IQD` : '';
 
   if (amountText && priceText) {
@@ -267,6 +337,17 @@ function buildDisplaySubtitle(order: NotificationOrderRow) {
 
   if (amountText) return `${providerStyle.label} • ${amountText}`;
   return providerStyle.label;
+}
+
+function buildGiftAmount(order: NotificationOrderRow, fallbackProvider?: string) {
+  const raw = Number(order.amount_iqd || 0);
+  const joined = `${String(order.card_title || '')} ${String(order.provider || fallbackProvider || '')}`.toLowerCase();
+
+  if (joined.includes('pubg') || joined.includes('uc')) return `${formatIQD(raw)} UC`;
+  if (joined.includes('tiktok') || joined.includes('coin')) return `${formatIQD(raw)} Coins`;
+  if (joined.includes('free fire') || joined.includes('diamond')) return `${formatIQD(raw)} Diamonds`;
+
+  return `${formatIQD(raw)}`;
 }
 
 async function syncSuccessfulOrdersToTransactions(orders: NotificationOrderRow[]) {
@@ -406,7 +487,7 @@ export default function NotificationsScreen() {
         giftCardIds.length
           ? supabase
               .from('gift_cards')
-              .select('id, title, card_title, provider, brand, category, amount_iqd, price_iqd, image_url')
+              .select('id, title, card_title, provider, brand, category, amount_iqd, amount, price_iqd, image_url')
               .in('id', giftCardIds)
           : Promise.resolve({ data: [], error: null } as any),
       ]);
@@ -464,6 +545,8 @@ export default function NotificationsScreen() {
               ? order.amount_iqd
               : card?.amount_iqd !== null && card?.amount_iqd !== undefined
               ? Number(card.amount_iqd)
+              : (card as any)?.amount !== null && (card as any)?.amount !== undefined
+              ? Number((card as any).amount)
               : null,
           price_iqd:
             order.price_iqd !== null && order.price_iqd !== undefined
@@ -670,6 +753,9 @@ export default function NotificationsScreen() {
               const normalized = normalizeStatus(order.status);
               const typeBadge = getTypeBadge(order.source);
 
+              const parsedInfo = parseOrderExtraInfo(order.notes);
+              const adminOnlyNote = removeSubmittedInfoFromNotes(order.notes);
+
               return (
                 <View key={`${order.source}-${order.id}`} style={styles.orderCard}>
                   <View style={styles.orderTopRow}>
@@ -727,7 +813,11 @@ export default function NotificationsScreen() {
                   <View style={styles.infoGrid}>
                     <View style={styles.infoBox}>
                       <Text style={styles.infoLabel}>{i18n.t('notifications.amount')}</Text>
-                      <Text style={styles.infoValue}>{formatIQD(order.amount_iqd)} IQD</Text>
+                      <Text style={styles.infoValue}>
+                        {order.source === 'gift'
+                          ? buildGiftAmount(order, provider.label)
+                          : `${formatIQD(order.amount_iqd)} IQD`}
+                      </Text>
                     </View>
 
                     <View style={styles.infoBox}>
@@ -793,12 +883,53 @@ export default function NotificationsScreen() {
                       </Text>
                     )}
 
-                    {!!order.notes && (
+                    {(!!parsedInfo.playerId || !!parsedInfo.accountName || !!parsedInfo.profileUrl) && (
+                      <View style={styles.notesBox}>
+                        <Text style={styles.notesLabel}>
+                          {i18n.t('notifications.submittedInfo')}
+                        </Text>
+
+                        {!!parsedInfo.playerId && (
+                          <View style={styles.submittedRow}>
+                            <Text style={styles.submittedKey}>
+                              {i18n.t('notifications.playerId')}:
+                            </Text>
+                            <Text selectable style={styles.submittedValue}>
+                              {parsedInfo.playerId}
+                            </Text>
+                          </View>
+                        )}
+
+                        {!!parsedInfo.accountName && (
+                          <View style={styles.submittedRow}>
+                            <Text style={styles.submittedKey}>
+                              {i18n.t('notifications.accountName')}:
+                            </Text>
+                            <Text selectable style={styles.submittedValue}>
+                              {parsedInfo.accountName}
+                            </Text>
+                          </View>
+                        )}
+
+                        {!!parsedInfo.profileUrl && (
+                          <View style={styles.submittedRowColumn}>
+                            <Text style={styles.submittedKey}>
+                              {i18n.t('notifications.profileUrl')}:
+                            </Text>
+                            <Text selectable style={styles.submittedValue}>
+                              {parsedInfo.profileUrl}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {!!adminOnlyNote && (
                       <View style={styles.notesBox}>
                         <Text style={styles.notesLabel}>
                           {i18n.t('notifications.adminNote')}
                         </Text>
-                        <Text style={styles.notesText}>{order.notes}</Text>
+                        <Text style={styles.notesText}>{adminOnlyNote}</Text>
                       </View>
                     )}
                   </View>
@@ -1196,12 +1327,34 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: UI.text2,
     fontWeight: '800',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   notesText: {
     fontSize: 13,
     lineHeight: 19,
     color: UI.text,
     fontWeight: '700',
+  },
+
+  submittedRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+    gap: 6,
+  },
+  submittedRowColumn: {
+    marginBottom: 6,
+  },
+  submittedKey: {
+    fontSize: 13,
+    color: UI.text2,
+    fontWeight: '800',
+  },
+  submittedValue: {
+    flex: 1,
+    fontSize: 13,
+    color: UI.text,
+    fontWeight: '900',
+    lineHeight: 20,
   },
 });
