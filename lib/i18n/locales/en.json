@@ -763,9 +763,9 @@
   },
 
   "notifications": {
-    "title": "Notifications",
-    "mobileCards": "Mobile Card Orders",
     "giftCardLabel": "Gift Card",
+    "title": "Notifications",
+  "mobileCards": "Mobile Card Orders",
 "submittedInfo": "Submitted Info",
 "playerId": "Player ID",
 "accountName": "Account Name",
