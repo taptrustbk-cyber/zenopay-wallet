@@ -1,136 +1,285 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import {
-  View,
   StyleSheet,
+  View,
+  Text,
   Animated,
   Dimensions,
-  Text,
+  Easing,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '@/lib/supabase';
 
-const { height } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-export default function Splash() {
+export default function SplashScreen() {
   const router = useRouter();
 
-  const fade = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.85)).current;
-  const glow = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.82)).current;
+  const logoGlowAnim = useRef(new Animated.Value(0.25)).current;
+  const textFadeAnim = useRef(new Animated.Value(0)).current;
+  const textSlideAnim = useRef(new Animated.Value(16)).current;
+  const ringRotateAnim = useRef(new Animated.Value(0)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  const particle1 = useRef(new Animated.Value(0)).current;
+  const particle2 = useRef(new Animated.Value(0)).current;
+  const particle3 = useRef(new Animated.Value(0)).current;
+  const particle4 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // main animation
     Animated.parallel([
-      Animated.timing(fade, {
+      Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 1000,
+        duration: 950,
+        easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
-      Animated.spring(scale, {
+      Animated.spring(scaleAnim, {
         toValue: 1,
         friction: 5,
+        tension: 42,
+        useNativeDriver: true,
+      }),
+      Animated.timing(textFadeAnim, {
+        toValue: 1,
+        duration: 1100,
+        delay: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(textSlideAnim, {
+        toValue: 0,
+        duration: 1100,
+        delay: 250,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // glow effect
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glow, {
+        Animated.timing(logoGlowAnim, {
           toValue: 1,
-          duration: 1200,
+          duration: 1800,
           useNativeDriver: true,
         }),
-        Animated.timing(glow, {
-          toValue: 0,
-          duration: 1200,
+        Animated.timing(logoGlowAnim, {
+          toValue: 0.25,
+          duration: 1800,
           useNativeDriver: true,
         }),
       ])
     ).start();
 
-    // redirect to login
-    const timeout = setTimeout(() => {
-      router.replace('/(auth)/login');
-    }, 2500);
+    Animated.loop(
+      Animated.timing(ringRotateAnim, {
+        toValue: 1,
+        duration: 9000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
 
-    return () => clearTimeout(timeout);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: -8,
+          duration: 1800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 1800,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.timing(particle1, {
+        toValue: 1,
+        duration: 3200,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    Animated.loop(
+      Animated.timing(particle2, {
+        toValue: 1,
+        duration: 4200,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    Animated.loop(
+      Animated.timing(particle3, {
+        toValue: 1,
+        duration: 5200,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    Animated.loop(
+      Animated.timing(particle4, {
+        toValue: 1,
+        duration: 3800,
+        useNativeDriver: true,
+      })
+    ).start();
   }, []);
 
-  const glowOpacity = glow.interpolate({
+  // ✅ FIXED ROUTING
+  useEffect(() => {
+    const checkSession = async () => {
+      await new Promise((r) => setTimeout(r, 2600));
+
+      try {
+        const { data } = await supabase.auth.getSession();
+
+        if (!data?.session) {
+          router.replace('/login'); // ✅ FIX
+          return;
+        }
+
+        router.replace('/dashboard'); // ✅ FIX
+      } catch {
+        router.replace('/login'); // ✅ FIX
+      }
+    };
+
+    checkSession();
+  }, [router]);
+
+  const interpolateY = (anim: Animated.Value, range: number) =>
+    anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, -height * range],
+    });
+
+  const interpolateOpacity = (anim: Animated.Value) =>
+    anim.interpolate({
+      inputRange: [0, 0.2, 0.75, 1],
+      outputRange: [0, 1, 0.95, 0],
+    });
+
+  const rotate = ringRotateAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.2, 0.6],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const logoGlow = logoGlowAnim.interpolate({
+    inputRange: [0.25, 1],
+    outputRange: [0.3, 0.85],
   });
 
   return (
     <View style={styles.container}>
-      
-      {/* glow */}
-      <Animated.View style={[styles.glow, { opacity: glowOpacity }]} />
+      <LinearGradient
+        colors={['#0F4CFF', '#2563EB', '#0EA5E9']}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      {/* particles */}
+      {[particle1, particle2, particle3, particle4].map((p, i) => (
+        <Animated.View
+          key={i}
+          style={[
+            styles.particle,
+            {
+              opacity: interpolateOpacity(p),
+              transform: [{ translateY: interpolateY(p, 0.6) }],
+            },
+          ]}
+        >
+          <View style={styles.particleDot} />
+        </Animated.View>
+      ))}
 
       {/* logo */}
       <Animated.View
         style={{
-          opacity: fade,
-          transform: [{ scale }],
-          alignItems: 'center',
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }, { translateY: floatAnim }],
         }}
       >
-        <View style={styles.logoCircle}>
+        <Animated.View style={[styles.logoGlow, { opacity: logoGlow }]} />
+
+        <Animated.View style={[styles.ring, { transform: [{ rotate }] }]} />
+
+        <View style={styles.logo}>
           <Text style={styles.logoText}>Z</Text>
         </View>
 
-        <Text style={styles.title}>ZenoPay</Text>
-        <Text style={styles.subtitle}>Safe • Fast • Trusted</Text>
+        <Animated.Text style={[styles.title, { opacity: textFadeAnim }]}>
+          ZenoPay
+        </Animated.Text>
+
+        <Animated.Text style={[styles.subtitle, { opacity: textFadeAnim }]}>
+          Safe • Fast • Trusted Wallet
+        </Animated.Text>
       </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0B2458',
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  logo: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-
-  glow: {
-    position: 'absolute',
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(59,130,246,0.25)',
-  },
-
-  logoCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: '#1D4ED8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#3B82F6',
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-    elevation: 10,
   },
 
   logoText: {
-    color: '#fff',
-    fontSize: 48,
+    fontSize: 60,
     fontWeight: '900',
+    color: '#2563EB',
   },
 
   title: {
-    marginTop: 14,
-    fontSize: 22,
+    marginTop: 16,
+    fontSize: 34,
     color: '#fff',
-    fontWeight: '800',
+    fontWeight: '900',
   },
 
   subtitle: {
     marginTop: 6,
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    color: '#fff',
+  },
+
+  ring: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+
+  logoGlow: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+
+  particle: {
+    position: 'absolute',
+    bottom: 0,
+  },
+
+  particleDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 50,
+    backgroundColor: '#fff',
   },
 });
