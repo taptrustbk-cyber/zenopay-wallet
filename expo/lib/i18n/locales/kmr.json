@@ -101,6 +101,11 @@
   "noPaymentMethods": "هیچ ڕێکەکا پارەدانێ نینە",
   "noPaymentMethodsDesc": "هێشتا ئەدمین هیچ ڕێکەکا پارەدانێ زیاد نەکریە",
   "back": "ڤەگەڕان",
+  "gender": "ڕەگەز",
+  "selectGender": "ڕەگەزێ هەلبژێرە",
+  "genderMale": "نێر",
+  "genderFemale": "مێ",
+  "genderOther": "تر",
 
   "withdraw": "راکێشان",
   "withdrawRequest": "داخوازا راکێشانێ",
