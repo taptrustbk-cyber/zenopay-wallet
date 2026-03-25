@@ -12,6 +12,9 @@ import {
   TextInput,
   Platform,
   StatusBar,
+  KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +36,7 @@ import {
   BadgeInfo,
   ShieldAlert,
   Users,
+  CheckCircle2,
 } from 'lucide-react-native';
 
 export const options = { headerShown: false };
@@ -114,6 +118,10 @@ const formatIQD = (value?: number | string | null) => {
   return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
+const formatIQDLabel = (value?: number | string | null) => `${formatIQD(value)} IQD`;
+
+const normalizeDigits = (text: string) => text.replace(/[^\d]/g, '');
+
 type AdminUserRow = {
   id: string;
   user_id: string;
@@ -141,9 +149,21 @@ export default function WithdrawBalanceAdminScreen() {
   const [selectedUserName, setSelectedUserName] = useState('');
   const [selectedUserBalance, setSelectedUserBalance] = useState(0);
   const [amountToWithdraw, setAmountToWithdraw] = useState('');
+  const [noteToWithdraw, setNoteToWithdraw] = useState('');
+
+  const resetModalState = () => {
+    Keyboard.dismiss();
+    setShowWithdrawBalanceModal(false);
+    setAmountToWithdraw('');
+    setNoteToWithdraw('');
+    setSelectedUserId('');
+    setSelectedUserEmail('');
+    setSelectedUserName('');
+    setSelectedUserBalance(0);
+  };
 
   const usersQuery = useQuery({
-    queryKey: ['admin-users-withdraw-balance'],
+    queryKey: ['admin-users-withdraw-balance-v2'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('wallets')
@@ -190,10 +210,14 @@ export default function WithdrawBalanceAdminScreen() {
     mutationFn: async ({
       userId,
       amount,
+      note,
     }: {
       userId: string;
       amount: number;
+      note: string;
     }) => {
+      const trimmedNote = String(note || '').trim();
+
       const { data: wallet, error: walletError } = await supabase
         .from('wallets')
         .select('balance')
@@ -218,34 +242,62 @@ export default function WithdrawBalanceAdminScreen() {
 
       if (updateError) throw new Error(updateError.message || 'Failed to update wallet');
 
-      const { error: txError } = await supabase.from('transactions').insert({
-        to_user_id: userId,
-        type: 'withdrawal',
-        amount: -Number(amount),
-        description: 'Admin balance withdrawal',
+      const txPayload = {
+        user_id: userId,
+        sender_id: user?.id || null,
+        receiver_id: userId,
+        type: 'withdraw',
+        direction: 'out',
         status: 'completed',
-      });
+        amount: -Number(amount),
+        amount_iqd: Number(amount),
+        fee_amount: 0,
+        balance_before: currentBalance,
+        balance_after: newBalance,
+        description: trimmedNote || 'Balance withdrawn by admin',
+        reference_id: null,
+        source_table: 'admin_withdrawbalance',
+        source_order_id: null,
+        source_product_id: null,
+        display_title: 'Withdraw Balance via Zenopay',
+        display_subtitle: 'Balance withdrawn by Zenopay',
+        display_image_url: null,
+        pin_code: null,
+        provider_name: 'Zenopay',
+        payment_method_name: 'Admin Withdraw Balance',
+        metadata: {
+          type: 'admin_withdraw_money',
+          kind: 'admin_withdraw_money',
+          category: 'admin_balance',
+          amount_iqd: Number(amount),
+          old_balance_iqd: currentBalance,
+          new_balance_iqd: newBalance,
+          note: trimmedNote,
+          admin_note: trimmedNote,
+          admin_email: user?.email || '',
+          admin_user_id: user?.id || '',
+          source: 'withdrawbalanceadmin',
+          title: 'Withdraw Balance via Zenopay',
+          subtitle: 'Balance withdrawn by Zenopay',
+        },
+      };
+
+      const { error: txError } = await supabase.from('transactions').insert(txPayload);
 
       if (txError) {
-        console.warn('Transaction insert warning:', txError.message);
+        throw new Error(txError.message || 'Wallet updated, but transaction insert failed');
       }
 
       return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users-withdraw-balance'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users-withdraw-balance-v2'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions-rich-final-v5'] });
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
 
-      setShowWithdrawBalanceModal(false);
-      setAmountToWithdraw('');
-      setSelectedUserId('');
-      setSelectedUserEmail('');
-      setSelectedUserName('');
-      setSelectedUserBalance(0);
+      resetModalState();
 
-      Alert.alert('Success', 'Balance withdrawn successfully');
+      Alert.alert('Success', 'Balance withdrawn successfully and transaction created.');
     },
     onError: (error: any) => {
       Alert.alert('Error', error.message || 'Failed to withdraw balance');
@@ -330,7 +382,11 @@ export default function WithdrawBalanceAdminScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.heroCard}>
           <View style={styles.heroIcon}>
             <MinusCircle size={22} color={UI.red} />
@@ -414,6 +470,7 @@ export default function WithdrawBalanceAdminScreen() {
                   <TouchableOpacity
                     style={styles.withdrawBtn}
                     onPress={() => {
+                      Keyboard.dismiss();
                       setSelectedUserId(userProfile.user_id);
                       setSelectedUserEmail(userProfile.email || 'N/A');
                       setSelectedUserName(displayName);
@@ -432,7 +489,7 @@ export default function WithdrawBalanceAdminScreen() {
                     <Wallet size={16} color={UI.red} />
                     <Text style={styles.balanceLabel}>Current Balance</Text>
                   </View>
-                  <Text style={styles.balanceValue}>{formatIQD(userProfile.balance)}</Text>
+                  <Text style={styles.balanceValue}>{formatIQDLabel(userProfile.balance)}</Text>
                 </View>
 
                 <View style={styles.detailsGrid}>
@@ -516,111 +573,142 @@ export default function WithdrawBalanceAdminScreen() {
         visible={showWithdrawBalanceModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowWithdrawBalanceModal(false)}
+        onRequestClose={resetModalState}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalTop}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Withdraw Balance</Text>
-                <Text style={styles.modalSubtitle}>
-                  Remove amount from selected user wallet
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.modalCloseBtn}
-                onPress={() => {
-                  setShowWithdrawBalanceModal(false);
-                  setAmountToWithdraw('');
-                  setSelectedUserId('');
-                  setSelectedUserEmail('');
-                  setSelectedUserName('');
-                  setSelectedUserBalance(0);
-                }}
-                activeOpacity={0.85}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={styles.modalKeyboardWrap}
               >
-                <X size={16} color={UI.text} />
-              </TouchableOpacity>
-            </View>
+                <View style={styles.modalContent}>
+                  <View style={styles.modalTop}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.modalTitle}>Withdraw Balance</Text>
+                      <Text style={styles.modalSubtitle}>
+                        Remove amount from selected user wallet
+                      </Text>
+                    </View>
 
-            <View style={styles.modalInfoCard}>
-              <Text style={styles.modalInfoTitle}>{selectedUserName || 'Selected User'}</Text>
-              <Text style={styles.modalInfoText}>{selectedUserEmail}</Text>
-              <Text style={styles.modalInfoBalance}>
-                Balance: {formatIQD(selectedUserBalance)}
-              </Text>
-            </View>
+                    <TouchableOpacity
+                      style={styles.modalCloseBtn}
+                      onPress={resetModalState}
+                      activeOpacity={0.85}
+                    >
+                      <X size={16} color={UI.text} />
+                    </TouchableOpacity>
+                  </View>
 
-            <TextInput
-              style={[styles.modalInput, styles.modalInputDisabled]}
-              placeholder="User Email"
-              placeholderTextColor={UI.text2}
-              value={selectedUserEmail}
-              editable={false}
-            />
+                  <ScrollView
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 4 }}
+                  >
+                    <View style={styles.modalInfoCard}>
+                      <Text style={styles.modalInfoTitle}>{selectedUserName || 'Selected User'}</Text>
+                      <Text style={styles.modalInfoText}>{selectedUserEmail}</Text>
+                      <Text style={styles.modalInfoBalance}>
+                        Balance: {formatIQDLabel(selectedUserBalance)}
+                      </Text>
+                    </View>
 
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Amount (IQD)"
-              placeholderTextColor={UI.text2}
-              keyboardType="numeric"
-              value={amountToWithdraw}
-              onChangeText={(text) => {
-                const cleaned = text.replace(/[^0-9]/g, '');
-                setAmountToWithdraw(cleaned);
-              }}
-            />
+                    <TextInput
+                      style={[styles.modalInput, styles.modalInputDisabled]}
+                      placeholder="User Email"
+                      placeholderTextColor={UI.text2}
+                      value={selectedUserEmail}
+                      editable={false}
+                    />
 
-            {!!amountToWithdraw && (
-              <Text style={styles.previewAmount}>
-                Amount: {formatIQD(amountToWithdraw)}
-              </Text>
-            )}
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="Amount (IQD)"
+                      placeholderTextColor={UI.text2}
+                      keyboardType="numeric"
+                      returnKeyType="done"
+                      value={amountToWithdraw}
+                      onChangeText={(text) => {
+                        const cleaned = normalizeDigits(text);
+                        setAmountToWithdraw(cleaned ? formatIQD(cleaned) : '');
+                      }}
+                      onSubmitEditing={Keyboard.dismiss}
+                    />
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => {
-                  setShowWithdrawBalanceModal(false);
-                  setAmountToWithdraw('');
-                  setSelectedUserId('');
-                  setSelectedUserEmail('');
-                  setSelectedUserName('');
-                  setSelectedUserBalance(0);
-                }}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
+                    {!!amountToWithdraw && (
+                      <Text style={styles.previewAmount}>
+                        Amount: {formatIQDLabel(normalizeDigits(amountToWithdraw))}
+                      </Text>
+                    )}
 
-              <TouchableOpacity
-                style={styles.modalConfirmBtn}
-                onPress={() => {
-                  const amount = Number(amountToWithdraw);
+                    <TextInput
+                      style={[styles.modalInput, styles.noteInput]}
+                      placeholder="Note (optional)"
+                      placeholderTextColor={UI.text2}
+                      value={noteToWithdraw}
+                      onChangeText={setNoteToWithdraw}
+                      multiline
+                      textAlignVertical="top"
+                      returnKeyType="done"
+                      blurOnSubmit
+                    />
+                  </ScrollView>
 
-                  if (isNaN(amount) || amount <= 0) {
-                    Alert.alert('Error', 'Please enter a valid amount');
-                    return;
-                  }
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={styles.modalCancelBtn}
+                      onPress={resetModalState}
+                      activeOpacity={0.9}
+                    >
+                      <Text style={styles.modalCancelText}>Cancel</Text>
+                    </TouchableOpacity>
 
-                  withdrawBalanceMutation.mutate({
-                    userId: selectedUserId,
-                    amount,
-                  });
-                }}
-                disabled={withdrawBalanceMutation.isPending}
-                activeOpacity={0.9}
-              >
-                {withdrawBalanceMutation.isPending ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.modalConfirmText}>Confirm Withdraw</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+                    <TouchableOpacity
+                      style={styles.modalConfirmBtn}
+                      onPress={() => {
+                        Keyboard.dismiss();
+
+                        const amount = Number(normalizeDigits(amountToWithdraw));
+
+                        if (!selectedUserId) {
+                          Alert.alert('Error', 'Please select a user first');
+                          return;
+                        }
+
+                        if (isNaN(amount) || amount <= 0) {
+                          Alert.alert('Error', 'Please enter a valid amount');
+                          return;
+                        }
+
+                        if (amount > selectedUserBalance) {
+                          Alert.alert('Error', 'Withdraw amount is greater than current balance');
+                          return;
+                        }
+
+                        withdrawBalanceMutation.mutate({
+                          userId: selectedUserId,
+                          amount,
+                          note: noteToWithdraw,
+                        });
+                      }}
+                      disabled={withdrawBalanceMutation.isPending}
+                      activeOpacity={0.9}
+                    >
+                      {withdrawBalanceMutation.isPending ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <>
+                          <CheckCircle2 size={16} color="#fff" />
+                          <Text style={styles.modalConfirmText}>Confirm Withdraw</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </KeyboardAvoidingView>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </SafeAreaView>
   );
@@ -969,9 +1057,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
   },
-  modalContent: {
+  modalKeyboardWrap: {
     width: '100%',
     maxWidth: 430,
+  },
+  modalContent: {
+    width: '100%',
     backgroundColor: UI.card,
     borderRadius: 24,
     padding: 18,
@@ -982,6 +1073,7 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
+    maxHeight: '88%',
   },
   modalTop: {
     flexDirection: 'row',
@@ -1050,6 +1142,9 @@ const styles = StyleSheet.create({
   modalInputDisabled: {
     color: UI.text2,
   },
+  noteInput: {
+    minHeight: 92,
+  },
   previewAmount: {
     marginTop: -2,
     marginBottom: 12,
@@ -1079,6 +1174,9 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
   modalConfirmText: {
     color: '#fff',
