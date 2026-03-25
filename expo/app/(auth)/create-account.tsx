@@ -38,6 +38,7 @@ const COLORS = {
   white: '#FFFFFF',
   danger: '#DC2626',
   shadow: '#7DA8E6',
+  success: '#16A34A',
 };
 
 const SHADOWS = {
@@ -58,6 +59,10 @@ const SHADOWS = {
 };
 
 const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v1';
+
+type GenderValue = 'male' | 'female' | 'other';
+
+const GENDER_OPTIONS: GenderValue[] = ['male', 'female', 'other'];
 
 function isAtLeast18(dob: Date): boolean {
   const today = new Date();
@@ -89,6 +94,21 @@ function normalizeIraqPhoneToE164(input: string) {
   return `+964${digits}`;
 }
 
+function getGenderLabel(value: GenderValue | '') {
+  if (!value) return i18n.t('selectGender') || 'Select gender';
+
+  switch (value) {
+    case 'male':
+      return i18n.t('genderMale') || 'Male';
+    case 'female':
+      return i18n.t('genderFemale') || 'Female';
+    case 'other':
+      return i18n.t('genderOther') || 'Other';
+    default:
+      return value;
+  }
+}
+
 export default function CreateAccount() {
   const router = useRouter();
 
@@ -98,6 +118,9 @@ export default function CreateAccount() {
   const [city, setCity] = useState<string>('');
   const [country, setCountry] = useState<string>('Iraq');
   const [phone, setPhone] = useState<string>('');
+  const [gender, setGender] = useState<GenderValue | ''>('');
+  const [openGender, setOpenGender] = useState<boolean>(false);
+
   const [dob, setDob] = useState<Date | null>(null);
   const [dobError, setDobError] = useState<string | null>(null);
 
@@ -128,6 +151,7 @@ export default function CreateAccount() {
     const cleanCity = city.trim();
     const cleanCountry = country.trim() || 'Iraq';
     const cleanPassword = password;
+    const cleanGender = gender;
 
     if (
       !cleanFullName ||
@@ -135,7 +159,8 @@ export default function CreateAccount() {
       !cleanPassword ||
       !cleanCity ||
       !phone.trim() ||
-      !cleanCountry
+      !cleanCountry ||
+      !cleanGender
     ) {
       Alert.alert(i18n.t('error'), i18n.t('completeAllFields'));
       return;
@@ -187,6 +212,7 @@ export default function CreateAccount() {
           city: cleanCity,
           country: cleanCountry,
           phone: phoneE164,
+          gender: cleanGender,
           date_of_brith: dobISO,
           pending_profile_created_at: new Date().toISOString(),
         })
@@ -220,6 +246,7 @@ export default function CreateAccount() {
             city: cleanCity,
             country: cleanCountry,
             phone: phoneE164,
+            gender: cleanGender,
             date_of_brith: dobISO,
           },
           { onConflict: 'id' }
@@ -331,9 +358,9 @@ export default function CreateAccount() {
                 setOpenDob(true);
               }}
               activeOpacity={0.85}
-              style={styles.dobButton}
+              style={styles.selectorButton}
             >
-              <Text style={styles.dobText}>
+              <Text style={styles.selectorText}>
                 {dob
                   ? dob.toLocaleDateString('en-GB', {
                       day: '2-digit',
@@ -490,6 +517,79 @@ export default function CreateAccount() {
           {dobError ? <Text style={styles.errorText}>{dobError}</Text> : null}
 
           <Text style={styles.complianceText}>{i18n.t('mustBe18OrOlder')}</Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>{i18n.t('gender') || 'Gender'}</Text>
+            <TouchableOpacity
+              onPress={() => setOpenGender(true)}
+              activeOpacity={0.85}
+              style={styles.selectorButton}
+            >
+              <Text style={styles.selectorText}>{getGenderLabel(gender)}</Text>
+              <Ionicons name="chevron-down" size={18} color={COLORS.blueDark} />
+            </TouchableOpacity>
+          </View>
+
+          <Modal
+            visible={openGender}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setOpenGender(false)}
+          >
+            <Pressable style={styles.genderOverlay} onPress={() => setOpenGender(false)}>
+              <Pressable style={styles.genderModal} onPress={() => null}>
+                <View style={styles.genderHeader}>
+                  <Text style={styles.genderTitle}>
+                    {i18n.t('selectGender') || 'Select Gender'}
+                  </Text>
+
+                  <TouchableOpacity
+                    onPress={() => setOpenGender(false)}
+                    activeOpacity={0.85}
+                    style={styles.genderCloseBtn}
+                  >
+                    <Ionicons name="close" size={18} color={COLORS.text} />
+                  </TouchableOpacity>
+                </View>
+
+                {GENDER_OPTIONS.map((item) => {
+                  const active = gender === item;
+                  return (
+                    <TouchableOpacity
+                      key={item}
+                      style={[styles.genderItem, active && styles.genderItemActive]}
+                      onPress={() => {
+                        setGender(item);
+                        setOpenGender(false);
+                      }}
+                      activeOpacity={0.88}
+                    >
+                      <View style={styles.genderItemLeft}>
+                        <View style={[styles.genderRadio, active && styles.genderRadioActive]}>
+                          {active ? <View style={styles.genderRadioInner} /> : null}
+                        </View>
+                        <Text style={[styles.genderText, active && styles.genderTextActive]}>
+                          {getGenderLabel(item)}
+                        </Text>
+                      </View>
+
+                      {active ? (
+                        <Ionicons name="checkmark-circle" size={20} color={COLORS.blue} />
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })}
+
+                <TouchableOpacity
+                  style={styles.genderCancelBtn}
+                  onPress={() => setOpenGender(false)}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.genderCancelText}>{i18n.t('cancel') || 'Cancel'}</Text>
+                </TouchableOpacity>
+              </Pressable>
+            </Pressable>
+          </Modal>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{i18n.t('city')}</Text>
@@ -686,7 +786,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.soft,
   },
 
-  dobButton: {
+  selectorButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -698,7 +798,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     ...SHADOWS.soft,
   },
-  dobText: {
+  selectorText: {
     fontSize: 16,
     color: COLORS.text,
     fontWeight: '700' as const,
@@ -844,5 +944,103 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900' as const,
     color: '#FFFFFF',
+  },
+
+  genderOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(2, 6, 23, 0.42)',
+    justifyContent: 'center',
+    padding: 18,
+  },
+  genderModal: {
+    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.card,
+  },
+  genderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  genderTitle: {
+    fontSize: 17,
+    fontWeight: '900' as const,
+    color: COLORS.text,
+  },
+  genderCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: COLORS.blueSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderItem: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.inputBg,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...SHADOWS.soft,
+  },
+  genderItemActive: {
+    borderColor: COLORS.blue,
+    backgroundColor: COLORS.blueSoft,
+  },
+  genderItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  genderRadio: {
+    width: 22,
+    height: 22,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: '#B8C7E6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  genderRadioActive: {
+    borderColor: COLORS.blue,
+  },
+  genderRadioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: COLORS.blue,
+  },
+  genderText: {
+    fontSize: 15,
+    fontWeight: '800' as const,
+    color: COLORS.text,
+  },
+  genderTextActive: {
+    color: COLORS.blueDark,
+  },
+  genderCancelBtn: {
+    marginTop: 4,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F7FF',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  genderCancelText: {
+    fontSize: 15,
+    fontWeight: '900' as const,
+    color: COLORS.blueDark,
   },
 });
