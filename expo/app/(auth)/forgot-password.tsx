@@ -18,21 +18,24 @@ import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import i18n from '@/lib/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Linking from 'expo-linking';
 
 const COLORS = {
   bg: '#EEF4FF',
   page: '#F7FAFF',
   card: '#FFFFFF',
+  cardSoft: '#F8FBFF',
   text: '#0F172A',
   textSecondary: '#64748B',
+  textMuted: '#94A3B8',
   border: '#D9E5F6',
-  inputBg: '#F8FBFF',
+
   blue: '#2563EB',
   blueDark: '#1D4ED8',
   blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
+
   white: '#FFFFFF',
-  muted: '#94A3B8',
+  success: '#16A34A',
   shadow: '#7DA8E6',
 };
 
@@ -62,7 +65,7 @@ export default function ForgotPasswordScreen() {
   const isRTL = I18nManager.isRTL;
   const [email, setEmail] = useState('');
 
-  const resetMutation = useMutation({
+  const sendCodeMutation = useMutation({
     mutationFn: async () => {
       const cleanEmail = email.trim().toLowerCase();
 
@@ -74,150 +77,182 @@ export default function ForgotPasswordScreen() {
         throw new Error(i18n.t('invalidEmail') || 'Invalid email');
       }
 
-      const redirectTo =
-        Platform.OS === 'web'
-          ? `${window.location.origin}/reset-password`
-          : Linking.createURL('reset-password');
-
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo,
-      });
+      // We still use Supabase recovery flow.
+      // The 6-digit OTP comes from the email template using {{ .Token }}
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail);
 
       if (error) throw error;
+
+      return cleanEmail;
     },
-    onSuccess: () => {
+    onSuccess: (cleanEmail) => {
       Alert.alert(
         i18n.t('success') || 'Success',
-        i18n.t('resetLinkSent') ||
-          'We sent a reset link to your email. Please check your inbox and spam folder.',
+        i18n.t('resetCodeSent') ||
+          'We sent a 6-digit reset code to your email. Please check your inbox and spam folder.',
         [
           {
             text: i18n.t('ok') || 'OK',
-            onPress: () => router.back(),
+            onPress: () => {
+              router.push({
+                pathname: '/(auth)/verify-reset-code' as any,
+                params: { email: cleanEmail },
+              });
+            },
           },
         ]
       );
     },
     onError: (error: any) => {
-      Alert.alert(i18n.t('error') || 'Error', error?.message || 'Something went wrong');
+      Alert.alert(
+        i18n.t('error') || 'Error',
+        error?.message || i18n.t('somethingWentWrong') || 'Something went wrong'
+      );
     },
   });
+
+  const isSubmitting =
+    (sendCodeMutation as any).isPending ?? (sendCodeMutation as any).isLoading ?? false;
 
   return (
     <KeyboardAvoidingView
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backIconBtn}
-            activeOpacity={0.85}
-          >
-            <Ionicons
-              name={isRTL ? 'arrow-forward' : 'arrow-back'}
-              size={22}
-              color={COLORS.blueDark}
-            />
-          </TouchableOpacity>
+      <LinearGradient
+        colors={[COLORS.bg, COLORS.page, COLORS.bg]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradient}
+      >
+        <View style={styles.topGlowOne} />
+        <View style={styles.topGlowTwo} />
 
-          <Text style={styles.headerTitle}>{i18n.t('resetPassword') || 'Reset Password'}</Text>
-
-          <View style={styles.headerSpacer} />
-        </View>
-
-        <LinearGradient
-          colors={['#4B8DFF', '#2563EB', '#1D4ED8']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroCard}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <View style={styles.heroGlowOne} />
-          <View style={styles.heroGlowTwo} />
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backIconBtn}
+              activeOpacity={0.85}
+            >
+              <Ionicons
+                name={isRTL ? 'arrow-forward' : 'arrow-back'}
+                size={22}
+                color={COLORS.blueDark}
+              />
+            </TouchableOpacity>
 
-          <View style={styles.iconCircle}>
-            <Ionicons name="lock-closed-outline" size={28} color="#FFFFFF" />
+            <Text style={styles.headerTitle}>
+              {i18n.t('resetPassword') || 'Reset Password'}
+            </Text>
+
+            <View style={styles.headerSpacer} />
           </View>
 
-          <Text style={styles.title}>{i18n.t('resetPassword') || 'Reset Password'}</Text>
-          <Text style={styles.description}>
-            {i18n.t('resetPasswordDesc') ||
-              'Enter your email to receive a password reset link.'}
-          </Text>
-        </LinearGradient>
+          <View style={styles.centerWrap}>
+            <LinearGradient
+              colors={['#4B8DFF', '#2563EB', '#1D4ED8']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroCard}
+            >
+              <View style={styles.heroGlowOne} />
+              <View style={styles.heroGlowTwo} />
 
-        <View style={styles.card}>
-          <Text style={styles.label}>{i18n.t('email') || 'Email'}</Text>
+              <View style={styles.iconCircle}>
+                <Ionicons name="shield-checkmark-outline" size={30} color="#FFFFFF" />
+              </View>
 
-          <View style={styles.inputWrap}>
-            <View style={styles.inputIcon}>
-              <Ionicons name="mail-outline" size={18} color={COLORS.blue} />
-            </View>
-
-            <TextInput
-              style={styles.input}
-              placeholder={i18n.t('email') || 'Email'}
-              placeholderTextColor={COLORS.muted}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.resetButton, resetMutation.isPending && styles.resetButtonDisabled]}
-            onPress={() => resetMutation.mutate()}
-            disabled={resetMutation.isPending}
-            activeOpacity={0.9}
-          >
-            {resetMutation.isPending ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.resetButtonText}>
-                {i18n.t('sendResetLink') || 'Send Reset Link'}
+              <Text style={styles.title}>
+                {i18n.t('resetPassword') || 'Reset Password'}
               </Text>
-            )}
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.9}
-          >
-            <Text style={styles.backText}>{i18n.t('backToLogin') || 'Back to Login'}</Text>
-          </TouchableOpacity>
+              <Text style={styles.description}>
+                {i18n.t('resetPasswordOtpDesc') ||
+                  'Enter your email address and we will send you a 6-digit verification code.'}
+              </Text>
+            </LinearGradient>
 
-          <View style={styles.helpBox}>
-            <Text style={styles.helpTitle}>
-              {i18n.t('important') || 'Important'}
-            </Text>
+            <View style={styles.card}>
+              <Text style={styles.label}>{i18n.t('email') || 'Email'}</Text>
 
-            <Text style={styles.helpText}>
-              {i18n.t('resetHelpText') ||
-                'Open the link from your email on the same device if possible. The link will redirect you to the password reset screen.'}
-            </Text>
+              <View style={styles.inputWrap}>
+                <View style={styles.inputIcon}>
+                  <Ionicons name="mail-outline" size={18} color={COLORS.blue} />
+                </View>
 
-            <View style={styles.supportRow}>
-              <View style={styles.supportIconWrap}>
-                <Ionicons name="mail-outline" size={18} color={COLORS.blue} />
+                <TextInput
+                  style={styles.input}
+                  placeholder={i18n.t('email') || 'Email'}
+                  placeholderTextColor={COLORS.textMuted}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
               </View>
 
-              <View style={styles.supportTextWrap}>
-                <Text style={styles.supportTextTop}>
-                  {i18n.t('forgotEmailContact') ||
-                    'If you forgot your email address, please contact support.'}
+              <TouchableOpacity
+                style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]}
+                onPress={() => (sendCodeMutation as any).mutate()}
+                disabled={isSubmitting}
+                activeOpacity={0.9}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <>
+                    <Ionicons name="paper-plane-outline" size={18} color="#FFFFFF" />
+                    <Text style={styles.primaryButtonText}>
+                      {i18n.t('sendVerificationCode') || 'Send Verification Code'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => router.back()}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.backText}>
+                  {i18n.t('backToLogin') || 'Back to Login'}
                 </Text>
-                <Text style={styles.supportEmail}>info@zenopay.bond</Text>
+              </TouchableOpacity>
+
+              <View style={styles.helpBox}>
+                <Text style={styles.helpTitle}>
+                  {i18n.t('important') || 'Important'}
+                </Text>
+
+                <Text style={styles.helpText}>
+                  {i18n.t('resetHelpOtpText') ||
+                    'We will send a 6-digit code to your email. Enter that code on the next screen to continue resetting your password.'}
+                </Text>
+
+                <View style={styles.supportRow}>
+                  <View style={styles.supportIconWrap}>
+                    <Ionicons name="mail-outline" size={18} color={COLORS.blue} />
+                  </View>
+
+                  <View style={styles.supportTextWrap}>
+                    <Text style={styles.supportTextTop}>
+                      {i18n.t('forgotEmailContact') ||
+                        'If you forgot your email address, please contact support.'}
+                    </Text>
+                    <Text style={styles.supportEmail}>info@zenopay.bond</Text>
+                  </View>
+                </View>
               </View>
             </View>
           </View>
-        </View>
-
-        <View style={{ height: 28 }} />
-      </ScrollView>
+        </ScrollView>
+      </LinearGradient>
     </KeyboardAvoidingView>
   );
 }
@@ -228,10 +263,34 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bg,
   },
 
-  content: {
+  gradient: {
+    flex: 1,
+  },
+
+  topGlowOne: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(37,99,235,0.08)',
+    top: -40,
+    left: -70,
+  },
+
+  topGlowTwo: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(37,99,235,0.06)',
+    top: 90,
+    right: -50,
+  },
+
+  scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 24 : 20,
+    paddingTop: Platform.OS === 'ios' ? 24 : 18,
     paddingBottom: 24,
   },
 
@@ -239,9 +298,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 28 : 20,
+    paddingTop: Platform.OS === 'ios' ? 28 : 18,
     paddingBottom: 16,
   },
+
   backIconBtn: {
     width: 42,
     height: 42,
@@ -253,15 +313,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...SHADOWS.soft,
   },
+
   headerTitle: {
     fontSize: 20,
     fontWeight: '900',
     color: COLORS.text,
     textAlign: 'center',
   },
+
   headerSpacer: {
     width: 42,
     height: 42,
+  },
+
+  centerWrap: {
+    flex: 1,
+    justifyContent: 'center',
   },
 
   heroCard: {
@@ -272,15 +339,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...SHADOWS.card,
   },
+
   heroGlowOne: {
     position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    width: 190,
+    height: 190,
+    borderRadius: 95,
     backgroundColor: 'rgba(255,255,255,0.12)',
     left: -55,
     bottom: -70,
   },
+
   heroGlowTwo: {
     position: 'absolute',
     width: 170,
@@ -290,9 +359,10 @@ const styles = StyleSheet.create({
     right: -40,
     top: -40,
   },
+
   iconCircle: {
-    width: 72,
-    height: 72,
+    width: 74,
+    height: 74,
     borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
@@ -301,6 +371,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.18)',
     marginBottom: 16,
   },
+
   title: {
     fontSize: 24,
     fontWeight: '900',
@@ -308,6 +379,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 6,
   },
+
   description: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.88)',
@@ -331,16 +403,18 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 8,
   },
+
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.inputBg,
+    backgroundColor: COLORS.cardSoft,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
     minHeight: 56,
     paddingHorizontal: 12,
   },
+
   inputIcon: {
     width: 34,
     height: 34,
@@ -350,6 +424,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
+
   input: {
     flex: 1,
     fontSize: 16,
@@ -358,20 +433,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
 
-  resetButton: {
+  primaryButton: {
     backgroundColor: COLORS.blue,
     borderRadius: 18,
     paddingVertical: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
     marginTop: 16,
     ...SHADOWS.soft,
   },
-  resetButtonText: {
+
+  primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '900',
   },
-  resetButtonDisabled: {
+
+  primaryButtonDisabled: {
     opacity: 0.65,
   },
 
@@ -381,6 +461,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 8,
   },
+
   backText: {
     color: COLORS.blueDark,
     fontSize: 14,
@@ -394,6 +475,7 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.border,
     paddingTop: 14,
   },
+
   helpTitle: {
     fontSize: 14,
     fontWeight: '900',
@@ -401,6 +483,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
+
   helpText: {
     fontSize: 13,
     lineHeight: 20,
@@ -409,11 +492,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 14,
   },
+
   supportRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   supportIconWrap: {
     width: 40,
     height: 40,
@@ -423,15 +508,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
+
   supportTextWrap: {
     flexShrink: 1,
   },
+
   supportTextTop: {
     fontSize: 13,
     lineHeight: 19,
     color: COLORS.text,
     fontWeight: '700',
   },
+
   supportEmail: {
     marginTop: 2,
     fontSize: 13.5,
