@@ -12,6 +12,10 @@ import {
   TextInput,
   Animated,
   Easing,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,10 +33,11 @@ import {
   Mail,
   MapPin,
   CalendarDays,
-  ShieldCheck,
   CheckCircle2,
   UserRound,
   BadgeDollarSign,
+  Delete,
+  ArrowLeft,
 } from 'lucide-react-native';
 
 export const options = { headerShown: false };
@@ -124,9 +129,7 @@ const initialsFromName = (name?: string | null) => {
 
 const formatIQD = (value?: number | null) => {
   const num = Number(value || 0);
-  return num
-    .toFixed(0)
-    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return num.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
 const formatIQDLabel = (value?: number | null) => `${formatIQD(value)} IQD`;
@@ -177,13 +180,11 @@ export default function AddBalanceAdminScreen() {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const isLikelyUnlocked = pinUnlocked;
-
   useEffect(() => {
     if (pinUnlocked) {
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 380,
+        duration: 320,
         easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }).start();
@@ -201,6 +202,7 @@ export default function AddBalanceAdminScreen() {
         .single();
 
       if (error) throw new Error(error.message || 'Failed to load admin profile');
+
       return data as {
         id: string;
         email?: string | null;
@@ -211,7 +213,7 @@ export default function AddBalanceAdminScreen() {
   });
 
   const usersQuery = useQuery({
-    queryKey: ['admin-users-add-balance-v2'],
+    queryKey: ['admin-users-add-balance-v3'],
     enabled: isAdmin && pinUnlocked,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -256,6 +258,17 @@ export default function AddBalanceAdminScreen() {
     },
   });
 
+  const resetModalState = () => {
+    Keyboard.dismiss();
+    setShowAddBalanceModal(false);
+    setAmountToAdd('');
+    setNoteToAdd('');
+    setSelectedUserId('');
+    setSelectedUserEmail('');
+    setSelectedUserName('');
+    setSelectedCurrentBalance(0);
+  };
+
   const addBalanceMutation = useMutation({
     mutationFn: async ({
       userId,
@@ -266,6 +279,8 @@ export default function AddBalanceAdminScreen() {
       amount: number;
       note: string;
     }) => {
+      const trimmedNote = String(note || '').trim();
+
       const { data: wallet, error: walletError } = await supabase
         .from('wallets')
         .select('user_id, balance')
@@ -288,9 +303,9 @@ export default function AddBalanceAdminScreen() {
 
       const txPayload = {
         user_id: userId,
-        sender_id: user?.id || userId,
+        sender_id: user?.id || null,
         receiver_id: userId,
-        type: 'admin_add_money',
+        type: 'deposit',
         direction: 'in',
         status: 'completed',
         amount: finalAmount,
@@ -298,7 +313,7 @@ export default function AddBalanceAdminScreen() {
         fee_amount: 0,
         balance_before: oldBalance,
         balance_after: newBalance,
-        description: note?.trim() || 'Balance added by admin',
+        description: trimmedNote || 'Add balance via Zenopay',
         reference_id: null,
         source_table: 'admin_addbalance',
         source_order_id: null,
@@ -316,7 +331,8 @@ export default function AddBalanceAdminScreen() {
           amount_iqd: finalAmount,
           old_balance_iqd: oldBalance,
           new_balance_iqd: newBalance,
-          note: note?.trim() || '',
+          note: trimmedNote,
+          admin_note: trimmedNote,
           admin_email: user?.email || '',
           admin_user_id: user?.id || '',
           source: 'addbalanceadmin',
@@ -334,18 +350,11 @@ export default function AddBalanceAdminScreen() {
       return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users-add-balance-v2'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users-add-balance-v3'] });
       queryClient.invalidateQueries({ queryKey: ['transactions-rich-final-v5'] });
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
 
-      setShowAddBalanceModal(false);
-      setAmountToAdd('');
-      setNoteToAdd('');
-      setSelectedUserId('');
-      setSelectedUserEmail('');
-      setSelectedUserName('');
-      setSelectedCurrentBalance(0);
-
+      resetModalState();
       Alert.alert('Success', 'Balance added successfully and transaction created.');
     },
     onError: (error: any) => {
@@ -382,11 +391,13 @@ export default function AddBalanceAdminScreen() {
         const savedPin = String(adminProfileQuery.data?.admin_pin_code || '').trim();
 
         if (!savedPin) {
-          Alert.alert(
-            'PIN not set',
-            'Please create a column named admin_pin_code in profiles and save a 4-digit PIN for this admin.'
-          );
-          setPinValue('');
+          setTimeout(() => {
+            Alert.alert(
+              'PIN not set',
+              'Please create admin_pin_code in profiles and save a 4-digit PIN for this admin.'
+            );
+            setPinValue('');
+          }, 120);
           return;
         }
 
@@ -400,9 +411,11 @@ export default function AddBalanceAdminScreen() {
 
         setTimeout(() => {
           setPinUnlocked(true);
-        }, 120);
+        }, 100);
       } finally {
-        setTimeout(() => setCheckingPin(false), 150);
+        setTimeout(() => {
+          setCheckingPin(false);
+        }, 120);
       }
     }
   };
@@ -413,6 +426,7 @@ export default function AddBalanceAdminScreen() {
   };
 
   const openAddModal = (userProfile: AdminUserRow) => {
+    Keyboard.dismiss();
     setSelectedUserId(userProfile.id);
     setSelectedUserEmail(userProfile.email || 'N/A');
     setSelectedUserName(userProfile.full_name || 'Unknown User');
@@ -441,81 +455,103 @@ export default function AddBalanceAdminScreen() {
   }
 
   const renderPinScreen = () => {
-    const dots = [0, 1, 2, 3];
+    const boxes = [0, 1, 2, 3];
 
     return (
-      <SafeAreaView style={styles.pinContainer} edges={['top', 'bottom']}>
-        <View style={styles.pinCenterWrap}>
-          <View style={styles.pinPhoneCard}>
-            <View style={styles.pinTopIconWrap}>
-              <View style={styles.pinTopIconCircle}>
-                <ShieldCheck size={26} color={UI.blueDark} />
-              </View>
-            </View>
+      <SafeAreaView style={styles.pinScreen} edges={['top', 'bottom']}>
+        <View style={styles.pinHeader}>
+          <TouchableOpacity
+            style={styles.pinBackBtn}
+            onPress={() => router.back()}
+            activeOpacity={0.85}
+          >
+            <ArrowLeft size={22} color={UI.text2} />
+          </TouchableOpacity>
+        </View>
 
-            <Text style={styles.pinTitle}>Enter Admin PIN</Text>
-            <Text style={styles.pinSubtitle}>
-              Enter your 4-digit secure PIN to open this page
-            </Text>
-
-            <View style={styles.pinDotsRow}>
-              {dots.map((i) => {
-                const filled = i < pinValue.length;
-                return (
-                  <View
-                    key={i}
-                    style={[
-                      styles.pinDot,
-                      filled && styles.pinDotActive,
-                    ]}
-                  />
-                );
-              })}
-            </View>
-
-            <View style={styles.keypadWrap}>
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((n) => (
-                <TouchableOpacity
-                  key={n}
-                  style={styles.keypadBtn}
-                  activeOpacity={0.85}
-                  onPress={() => handlePinPress(n)}
-                >
-                  <Text style={styles.keypadBtnText}>{n}</Text>
-                </TouchableOpacity>
-              ))}
-
-              <View style={styles.keypadBtnGhost} />
-
-              <TouchableOpacity
-                style={styles.keypadBtn}
-                activeOpacity={0.85}
-                onPress={() => handlePinPress('0')}
-              >
-                <Text style={styles.keypadBtnText}>0</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.keypadBtn}
-                activeOpacity={0.85}
-                onPress={handlePinDelete}
-              >
-                <X size={18} color={UI.text2} />
-              </TouchableOpacity>
-            </View>
-
-            {checkingPin && (
-              <View style={styles.pinLoadingRow}>
-                <ActivityIndicator size="small" color={UI.blue} />
-              </View>
-            )}
+        <View style={styles.pinBody}>
+          <View style={styles.zLogoWrap}>
+            <Text style={styles.zLogoText}>Z</Text>
           </View>
+
+          <Text style={styles.pinMainTitle}>Enter PIN code</Text>
+          <Text style={styles.pinMainSubtitle}>Please enter your PIN code</Text>
+
+          <View style={styles.pinBoxesRow}>
+            {boxes.map((i) => {
+              const filled = i < pinValue.length;
+              const active = i === pinValue.length && pinValue.length < 4;
+
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.pinBox,
+                    active && styles.pinBoxActive,
+                  ]}
+                >
+                  {filled ? (
+                    <View style={styles.pinInnerDot} />
+                  ) : active ? (
+                    <View style={styles.pinCursor} />
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+
+          <View style={styles.keypadGrid}>
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((n) => (
+              <TouchableOpacity
+                key={n}
+                style={[
+                  styles.keypadCircle,
+                  n === '8' && pinValue.length === 2 ? styles.keypadCircleAccent : null,
+                ]}
+                activeOpacity={0.85}
+                onPress={() => handlePinPress(n)}
+              >
+                <Text
+                  style={[
+                    styles.keypadText,
+                    n === '8' && pinValue.length === 2 ? styles.keypadTextAccent : null,
+                  ]}
+                >
+                  {n}
+                </Text>
+              </TouchableOpacity>
+            ))}
+
+            <View style={styles.keypadCircleGhost} />
+
+            <TouchableOpacity
+              style={styles.keypadCircle}
+              activeOpacity={0.85}
+              onPress={() => handlePinPress('0')}
+            >
+              <Text style={styles.keypadText}>0</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.keypadCircle}
+              activeOpacity={0.85}
+              onPress={handlePinDelete}
+            >
+              <Delete size={20} color={UI.text2} />
+            </TouchableOpacity>
+          </View>
+
+          {checkingPin ? (
+            <View style={styles.pinBusyWrap}>
+              <ActivityIndicator size="small" color={UI.blue} />
+            </View>
+          ) : null}
         </View>
       </SafeAreaView>
     );
   };
 
-  if (!isLikelyUnlocked) {
+  if (!pinUnlocked) {
     return renderPinScreen();
   }
 
@@ -551,7 +587,11 @@ export default function AddBalanceAdminScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.topBanner}>
             <View style={styles.topBannerIcon}>
               <BadgeDollarSign size={22} color={UI.blueDark} />
@@ -685,123 +725,136 @@ export default function AddBalanceAdminScreen() {
           visible={showAddBalanceModal}
           transparent
           animationType="fade"
-          onRequestClose={() => setShowAddBalanceModal(false)}
+          onRequestClose={resetModalState}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalTop}>
-                <View>
-                  <Text style={styles.modalTitle}>Add Balance</Text>
-                  <Text style={styles.modalSubtitle}>
-                    Add IQD balance and optional note
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.modalCloseBtn}
-                  onPress={() => {
-                    setShowAddBalanceModal(false);
-                    setAmountToAdd('');
-                    setNoteToAdd('');
-                    setSelectedUserId('');
-                    setSelectedUserEmail('');
-                    setSelectedUserName('');
-                    setSelectedCurrentBalance(0);
-                  }}
-                  activeOpacity={0.85}
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <KeyboardAvoidingView
+                  behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                  style={styles.modalKeyboardWrap}
                 >
-                  <X size={16} color={UI.text} />
-                </TouchableOpacity>
-              </View>
+                  <View style={styles.modalContent}>
+                    <View style={styles.modalTop}>
+                      <View>
+                        <Text style={styles.modalTitle}>Add Balance</Text>
+                        <Text style={styles.modalSubtitle}>
+                          Add IQD balance and optional note
+                        </Text>
+                      </View>
 
-              <View style={styles.summaryMiniCard}>
-                <View style={styles.summaryMiniRow}>
-                  <UserRound size={15} color={UI.blueDark} />
-                  <Text style={styles.summaryMiniText}>{selectedUserName || 'Unknown User'}</Text>
-                </View>
+                      <TouchableOpacity
+                        style={styles.modalCloseBtn}
+                        onPress={resetModalState}
+                        activeOpacity={0.85}
+                      >
+                        <X size={16} color={UI.text} />
+                      </TouchableOpacity>
+                    </View>
 
-                <View style={styles.summaryMiniRow}>
-                  <Mail size={15} color={UI.text2} />
-                  <Text style={styles.summaryMiniText2}>{selectedUserEmail || 'N/A'}</Text>
-                </View>
+                    <ScrollView
+                      keyboardShouldPersistTaps="handled"
+                      showsVerticalScrollIndicator={false}
+                      contentContainerStyle={{ paddingBottom: 4 }}
+                    >
+                      <View style={styles.summaryMiniCard}>
+                        <View style={styles.summaryMiniRow}>
+                          <UserRound size={15} color={UI.blueDark} />
+                          <Text style={styles.summaryMiniText}>
+                            {selectedUserName || 'Unknown User'}
+                          </Text>
+                        </View>
 
-                <View style={styles.summaryMiniRow}>
-                  <Wallet size={15} color={UI.green} />
-                  <Text style={[styles.summaryMiniText2, { color: UI.green }]}>
-                    Current: {formatIQDLabel(selectedCurrentBalance)}
-                  </Text>
-                </View>
-              </View>
+                        <View style={styles.summaryMiniRow}>
+                          <Mail size={15} color={UI.text2} />
+                          <Text style={styles.summaryMiniText2}>{selectedUserEmail || 'N/A'}</Text>
+                        </View>
 
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Amount (IQD)"
-                placeholderTextColor={UI.text2}
-                keyboardType="numeric"
-                value={amountToAdd}
-                onChangeText={(v) => {
-                  const digits = normalizeDigits(v);
-                  setAmountToAdd(digits ? formatIQD(Number(digits)) : '');
-                }}
-              />
+                        <View style={styles.summaryMiniRow}>
+                          <Wallet size={15} color={UI.green} />
+                          <Text style={[styles.summaryMiniText2, { color: UI.green }]}>
+                            Current: {formatIQDLabel(selectedCurrentBalance)}
+                          </Text>
+                        </View>
+                      </View>
 
-              <TextInput
-                style={[styles.modalInput, styles.noteInput]}
-                placeholder="Note (optional)"
-                placeholderTextColor={UI.text2}
-                value={noteToAdd}
-                onChangeText={setNoteToAdd}
-                multiline
-              />
+                      <TextInput
+                        style={styles.modalInput}
+                        placeholder="Amount (IQD)"
+                        placeholderTextColor={UI.text2}
+                        keyboardType="numeric"
+                        returnKeyType="done"
+                        value={amountToAdd}
+                        onChangeText={(v) => {
+                          const digits = normalizeDigits(v);
+                          setAmountToAdd(digits ? formatIQD(Number(digits)) : '');
+                        }}
+                        onSubmitEditing={Keyboard.dismiss}
+                      />
 
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => {
-                    setShowAddBalanceModal(false);
-                    setAmountToAdd('');
-                    setNoteToAdd('');
-                    setSelectedUserId('');
-                    setSelectedUserEmail('');
-                    setSelectedUserName('');
-                    setSelectedCurrentBalance(0);
-                  }}
-                  activeOpacity={0.9}
-                >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </TouchableOpacity>
+                      <TextInput
+                        style={[styles.modalInput, styles.noteInput]}
+                        placeholder="Note (optional)"
+                        placeholderTextColor={UI.text2}
+                        value={noteToAdd}
+                        onChangeText={setNoteToAdd}
+                        multiline
+                        textAlignVertical="top"
+                        returnKeyType="done"
+                        blurOnSubmit
+                      />
+                    </ScrollView>
 
-                <TouchableOpacity
-                  style={styles.modalConfirmBtn}
-                  onPress={() => {
-                    const rawAmount = Number(normalizeDigits(amountToAdd));
+                    <View style={styles.modalButtons}>
+                      <TouchableOpacity
+                        style={styles.modalCancelBtn}
+                        onPress={resetModalState}
+                        activeOpacity={0.9}
+                      >
+                        <Text style={styles.modalCancelText}>Cancel</Text>
+                      </TouchableOpacity>
 
-                    if (!rawAmount || rawAmount <= 0) {
-                      Alert.alert('Error', 'Please enter a valid IQD amount');
-                      return;
-                    }
+                      <TouchableOpacity
+                        style={styles.modalConfirmBtn}
+                        onPress={() => {
+                          Keyboard.dismiss();
 
-                    addBalanceMutation.mutate({
-                      userId: selectedUserId,
-                      amount: rawAmount,
-                      note: noteToAdd,
-                    });
-                  }}
-                  disabled={addBalanceMutation.isPending}
-                  activeOpacity={0.9}
-                >
-                  {addBalanceMutation.isPending ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <>
-                      <CheckCircle2 size={16} color="#fff" />
-                      <Text style={styles.modalConfirmText}>Confirm Add</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
+                          const rawAmount = Number(normalizeDigits(amountToAdd));
+
+                          if (!selectedUserId) {
+                            Alert.alert('Error', 'Please select a user first');
+                            return;
+                          }
+
+                          if (!rawAmount || rawAmount <= 0) {
+                            Alert.alert('Error', 'Please enter a valid IQD amount');
+                            return;
+                          }
+
+                          addBalanceMutation.mutate({
+                            userId: selectedUserId,
+                            amount: rawAmount,
+                            note: noteToAdd,
+                          });
+                        }}
+                        disabled={addBalanceMutation.isPending}
+                        activeOpacity={0.9}
+                      >
+                        {addBalanceMutation.isPending ? (
+                          <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                          <>
+                            <CheckCircle2 size={16} color="#fff" />
+                            <Text style={styles.modalConfirmText}>Confirm Add</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </KeyboardAvoidingView>
+              </TouchableWithoutFeedback>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
         </Modal>
       </Animated.View>
     </SafeAreaView>
@@ -814,97 +867,115 @@ const styles = StyleSheet.create({
     backgroundColor: UI.bg,
   },
 
-  pinContainer: {
+  pinScreen: {
     flex: 1,
-    backgroundColor: '#6D28D9',
+    backgroundColor: '#FFFFFF',
   },
-  pinCenterWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 22,
-  },
-  pinPhoneCard: {
-    width: 290,
-    backgroundColor: UI.white,
-    borderRadius: 34,
+  pinHeader: {
     paddingHorizontal: 22,
-    paddingVertical: 28,
-    alignItems: 'center',
-    ...SHADOWS.card,
+    paddingTop: 10,
+    paddingBottom: 4,
   },
-  pinTopIconWrap: {
-    marginBottom: 14,
-  },
-  pinTopIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: UI.blueSoft,
+  pinBackBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: UI.border2,
   },
-  pinTitle: {
-    fontSize: 18,
+  pinBody: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingTop: 12,
+  },
+  zLogoWrap: {
+    marginTop: 6,
+    marginBottom: 24,
+  },
+  zLogoText: {
+    fontSize: 86,
+    lineHeight: 90,
+    fontWeight: '300',
+    color: '#3047FF',
+  },
+  pinMainTitle: {
+    fontSize: 26,
     fontWeight: '900',
-    color: UI.text,
+    color: '#2A2A2A',
     marginBottom: 6,
   },
-  pinSubtitle: {
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
-    color: UI.text2,
-    fontWeight: '700',
-    marginBottom: 16,
+  pinMainSubtitle: {
+    fontSize: 14,
+    color: '#8C8C8C',
+    fontWeight: '600',
+    marginBottom: 26,
   },
-  pinDotsRow: {
+  pinBoxesRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 18,
+    gap: 14,
+    marginBottom: 38,
   },
-  pinDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#E5E7EB',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
+  pinBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#F4F8FF',
+    borderWidth: 1.5,
+    borderColor: '#E5EEFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  pinDotActive: {
-    backgroundColor: UI.blue,
-    borderColor: UI.blueDark,
+  pinBoxActive: {
+    borderColor: '#2E6DDA',
+    backgroundColor: '#FFFFFF',
   },
-  keypadWrap: {
+  pinInnerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#2E6DDA',
+  },
+  pinCursor: {
+    width: 2.5,
+    height: 22,
+    borderRadius: 2,
+    backgroundColor: '#2E6DDA',
+  },
+  keypadGrid: {
     width: '100%',
+    maxWidth: 320,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    rowGap: 12,
+    rowGap: 18,
   },
-  keypadBtn: {
-    width: '30%',
-    aspectRatio: 1,
-    borderRadius: 999,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: UI.border,
+  keypadCircle: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: '#F4F8FF',
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOWS.soft,
   },
-  keypadBtnGhost: {
-    width: '30%',
-    aspectRatio: 1,
+  keypadCircleAccent: {
+    backgroundColor: UI.blueDark,
   },
-  keypadBtnText: {
+  keypadText: {
     fontSize: 24,
-    fontWeight: '800',
-    color: UI.text,
+    fontWeight: '500',
+    color: '#1F2937',
   },
-  pinLoadingRow: {
-    marginTop: 14,
+  keypadTextAccent: {
+    color: '#FFFFFF',
+  },
+  keypadCircleGhost: {
+    width: 82,
+    height: 82,
+  },
+  pinBusyWrap: {
+    marginTop: 18,
   },
 
   header: {
@@ -1176,15 +1247,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
   },
-  modalContent: {
+  modalKeyboardWrap: {
     width: '100%',
     maxWidth: 430,
+  },
+  modalContent: {
+    width: '100%',
     backgroundColor: UI.card,
     borderRadius: 24,
     padding: 18,
     borderWidth: 1,
     borderColor: UI.border,
     ...SHADOWS.card,
+    maxHeight: '88%',
   },
   modalTop: {
     flexDirection: 'row',
@@ -1250,7 +1325,6 @@ const styles = StyleSheet.create({
   },
   noteInput: {
     minHeight: 92,
-    textAlignVertical: 'top',
   },
   modalButtons: {
     flexDirection: 'row',
