@@ -284,7 +284,7 @@ export default function LoginScreen() {
     if (currentLang === 'en') return 'English';
     if (currentLang === 'ar') return 'العربية';
     if (currentLang === 'ckb') return 'کوردی سۆرانی';
-    return 'Kurdî Badînî';
+    return 'کوردی بادینی';
   };
 
   const handleRememberToggle = async () => {
