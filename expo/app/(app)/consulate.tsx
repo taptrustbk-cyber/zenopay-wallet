@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
-import i18n from '@/lib/i18n';
+import i18n, { getCurrentLanguage } from '@/lib/i18n';
 
 interface Consulate {
   id: number;
@@ -123,9 +123,155 @@ const UI = {
   shadow: '#1D4ED8',
 };
 
+const COUNTRY_TRANSLATIONS: Record<string, Record<string, string>> = {
+  France: {
+    en: 'France',
+    ar: 'فرنسا',
+    ckb: 'فەرەنسا',
+    kmr: 'فەرەنسا',
+  },
+  Germany: {
+    en: 'Germany',
+    ar: 'ألمانيا',
+    ckb: 'ئەڵمانیا',
+    kmr: 'ئەڵمانیا',
+  },
+  Italy: {
+    en: 'Italy',
+    ar: 'إيطاليا',
+    ckb: 'ئیتالیا',
+    kmr: 'ئیتالیا',
+  },
+  Spain: {
+    en: 'Spain',
+    ar: 'إسبانيا',
+    ckb: 'ئیسپانیا',
+    kmr: 'ئیسپانیا',
+  },
+  UK: {
+    en: 'United Kingdom',
+    ar: 'المملكة المتحدة',
+    ckb: 'شانشینی یەکگرتوو',
+    kmr: 'شانشینی یەکگرتوو',
+  },
+  USA: {
+    en: 'United States',
+    ar: 'الولايات المتحدة',
+    ckb: 'ئەمریکا',
+    kmr: 'ئەمریکا',
+  },
+  Canada: {
+    en: 'Canada',
+    ar: 'كندا',
+    ckb: 'کەنەدا',
+    kmr: 'کەنەدا',
+  },
+  Belgium: {
+    en: 'Belgium',
+    ar: 'بلجيكا',
+    ckb: 'بەلجیکا',
+    kmr: 'بەلجیکا',
+  },
+  Netherlands: {
+    en: 'Netherlands',
+    ar: 'هولندا',
+    ckb: 'هۆڵەندا',
+    kmr: 'هۆڵەندا',
+  },
+};
+
+const CITY_TRANSLATIONS: Record<string, Record<string, string>> = {
+  Erbil: {
+    en: 'Erbil',
+    ar: 'أربيل',
+    ckb: 'هەولێر',
+    kmr: 'هەولێر',
+  },
+  Baghdad: {
+    en: 'Baghdad',
+    ar: 'بغداد',
+    ckb: 'بەغدا',
+    kmr: 'بەغدا',
+  },
+};
+
+const CAPITAL_TRANSLATIONS: Record<string, Record<string, string>> = {
+  Paris: {
+    en: 'Paris',
+    ar: 'باريس',
+    ckb: 'پاریس',
+    kmr: 'پاریس',
+  },
+  Berlin: {
+    en: 'Berlin',
+    ar: 'برلين',
+    ckb: 'بەرلین',
+    kmr: 'بەرلین',
+  },
+  Rome: {
+    en: 'Rome',
+    ar: 'روما',
+    ckb: 'ڕۆم',
+    kmr: 'ڕۆم',
+  },
+  Madrid: {
+    en: 'Madrid',
+    ar: 'مدريد',
+    ckb: 'مەدرید',
+    kmr: 'مەدرید',
+  },
+  London: {
+    en: 'London',
+    ar: 'لندن',
+    ckb: 'لەندەن',
+    kmr: 'لەندەن',
+  },
+  'Washington D.C.': {
+    en: 'Washington D.C.',
+    ar: 'واشنطن',
+    ckb: 'واشنتن',
+    kmr: 'واشنتن',
+  },
+  Ottawa: {
+    en: 'Ottawa',
+    ar: 'أوتاوا',
+    ckb: 'ئۆتاوا',
+    kmr: 'ئۆتاوا',
+  },
+  Brussels: {
+    en: 'Brussels',
+    ar: 'بروكسل',
+    ckb: 'بروکسل',
+    kmr: 'بروکسل',
+  },
+  Amsterdam: {
+    en: 'Amsterdam',
+    ar: 'أمستردام',
+    ckb: 'ئەمستەردام',
+    kmr: 'ئەمستەردام',
+  },
+};
+
+function tSafe(key: string, fallback: string) {
+  const translated = i18n.t(key);
+  if (!translated || translated === key || String(translated).includes('[missing')) {
+    return fallback;
+  }
+  return String(translated);
+}
+
+function getLocalizedValue(
+  map: Record<string, Record<string, string>>,
+  key: string,
+  lang: string
+) {
+  return map[key]?.[lang] || map[key]?.en || key;
+}
+
 export default function ConsulateScreen() {
   useTheme();
   const router = useRouter();
+  const currentLang = getCurrentLanguage?.() || 'en';
 
   const groupedByCity = CONSULATES.reduce((acc, consulate) => {
     if (!acc[consulate.city]) acc[consulate.city] = [];
@@ -148,9 +294,9 @@ export default function ConsulateScreen() {
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{i18n.t('consulateInfo')}</Text>
+          <Text style={styles.headerTitle}>{tSafe('consulateInfo', 'Consulate Info')}</Text>
           <Text style={styles.headerSubtitle}>
-            {i18n.t('city')} & {i18n.t('capital')}
+            {tSafe('city', 'City')} & {tSafe('capital', 'Capital')}
           </Text>
         </View>
 
@@ -164,13 +310,20 @@ export default function ConsulateScreen() {
         <View style={styles.heroCard}>
           <View style={styles.heroBadge}>
             <Ionicons name="business-outline" size={18} color={UI.blueDark} />
-            <Text style={styles.heroBadgeText}>{i18n.t('consulateInfo')}</Text>
+            <Text style={styles.heroBadgeText}>
+              {tSafe('consulateInfo', 'Consulate Info')}
+            </Text>
           </View>
 
-          <Text style={styles.heroTitle}>Embassy & Consulate Directory</Text>
+          <Text style={styles.heroTitle}>
+            {tSafe('consulateDirectoryTitle', 'Embassy & Consulate Directory')}
+          </Text>
+
           <Text style={styles.heroText}>
-            Find quick contact details, capital city, and address information for
-            consulates available in Iraq.
+            {tSafe(
+              'consulateDirectorySubtitle',
+              'Find quick contact details, capital city, and address information for consulates available in Iraq.'
+            )}
           </Text>
         </View>
 
@@ -179,7 +332,9 @@ export default function ConsulateScreen() {
             <View style={styles.cityHeader}>
               <View style={styles.cityHeaderLeft}>
                 <View style={styles.cityDot} />
-                <Text style={styles.cityTitle}>{city}</Text>
+                <Text style={styles.cityTitle}>
+                  {getLocalizedValue(CITY_TRANSLATIONS, city, currentLang)}
+                </Text>
               </View>
 
               <View style={styles.cityCountBadge}>
@@ -188,77 +343,101 @@ export default function ConsulateScreen() {
             </View>
 
             <View style={styles.grid}>
-              {cityConsulates.map((consulate) => (
-                <View key={consulate.id} style={styles.card}>
-                  <View style={styles.imageWrap}>
-                    <Image
-                      source={{ uri: consulate.image }}
-                      style={styles.image}
-                      resizeMode="cover"
-                    />
+              {cityConsulates.map((consulate) => {
+                const localizedCountry = getLocalizedValue(
+                  COUNTRY_TRANSLATIONS,
+                  consulate.country,
+                  currentLang
+                );
 
-                    <View style={styles.imageOverlay} />
+                const localizedCity = getLocalizedValue(
+                  CITY_TRANSLATIONS,
+                  consulate.city,
+                  currentLang
+                );
 
-                    <View style={styles.countryPill}>
-                      <Text style={styles.countryPillText}>{consulate.country}</Text>
-                    </View>
-                  </View>
+                const localizedCapital = getLocalizedValue(
+                  CAPITAL_TRANSLATIONS,
+                  consulate.capital,
+                  currentLang
+                );
 
-                  <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle}>
-                      {consulate.country} {i18n.t('consulate')}
-                    </Text>
+                return (
+                  <View key={consulate.id} style={styles.card}>
+                    <View style={styles.imageWrap}>
+                      <Image
+                        source={{ uri: consulate.image }}
+                        style={styles.image}
+                        resizeMode="cover"
+                      />
 
-                    <View style={styles.infoCard}>
-                      <View style={styles.infoRow}>
-                        <View style={styles.infoIconBox}>
-                          <Ionicons name="location-outline" size={15} color={UI.blueDark} />
-                        </View>
-                        <View style={styles.infoTextWrap}>
-                          <Text style={styles.infoLabel}>{i18n.t('city')}</Text>
-                          <Text style={styles.infoValue}>{consulate.city}</Text>
-                        </View>
-                      </View>
+                      <View style={styles.imageOverlay} />
 
-                      <View style={styles.infoDivider} />
-
-                      <View style={styles.infoRow}>
-                        <View style={styles.infoIconBox}>
-                          <Ionicons name="flag-outline" size={15} color={UI.blueDark} />
-                        </View>
-                        <View style={styles.infoTextWrap}>
-                          <Text style={styles.infoLabel}>{i18n.t('capital')}</Text>
-                          <Text style={styles.infoValue}>{consulate.capital}</Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.infoDivider} />
-
-                      <View style={styles.infoRow}>
-                        <View style={styles.infoIconBox}>
-                          <Ionicons name="navigate-outline" size={15} color={UI.blueDark} />
-                        </View>
-                        <View style={styles.infoTextWrap}>
-                          <Text style={styles.infoLabel}>{i18n.t('address') || 'Address'}</Text>
-                          <Text style={styles.infoValueAddress}>{consulate.address}</Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.infoDivider} />
-
-                      <View style={styles.infoRow}>
-                        <View style={styles.infoIconBox}>
-                          <Ionicons name="call-outline" size={15} color={UI.blueDark} />
-                        </View>
-                        <View style={styles.infoTextWrap}>
-                          <Text style={styles.infoLabel}>{i18n.t('contact') || 'Contact'}</Text>
-                          <Text style={styles.infoValuePhone}>{consulate.contact}</Text>
-                        </View>
+                      <View style={styles.countryPill}>
+                        <Text style={styles.countryPillText}>{localizedCountry}</Text>
                       </View>
                     </View>
+
+                    <View style={styles.cardContent}>
+                      <Text style={styles.cardTitle}>
+                        {localizedCountry} {tSafe('consulate', 'Consulate')}
+                      </Text>
+
+                      <View style={styles.infoCard}>
+                        <View style={styles.infoRow}>
+                          <View style={styles.infoIconBox}>
+                            <Ionicons name="location-outline" size={15} color={UI.blueDark} />
+                          </View>
+                          <View style={styles.infoTextWrap}>
+                            <Text style={styles.infoLabel}>{tSafe('city', 'City')}</Text>
+                            <Text style={styles.infoValue}>{localizedCity}</Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.infoDivider} />
+
+                        <View style={styles.infoRow}>
+                          <View style={styles.infoIconBox}>
+                            <Ionicons name="flag-outline" size={15} color={UI.blueDark} />
+                          </View>
+                          <View style={styles.infoTextWrap}>
+                            <Text style={styles.infoLabel}>{tSafe('capital', 'Capital')}</Text>
+                            <Text style={styles.infoValue}>{localizedCapital}</Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.infoDivider} />
+
+                        <View style={styles.infoRow}>
+                          <View style={styles.infoIconBox}>
+                            <Ionicons name="navigate-outline" size={15} color={UI.blueDark} />
+                          </View>
+                          <View style={styles.infoTextWrap}>
+                            <Text style={styles.infoLabel}>
+                              {tSafe('address', 'Address')}
+                            </Text>
+                            <Text style={styles.infoValueAddress}>{consulate.address}</Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.infoDivider} />
+
+                        <View style={styles.infoRow}>
+                          <View style={styles.infoIconBox}>
+                            <Ionicons name="call-outline" size={15} color={UI.blueDark} />
+                          </View>
+                          <View style={styles.infoTextWrap}>
+                            <Text style={styles.infoLabel}>
+                              {tSafe('contact', 'Contact')}
+                            </Text>
+                            <Text style={styles.infoValuePhone}>{consulate.contact}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </View>
         ))}
