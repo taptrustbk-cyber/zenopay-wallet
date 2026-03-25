@@ -11,6 +11,8 @@ import {
   Platform,
   Modal,
   Pressable,
+  Animated,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,7 +50,7 @@ const COLORS = {
 const SHADOWS = {
   card: {
     shadowColor: '#7DA8E6',
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
@@ -90,6 +92,10 @@ export default function ProfileScreen() {
   const [savingAvatar, setSavingAvatar] = useState(false);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
 
+  const shimmerAnim = useRef(new Animated.Value(0.35)).current;
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastUrlRef = useRef<string | null>(null);
+
   useFocusEffect(
     useCallback(() => {
       refreshProfile?.();
@@ -112,12 +118,36 @@ export default function ProfileScreen() {
     (profile as any)?.avatar_url,
   ]);
 
+  useEffect(() => {
+    if (!avatarLoaded || savingAvatar) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerAnim, {
+            toValue: 0.85,
+            duration: 900,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerAnim, {
+            toValue: 0.35,
+            duration: 900,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      shimmerAnim.stopAnimation();
+      shimmerAnim.setValue(0);
+    }
+  }, [avatarLoaded, savingAvatar, shimmerAnim]);
+
   const AVATAR_VERSION_KEY = user?.id ? `avatar_version_${user.id}` : 'avatar_version_guest';
   const [avatarVersion, setAvatarVersion] = useState<string>('');
-  const lastUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       try {
         if (!user?.id) return;
@@ -157,8 +187,6 @@ export default function ProfileScreen() {
   useEffect(() => {
     setAvatarLoaded(false);
   }, [avatarPreview]);
-
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const lastSaved = useRef({
     full_name: profile?.full_name || '',
@@ -274,6 +302,7 @@ export default function ProfileScreen() {
 
     try {
       setSavingAvatar(true);
+      setAvatarLoaded(false);
 
       // instant preview
       setLocalAvatarUri(uri);
@@ -288,7 +317,7 @@ export default function ProfileScreen() {
       const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, blob, {
         upsert: true,
         contentType: mime,
-        cacheControl: '31536000',
+        cacheControl: '0',
       });
       if (uploadError) throw uploadError;
 
@@ -296,7 +325,10 @@ export default function ProfileScreen() {
       const publicUrl = data?.publicUrl;
       if (!publicUrl) throw new Error('Failed to get public URL');
 
-      const { error: dbError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+      const { error: dbError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
       if (dbError) throw dbError;
 
       const newV = String(Date.now());
@@ -319,58 +351,102 @@ export default function ProfileScreen() {
     }
   };
 
-  const pickFromGallery = async () => {
+  const launchAfterModalClose = (fn: () => Promise<void>) => {
     setPickerOpen(false);
+    setTimeout(() => {
+      fn().catch((e) => {
+        console.error('Picker/Camera error:', e);
+        Alert.alert(i18n.t('error') || 'Error', e?.message || 'Something went wrong');
+      });
+    }, 320);
+  };
 
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert(i18n.t('error') || 'Error', 'Permission to access photos is required');
-      return;
-    }
+  const pickFromGallery = async () => {
+    launchAfterModalClose(async () => {
+      if (Platform.OS !== 'web') {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert(i18n.t('error') || 'Error', 'Permission to access photos is required');
+          return;
+        }
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-      selectionLimit: 1,
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+        selectionLimit: 1,
+      });
+
+      if (result.canceled) return;
+
+      const uri = result.assets?.[0]?.uri;
+      if (!uri) return;
+
+      await uploadAvatarToSupabase(uri);
     });
-
-    if (result.canceled) return;
-
-    const uri = result.assets?.[0]?.uri;
-    if (!uri) return;
-
-    await uploadAvatarToSupabase(uri);
   };
 
   const takeNewPhoto = async () => {
-    setPickerOpen(false);
+    launchAfterModalClose(async () => {
+      if (Platform.OS === 'web') {
+        try {
+          const webCameraResult = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+          });
 
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert(i18n.t('error') || 'Error', 'Permission to use camera is required');
-      return;
-    }
+          if (webCameraResult.canceled) return;
+          const uri = webCameraResult.assets?.[0]?.uri;
+          if (!uri) return;
 
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
+          await uploadAvatarToSupabase(uri);
+          return;
+        } catch {
+          const fallbackResult = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+            selectionLimit: 1,
+          });
+
+          if (fallbackResult.canceled) return;
+          const uri = fallbackResult.assets?.[0]?.uri;
+          if (!uri) return;
+
+          await uploadAvatarToSupabase(uri);
+          return;
+        }
+      }
+
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(i18n.t('error') || 'Error', 'Permission to use camera is required');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+
+      if (result.canceled) return;
+
+      const uri = result.assets?.[0]?.uri;
+      if (!uri) return;
+
+      await uploadAvatarToSupabase(uri);
     });
-
-    if (result.canceled) return;
-
-    const uri = result.assets?.[0]?.uri;
-    if (!uri) return;
-
-    await uploadAvatarToSupabase(uri);
   };
 
   const statusText =
     (profile as any)?.kyc_status === 'approved'
       ? i18n.t('active') || 'Active'
-      : (i18n.t((profile as any)?.kyc_status || 'notStarted') as any);
+      : i18n.t((profile as any)?.kyc_status || 'notStarted');
 
   return (
     <View style={styles.container}>
@@ -406,17 +482,27 @@ export default function ProfileScreen() {
               >
                 {avatarPreview ? (
                   <>
-                    {!avatarLoaded && (
-                      <View style={styles.avatarLoadingLayer}>
-                        <ActivityIndicator size="small" color={COLORS.blue} />
-                      </View>
+                    {(!avatarLoaded || savingAvatar) && (
+                      <Animated.View
+                        style={[
+                          styles.avatarLoadingLayer,
+                          { opacity: shimmerAnim },
+                        ]}
+                      >
+                        <View style={styles.skeletonCircle} />
+                        <ActivityIndicator
+                          size="small"
+                          color={COLORS.blue}
+                          style={{ position: 'absolute' }}
+                        />
+                      </Animated.View>
                     )}
 
                     <Image
                       source={{ uri: avatarPreview }}
                       style={styles.avatarImg}
                       contentFit="cover"
-                      transition={80}
+                      transition={120}
                       cachePolicy="memory-disk"
                       onLoadStart={() => setAvatarLoaded(false)}
                       onLoad={() => setAvatarLoaded(true)}
@@ -424,9 +510,14 @@ export default function ProfileScreen() {
                     />
                   </>
                 ) : (
-                  <View style={styles.avatarFallback}>
+                  <Animated.View
+                    style={[
+                      styles.avatarFallback,
+                      { opacity: !avatarLoaded || savingAvatar ? shimmerAnim : 1 },
+                    ]}
+                  >
                     <Ionicons name="person" size={34} color={COLORS.blue} />
-                  </View>
+                  </Animated.View>
                 )}
 
                 <View style={styles.avatarPencil}>
@@ -443,44 +534,44 @@ export default function ProfileScreen() {
               </Text>
             </View>
 
-            <Text style={styles.label}>{i18n.t('fullName')}</Text>
+            <Text style={styles.label}>{i18n.t('fullName') || 'Full Name'}</Text>
             <TextInput
               style={styles.input}
-              placeholder={i18n.t('fullNamePlaceholder')}
+              placeholder={i18n.t('fullNamePlaceholder') || 'Enter full name'}
               placeholderTextColor={COLORS.textMuted}
               value={fullName}
               onChangeText={setFullName}
               autoCapitalize="words"
             />
 
-            <Text style={styles.label}>{i18n.t('dateOfBirth')}</Text>
+            <Text style={styles.label}>{i18n.t('dateOfBirth') || 'Date of Birth'}</Text>
             <TextInput
               style={styles.input}
-              placeholder={i18n.t('dateOfBirthPlaceholder')}
+              placeholder={i18n.t('dateOfBirthPlaceholder') || 'YYYY-MM-DD'}
               placeholderTextColor={COLORS.textMuted}
               value={dob}
               onChangeText={setDob}
             />
 
-            <Text style={styles.label}>{i18n.t('phoneNumber')}</Text>
+            <Text style={styles.label}>{i18n.t('phoneNumber') || 'Phone Number'}</Text>
             <TextInput
               style={styles.input}
-              placeholder={i18n.t('phoneNumberPlaceholder')}
+              placeholder={i18n.t('phoneNumberPlaceholder') || 'Enter phone number'}
               placeholderTextColor={COLORS.textMuted}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
             />
 
-            <Text style={styles.label}>{i18n.t('email')}</Text>
+            <Text style={styles.label}>{i18n.t('email') || 'Email'}</Text>
             <View style={styles.infoBox}>
               <Text style={styles.infoText}>{user?.email || email}</Text>
             </View>
 
-            <Text style={styles.label}>{i18n.t('country')}</Text>
+            <Text style={styles.label}>{i18n.t('country') || 'Country'}</Text>
             <TextInput
               style={styles.input}
-              placeholder={i18n.t('countryPlaceholder')}
+              placeholder={i18n.t('countryPlaceholder') || 'Enter country'}
               placeholderTextColor={COLORS.textMuted}
               value={country}
               onChangeText={setCountry}
@@ -493,7 +584,10 @@ export default function ProfileScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.primaryButtonWrap, (updateMutation.isPending || savingAvatar) && styles.buttonDisabled]}
+              style={[
+                styles.primaryButtonWrap,
+                (updateMutation.isPending || savingAvatar) && styles.buttonDisabled,
+              ]}
               onPress={() => updateMutation.mutate()}
               disabled={updateMutation.isPending || savingAvatar}
               activeOpacity={0.92}
@@ -517,7 +611,12 @@ export default function ProfileScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
+      <Modal
+        visible={pickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPickerOpen(false)}
+      >
         <Pressable style={styles.modalOverlay} onPress={() => setPickerOpen(false)} />
         <View style={styles.modalSheet}>
           <Text style={styles.modalTitle}>{i18n.t('changePhoto') || 'Change photo'}</Text>
@@ -531,7 +630,9 @@ export default function ProfileScreen() {
 
           <TouchableOpacity style={styles.sheetButton} activeOpacity={0.9} onPress={takeNewPhoto}>
             <Ionicons name="camera" size={18} color={COLORS.blueDark} />
-            <Text style={styles.sheetButtonText}>{i18n.t('takeNewPhoto') || 'Take new photo'}</Text>
+            <Text style={styles.sheetButtonText}>
+              {i18n.t('takeNewPhoto') || 'Take new photo'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.9} onPress={() => setPickerOpen(false)}>
@@ -626,16 +727,23 @@ const styles = StyleSheet.create({
   },
   avatarLoadingLayer: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 2,
+    zIndex: 3,
     backgroundColor: COLORS.blueSoft,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  skeletonCircle: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 53,
+    backgroundColor: '#DCEBFF',
   },
   avatarFallback: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: COLORS.blueSoft,
   },
   avatarPencil: {
     position: 'absolute',
@@ -647,7 +755,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.blue,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 3,
+    zIndex: 4,
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
