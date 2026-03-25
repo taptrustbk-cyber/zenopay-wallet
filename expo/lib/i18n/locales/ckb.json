@@ -52,6 +52,11 @@
 
   "viewQrCode": "ببینە QR وێنەی",
   "receiveName": "ناوی وەرگر",
+  "gender": "ڕەگەز",
+  "selectGender": "ڕەگەز هەڵبژێرە",
+  "genderMale": "نێر",
+  "genderFemale": "مێ",
+  "genderOther": "تر",
   "receiveNumber": "ژمارەی وەرگر",
   "transactionReceipt": "QR کۆدی بارکراو",
   "noReceiptImageUploaded": "هیچ QR کۆدێک بارنەکراوە",
