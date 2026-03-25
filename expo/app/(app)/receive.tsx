@@ -33,6 +33,8 @@ import {
   QrCode,
   Copy,
   Eye,
+  DollarSign,
+  ArrowRightLeft,
 } from 'lucide-react-native';
 import { decode } from 'base64-arraybuffer';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -43,6 +45,10 @@ export const options = { headerShown: false };
 const DEPOSIT_BUCKET = 'deposit-receipts';
 const MIN_DEPOSIT_IQD = 1000;
 const MAX_DEPOSIT_IQD = 5000000;
+
+const DEFAULT_USDT_RATE_IQD = 1550;
+const DEFAULT_MIN_USDT = 5;
+const DEFAULT_MAX_USDT = 10000;
 
 const UI = {
   bg: '#EEF4FF',
@@ -100,6 +106,11 @@ type PaymentMethod = {
   is_active?: boolean | null;
   sort_order?: number | null;
   method_type?: 'withdraw' | 'deposit' | null;
+
+  exchange_rate_iqd?: number | null;
+  min_amount_usd?: number | null;
+  max_amount_usd?: number | null;
+  address_label?: string | null;
 };
 
 type DepositOrderItem = {
@@ -129,6 +140,15 @@ function formatIQD(value: number | string | null | undefined) {
   return num.toLocaleString('de-DE');
 }
 
+function formatUSD(value: number | string | null | undefined) {
+  const num = Number(value || 0);
+  if (Number.isNaN(num)) return '0';
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: num % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 function parseIQDInput(value: string) {
   const onlyDigits = String(value || '').replace(/[^\d]/g, '');
   return onlyDigits ? Number(onlyDigits) : 0;
@@ -138,6 +158,37 @@ function formatIQDInput(value: string) {
   const onlyDigits = String(value || '').replace(/[^\d]/g, '');
   if (!onlyDigits) return '';
   return Number(onlyDigits).toLocaleString('de-DE');
+}
+
+function sanitizeUSDInput(value: string) {
+  let clean = String(value || '').replace(/[^0-9.]/g, '');
+
+  const firstDot = clean.indexOf('.');
+  if (firstDot !== -1) {
+    clean =
+      clean.slice(0, firstDot + 1) +
+      clean
+        .slice(firstDot + 1)
+        .replace(/\./g, '');
+  }
+
+  const parts = clean.split('.');
+  if (parts.length === 2) {
+    clean = `${parts[0]}.${parts[1].slice(0, 2)}`;
+  }
+
+  return clean;
+}
+
+function parseUSDInput(value: string) {
+  const num = Number(String(value || '').replace(/,/g, ''));
+  if (Number.isNaN(num)) return 0;
+  return num;
+}
+
+function isUsdtTrc20Method(method?: PaymentMethod | null) {
+  const name = String(method?.name || '').toLowerCase();
+  return name.includes('usdt') && name.includes('trc20');
 }
 
 function getStatusMeta(status?: string) {
@@ -219,7 +270,7 @@ export default function DepositScreen() {
       const { data, error } = await supabase
         .from('payment_methods')
         .select(
-          'id, name, account_name, account_number, instructions, qr_image, logo_url, is_active, sort_order, method_type'
+          'id, name, account_name, account_number, instructions, qr_image, logo_url, is_active, sort_order, method_type, exchange_rate_iqd, min_amount_usd, max_amount_usd, address_label'
         )
         .eq('is_active', true)
         .eq('method_type', 'deposit')
@@ -275,7 +326,43 @@ export default function DepositScreen() {
     return paymentMethodsQuery.data?.find((m) => m.id === selectedMethodId) || null;
   }, [paymentMethodsQuery.data, selectedMethodId]);
 
-  const balanceText = formatIQD(walletQuery.data?.balance || 0);
+  const isUSDT = isUsdtTrc20Method(selectedMethod);
+  const usdtRate = Number(selectedMethod?.exchange_rate_iqd || DEFAULT_USDT_RATE_IQD);
+  const minUsd = Number(selectedMethod?.min_amount_usd || DEFAULT_MIN_USDT);
+  const maxUsd = Number(selectedMethod?.max_amount_usd || DEFAULT_MAX_USDT);
+
+  const amountNumber = useMemo(() => {
+    return isUSDT ? parseUSDInput(amount) : parseIQDInput(amount);
+  }, [amount, isUSDT]);
+
+  const convertedIQD = useMemo(() => {
+    if (!isUSDT) return 0;
+    return Math.round(amountNumber * usdtRate);
+  }, [amountNumber, isUSDT, usdtRate]);
+
+  const displayedBalanceText = formatIQD(walletQuery.data?.balance || 0);
+
+  const amountSuffixLabel = isUSDT ? 'USD' : (i18n.t('iqdShort') || 'IQD');
+  const amountLabel = isUSDT
+    ? (i18n.t('amount') || 'Amount') + ' (USD)'
+    : (i18n.t('amount') || 'Amount');
+
+  const accountNumberLabel = isUSDT
+    ? selectedMethod?.address_label || 'USDT TRC20 Address'
+    : i18n.t('bankNumber') || 'Bank / Account Number';
+
+  const senderNumberLabel = isUSDT
+    ? 'Your Wallet Address / Tx Hash'
+    : i18n.t('senderNumber') || 'Account Number / Mobile';
+
+  const senderNumberPlaceholder = isUSDT
+    ? 'Enter your wallet address or transaction hash'
+    : i18n.t('enterSenderNumber') || 'Please enter your account number';
+
+  const instructionsTitle = i18n.t('instructions') || 'Instructions';
+  const selectedInstructions = isUSDT
+    ? selectedMethod?.instructions || 'Send only USDT through TRC20 network to the address below.'
+    : selectedMethod?.instructions || '';
 
   const pickReceiptImage = async () => {
     try {
@@ -357,7 +444,7 @@ export default function DepositScreen() {
         throw new Error(i18n.t('enterSenderName') || 'Please enter your account holder name');
       }
       if (!senderNumber.trim()) {
-        throw new Error(i18n.t('enterSenderNumber') || 'Please enter your account number');
+        throw new Error(senderNumberPlaceholder);
       }
       if (!receiptImage) {
         throw new Error(
@@ -365,34 +452,51 @@ export default function DepositScreen() {
         );
       }
 
-      const amountNum = parseIQDInput(amount);
+      const rawAmount = isUSDT ? parseUSDInput(amount) : parseIQDInput(amount);
 
-      if (Number.isNaN(amountNum) || amountNum <= 0) {
+      if (Number.isNaN(rawAmount) || rawAmount <= 0) {
         throw new Error(i18n.t('invalidAmount') || 'Invalid amount');
       }
 
-      if (amountNum < MIN_DEPOSIT_IQD) {
-        throw new Error(
-          `${i18n.t('minimumDepositAmount') || 'Minimum deposit amount is'} ${formatIQD(MIN_DEPOSIT_IQD)} ${i18n.t('iqdShort') || 'IQD'}`
-        );
+      if (isUSDT) {
+        if (rawAmount < minUsd) {
+          throw new Error(`Minimum deposit amount is $${formatUSD(minUsd)}`);
+        }
+
+        if (rawAmount > maxUsd) {
+          throw new Error(`Maximum deposit amount is $${formatUSD(maxUsd)}`);
+        }
+      } else {
+        if (rawAmount < MIN_DEPOSIT_IQD) {
+          throw new Error(
+            `${i18n.t('minimumDepositAmount') || 'Minimum deposit amount is'} ${formatIQD(MIN_DEPOSIT_IQD)} ${i18n.t('iqdShort') || 'IQD'}`
+          );
+        }
+
+        if (rawAmount > MAX_DEPOSIT_IQD) {
+          throw new Error(
+            `${i18n.t('maximumDepositAmount') || 'Maximum deposit amount is'} ${formatIQD(MAX_DEPOSIT_IQD)} ${i18n.t('iqdShort') || 'IQD'}`
+          );
+        }
       }
 
-      if (amountNum > MAX_DEPOSIT_IQD) {
-        throw new Error(
-          `${i18n.t('maximumDepositAmount') || 'Maximum deposit amount is'} ${formatIQD(MAX_DEPOSIT_IQD)} ${i18n.t('iqdShort') || 'IQD'}`
-        );
-      }
-
+      const finalAmountIQD = isUSDT ? Math.round(rawAmount * usdtRate) : rawAmount;
       const receiptUrl = await uploadReceiptToStorage(receiptImage);
+
+      const extraNote = isUSDT
+        ? `USDT TRC20 Deposit | USD: ${formatUSD(rawAmount)} | Rate: ${formatIQD(usdtRate)} IQD/USD | IQD: ${formatIQD(finalAmountIQD)}`
+        : null;
+
+      const finalNote = [note.trim(), extraNote].filter(Boolean).join(' | ') || null;
 
       const { error } = await supabase.from('deposit_orders').insert({
         user_id: user.id,
-        amount: amountNum,
+        amount: finalAmountIQD,
         currency: 'IQD',
         payment_method_id: selectedMethod.id,
         sender_name: senderName.trim(),
         sender_number: senderNumber.trim(),
-        note: note.trim() || null,
+        note: finalNote,
         receipt_image: receiptUrl,
         status: 'pending',
       });
@@ -422,6 +526,7 @@ export default function DepositScreen() {
 
   const renderMethodListItem = (method: PaymentMethod) => {
     const selected = selectedMethodId === method.id;
+    const methodIsUsdt = isUsdtTrc20Method(method);
 
     return (
       <TouchableOpacity
@@ -430,6 +535,7 @@ export default function DepositScreen() {
         activeOpacity={0.92}
         onPress={() => {
           setSelectedMethodId(method.id);
+          setAmount('');
           setShowMethodModal(false);
         }}
       >
@@ -444,6 +550,11 @@ export default function DepositScreen() {
 
           <View style={{ flex: 1 }}>
             <Text style={styles.methodName}>{method.name}</Text>
+            {methodIsUsdt ? (
+              <Text style={styles.methodSubLine}>
+                1 USD = {formatIQD(method.exchange_rate_iqd || DEFAULT_USDT_RATE_IQD)} IQD
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -527,7 +638,7 @@ export default function DepositScreen() {
               </View>
             ) : (
               <View style={styles.heroBalanceRow}>
-                <Text style={styles.heroBalance}>{balanceText}</Text>
+                <Text style={styles.heroBalance}>{displayedBalanceText}</Text>
                 <Text style={styles.heroCurrency}>{i18n.t('iqdShort') || 'IQD'}</Text>
               </View>
             )}
@@ -565,6 +676,11 @@ export default function DepositScreen() {
 
                   <View style={{ flex: 1 }}>
                     <Text style={styles.selectorText}>{selectedMethod.name}</Text>
+                    {isUSDT ? (
+                      <Text style={styles.selectorSubText}>
+                        1 USD = {formatIQD(usdtRate)} IQD
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
               ) : (
@@ -576,31 +692,69 @@ export default function DepositScreen() {
               <ChevronDown size={20} color={UI.text2} />
             </TouchableOpacity>
 
-            <Text style={styles.label}>{i18n.t('amount') || 'Amount'}</Text>
+            <Text style={styles.label}>{amountLabel}</Text>
             <View style={styles.amountWrap}>
               <TextInput
                 style={styles.amountInput}
-                placeholder={i18n.t('enterAmount') || 'Enter amount'}
+                placeholder={isUSDT ? '100' : (i18n.t('enterAmount') || 'Enter amount')}
                 placeholderTextColor={UI.text3}
                 value={amount}
-                onChangeText={(text) => setAmount(formatIQDInput(text))}
-                keyboardType="number-pad"
+                onChangeText={(text) =>
+                  setAmount(isUSDT ? sanitizeUSDInput(text) : formatIQDInput(text))
+                }
+                keyboardType="decimal-pad"
               />
               <View style={styles.amountSuffix}>
-                <Text style={styles.amountSuffixText}>{i18n.t('iqdShort') || 'IQD'}</Text>
+                <Text style={styles.amountSuffixText}>{amountSuffixLabel}</Text>
               </View>
             </View>
 
-            <View style={styles.limitBox}>
-              <Text style={styles.limitText}>
-                {(i18n.t('minimumDepositAmount') || 'Minimum deposit amount') +
-                  `: ${formatIQD(MIN_DEPOSIT_IQD)} ${i18n.t('iqdShort') || 'IQD'}`}
-              </Text>
-              <Text style={styles.limitText}>
-                {(i18n.t('maximumDepositAmount') || 'Maximum deposit amount') +
-                  `: ${formatIQD(MAX_DEPOSIT_IQD)} ${i18n.t('iqdShort') || 'IQD'}`}
-              </Text>
-            </View>
+            {isUSDT ? (
+              <>
+                <View style={styles.rateBox}>
+                  <View style={styles.rateRow}>
+                    <View style={styles.rateChip}>
+                      <DollarSign size={15} color={UI.blueDark} />
+                      <Text style={styles.rateChipText}>USDT TRC20</Text>
+                    </View>
+
+                    <View style={styles.rateChip}>
+                      <ArrowRightLeft size={14} color={UI.blueDark} />
+                      <Text style={styles.rateChipText}>
+                        1 USD = {formatIQD(usdtRate)} IQD
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.rateResultRow}>
+                    <Text style={styles.rateResultLabel}>Equivalent in IQD</Text>
+                    <Text style={styles.rateResultValue}>
+                      {formatIQD(convertedIQD)} IQD
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.limitBox}>
+                  <Text style={styles.limitText}>
+                    Minimum deposit amount: ${formatUSD(minUsd)}
+                  </Text>
+                  <Text style={styles.limitText}>
+                    Maximum deposit amount: ${formatUSD(maxUsd)}
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.limitBox}>
+                <Text style={styles.limitText}>
+                  {(i18n.t('minimumDepositAmount') || 'Minimum deposit amount is') +
+                    `: ${formatIQD(MIN_DEPOSIT_IQD)} ${i18n.t('iqdShort') || 'IQD'}`}
+                </Text>
+                <Text style={styles.limitText}>
+                  {(i18n.t('maximumDepositAmount') || 'Maximum deposit amount is') +
+                    `: ${formatIQD(MAX_DEPOSIT_IQD)} ${i18n.t('iqdShort') || 'IQD'}`}
+                </Text>
+              </View>
+            )}
 
             {selectedMethod ? (
               <View style={styles.bankInfoCard}>
@@ -628,20 +782,16 @@ export default function DepositScreen() {
                   >
                     <View style={styles.copyInfoLeft}>
                       <Copy size={16} color={UI.blue} />
-                      <Text style={styles.copyInfoLabel}>
-                        {i18n.t('bankNumber') || 'Bank / Account Number'}
-                      </Text>
+                      <Text style={styles.copyInfoLabel}>{accountNumberLabel}</Text>
                     </View>
                     <Text style={styles.copyInfoValue}>{selectedMethod.account_number}</Text>
                   </TouchableOpacity>
                 ) : null}
 
-                {!!selectedMethod.instructions ? (
+                {!!selectedInstructions ? (
                   <View style={styles.instructionsBox}>
-                    <Text style={styles.instructionsTitle}>
-                      {i18n.t('instructions') || 'Instructions'}
-                    </Text>
-                    <Text style={styles.instructionsText}>{selectedMethod.instructions}</Text>
+                    <Text style={styles.instructionsTitle}>{instructionsTitle}</Text>
+                    <Text style={styles.instructionsText}>{selectedInstructions}</Text>
                   </View>
                 ) : null}
 
@@ -688,18 +838,14 @@ export default function DepositScreen() {
               </View>
 
               <View style={{ flex: 1 }}>
-                <Text style={styles.label}>
-                  {i18n.t('senderNumber') || 'Account Number / Mobile'}
-                </Text>
+                <Text style={styles.label}>{senderNumberLabel}</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder={
-                    i18n.t('enterSenderNumber') || 'Please enter your account number'
-                  }
+                  placeholder={senderNumberPlaceholder}
                   placeholderTextColor={UI.text3}
                   value={senderNumber}
                   onChangeText={setSenderNumber}
-                  keyboardType="phone-pad"
+                  keyboardType="default"
                 />
               </View>
             </View>
@@ -1178,6 +1324,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: UI.text,
   },
+  selectorSubText: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '800',
+    color: UI.text2,
+  },
 
   methodListItem: {
     marginBottom: 12,
@@ -1223,6 +1375,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
     color: UI.text,
+  },
+  methodSubLine: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: '800',
+    color: UI.text2,
   },
 
   radioOuter: {
@@ -1279,6 +1437,50 @@ const styles = StyleSheet.create({
   },
   amountSuffixText: {
     fontSize: 13,
+    fontWeight: '900',
+    color: UI.blueDark,
+  },
+
+  rateBox: {
+    marginBottom: 12,
+    backgroundColor: UI.blueSoft,
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
+  rateRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+  rateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  rateChipText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: UI.blueDark,
+  },
+  rateResultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  rateResultLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: UI.text2,
+  },
+  rateResultValue: {
+    fontSize: 16,
     fontWeight: '900',
     color: UI.blueDark,
   },
