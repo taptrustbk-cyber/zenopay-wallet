@@ -23,6 +23,10 @@
   "transactions_copyFailed": "کۆپیکرن سەرکەفتی نەبوو",
   "transactions_adminNote": "تێبینا ئەدمین",
   "transactions_purchaseProduct": "کرینا بەرهەمی",
+   "contact": "پەیوەندی",
+  "address": "ناڤونیشان",
+  "consulateDirectoryTitle": "ڕێبەرا باڵیۆزخانە و کۆنسولخانەیان",
+  "consulateDirectorySubtitle": "زانیارییێن پەیوەندیێ یێن بلەز، پایتەخت، و ناڤونیشانا کۆنسولخانەیێن هەیی ل عێراقێ لێبگەرە.",
 
   "sendMoney": "هنارتنا پارێ",
   "sendMoneySubtitle": "فرێکرنەکا پاراستی ب د.غ",
