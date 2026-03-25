@@ -36,6 +36,11 @@
   "accountBalance": "Account Balance",
   "failedToLoadBalance": "Failed to load balance",
   "recipientEmail": "Recipient Email",
+  "gender": "Gender",
+  "selectGender": "Select gender",
+  "genderMale": "Male",
+  "genderFemale": "Female",
+  "genderOther": "Other",
   "enterEmail": "Enter email address",
   "enterAmount": "Enter amount",
 
