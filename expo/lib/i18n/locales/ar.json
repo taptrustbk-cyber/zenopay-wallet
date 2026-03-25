@@ -57,6 +57,7 @@
   "accountBalance": "رصيد الحساب",
   "failedToLoadBalance": "فشل في تحميل الرصيد",
   "recipientEmail": "بريد المستلم",
+  "loginSubWelcome": "يرجى تسجيل الدخول إلى حسابك",
   "enterEmail": "أدخل البريد الإلكتروني",
   "enterAmount": "أدخل المبلغ",
   "invalidAmount": "مبلغ غير صالح",
