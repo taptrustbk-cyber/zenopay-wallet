@@ -809,15 +809,7 @@ export default function MobileShopScreen() {
 
         <View style={styles.brandRow}>
           <Text style={styles.brandText}>{getBrandLabel(item.brand)}</Text>
-          {!!item.logo_url ? (
-            <ProductImage
-              uri={item.logo_url}
-              style={styles.brandLogo}
-              contentFit="contain"
-              iconSize={14}
-              placeholderIcon="image-outline"
-            />
-          ) : null}
+          
         </View>
 
         <Text numberOfLines={2} style={styles.productName}>
@@ -1749,10 +1741,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 13,
     fontWeight: '800',
-  },
-  brandLogo: {
-    width: 24,
-    height: 24,
   },
   productName: {
     color: COLORS.text,
