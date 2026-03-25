@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -22,6 +22,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 
 const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v1';
+const REMEMBER_ME_KEY = 'zenopay_remember_me_v1';
+const REMEMBER_EMAIL_KEY = 'zenopay_remember_email_v1';
 
 type PendingProfile = {
   email?: string;
@@ -29,6 +31,7 @@ type PendingProfile = {
   city?: string;
   country?: string;
   phone?: string;
+  gender?: string;
   date_of_brith?: string;
   pending_profile_created_at?: string;
 };
@@ -79,6 +82,49 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [, forceUpdate] = useState(0);
+  const [loadingRememberState, setLoadingRememberState] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const savedRemember = await AsyncStorage.getItem(REMEMBER_ME_KEY);
+        const savedEmail = await AsyncStorage.getItem(REMEMBER_EMAIL_KEY);
+
+        if (!mounted) return;
+
+        const rememberEnabled = savedRemember === null ? true : savedRemember === 'true';
+        setRememberMe(rememberEnabled);
+
+        if (rememberEnabled && savedEmail) {
+          setEmail(savedEmail);
+        }
+      } catch (e) {
+        console.log('load remember me error:', e);
+      } finally {
+        if (mounted) setLoadingRememberState(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  async function persistRememberState(nextRemember: boolean, nextEmail?: string) {
+    try {
+      await AsyncStorage.setItem(REMEMBER_ME_KEY, String(nextRemember));
+
+      if (nextRemember) {
+        await AsyncStorage.setItem(REMEMBER_EMAIL_KEY, (nextEmail ?? email).trim());
+      } else {
+        await AsyncStorage.removeItem(REMEMBER_EMAIL_KEY);
+      }
+    } catch (e) {
+      console.log('persistRememberState error:', e);
+    }
+  }
 
   async function applyPendingProfileIfExists(userId: string) {
     try {
@@ -101,6 +147,7 @@ export default function LoginScreen() {
           city: pending.city ?? null,
           country: pending.country ?? null,
           phone: pending.phone ?? null,
+          gender: pending.gender ?? null,
           date_of_brith: pending.date_of_brith ?? null,
         },
         { onConflict: 'id' }
@@ -119,17 +166,20 @@ export default function LoginScreen() {
 
   const loginMutation = useMutation({
     mutationFn: async () => {
-      if (!email || !password) {
+      const cleanEmail = email.trim().toLowerCase();
+
+      if (!cleanEmail || !password) {
         throw new Error(i18n.t('enterEmail'));
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: cleanEmail,
         password,
       });
 
       if (error) {
         const errorMessage = error.message.toLowerCase();
+
         if (
           errorMessage.includes('email not confirmed') ||
           errorMessage.includes('email confirmation') ||
@@ -137,7 +187,7 @@ export default function LoginScreen() {
           ((error as any).status === 400 && errorMessage.includes('email'))
         ) {
           setTimeout(() => {
-            router.push(`/(auth)/email-verification?email=${encodeURIComponent(email)}` as any);
+            router.push(`/(auth)/email-verification?email=${encodeURIComponent(cleanEmail)}` as any);
           }, 100);
           return { redirectHandled: true };
         }
@@ -145,12 +195,12 @@ export default function LoginScreen() {
       }
 
       if (!data.user) {
-        throw new Error('Login failed');
+        throw new Error(i18n.t('loginFailedMessage') || 'Login failed');
       }
 
       await applyPendingProfileIfExists(data.user.id);
+      await persistRememberState(rememberMe, cleanEmail);
 
-      console.log('Login successful, AuthContext will handle profile loading and navigation');
       return { success: true };
     },
     onSuccess: (data) => {
@@ -177,25 +227,32 @@ export default function LoginScreen() {
       }
 
       if (errorMessage.includes('invalid login credentials')) {
-        Alert.alert(i18n.t('error'), 'Your email or password is incorrect');
+        Alert.alert(i18n.t('error'), i18n.t('invalidLoginCredentials') || 'Your email or password is incorrect');
         return;
       }
 
       if (errorMessage.includes('profile_error')) {
         Alert.alert(
           i18n.t('error'),
-          'Could not load your profile. Please check your database settings or contact support.'
+          i18n.t('profileLoadError') ||
+            'Could not load your profile. Please check your database settings or contact support.'
         );
         return;
       }
 
       if (errorMessage.includes('profile_not_found')) {
-        Alert.alert(i18n.t('error'), 'Your account profile was not found. Please contact support.');
+        Alert.alert(
+          i18n.t('error'),
+          i18n.t('profileNotFound') || 'Your account profile was not found. Please contact support.'
+        );
         return;
       }
 
       if (!errorMessage.includes('access denied')) {
-        Alert.alert(i18n.t('error'), 'Login failed: ' + error.message);
+        Alert.alert(
+          i18n.t('error'),
+          `${i18n.t('loginFailedPrefix') || 'Login failed'}: ${error.message}`
+        );
       }
     },
   });
@@ -223,11 +280,26 @@ export default function LoginScreen() {
 
   const getLanguageDisplayText = () => {
     const currentLang = getCurrentLanguage();
-    if (currentLang === 'en') return 'العربية';
-    if (currentLang === 'ar') return 'کوردی سۆرانی';
-    if (currentLang === 'ckb') return 'کوردی بادینی';
-    return 'English';
+
+    if (currentLang === 'en') return 'English';
+    if (currentLang === 'ar') return 'العربية';
+    if (currentLang === 'ckb') return 'کوردی سۆرانی';
+    return 'Kurdî Badînî';
   };
+
+  const handleRememberToggle = async () => {
+    const next = !rememberMe;
+    setRememberMe(next);
+    await persistRememberState(next, email);
+  };
+
+  if (loadingRememberState) {
+    return (
+      <View style={[styles.container, { backgroundColor: UI.bg, alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={UI.blue} />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -268,13 +340,15 @@ export default function LoginScreen() {
             </View>
 
             <Text style={styles.appName}>ZenoPay</Text>
-            <Text style={styles.welcomeBack}>Welcome Back!</Text>
-            <Text style={styles.subWelcome}>{i18n.t('loginSubWelcome')}</Text>
+            <Text style={styles.welcomeBack}>{i18n.t('welcomeBack') || 'Welcome Back!'}</Text>
+            <Text style={styles.subWelcome}>
+              {i18n.t('loginSubWelcome') || 'Please log in to your account'}
+            </Text>
           </View>
 
           <View style={styles.card}>
             <View style={styles.inputContainer}>
-              <View style={styles.inputIconWrap}>
+              <View style={[styles.inputIconWrap, isRTL ? styles.inputIconWrapRtl : null]}>
                 <Ionicons name="mail-outline" size={18} color={UI.blue} />
               </View>
               <TextInput
@@ -282,14 +356,19 @@ export default function LoginScreen() {
                 placeholder={i18n.t('email')}
                 placeholderTextColor={UI.text3}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => {
+                  setEmail(v);
+                  if (rememberMe) {
+                    AsyncStorage.setItem(REMEMBER_EMAIL_KEY, v.trim()).catch(() => {});
+                  }
+                }}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
             </View>
 
             <View style={styles.inputContainer}>
-              <View style={styles.inputIconWrap}>
+              <View style={[styles.inputIconWrap, isRTL ? styles.inputIconWrapRtl : null]}>
                 <Ionicons name="lock-closed-outline" size={18} color={UI.blue} />
               </View>
               <TextInput
@@ -315,13 +394,13 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.rowBetween}>
-              <Pressable onPress={() => setRememberMe((v) => !v)} style={styles.rememberRow} hitSlop={10}>
+              <Pressable onPress={handleRememberToggle} style={styles.rememberRow} hitSlop={10}>
                 <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
                   {rememberMe ? <Text style={styles.checkMark}>✓</Text> : null}
                 </View>
 
                 <Text style={[styles.rememberText, isRTL ? styles.mr10 : styles.ml10]}>
-                  {i18n.t('rememberMe')}
+                  {i18n.t('rememberMe') || 'Remember me'}
                 </Text>
               </Pressable>
 
@@ -357,7 +436,7 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.helpCard}>
-            <View style={styles.helpIconCircle}>
+            <View style={[styles.helpIconCircle, isRTL ? styles.helpIconCircleRtl : null]}>
               <LinearGradient
                 colors={[UI.blue, UI.blueDark]}
                 start={{ x: 0, y: 0 }}
@@ -369,9 +448,9 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.helpTextWrap}>
-              <Text style={styles.helpTitle}>{i18n.t('needHelp')}</Text>
+              <Text style={styles.helpTitle}>{i18n.t('needHelp') || 'Need Help?'}</Text>
               <Text style={styles.helpText}>
-                {i18n.t('contactUsAt')}{' '}
+                {i18n.t('contactUsAt') || 'Contact us at'}{' '}
                 <Text style={styles.helpEmail}>info@zenopay.bond</Text>
               </Text>
             </View>
@@ -484,6 +563,7 @@ const styles = StyleSheet.create({
     fontWeight: '900' as const,
     color: UI.text,
     marginBottom: 4,
+    textAlign: 'center',
   },
   subWelcome: {
     fontSize: 13,
@@ -521,6 +601,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
+  },
+  inputIconWrapRtl: {
+    marginRight: 0,
+    marginLeft: 10,
   },
   input: {
     flex: 1,
@@ -621,6 +705,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     marginRight: 12,
+  },
+  helpIconCircleRtl: {
+    marginRight: 0,
+    marginLeft: 12,
   },
   helpIconCircleInner: {
     flex: 1,
