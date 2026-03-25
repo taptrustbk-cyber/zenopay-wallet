@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,6 +10,8 @@ import {
   Image,
   Modal,
   TextInput,
+  Animated,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +25,14 @@ import {
   Wallet,
   Search,
   X,
+  Phone,
+  Mail,
+  MapPin,
+  CalendarDays,
+  ShieldCheck,
+  CheckCircle2,
+  UserRound,
+  BadgeDollarSign,
 } from 'lucide-react-native';
 
 export const options = { headerShown: false };
@@ -31,26 +41,65 @@ const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 const AVATAR_BUCKET = 'avatars';
 
 const UI = {
-  bg: '#F8FAFC',
+  bg: '#EEF4FF',
+  page: '#F7FAFF',
   card: '#FFFFFF',
-  cardSoft: '#F1F5F9',
+  cardSoft: '#F8FBFF',
   text: '#0F172A',
   text2: '#64748B',
-  border: '#E2E8F0',
+  text3: '#94A3B8',
+  border: '#D9E5F6',
+  border2: '#DCEBFF',
+
+  blue: '#2563EB',
+  blueDark: '#1D4ED8',
+  blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
 
   green: '#16A34A',
   greenSoft: '#DCFCE7',
 
-  blue: '#2563EB',
-  blueSoft: '#DBEAFE',
-
   red: '#DC2626',
   redSoft: '#FEE2E2',
 
-  shadow: 'rgba(15, 23, 42, 0.08)',
+  amber: '#F59E0B',
+  amberSoft: '#FEF3C7',
+
+  white: '#FFFFFF',
+  shadow: '#7DA8E6',
 };
 
-const isLikelyUrl = (v?: string | null) => !!v && (v.startsWith('http://') || v.startsWith('https://'));
+const SHADOWS = {
+  card: {
+    shadowColor: UI.shadow,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: UI.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+};
+
+type AdminUserRow = {
+  id: string;
+  email: string;
+  full_name: string;
+  phone: string;
+  city: string;
+  country: string;
+  avatar_url: string | null;
+  created_at: string;
+  balance: number;
+};
+
+const isLikelyUrl = (v?: string | null) =>
+  !!v && (String(v).startsWith('http://') || String(v).startsWith('https://'));
 
 const getAvatarUrl = (avatarUrl?: string | null) => {
   if (!avatarUrl) return null;
@@ -65,13 +114,22 @@ const getAvatarUrl = (avatarUrl?: string | null) => {
 };
 
 const initialsFromName = (name?: string | null) => {
-  const n = (name || '').trim();
+  const n = String(name || '').trim();
   if (!n) return '?';
   const parts = n.split(' ').filter(Boolean);
   const a = parts[0]?.[0] || '';
   const b = parts.length > 1 ? parts[parts.length - 1]?.[0] : '';
   return (a + b).toUpperCase() || '?';
 };
+
+const formatIQD = (value?: number | null) => {
+  const num = Number(value || 0);
+  return num
+    .toFixed(0)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
+const formatIQDLabel = (value?: number | null) => `${formatIQD(value)} IQD`;
 
 const formatIraqTime = (value?: string | null) => {
   if (!value) return 'N/A';
@@ -87,12 +145,13 @@ const formatIraqTime = (value?: string | null) => {
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit',
     });
   } catch {
     return d.toLocaleString();
   }
 };
+
+const normalizeDigits = (value: string) => value.replace(/[^\d]/g, '');
 
 export default function AddBalanceAdminScreen() {
   const { user, signOut } = useAuth();
@@ -103,48 +162,98 @@ export default function AddBalanceAdminScreen() {
 
   const [search, setSearch] = useState('');
   const [showAddBalanceModal, setShowAddBalanceModal] = useState(false);
+
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedUserEmail, setSelectedUserEmail] = useState('');
+  const [selectedUserName, setSelectedUserName] = useState('');
+  const [selectedCurrentBalance, setSelectedCurrentBalance] = useState(0);
+
   const [amountToAdd, setAmountToAdd] = useState('');
   const [noteToAdd, setNoteToAdd] = useState('');
 
+  const [pinValue, setPinValue] = useState('');
+  const [pinUnlocked, setPinUnlocked] = useState(false);
+  const [checkingPin, setCheckingPin] = useState(false);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const isLikelyUnlocked = pinUnlocked;
+
+  useEffect(() => {
+    if (pinUnlocked) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 380,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [pinUnlocked, fadeAnim]);
+
+  const adminProfileQuery = useQuery({
+    queryKey: ['admin-profile-pin', user?.id],
+    enabled: !!user?.id && isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, admin_pin_code')
+        .eq('id', user!.id)
+        .single();
+
+      if (error) throw new Error(error.message || 'Failed to load admin profile');
+      return data as {
+        id: string;
+        email?: string | null;
+        full_name?: string | null;
+        admin_pin_code?: string | null;
+      };
+    },
+  });
+
   const usersQuery = useQuery({
-    queryKey: ['admin-users'],
+    queryKey: ['admin-users-add-balance-v2'],
+    enabled: isAdmin && pinUnlocked,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('wallets')
-        .select(
-          `
+        .select(`
           id,
-          balance,
           user_id,
+          balance,
           profiles (
             id,
             email,
             full_name,
+            phone,
             city,
             country,
             avatar_url,
             created_at
           )
-        `
-        )
-        .order('created_at', { ascending: false });
+        `);
 
       if (error) throw new Error(error.message || 'Failed to fetch wallets');
 
-      return (data || []).map((wallet: any) => ({
-        id: wallet.profiles?.id || wallet.user_id,
-        email: wallet.profiles?.email || 'N/A',
-        full_name: wallet.profiles?.full_name || '',
-        city: wallet.profiles?.city || '',
-        country: wallet.profiles?.country || '',
-        avatar_url: wallet.profiles?.avatar_url || null,
-        created_at: wallet.profiles?.created_at || new Date().toISOString(),
-        balance: wallet.balance || 0,
+      const mapped: AdminUserRow[] = (data || []).map((wallet: any) => ({
+        id: wallet?.profiles?.id || wallet?.user_id || '',
+        email: wallet?.profiles?.email || '',
+        full_name: wallet?.profiles?.full_name || '',
+        phone: wallet?.profiles?.phone || '',
+        city: wallet?.profiles?.city || '',
+        country: wallet?.profiles?.country || '',
+        avatar_url: wallet?.profiles?.avatar_url || null,
+        created_at: wallet?.profiles?.created_at || new Date().toISOString(),
+        balance: Number(wallet?.balance || 0),
       }));
+
+      mapped.sort((a, b) => {
+        const aTime = new Date(a.created_at).getTime();
+        const bTime = new Date(b.created_at).getTime();
+        return bTime - aTime;
+      });
+
+      return mapped;
     },
-    enabled: isAdmin,
   });
 
   const addBalanceMutation = useMutation({
@@ -159,14 +268,16 @@ export default function AddBalanceAdminScreen() {
     }) => {
       const { data: wallet, error: walletError } = await supabase
         .from('wallets')
-        .select('balance')
+        .select('user_id, balance')
         .eq('user_id', userId)
-        .maybeSingle();
+        .single();
 
       if (walletError) throw new Error(walletError.message || 'Failed to fetch wallet');
       if (!wallet) throw new Error('Wallet not found for this user');
 
-      const newBalance = (wallet.balance || 0) + Number(amount);
+      const oldBalance = Number(wallet.balance || 0);
+      const finalAmount = Number(amount || 0);
+      const newBalance = oldBalance + finalAmount;
 
       const { error: updateError } = await supabase
         .from('wallets')
@@ -175,24 +286,56 @@ export default function AddBalanceAdminScreen() {
 
       if (updateError) throw new Error(updateError.message || 'Failed to update wallet');
 
-      const { error: txError } = await supabase.from('transactions').insert({
-        to_user_id: userId,
-        type: 'deposit',
-        amount: Number(amount),
-        description: note || 'Admin balance add',
+      const txPayload = {
+        user_id: userId,
+        sender_id: user?.id || userId,
+        receiver_id: userId,
+        type: 'admin_add_money',
+        direction: 'in',
         status: 'completed',
-      });
+        amount: finalAmount,
+        amount_iqd: finalAmount,
+        fee_amount: 0,
+        balance_before: oldBalance,
+        balance_after: newBalance,
+        description: note?.trim() || 'Balance added by admin',
+        reference_id: null,
+        source_table: 'admin_addbalance',
+        source_order_id: null,
+        source_product_id: null,
+        display_title: 'Add Balance via Zenopay',
+        display_subtitle: 'Balance received from Zenopay',
+        display_image_url: null,
+        pin_code: null,
+        provider_name: 'Zenopay',
+        payment_method_name: 'Admin Add Balance',
+        metadata: {
+          type: 'admin_add_money',
+          kind: 'admin_add_money',
+          category: 'admin_balance',
+          amount_iqd: finalAmount,
+          old_balance_iqd: oldBalance,
+          new_balance_iqd: newBalance,
+          note: note?.trim() || '',
+          admin_email: user?.email || '',
+          admin_user_id: user?.id || '',
+          source: 'addbalanceadmin',
+          title: 'Add Balance via Zenopay',
+          subtitle: 'Balance received from Zenopay',
+        },
+      };
+
+      const { error: txError } = await supabase.from('transactions').insert(txPayload);
 
       if (txError) {
-        console.warn('Transaction insert warning:', txError.message);
+        throw new Error(txError.message || 'Wallet updated, but transaction insert failed');
       }
 
       return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users-add-balance-v2'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions-rich-final-v5'] });
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
 
       setShowAddBalanceModal(false);
@@ -200,33 +343,96 @@ export default function AddBalanceAdminScreen() {
       setNoteToAdd('');
       setSelectedUserId('');
       setSelectedUserEmail('');
+      setSelectedUserName('');
+      setSelectedCurrentBalance(0);
 
-      Alert.alert('Success', 'Balance added successfully');
+      Alert.alert('Success', 'Balance added successfully and transaction created.');
     },
     onError: (error: any) => {
-      Alert.alert('Error', error.message || 'Failed to add balance');
+      Alert.alert('Error', error?.message || 'Failed to add balance');
     },
   });
 
-  const filteredUsers = (usersQuery.data || []).filter((u: any) => {
+  const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return true;
+    if (!q) return usersQuery.data || [];
 
-    return (
-      (u.full_name || '').toLowerCase().includes(q) ||
-      (u.email || '').toLowerCase().includes(q) ||
-      (u.city || '').toLowerCase().includes(q) ||
-      (u.country || '').toLowerCase().includes(q)
-    );
-  });
+    return (usersQuery.data || []).filter((u) => {
+      return (
+        String(u.full_name || '').toLowerCase().includes(q) ||
+        String(u.email || '').toLowerCase().includes(q) ||
+        String(u.phone || '').toLowerCase().includes(q) ||
+        String(u.city || '').toLowerCase().includes(q) ||
+        String(u.country || '').toLowerCase().includes(q)
+      );
+    });
+  }, [usersQuery.data, search]);
+
+  const handlePinPress = async (digit: string) => {
+    if (checkingPin) return;
+    if (pinValue.length >= 4) return;
+
+    const next = `${pinValue}${digit}`;
+    setPinValue(next);
+
+    if (next.length === 4) {
+      try {
+        setCheckingPin(true);
+
+        const savedPin = String(adminProfileQuery.data?.admin_pin_code || '').trim();
+
+        if (!savedPin) {
+          Alert.alert(
+            'PIN not set',
+            'Please create a column named admin_pin_code in profiles and save a 4-digit PIN for this admin.'
+          );
+          setPinValue('');
+          return;
+        }
+
+        if (savedPin !== next) {
+          setTimeout(() => {
+            Alert.alert('Incorrect password', 'Please try again');
+            setPinValue('');
+          }, 120);
+          return;
+        }
+
+        setTimeout(() => {
+          setPinUnlocked(true);
+        }, 120);
+      } finally {
+        setTimeout(() => setCheckingPin(false), 150);
+      }
+    }
+  };
+
+  const handlePinDelete = () => {
+    if (checkingPin) return;
+    setPinValue((prev) => prev.slice(0, -1));
+  };
+
+  const openAddModal = (userProfile: AdminUserRow) => {
+    setSelectedUserId(userProfile.id);
+    setSelectedUserEmail(userProfile.email || 'N/A');
+    setSelectedUserName(userProfile.full_name || 'Unknown User');
+    setSelectedCurrentBalance(Number(userProfile.balance || 0));
+    setShowAddBalanceModal(true);
+  };
 
   if (!isAdmin) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Access Denied</Text>
-          <Text style={styles.errorSubText}>You don&apos;t have permission to access this page.</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.85}>
+          <Text style={styles.errorSubText}>
+            You don&apos;t have permission to access this page.
+          </Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.85}
+          >
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -234,224 +440,370 @@ export default function AddBalanceAdminScreen() {
     );
   }
 
+  const renderPinScreen = () => {
+    const dots = [0, 1, 2, 3];
+
+    return (
+      <SafeAreaView style={styles.pinContainer} edges={['top', 'bottom']}>
+        <View style={styles.pinCenterWrap}>
+          <View style={styles.pinPhoneCard}>
+            <View style={styles.pinTopIconWrap}>
+              <View style={styles.pinTopIconCircle}>
+                <ShieldCheck size={26} color={UI.blueDark} />
+              </View>
+            </View>
+
+            <Text style={styles.pinTitle}>Enter Admin PIN</Text>
+            <Text style={styles.pinSubtitle}>
+              Enter your 4-digit secure PIN to open this page
+            </Text>
+
+            <View style={styles.pinDotsRow}>
+              {dots.map((i) => {
+                const filled = i < pinValue.length;
+                return (
+                  <View
+                    key={i}
+                    style={[
+                      styles.pinDot,
+                      filled && styles.pinDotActive,
+                    ]}
+                  />
+                );
+              })}
+            </View>
+
+            <View style={styles.keypadWrap}>
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((n) => (
+                <TouchableOpacity
+                  key={n}
+                  style={styles.keypadBtn}
+                  activeOpacity={0.85}
+                  onPress={() => handlePinPress(n)}
+                >
+                  <Text style={styles.keypadBtnText}>{n}</Text>
+                </TouchableOpacity>
+              ))}
+
+              <View style={styles.keypadBtnGhost} />
+
+              <TouchableOpacity
+                style={styles.keypadBtn}
+                activeOpacity={0.85}
+                onPress={() => handlePinPress('0')}
+              >
+                <Text style={styles.keypadBtnText}>0</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.keypadBtn}
+                activeOpacity={0.85}
+                onPress={handlePinDelete}
+              >
+                <X size={18} color={UI.text2} />
+              </TouchableOpacity>
+            </View>
+
+            {checkingPin && (
+              <View style={styles.pinLoadingRow}>
+                <ActivityIndicator size="small" color={UI.blue} />
+              </View>
+            )}
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  };
+
+  if (!isLikelyUnlocked) {
+    return renderPinScreen();
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerLeftBtn} onPress={() => router.push('/admin')} activeOpacity={0.85}>
-          <Home size={18} color={UI.text} />
-        </TouchableOpacity>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.headerLeftBtn}
+            onPress={() => router.push('/admin')}
+            activeOpacity={0.85}
+          >
+            <Home size={18} color={UI.text} />
+          </TouchableOpacity>
 
-        <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={styles.headerTitle}>Add Balance</Text>
-          <Text style={styles.headerSub}>Increase user wallet balance</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={() => {
-            Alert.alert('Logout', 'Are you sure you want to logout?', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Logout', style: 'destructive', onPress: signOut },
-            ]);
-          }}
-          activeOpacity={0.9}
-        >
-          <LogOut size={16} color="#fff" />
-          <Text style={styles.logoutButtonText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.topBanner}>
-          <View style={styles.topBannerIcon}>
-            <PlusCircle size={20} color={UI.green} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sectionTitle}>Add Balance To User</Text>
-            <Text style={styles.sectionSub}>Choose a user and add amount to wallet</Text>
-          </View>
-        </View>
-
-        <View style={styles.searchCard}>
-          <View style={styles.searchLeft}>
-            <Search size={16} color={UI.text2} />
-            <TextInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search by name, email, city, country..."
-              placeholderTextColor={UI.text2}
-              style={styles.searchInput}
-            />
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={styles.headerTitle}>Add Balance Admin</Text>
+            <Text style={styles.headerSub}>Increase user wallet balance in IQD</Text>
           </View>
 
-          <TouchableOpacity style={styles.searchClearBtn} onPress={() => setSearch('')} activeOpacity={0.85}>
-            <Text style={styles.searchClearText}>Clear</Text>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={() => {
+              Alert.alert('Logout', 'Are you sure you want to logout?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Logout', style: 'destructive', onPress: signOut },
+              ]);
+            }}
+            activeOpacity={0.9}
+          >
+            <LogOut size={16} color="#fff" />
+            <Text style={styles.logoutButtonText}>Logout</Text>
           </TouchableOpacity>
         </View>
 
-        {usersQuery.isLoading ? (
-          <View style={styles.centerLoading}>
-            <ActivityIndicator color={UI.blue} size="large" />
-            <Text style={styles.emptyText}>Loading users...</Text>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.topBanner}>
+            <View style={styles.topBannerIcon}>
+              <BadgeDollarSign size={22} color={UI.blueDark} />
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sectionTitle}>Add Balance To User</Text>
+              <Text style={styles.sectionSub}>
+                Search by full name, email, phone, or city — all amounts are in IQD
+              </Text>
+            </View>
           </View>
-        ) : filteredUsers.length > 0 ? (
-          filteredUsers.map((userProfile: any) => {
-            const avatar = getAvatarUrl(userProfile.avatar_url);
-            const displayName = (userProfile.full_name || '').trim() || 'Unknown Name';
 
-            return (
-              <View key={userProfile.id} style={styles.card}>
-                <View style={styles.userHeader}>
-                  <View style={styles.avatarWrap}>
-                    {avatar ? (
-                      <Image source={{ uri: avatar }} style={styles.avatarImg} />
-                    ) : (
-                      <View style={styles.avatarFallback}>
-                        <Text style={styles.avatarFallbackText}>{initialsFromName(displayName)}</Text>
-                      </View>
-                    )}
-                  </View>
+          <View style={styles.searchCard}>
+            <View style={styles.searchLeft}>
+              <Search size={16} color={UI.text2} />
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search by name, email, phone, city..."
+                placeholderTextColor={UI.text2}
+                style={styles.searchInput}
+              />
+            </View>
 
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{displayName}</Text>
-                    <Text style={styles.cardSubtitle}>{userProfile.email || 'N/A'}</Text>
+            <TouchableOpacity
+              style={styles.searchClearBtn}
+              onPress={() => setSearch('')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.searchClearText}>Clear</Text>
+            </TouchableOpacity>
+          </View>
 
-                    <View style={styles.balanceRow}>
-                      <Wallet size={14} color={UI.green} />
-                      <Text style={styles.balanceText}>Balance: ${Number(userProfile.balance || 0).toFixed(2)}</Text>
+          {usersQuery.isLoading ? (
+            <View style={styles.centerLoading}>
+              <ActivityIndicator color={UI.blue} size="large" />
+              <Text style={styles.emptyText}>Loading users...</Text>
+            </View>
+          ) : filteredUsers.length > 0 ? (
+            filteredUsers.map((userProfile) => {
+              const avatar = getAvatarUrl(userProfile.avatar_url);
+              const displayName = (userProfile.full_name || '').trim() || 'Unknown User';
+
+              return (
+                <View key={userProfile.id} style={styles.card}>
+                  <View style={styles.userHeader}>
+                    <View style={styles.avatarWrap}>
+                      {avatar ? (
+                        <Image source={{ uri: avatar }} style={styles.avatarImg} />
+                      ) : (
+                        <View style={styles.avatarFallback}>
+                          <Text style={styles.avatarFallbackText}>
+                            {initialsFromName(displayName)}
+                          </Text>
+                        </View>
+                      )}
                     </View>
 
-                    <Text style={styles.smallMeta}>
-                      {userProfile.city || 'N/A'} • {userProfile.country || 'N/A'}
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardTitle}>{displayName}</Text>
+                      <Text style={styles.cardSubtitle}>{userProfile.email || 'N/A'}</Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.addBtn}
+                      onPress={() => openAddModal(userProfile)}
+                      activeOpacity={0.9}
+                    >
+                      <PlusCircle size={15} color="#fff" />
+                      <Text style={styles.addBtnText}>Add</Text>
+                    </TouchableOpacity>
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.addBtn}
-                    onPress={() => {
-                      setSelectedUserId(userProfile.id);
-                      setSelectedUserEmail(userProfile.email || 'N/A');
-                      setShowAddBalanceModal(true);
-                    }}
-                    activeOpacity={0.9}
-                  >
-                    <PlusCircle size={15} color="#fff" />
-                    <Text style={styles.addBtnText}>Add</Text>
-                  </TouchableOpacity>
+                  <View style={styles.infoGrid}>
+                    <View style={styles.infoBox}>
+                      <View style={styles.infoLabelRow}>
+                        <Wallet size={14} color={UI.green} />
+                        <Text style={styles.infoLabel}>Current Balance</Text>
+                      </View>
+                      <Text style={[styles.infoValue, { color: UI.green }]}>
+                        {formatIQDLabel(userProfile.balance)}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoBox}>
+                      <View style={styles.infoLabelRow}>
+                        <Phone size={14} color={UI.blue} />
+                        <Text style={styles.infoLabel}>Phone</Text>
+                      </View>
+                      <Text style={styles.infoValue}>{userProfile.phone || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.infoBox}>
+                      <View style={styles.infoLabelRow}>
+                        <MapPin size={14} color={UI.blue} />
+                        <Text style={styles.infoLabel}>City</Text>
+                      </View>
+                      <Text style={styles.infoValue}>{userProfile.city || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.infoBox}>
+                      <View style={styles.infoLabelRow}>
+                        <Mail size={14} color={UI.blue} />
+                        <Text style={styles.infoLabel}>Email</Text>
+                      </View>
+                      <Text style={styles.infoValueSmall}>{userProfile.email || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.infoBoxWide}>
+                      <View style={styles.infoLabelRow}>
+                        <CalendarDays size={14} color={UI.blue} />
+                        <Text style={styles.infoLabel}>Registered (Iraq time)</Text>
+                      </View>
+                      <Text style={styles.infoValueSmall}>
+                        {formatIraqTime(userProfile.created_at)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })
+          ) : (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyText}>No users found</Text>
+            </View>
+          )}
+        </ScrollView>
+
+        <Modal
+          visible={showAddBalanceModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowAddBalanceModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalTop}>
+                <View>
+                  <Text style={styles.modalTitle}>Add Balance</Text>
+                  <Text style={styles.modalSubtitle}>
+                    Add IQD balance and optional note
+                  </Text>
                 </View>
 
-                <View style={styles.row}>
-                  <Text style={styles.rowLabel}>Registered (Iraq)</Text>
-                  <Text style={styles.rowValue}>{formatIraqTime(userProfile.created_at)}</Text>
+                <TouchableOpacity
+                  style={styles.modalCloseBtn}
+                  onPress={() => {
+                    setShowAddBalanceModal(false);
+                    setAmountToAdd('');
+                    setNoteToAdd('');
+                    setSelectedUserId('');
+                    setSelectedUserEmail('');
+                    setSelectedUserName('');
+                    setSelectedCurrentBalance(0);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <X size={16} color={UI.text} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.summaryMiniCard}>
+                <View style={styles.summaryMiniRow}>
+                  <UserRound size={15} color={UI.blueDark} />
+                  <Text style={styles.summaryMiniText}>{selectedUserName || 'Unknown User'}</Text>
+                </View>
+
+                <View style={styles.summaryMiniRow}>
+                  <Mail size={15} color={UI.text2} />
+                  <Text style={styles.summaryMiniText2}>{selectedUserEmail || 'N/A'}</Text>
+                </View>
+
+                <View style={styles.summaryMiniRow}>
+                  <Wallet size={15} color={UI.green} />
+                  <Text style={[styles.summaryMiniText2, { color: UI.green }]}>
+                    Current: {formatIQDLabel(selectedCurrentBalance)}
+                  </Text>
                 </View>
               </View>
-            );
-          })
-        ) : (
-          <View style={styles.emptyWrap}>
-            <Text style={styles.emptyText}>No users found</Text>
-          </View>
-        )}
-      </ScrollView>
 
-      <Modal
-        visible={showAddBalanceModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowAddBalanceModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalTop}>
-              <View>
-                <Text style={styles.modalTitle}>Add Balance</Text>
-                <Text style={styles.modalSubtitle}>Enter amount and note</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Amount (IQD)"
+                placeholderTextColor={UI.text2}
+                keyboardType="numeric"
+                value={amountToAdd}
+                onChangeText={(v) => {
+                  const digits = normalizeDigits(v);
+                  setAmountToAdd(digits ? formatIQD(Number(digits)) : '');
+                }}
+              />
+
+              <TextInput
+                style={[styles.modalInput, styles.noteInput]}
+                placeholder="Note (optional)"
+                placeholderTextColor={UI.text2}
+                value={noteToAdd}
+                onChangeText={setNoteToAdd}
+                multiline
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => {
+                    setShowAddBalanceModal(false);
+                    setAmountToAdd('');
+                    setNoteToAdd('');
+                    setSelectedUserId('');
+                    setSelectedUserEmail('');
+                    setSelectedUserName('');
+                    setSelectedCurrentBalance(0);
+                  }}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.modalConfirmBtn}
+                  onPress={() => {
+                    const rawAmount = Number(normalizeDigits(amountToAdd));
+
+                    if (!rawAmount || rawAmount <= 0) {
+                      Alert.alert('Error', 'Please enter a valid IQD amount');
+                      return;
+                    }
+
+                    addBalanceMutation.mutate({
+                      userId: selectedUserId,
+                      amount: rawAmount,
+                      note: noteToAdd,
+                    });
+                  }}
+                  disabled={addBalanceMutation.isPending}
+                  activeOpacity={0.9}
+                >
+                  {addBalanceMutation.isPending ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} color="#fff" />
+                      <Text style={styles.modalConfirmText}>Confirm Add</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={styles.modalCloseBtn}
-                onPress={() => {
-                  setShowAddBalanceModal(false);
-                  setAmountToAdd('');
-                  setNoteToAdd('');
-                  setSelectedUserId('');
-                  setSelectedUserEmail('');
-                }}
-                activeOpacity={0.85}
-              >
-                <X size={16} color={UI.text} />
-              </TouchableOpacity>
-            </View>
-
-            <TextInput
-              style={styles.modalInput}
-              placeholder="User Email"
-              placeholderTextColor={UI.text2}
-              value={selectedUserEmail}
-              editable={false}
-            />
-
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Amount (USD)"
-              placeholderTextColor={UI.text2}
-              keyboardType="numeric"
-              value={amountToAdd}
-              onChangeText={setAmountToAdd}
-            />
-
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Note (optional)"
-              placeholderTextColor={UI.text2}
-              value={noteToAdd}
-              onChangeText={setNoteToAdd}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => {
-                  setShowAddBalanceModal(false);
-                  setAmountToAdd('');
-                  setNoteToAdd('');
-                  setSelectedUserId('');
-                  setSelectedUserEmail('');
-                }}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalConfirmBtn}
-                onPress={() => {
-                  const amount = parseFloat(amountToAdd);
-
-                  if (isNaN(amount) || amount <= 0) {
-                    Alert.alert('Error', 'Please enter a valid amount');
-                    return;
-                  }
-
-                  addBalanceMutation.mutate({
-                    userId: selectedUserId,
-                    amount,
-                    note: noteToAdd,
-                  });
-                }}
-                disabled={addBalanceMutation.isPending}
-                activeOpacity={0.9}
-              >
-                {addBalanceMutation.isPending ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.modalConfirmText}>Add Balance</Text>
-                )}
-              </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -460,6 +812,99 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: UI.bg,
+  },
+
+  pinContainer: {
+    flex: 1,
+    backgroundColor: '#6D28D9',
+  },
+  pinCenterWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 22,
+  },
+  pinPhoneCard: {
+    width: 290,
+    backgroundColor: UI.white,
+    borderRadius: 34,
+    paddingHorizontal: 22,
+    paddingVertical: 28,
+    alignItems: 'center',
+    ...SHADOWS.card,
+  },
+  pinTopIconWrap: {
+    marginBottom: 14,
+  },
+  pinTopIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: UI.blueSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: UI.border2,
+  },
+  pinTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: UI.text,
+    marginBottom: 6,
+  },
+  pinSubtitle: {
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    color: UI.text2,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  pinDotsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 18,
+  },
+  pinDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#E5E7EB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  pinDotActive: {
+    backgroundColor: UI.blue,
+    borderColor: UI.blueDark,
+  },
+  keypadWrap: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 12,
+  },
+  keypadBtn: {
+    width: '30%',
+    aspectRatio: 1,
+    borderRadius: 999,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: UI.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  keypadBtnGhost: {
+    width: '30%',
+    aspectRatio: 1,
+  },
+  keypadBtnText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: UI.text,
+  },
+  pinLoadingRow: {
+    marginTop: 14,
   },
 
   header: {
@@ -518,25 +963,23 @@ const styles = StyleSheet.create({
     backgroundColor: UI.card,
     borderWidth: 1,
     borderColor: UI.border,
-    borderRadius: 20,
+    borderRadius: 22,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     marginBottom: 14,
-    shadowColor: UI.shadow,
-    shadowOpacity: 1,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
+    ...SHADOWS.card,
   },
   topBannerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: UI.greenSoft,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: UI.blueSoft,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: UI.border2,
   },
 
   sectionTitle: {
@@ -561,6 +1004,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    ...SHADOWS.soft,
   },
   searchLeft: {
     flex: 1,
@@ -610,28 +1054,24 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: UI.card,
-    borderRadius: 20,
+    borderRadius: 22,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: UI.border,
-    shadowColor: UI.shadow,
-    shadowOpacity: 1,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
+    ...SHADOWS.card,
   },
 
   userHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   avatarWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 54,
+    height: 54,
+    borderRadius: 18,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: UI.border,
@@ -653,6 +1093,7 @@ const styles = StyleSheet.create({
   avatarFallbackText: {
     fontWeight: '900',
     color: UI.blue,
+    fontSize: 15,
   },
 
   cardTitle: {
@@ -667,30 +1108,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  balanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-  },
-  balanceText: {
-    fontSize: 13,
-    color: UI.green,
-    fontWeight: '900',
-  },
-  smallMeta: {
-    marginTop: 6,
-    fontSize: 12,
-    color: UI.text2,
-    fontWeight: '700',
-  },
-
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     backgroundColor: UI.green,
-    paddingVertical: 9,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 12,
   },
@@ -700,25 +1123,50 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  row: {
+  infoGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 10,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: UI.border,
+    rowGap: 10,
   },
-  rowLabel: {
-    fontSize: 13,
+  infoBox: {
+    width: '48.5%',
+    borderRadius: 16,
+    backgroundColor: UI.cardSoft,
+    borderWidth: 1,
+    borderColor: UI.border,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  infoBoxWide: {
+    width: '100%',
+    borderRadius: 16,
+    backgroundColor: UI.cardSoft,
+    borderWidth: 1,
+    borderColor: UI.border,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  infoLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  infoLabel: {
+    fontSize: 12,
     color: UI.text2,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  rowValue: {
+  infoValue: {
+    fontSize: 15,
+    color: UI.text,
+    fontWeight: '900',
+  },
+  infoValueSmall: {
     fontSize: 13,
     color: UI.text,
     fontWeight: '800',
-    maxWidth: '62%',
-    textAlign: 'right',
   },
 
   modalOverlay: {
@@ -730,12 +1178,13 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '100%',
-    maxWidth: 420,
+    maxWidth: 430,
     backgroundColor: UI.card,
-    borderRadius: 22,
+    borderRadius: 24,
     padding: 18,
     borderWidth: 1,
     borderColor: UI.border,
+    ...SHADOWS.card,
   },
   modalTop: {
     flexDirection: 'row',
@@ -764,16 +1213,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  summaryMiniCard: {
+    backgroundColor: UI.blueSoft,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: UI.border2,
+    padding: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  summaryMiniRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  summaryMiniText: {
+    fontSize: 14,
+    color: UI.text,
+    fontWeight: '900',
+  },
+  summaryMiniText2: {
+    fontSize: 13,
+    color: UI.text2,
+    fontWeight: '800',
+  },
   modalInput: {
     backgroundColor: UI.cardSoft,
     borderWidth: 1,
     borderColor: UI.border,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 14,
     color: UI.text,
     fontSize: 15,
     marginBottom: 12,
     fontWeight: '700',
+  },
+  noteInput: {
+    minHeight: 92,
+    textAlignVertical: 'top',
   },
   modalButtons: {
     flexDirection: 'row',
@@ -783,8 +1260,8 @@ const styles = StyleSheet.create({
   modalCancelBtn: {
     flex: 1,
     backgroundColor: '#64748B',
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 13,
+    borderRadius: 14,
     alignItems: 'center',
   },
   modalCancelText: {
@@ -794,9 +1271,12 @@ const styles = StyleSheet.create({
   modalConfirmBtn: {
     flex: 1,
     backgroundColor: UI.green,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 13,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
   modalConfirmText: {
     color: '#fff',
