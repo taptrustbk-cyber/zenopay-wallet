@@ -1,5 +1,13 @@
 import React from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, StatusBar } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  StatusBar,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,7 +32,7 @@ const CONSULATES: Consulate[] = [
     capital: 'Paris',
     address: '123 Street, Erbil',
     contact: '+964 750 123 4567',
-    image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400',
+    image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80',
   },
   {
     id: 2,
@@ -33,7 +41,7 @@ const CONSULATES: Consulate[] = [
     capital: 'Berlin',
     address: '45 Avenue, Erbil',
     contact: '+964 750 987 6543',
-    image: 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=400',
+    image: 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=800&q=80',
   },
   {
     id: 3,
@@ -42,7 +50,7 @@ const CONSULATES: Consulate[] = [
     capital: 'Rome',
     address: '12 Main Street, Baghdad',
     contact: '+964 770 555 1234',
-    image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400',
+    image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800&q=80',
   },
   {
     id: 4,
@@ -51,7 +59,7 @@ const CONSULATES: Consulate[] = [
     capital: 'Madrid',
     address: '77 Avenue, Baghdad',
     contact: '+964 770 111 2233',
-    image: 'https://images.unsplash.com/photo-1543783207-ec64e4d95325?w=400',
+    image: 'https://images.unsplash.com/photo-1543783207-ec64e4d95325?w=800&q=80',
   },
   {
     id: 5,
@@ -60,7 +68,7 @@ const CONSULATES: Consulate[] = [
     capital: 'London',
     address: '1 King Street, Erbil',
     contact: '+964 750 444 5566',
-    image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=400',
+    image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&q=80',
   },
   {
     id: 6,
@@ -69,7 +77,7 @@ const CONSULATES: Consulate[] = [
     capital: 'Washington D.C.',
     address: '1600 Embassy Road, Baghdad',
     contact: '+964 770 999 8888',
-    image: 'https://images.unsplash.com/photo-1485738422979-f5c462d49f74?w=400',
+    image: 'https://images.unsplash.com/photo-1485738422979-f5c462d49f74?w=800&q=80',
   },
   {
     id: 7,
@@ -78,7 +86,7 @@ const CONSULATES: Consulate[] = [
     capital: 'Ottawa',
     address: '12 Maple Street, Erbil',
     contact: '+964 750 222 3333',
-    image: 'https://images.unsplash.com/photo-1517935706615-2717063c2225?w=400',
+    image: 'https://images.unsplash.com/photo-1517935706615-2717063c2225?w=800&q=80',
   },
   {
     id: 8,
@@ -87,7 +95,7 @@ const CONSULATES: Consulate[] = [
     capital: 'Brussels',
     address: "15 Avenue de l'Europe, Baghdad",
     contact: '+964 770 444 5555',
-    image: 'https://images.unsplash.com/photo-1559113202-c916b8e44373?w=400&q=80',
+    image: 'https://images.unsplash.com/photo-1559113202-c916b8e44373?w=800&q=80',
   },
   {
     id: 9,
@@ -96,21 +104,26 @@ const CONSULATES: Consulate[] = [
     capital: 'Amsterdam',
     address: '5 Canal Street, Erbil',
     contact: '+964 750 888 9999',
-    image: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=400',
+    image: 'https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=800&q=80',
   },
 ];
 
 const UI = {
-  bg: '#FFFFFF',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  border: '#E5E7EB',
-  green: '#16A34A',
-  greenDark: '#15803D',
+  bg: '#F4F8FF',
+  card: '#FFFFFF',
+  cardSoft: '#EEF4FF',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  border: '#D9E6FF',
+  blue: '#2563EB',
+  blueDark: '#1D4ED8',
+  blueSoft: '#DBEAFE',
+  blueSoft2: '#EFF6FF',
+  white: '#FFFFFF',
+  shadow: '#1D4ED8',
 };
 
 export default function ConsulateScreen() {
-  // keep theme hook (no need to use colors)
   useTheme();
   const router = useRouter();
 
@@ -122,50 +135,127 @@ export default function ConsulateScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* ✅ This removes the top dark-blue header (native Stack header) */}
       <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar barStyle="dark-content" backgroundColor={UI.bg} />
 
-      <StatusBar barStyle="dark-content" />
-
-      {/* ✅ Only ONE header now (your custom header), placed at the top correctly */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.85} style={styles.headerBackBtn}>
-          <Ionicons name="arrow-back" size={18} color="#FFFFFF" />
+        <TouchableOpacity
+          onPress={() => router.back()}
+          activeOpacity={0.86}
+          style={styles.headerBackBtn}
+        >
+          <Ionicons name="arrow-back" size={20} color={UI.white} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>{i18n.t('consulateInfo')}</Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>{i18n.t('consulateInfo')}</Text>
+          <Text style={styles.headerSubtitle}>
+            {i18n.t('city')} & {i18n.t('capital')}
+          </Text>
+        </View>
 
-        {/* spacer to keep title centered */}
         <View style={styles.headerRightSpacer} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={styles.heroCard}>
+          <View style={styles.heroBadge}>
+            <Ionicons name="business-outline" size={18} color={UI.blueDark} />
+            <Text style={styles.heroBadgeText}>{i18n.t('consulateInfo')}</Text>
+          </View>
+
+          <Text style={styles.heroTitle}>Embassy & Consulate Directory</Text>
+          <Text style={styles.heroText}>
+            Find quick contact details, capital city, and address information for
+            consulates available in Iraq.
+          </Text>
+        </View>
+
         {Object.entries(groupedByCity).map(([city, cityConsulates]) => (
           <View key={city} style={styles.citySection}>
-            <Text style={styles.cityTitle}>{city}</Text>
+            <View style={styles.cityHeader}>
+              <View style={styles.cityHeaderLeft}>
+                <View style={styles.cityDot} />
+                <Text style={styles.cityTitle}>{city}</Text>
+              </View>
+
+              <View style={styles.cityCountBadge}>
+                <Text style={styles.cityCountText}>{cityConsulates.length}</Text>
+              </View>
+            </View>
 
             <View style={styles.grid}>
               {cityConsulates.map((consulate) => (
                 <View key={consulate.id} style={styles.card}>
-                  <Image source={{ uri: consulate.image }} style={styles.image} resizeMode="cover" />
+                  <View style={styles.imageWrap}>
+                    <Image
+                      source={{ uri: consulate.image }}
+                      style={styles.image}
+                      resizeMode="cover"
+                    />
+
+                    <View style={styles.imageOverlay} />
+
+                    <View style={styles.countryPill}>
+                      <Text style={styles.countryPillText}>{consulate.country}</Text>
+                    </View>
+                  </View>
 
                   <View style={styles.cardContent}>
                     <Text style={styles.cardTitle}>
                       {consulate.country} {i18n.t('consulate')}
                     </Text>
 
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>{i18n.t('city')}:</Text>
-                      <Text style={styles.infoValue}>{consulate.city}</Text>
-                    </View>
+                    <View style={styles.infoCard}>
+                      <View style={styles.infoRow}>
+                        <View style={styles.infoIconBox}>
+                          <Ionicons name="location-outline" size={15} color={UI.blueDark} />
+                        </View>
+                        <View style={styles.infoTextWrap}>
+                          <Text style={styles.infoLabel}>{i18n.t('city')}</Text>
+                          <Text style={styles.infoValue}>{consulate.city}</Text>
+                        </View>
+                      </View>
 
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>{i18n.t('capital')}:</Text>
-                      <Text style={styles.infoValue}>{consulate.capital}</Text>
-                    </View>
+                      <View style={styles.infoDivider} />
 
-                    <Text style={styles.cardAddress}>{consulate.address}</Text>
-                    <Text style={styles.cardContact}>{consulate.contact}</Text>
+                      <View style={styles.infoRow}>
+                        <View style={styles.infoIconBox}>
+                          <Ionicons name="flag-outline" size={15} color={UI.blueDark} />
+                        </View>
+                        <View style={styles.infoTextWrap}>
+                          <Text style={styles.infoLabel}>{i18n.t('capital')}</Text>
+                          <Text style={styles.infoValue}>{consulate.capital}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.infoDivider} />
+
+                      <View style={styles.infoRow}>
+                        <View style={styles.infoIconBox}>
+                          <Ionicons name="navigate-outline" size={15} color={UI.blueDark} />
+                        </View>
+                        <View style={styles.infoTextWrap}>
+                          <Text style={styles.infoLabel}>{i18n.t('address') || 'Address'}</Text>
+                          <Text style={styles.infoValueAddress}>{consulate.address}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.infoDivider} />
+
+                      <View style={styles.infoRow}>
+                        <View style={styles.infoIconBox}>
+                          <Ionicons name="call-outline" size={15} color={UI.blueDark} />
+                        </View>
+                        <View style={styles.infoTextWrap}>
+                          <Text style={styles.infoLabel}>{i18n.t('contact') || 'Contact'}</Text>
+                          <Text style={styles.infoValuePhone}>{consulate.contact}</Text>
+                        </View>
+                      </View>
+                    </View>
                   </View>
                 </View>
               ))}
@@ -173,8 +263,7 @@ export default function ConsulateScreen() {
           </View>
         ))}
 
-        {/* bottom spacing */}
-        <View style={{ height: 10 }} />
+        <View style={{ height: 16 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -189,108 +278,242 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: UI.bg,
     paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 12,
+    paddingTop: 4,
+    paddingBottom: 14,
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: UI.border,
   },
   headerBackBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: UI.green,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: UI.blue,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: UI.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  headerCenter: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 19,
+    fontWeight: '900',
     color: UI.text,
   },
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: UI.textSecondary,
+    marginTop: 2,
+  },
   headerRightSpacer: {
-    width: 38,
-    height: 38,
+    width: 42,
+    height: 42,
   },
 
   scrollContent: {
-    paddingBottom: 18,
+    paddingBottom: 22,
+  },
+
+  heroCard: {
+    marginTop: 16,
+    marginHorizontal: 16,
+    backgroundColor: UI.card,
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: UI.border,
+    shadowColor: UI.shadow,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 3,
+  },
+  heroBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: UI.blueSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    marginBottom: 12,
+  },
+  heroBadgeText: {
+    marginLeft: 6,
+    color: UI.blueDark,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  heroTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: UI.text,
+    marginBottom: 8,
+  },
+  heroText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: UI.textSecondary,
+    fontWeight: '600',
   },
 
   citySection: {
-    marginTop: 18,
+    marginTop: 20,
+  },
+  cityHeader: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cityHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cityDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 99,
+    backgroundColor: UI.blue,
+    marginRight: 8,
   },
   cityTitle: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: '900',
     color: UI.text,
-    paddingHorizontal: 16,
-    marginBottom: 12,
+  },
+  cityCountBadge: {
+    minWidth: 30,
+    height: 30,
+    borderRadius: 99,
+    backgroundColor: UI.blueSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  cityCountText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: UI.blueDark,
   },
 
   grid: {
     paddingHorizontal: 16,
-    gap: 14,
   },
 
   card: {
-    backgroundColor: UI.bg,
-    borderRadius: 18,
+    backgroundColor: UI.card,
+    borderRadius: 22,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: UI.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowColor: UI.shadow,
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 2,
-    marginBottom: 14,
+    shadowRadius: 20,
+    elevation: 3,
+    marginBottom: 16,
+  },
+
+  imageWrap: {
+    position: 'relative',
+    width: '100%',
+    height: 210,
+    backgroundColor: UI.blueSoft2,
   },
   image: {
     width: '100%',
-    height: 190,
-    backgroundColor: UI.border,
+    height: '100%',
   },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(29,78,216,0.12)',
+  },
+  countryPill: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  countryPillText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: UI.blueDark,
+  },
+
   cardContent: {
-    padding: 14,
+    padding: 15,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '900',
     color: UI.text,
-    marginBottom: 10,
+    marginBottom: 12,
   },
 
+  infoCard: {
+    backgroundColor: UI.cardSoft,
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
   infoRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 4,
+  },
+  infoIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: UI.blueSoft,
     alignItems: 'center',
-    marginBottom: 6,
-    gap: 8,
+    justifyContent: 'center',
+    marginRight: 10,
+    marginTop: 1,
+  },
+  infoTextWrap: {
+    flex: 1,
   },
   infoLabel: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
     color: UI.textSecondary,
+    marginBottom: 3,
   },
   infoValue: {
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: '800',
+    color: UI.text,
+  },
+  infoValueAddress: {
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: '700',
     color: UI.text,
   },
-
-  cardAddress: {
-    fontSize: 13,
-    color: UI.textSecondary,
-    marginTop: 8,
-    lineHeight: 18,
+  infoValuePhone: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: UI.blueDark,
   },
-  cardContact: {
-    fontSize: 13,
-    marginTop: 6,
-    fontWeight: '800',
-    color: UI.greenDark,
+  infoDivider: {
+    height: 1,
+    backgroundColor: UI.border,
+    marginVertical: 8,
   },
 });
