@@ -48,7 +48,12 @@
   "walletLocked": "جزدان قوفلکریە",
   "cannotSendToYourself": "تو نەشێی پارا بۆ خۆ بنێری",
   "common_error": "شکەستن",
-
+  "gender": "ڕەگەز",
+  "selectGender": "ڕەگەزێ هەلبژێرە",
+  "genderMale": "نێر",
+  "genderFemale": "مێ",
+  "genderOther": "تر",
+  
   "viewQrCode": "ببینە QR وێنێ",
   "receiveName": "ناڤێ وەرگر",
   "receiveNumber": "ژمارا وەرگر",
@@ -101,11 +106,7 @@
   "noPaymentMethods": "هیچ ڕێکەکا پارەدانێ نینە",
   "noPaymentMethodsDesc": "هێشتا ئەدمین هیچ ڕێکەکا پارەدانێ زیاد نەکریە",
   "back": "ڤەگەڕان",
-  "gender": "ڕەگەز",
-  "selectGender": "ڕەگەزێ هەلبژێرە",
-  "genderMale": "نێر",
-  "genderFemale": "مێ",
-  "genderOther": "تر",
+  
 
   "withdraw": "راکێشان",
   "withdrawRequest": "داخوازا راکێشانێ",
