@@ -26,6 +26,8 @@ import {
   Landmark,
   Receipt,
   Wallet2,
+  DollarSign,
+  ArrowRightLeft,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -38,6 +40,10 @@ import { Wallet } from '@/lib/types';
 const RECEIPT_BUCKET = 'withdraw-receipts';
 const MIN_WITHDRAW_IQD = 1000;
 const MAX_WITHDRAW_IQD = 1000000;
+
+const DEFAULT_USDT_RATE_IQD = 1550;
+const DEFAULT_MIN_USDT = 1;
+const DEFAULT_MAX_USDT = 10000;
 
 const UI = {
   bg: '#EEF4FF',
@@ -95,6 +101,10 @@ type PaymentMethod = {
   is_active?: boolean | null;
   sort_order?: number | null;
   method_type?: 'withdraw' | 'deposit' | null;
+  exchange_rate_iqd?: number | null;
+  min_amount_usd?: number | null;
+  max_amount_usd?: number | null;
+  address_label?: string | null;
 };
 
 type WithdrawOrderItem = {
@@ -122,6 +132,15 @@ function formatIQD(value: number | string | null | undefined) {
   return num.toLocaleString('de-DE');
 }
 
+function formatUSD(value: number | string | null | undefined) {
+  const num = Number(value || 0);
+  if (Number.isNaN(num)) return '0';
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: num % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 function parseIQDInput(value: string) {
   const onlyDigits = String(value || '').replace(/[^\d]/g, '');
   return onlyDigits ? Number(onlyDigits) : 0;
@@ -131,6 +150,11 @@ function formatIQDInput(value: string) {
   const onlyDigits = String(value || '').replace(/[^\d]/g, '');
   if (!onlyDigits) return '';
   return Number(onlyDigits).toLocaleString('de-DE');
+}
+
+function isUsdtTrc20Method(method?: PaymentMethod | null) {
+  const name = String(method?.name || '').toLowerCase();
+  return name.includes('usdt') && name.includes('trc20');
 }
 
 function getStatusMeta(status?: string) {
@@ -214,7 +238,7 @@ export default function WithdrawScreen() {
       const { data, error } = await supabase
         .from('payment_methods')
         .select(
-          'id, name, account_name, account_number, instructions, qr_image, logo_url, is_active, sort_order, method_type'
+          'id, name, account_name, account_number, instructions, qr_image, logo_url, is_active, sort_order, method_type, exchange_rate_iqd, min_amount_usd, max_amount_usd, address_label'
         )
         .eq('is_active', true)
         .eq('method_type', 'withdraw')
@@ -267,6 +291,18 @@ export default function WithdrawScreen() {
   const selectedMethod = useMemo(() => {
     return paymentMethodsQuery.data?.find((m) => m.id === selectedMethodId) || null;
   }, [paymentMethodsQuery.data, selectedMethodId]);
+
+  const isUSDT = isUsdtTrc20Method(selectedMethod);
+  const usdtRate = Number(selectedMethod?.exchange_rate_iqd || DEFAULT_USDT_RATE_IQD);
+  const minUsd = Number(selectedMethod?.min_amount_usd || DEFAULT_MIN_USDT);
+  const maxUsd = Number(selectedMethod?.max_amount_usd || DEFAULT_MAX_USDT);
+
+  const amountNumber = useMemo(() => parseIQDInput(amount), [amount]);
+
+  const usdReceiveValue = useMemo(() => {
+    if (!isUSDT || !usdtRate || amountNumber <= 0) return 0;
+    return amountNumber / usdtRate;
+  }, [amountNumber, isUSDT, usdtRate]);
 
   const balanceText = formatIQD(walletQuery.data?.balance || 0);
 
@@ -350,16 +386,28 @@ export default function WithdrawScreen() {
         throw new Error(i18n.t('invalidAmount') || 'Invalid amount');
       }
 
-      if (amountNum < MIN_WITHDRAW_IQD) {
-        throw new Error(
-          `${i18n.t('minimumWithdrawAmount') || 'Minimum withdraw amount is'} ${formatIQD(MIN_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`
-        );
-      }
+      if (isUSDT) {
+        const usdAmount = amountNum / usdtRate;
 
-      if (amountNum > MAX_WITHDRAW_IQD) {
-        throw new Error(
-          `${i18n.t('maximumWithdrawAmount') || 'Maximum withdraw amount is'} ${formatIQD(MAX_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`
-        );
+        if (usdAmount < minUsd) {
+          throw new Error(`Minimum withdraw amount is $${formatUSD(minUsd)}`);
+        }
+
+        if (usdAmount > maxUsd) {
+          throw new Error(`Maximum withdraw amount is $${formatUSD(maxUsd)}`);
+        }
+      } else {
+        if (amountNum < MIN_WITHDRAW_IQD) {
+          throw new Error(
+            `${i18n.t('minimumWithdrawAmount') || 'Minimum withdraw amount is'} ${formatIQD(MIN_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`
+          );
+        }
+
+        if (amountNum > MAX_WITHDRAW_IQD) {
+          throw new Error(
+            `${i18n.t('maximumWithdrawAmount') || 'Maximum withdraw amount is'} ${formatIQD(MAX_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`
+          );
+        }
       }
 
       if (!walletQuery.data) {
@@ -380,6 +428,12 @@ export default function WithdrawScreen() {
 
       const receiptUrl = receiptImage ? await uploadReceiptToStorage(receiptImage) : null;
 
+      const extraNote = isUSDT
+        ? `USDT TRC20 Withdraw | IQD: ${formatIQD(amountNum)} | Rate: ${formatIQD(usdtRate)} IQD/USD | USD: ${formatUSD(usdReceiveValue)}`
+        : null;
+
+      const finalNote = [note.trim(), extraNote].filter(Boolean).join(' | ') || null;
+
       const { error } = await supabase.from('withdraw_orders').insert({
         user_id: user.id,
         amount: amountNum,
@@ -388,7 +442,7 @@ export default function WithdrawScreen() {
         destination: senderNumber.trim(),
         sender_name: senderName.trim(),
         sender_number: senderNumber.trim(),
-        note: note.trim() || null,
+        note: finalNote,
         receipt_image: receiptUrl,
         status: 'pending',
       });
@@ -421,6 +475,7 @@ export default function WithdrawScreen() {
 
   const renderMethodListItem = (method: PaymentMethod) => {
     const selected = selectedMethodId === method.id;
+    const methodIsUsdt = isUsdtTrc20Method(method);
 
     return (
       <TouchableOpacity
@@ -443,6 +498,11 @@ export default function WithdrawScreen() {
 
           <View style={{ flex: 1 }}>
             <Text style={styles.methodName}>{method.name}</Text>
+            {methodIsUsdt ? (
+              <Text style={styles.methodSubLine}>
+                1 USD = {formatIQD(method.exchange_rate_iqd || DEFAULT_USDT_RATE_IQD)} IQD
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -577,6 +637,11 @@ export default function WithdrawScreen() {
 
                   <View style={{ flex: 1 }}>
                     <Text style={styles.selectorText}>{selectedMethod.name}</Text>
+                    {isUSDT ? (
+                      <Text style={styles.selectorSubText}>
+                        1 USD = {formatIQD(usdtRate)} IQD
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
               ) : (
@@ -607,16 +672,52 @@ export default function WithdrawScreen() {
               </View>
             </View>
 
-            <View style={styles.limitBox}>
-              <Text style={styles.limitText}>
-                {(i18n.t('minimumWithdrawAmount') || 'Minimum withdraw amount') +
-                  `: ${formatIQD(MIN_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`}
-              </Text>
-              <Text style={styles.limitText}>
-                {(i18n.t('maximumWithdrawAmount') || 'Maximum withdraw amount') +
-                  `: ${formatIQD(MAX_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`}
-              </Text>
-            </View>
+            {isUSDT ? (
+              <>
+                <View style={styles.rateBox}>
+                  <View style={styles.rateRow}>
+                    <View style={styles.rateChip}>
+                      <DollarSign size={15} color={UI.blueDark} />
+                      <Text style={styles.rateChipText}>USDT TRC20</Text>
+                    </View>
+
+                    <View style={styles.rateChip}>
+                      <ArrowRightLeft size={14} color={UI.blueDark} />
+                      <Text style={styles.rateChipText}>
+                        1 USD = {formatIQD(usdtRate)} IQD
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.rateResultRow}>
+                    <Text style={styles.rateResultLabel}>You will receive</Text>
+                    <Text style={styles.rateResultValue}>
+                      ${formatUSD(usdReceiveValue)} USDT
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.limitBox}>
+                  <Text style={styles.limitText}>
+                    Minimum withdraw amount: ${formatUSD(minUsd)}
+                  </Text>
+                  <Text style={styles.limitText}>
+                    Maximum withdraw amount: ${formatUSD(maxUsd)}
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.limitBox}>
+                <Text style={styles.limitText}>
+                  {(i18n.t('minimumWithdrawAmount') || 'Minimum withdraw amount') +
+                    `: ${formatIQD(MIN_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`}
+                </Text>
+                <Text style={styles.limitText}>
+                  {(i18n.t('maximumWithdrawAmount') || 'Maximum withdraw amount') +
+                    `: ${formatIQD(MAX_WITHDRAW_IQD)} ${i18n.t('iqdShort') || 'IQD'}`}
+                </Text>
+              </View>
+            )}
 
             <View style={styles.grid2}>
               <View style={{ flex: 1 }}>
@@ -1134,6 +1235,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: UI.text,
   },
+  selectorSubText: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '800',
+    color: UI.text2,
+  },
 
   methodListItem: {
     marginBottom: 12,
@@ -1179,6 +1286,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
     color: UI.text,
+  },
+  methodSubLine: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: '800',
+    color: UI.text2,
   },
 
   radioOuter: {
@@ -1235,6 +1348,50 @@ const styles = StyleSheet.create({
   },
   amountSuffixText: {
     fontSize: 13,
+    fontWeight: '900',
+    color: UI.blueDark,
+  },
+
+  rateBox: {
+    marginBottom: 12,
+    backgroundColor: UI.blueSoft,
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
+  rateRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+  rateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  rateChipText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: UI.blueDark,
+  },
+  rateResultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  rateResultLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: UI.text2,
+  },
+  rateResultValue: {
+    fontSize: 16,
     fontWeight: '900',
     color: UI.blueDark,
   },
