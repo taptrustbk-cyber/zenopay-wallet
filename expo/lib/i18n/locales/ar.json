@@ -41,6 +41,10 @@
   "transactions_adminNote": "ملاحظة الأدمن",
   "transactions": "التحويلات",
   "transactions_purchaseProduct": "شراء المنتج",
+  "contact": "التواصل",
+  "address": "العنوان",
+  "consulateDirectoryTitle": "دليل السفارات والقنصليات",
+  "consulateDirectorySubtitle": "اعثر على تفاصيل الاتصال السريعة، وعاصمة الدولة، ومعلومات العنوان للقنصليات المتوفرة في العراق.",
 
   "sendMoney": "إرسال الأموال",
   "sendMoneySubtitle": "تحويل آمن بالدينار العراقي",
