@@ -38,6 +38,9 @@ import {
   Upload,
   Wallet,
   ArrowDownToLine,
+  DollarSign,
+  ArrowRightLeft,
+  BadgeInfo,
 } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -87,10 +90,35 @@ type PaymentMethodItem = {
   sort_order?: number | null;
   method_type?: MethodType | null;
   created_at?: string | null;
+
+  exchange_rate_iqd?: number | null;
+  min_amount_usd?: number | null;
+  max_amount_usd?: number | null;
+  address_label?: string | null;
 };
 
 const isLikelyUrl = (v?: string | null) =>
   !!v && (v.startsWith('http://') || v.startsWith('https://'));
+
+const formatIQD = (value?: number | null) => {
+  const num = Number(value || 0);
+  if (Number.isNaN(num)) return '0';
+  return num.toLocaleString('de-DE');
+};
+
+const formatUSD = (value?: number | null) => {
+  const num = Number(value || 0);
+  if (Number.isNaN(num)) return '0';
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: num % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+const looksLikeUSDT = (name: string) => {
+  const v = String(name || '').toLowerCase();
+  return v.includes('usdt');
+};
 
 export default function AdminPaymentMethodsScreen() {
   const { user, signOut } = useAuth();
@@ -115,10 +143,16 @@ export default function AdminPaymentMethodsScreen() {
   const [isActive, setIsActive] = useState(true);
   const [methodType, setMethodType] = useState<MethodType>('withdraw');
 
+  const [exchangeRateIqd, setExchangeRateIqd] = useState('1550');
+  const [minAmountUsd, setMinAmountUsd] = useState('5');
+  const [maxAmountUsd, setMaxAmountUsd] = useState('10000');
+  const [addressLabel, setAddressLabel] = useState('');
+
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingQr, setUploadingQr] = useState(false);
 
   const isAdmin = !!user && ADMIN_EMAILS.includes(user.email || '');
+  const isUSDTForm = looksLikeUSDT(name);
 
   const methodsQuery = useQuery({
     queryKey: ['admin-payment-methods'],
@@ -136,7 +170,11 @@ export default function AdminPaymentMethodsScreen() {
           is_active,
           sort_order,
           method_type,
-          created_at
+          created_at,
+          exchange_rate_iqd,
+          min_amount_usd,
+          max_amount_usd,
+          address_label
         `)
         .order('sort_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true });
@@ -176,6 +214,11 @@ export default function AdminPaymentMethodsScreen() {
     setSortOrder('');
     setIsActive(true);
     setMethodType(activeTab);
+
+    setExchangeRateIqd('1550');
+    setMinAmountUsd('5');
+    setMaxAmountUsd('10000');
+    setAddressLabel('');
   };
 
   const openCreateModal = () => {
@@ -199,6 +242,24 @@ export default function AdminPaymentMethodsScreen() {
     );
     setIsActive(!!item.is_active);
     setMethodType((item.method_type || 'withdraw') as MethodType);
+
+    setExchangeRateIqd(
+      item.exchange_rate_iqd === null || item.exchange_rate_iqd === undefined
+        ? '1550'
+        : String(item.exchange_rate_iqd)
+    );
+    setMinAmountUsd(
+      item.min_amount_usd === null || item.min_amount_usd === undefined
+        ? '5'
+        : String(item.min_amount_usd)
+    );
+    setMaxAmountUsd(
+      item.max_amount_usd === null || item.max_amount_usd === undefined
+        ? '10000'
+        : String(item.max_amount_usd)
+    );
+    setAddressLabel(item.address_label || '');
+
     setModalVisible(true);
   };
 
@@ -229,7 +290,6 @@ export default function AdminPaymentMethodsScreen() {
     if (uploadError) throw uploadError;
 
     const { data } = supabase.storage.from(PAYMENT_METHODS_BUCKET).getPublicUrl(fileName);
-
     return data.publicUrl;
   };
 
@@ -274,10 +334,7 @@ export default function AdminPaymentMethodsScreen() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error('Bank / payment method name is required');
-
-      if (!logoUrl?.trim()) {
-        throw new Error('Bank image is required');
-      }
+      if (!logoUrl?.trim()) throw new Error('Bank image is required');
 
       if (methodType === 'deposit' && !accountName.trim()) {
         throw new Error('Account name is required for deposit');
@@ -285,6 +342,25 @@ export default function AdminPaymentMethodsScreen() {
 
       if (methodType === 'deposit' && !accountNumber.trim()) {
         throw new Error('Account number is required for deposit');
+      }
+
+      const rateNum = Number(exchangeRateIqd || 0);
+      const minUsdNum = Number(minAmountUsd || 0);
+      const maxUsdNum = Number(maxAmountUsd || 0);
+
+      if (isUSDTForm) {
+        if (!rateNum || Number.isNaN(rateNum) || rateNum <= 0) {
+          throw new Error('Exchange rate IQD is required for USDT');
+        }
+        if (!minUsdNum || Number.isNaN(minUsdNum) || minUsdNum <= 0) {
+          throw new Error('Minimum USD amount is required for USDT');
+        }
+        if (!maxUsdNum || Number.isNaN(maxUsdNum) || maxUsdNum <= 0) {
+          throw new Error('Maximum USD amount is required for USDT');
+        }
+        if (maxUsdNum < minUsdNum) {
+          throw new Error('Maximum USD must be greater than minimum USD');
+        }
       }
 
       const payload = {
@@ -297,6 +373,11 @@ export default function AdminPaymentMethodsScreen() {
         sort_order: sortOrder.trim() ? Number(sortOrder) : 0,
         is_active: !!isActive,
         method_type: methodType,
+
+        exchange_rate_iqd: isUSDTForm ? rateNum : null,
+        min_amount_usd: isUSDTForm ? minUsdNum : null,
+        max_amount_usd: isUSDTForm ? maxUsdNum : null,
+        address_label: isUSDTForm ? (addressLabel.trim() || 'USDT TRC20 Address') : null,
       };
 
       if (editingItem?.id) {
@@ -314,8 +395,12 @@ export default function AdminPaymentMethodsScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-payment-methods'] });
+      queryClient.invalidateQueries({ queryKey: ['payment_methods', 'deposit'] });
+      queryClient.invalidateQueries({ queryKey: ['payment_methods', 'withdraw'] });
+
       setModalVisible(false);
       resetForm();
+
       Alert.alert(
         'Success',
         editingItem ? 'Payment method updated' : 'Payment method created'
@@ -329,11 +414,12 @@ export default function AdminPaymentMethodsScreen() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('payment_methods').delete().eq('id', id);
-
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-payment-methods'] });
+      queryClient.invalidateQueries({ queryKey: ['payment_methods', 'deposit'] });
+      queryClient.invalidateQueries({ queryKey: ['payment_methods', 'withdraw'] });
       Alert.alert('Success', 'Payment method deleted');
     },
     onError: (error: any) => {
@@ -358,6 +444,8 @@ export default function AdminPaymentMethodsScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-payment-methods'] });
+      queryClient.invalidateQueries({ queryKey: ['payment_methods', 'deposit'] });
+      queryClient.invalidateQueries({ queryKey: ['payment_methods', 'withdraw'] });
     },
     onError: (error: any) => {
       Alert.alert('Error', error?.message || 'Failed to change status');
@@ -512,204 +600,246 @@ export default function AdminPaymentMethodsScreen() {
             </Text>
           </View>
         ) : (
-          filteredMethods.map((item) => (
-            <View key={item.id} style={styles.card}>
-              <View style={styles.topRow}>
-                <View style={styles.cardLeft}>
-                  <View style={styles.logoWrap}>
-                    {isLikelyUrl(item.logo_url) ? (
-                      <Image source={{ uri: item.logo_url! }} style={styles.logoImg} />
-                    ) : (
-                      <Landmark size={22} color={UI.blue} />
-                    )}
+          filteredMethods.map((item) => {
+            const itemIsUSDT = looksLikeUSDT(item.name || '');
+
+            return (
+              <View key={item.id} style={styles.card}>
+                <View style={styles.topRow}>
+                  <View style={styles.cardLeft}>
+                    <View style={styles.logoWrap}>
+                      {isLikelyUrl(item.logo_url) ? (
+                        <Image source={{ uri: item.logo_url! }} style={styles.logoImg} />
+                      ) : (
+                        <Landmark size={22} color={UI.blue} />
+                      )}
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardTitle}>{item.name || 'Unknown'}</Text>
+                      <Text style={styles.cardSubtitle}>
+                        {item.method_type === 'deposit'
+                          ? item.account_name || 'No account name'
+                          : 'Withdraw bank'}
+                      </Text>
+                    </View>
                   </View>
 
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{item.name || 'Unknown'}</Text>
-                    <Text style={styles.cardSubtitle}>
-                      {item.method_type === 'deposit'
-                        ? item.account_name || 'No account name'
-                        : 'Withdraw bank'}
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: item.is_active ? UI.greenSoft : UI.redSoft },
+                    ]}
+                  >
+                    {item.is_active ? (
+                      <Eye size={14} color={UI.green} />
+                    ) : (
+                      <EyeOff size={14} color={UI.red} />
+                    )}
+                    <Text
+                      style={[
+                        styles.statusBadgeText,
+                        { color: item.is_active ? UI.green : UI.red },
+                      ]}
+                    >
+                      {item.is_active ? 'ACTIVE' : 'INACTIVE'}
                     </Text>
                   </View>
                 </View>
 
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: item.is_active ? UI.greenSoft : UI.redSoft },
-                  ]}
-                >
-                  {item.is_active ? (
-                    <Eye size={14} color={UI.green} />
-                  ) : (
-                    <EyeOff size={14} color={UI.red} />
-                  )}
-                  <Text
-                    style={[
-                      styles.statusBadgeText,
-                      { color: item.is_active ? UI.green : UI.red },
-                    ]}
-                  >
-                    {item.is_active ? 'ACTIVE' : 'INACTIVE'}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.infoGrid}>
-                <View style={styles.infoMiniCard}>
-                  <Text style={styles.infoMiniLabel}>Type</Text>
-                  <Text style={styles.infoMiniValue}>
-                    {(item.method_type || 'withdraw').toUpperCase()}
-                  </Text>
-                </View>
-
-                <View style={styles.infoMiniCard}>
-                  <Text style={styles.infoMiniLabel}>Sort Order</Text>
-                  <Text style={styles.infoMiniValue}>
-                    {item.sort_order === null || item.sort_order === undefined
-                      ? '0'
-                      : String(item.sort_order)}
-                  </Text>
-                </View>
-              </View>
-
-              {item.method_type === 'deposit' ? (
                 <View style={styles.infoGrid}>
                   <View style={styles.infoMiniCard}>
-                    <Text style={styles.infoMiniLabel}>Account Name</Text>
-                    <Text style={styles.infoMiniValue}>{item.account_name || '-'}</Text>
+                    <Text style={styles.infoMiniLabel}>Type</Text>
+                    <Text style={styles.infoMiniValue}>
+                      {(item.method_type || 'withdraw').toUpperCase()}
+                    </Text>
                   </View>
 
                   <View style={styles.infoMiniCard}>
-                    <Text style={styles.infoMiniLabel}>Account Number</Text>
-                    <Text style={styles.infoMiniValue}>{item.account_number || '-'}</Text>
+                    <Text style={styles.infoMiniLabel}>Sort Order</Text>
+                    <Text style={styles.infoMiniValue}>
+                      {item.sort_order === null || item.sort_order === undefined
+                        ? '0'
+                        : String(item.sort_order)}
+                    </Text>
                   </View>
                 </View>
-              ) : null}
-
-              {!!item.instructions ? (
-                <View
-                  style={[
-                    styles.noteBox,
-                    {
-                      backgroundColor:
-                        item.method_type === 'deposit' ? UI.purpleSoft : UI.blueSoft,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.noteTitle,
-                      { color: item.method_type === 'deposit' ? UI.purple : UI.blue },
-                    ]}
-                  >
-                    Instructions
-                  </Text>
-                  <Text style={styles.noteText}>{item.instructions}</Text>
-                </View>
-              ) : null}
-
-              <View style={styles.previewRow}>
-                <TouchableOpacity
-                  style={styles.previewCard}
-                  activeOpacity={0.92}
-                  onPress={() => {
-                    if (!item.logo_url) return;
-                    setViewerImage(item.logo_url);
-                    setViewerVisible(true);
-                  }}
-                >
-                  <View style={styles.previewTop}>
-                    <ImageIcon size={16} color={UI.blue} />
-                    <Text style={styles.previewTitle}>Bank Image</Text>
-                  </View>
-
-                  {isLikelyUrl(item.logo_url) ? (
-                    <Image source={{ uri: item.logo_url! }} style={styles.previewImg} />
-                  ) : (
-                    <View style={styles.previewEmpty}>
-                      <Text style={styles.previewEmptyText}>No Image</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
 
                 {item.method_type === 'deposit' ? (
+                  <View style={styles.infoGrid}>
+                    <View style={styles.infoMiniCard}>
+                      <Text style={styles.infoMiniLabel}>Account Name</Text>
+                      <Text style={styles.infoMiniValue}>{item.account_name || '-'}</Text>
+                    </View>
+
+                    <View style={styles.infoMiniCard}>
+                      <Text style={styles.infoMiniLabel}>
+                        {itemIsUSDT ? (item.address_label || 'USDT Address') : 'Account Number'}
+                      </Text>
+                      <Text style={styles.infoMiniValue}>{item.account_number || '-'}</Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                {itemIsUSDT ? (
+                  <>
+                    <View style={styles.usdtRateBox}>
+                      <View style={styles.usdtRateRow}>
+                        <View style={styles.usdtChip}>
+                          <DollarSign size={14} color={UI.blue} />
+                          <Text style={styles.usdtChipText}>USDT TRC20</Text>
+                        </View>
+
+                        <View style={styles.usdtChip}>
+                          <ArrowRightLeft size={14} color={UI.blue} />
+                          <Text style={styles.usdtChipText}>
+                            1 USD = {formatIQD(item.exchange_rate_iqd || 1550)} IQD
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.infoGrid}>
+                        <View style={styles.infoMiniCard}>
+                          <Text style={styles.infoMiniLabel}>Min USD</Text>
+                          <Text style={styles.infoMiniValue}>
+                            ${formatUSD(item.min_amount_usd || 5)}
+                          </Text>
+                        </View>
+
+                        <View style={styles.infoMiniCard}>
+                          <Text style={styles.infoMiniLabel}>Max USD</Text>
+                          <Text style={styles.infoMiniValue}>
+                            ${formatUSD(item.max_amount_usd || 10000)}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </>
+                ) : null}
+
+                {!!item.instructions ? (
+                  <View
+                    style={[
+                      styles.noteBox,
+                      {
+                        backgroundColor:
+                          item.method_type === 'deposit' ? UI.purpleSoft : UI.blueSoft,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.noteTitle,
+                        { color: item.method_type === 'deposit' ? UI.purple : UI.blue },
+                      ]}
+                    >
+                      Instructions
+                    </Text>
+                    <Text style={styles.noteText}>{item.instructions}</Text>
+                  </View>
+                ) : null}
+
+                <View style={styles.previewRow}>
                   <TouchableOpacity
                     style={styles.previewCard}
                     activeOpacity={0.92}
                     onPress={() => {
-                      if (!item.qr_image) return;
-                      setViewerImage(item.qr_image);
+                      if (!item.logo_url) return;
+                      setViewerImage(item.logo_url);
                       setViewerVisible(true);
                     }}
                   >
                     <View style={styles.previewTop}>
-                      <QrCode size={16} color={UI.green} />
-                      <Text style={styles.previewTitle}>QR Image</Text>
+                      <ImageIcon size={16} color={UI.blue} />
+                      <Text style={styles.previewTitle}>Bank Image</Text>
                     </View>
 
-                    {isLikelyUrl(item.qr_image) ? (
-                      <Image source={{ uri: item.qr_image! }} style={styles.previewImg} />
+                    {isLikelyUrl(item.logo_url) ? (
+                      <Image source={{ uri: item.logo_url! }} style={styles.previewImg} />
                     ) : (
                       <View style={styles.previewEmpty}>
-                        <Text style={styles.previewEmptyText}>No QR</Text>
+                        <Text style={styles.previewEmptyText}>No Image</Text>
                       </View>
                     )}
                   </TouchableOpacity>
-                ) : null}
+
+                  {item.method_type === 'deposit' ? (
+                    <TouchableOpacity
+                      style={styles.previewCard}
+                      activeOpacity={0.92}
+                      onPress={() => {
+                        if (!item.qr_image) return;
+                        setViewerImage(item.qr_image);
+                        setViewerVisible(true);
+                      }}
+                    >
+                      <View style={styles.previewTop}>
+                        <QrCode size={16} color={UI.green} />
+                        <Text style={styles.previewTitle}>QR Image</Text>
+                      </View>
+
+                      {isLikelyUrl(item.qr_image) ? (
+                        <Image source={{ uri: item.qr_image! }} style={styles.previewImg} />
+                      ) : (
+                        <View style={styles.previewEmpty}>
+                          <Text style={styles.previewEmptyText}>No QR</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+
+                <View style={styles.actionsWrap}>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.toggleBtn]}
+                    activeOpacity={0.9}
+                    onPress={() =>
+                      toggleActiveMutation.mutate({
+                        id: item.id,
+                        nextValue: !item.is_active,
+                      })
+                    }
+                  >
+                    {item.is_active ? (
+                      <EyeOff size={16} color="#fff" />
+                    ) : (
+                      <Eye size={16} color="#fff" />
+                    )}
+                    <Text style={styles.actionBtnText}>
+                      {item.is_active ? 'Hide' : 'Show'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.editBtn]}
+                    activeOpacity={0.9}
+                    onPress={() => openEditModal(item)}
+                  >
+                    <Pencil size={16} color="#fff" />
+                    <Text style={styles.actionBtnText}>Edit</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.deleteBtn]}
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      Alert.alert('Delete', `Delete "${item.name}"?`, [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: () => deleteMutation.mutate(item.id),
+                        },
+                      ]);
+                    }}
+                  >
+                    <Trash2 size={16} color="#fff" />
+                    <Text style={styles.actionBtnText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-
-              <View style={styles.actionsWrap}>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.toggleBtn]}
-                  activeOpacity={0.9}
-                  onPress={() =>
-                    toggleActiveMutation.mutate({
-                      id: item.id,
-                      nextValue: !item.is_active,
-                    })
-                  }
-                >
-                  {item.is_active ? (
-                    <EyeOff size={16} color="#fff" />
-                  ) : (
-                    <Eye size={16} color="#fff" />
-                  )}
-                  <Text style={styles.actionBtnText}>
-                    {item.is_active ? 'Hide' : 'Show'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.editBtn]}
-                  activeOpacity={0.9}
-                  onPress={() => openEditModal(item)}
-                >
-                  <Pencil size={16} color="#fff" />
-                  <Text style={styles.actionBtnText}>Edit</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.deleteBtn]}
-                  activeOpacity={0.9}
-                  onPress={() => {
-                    Alert.alert('Delete', `Delete "${item.name}"?`, [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Delete',
-                        style: 'destructive',
-                        onPress: () => deleteMutation.mutate(item.id),
-                      },
-                    ]);
-                  }}
-                >
-                  <Trash2 size={16} color="#fff" />
-                  <Text style={styles.actionBtnText}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
 
@@ -788,7 +918,7 @@ export default function AdminPaymentMethodsScreen() {
               <Text style={styles.label}>Bank / Method Name</Text>
               <TextInput
                 style={styles.input}
-                placeholder="FIB / FastPay / Zain Cash / Qi Card"
+                placeholder="FIB / FastPay / Zain Cash / USDT TRC20"
                 placeholderTextColor={UI.text3}
                 value={name}
                 onChangeText={setName}
@@ -799,16 +929,22 @@ export default function AdminPaymentMethodsScreen() {
                   <Text style={styles.label}>Account Name</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="ZenoPay"
+                    placeholder="USDT / ZenoPay"
                     placeholderTextColor={UI.text3}
                     value={accountName}
                     onChangeText={setAccountName}
                   />
 
-                  <Text style={styles.label}>Account Number</Text>
+                  <Text style={styles.label}>
+                    {isUSDTForm ? (addressLabel || 'USDT TRC20 Address') : 'Account Number'}
+                  </Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="0770 000 0000"
+                    placeholder={
+                      isUSDTForm
+                        ? 'TX5rcy8dZJ259igNNebcyyaVn7hWLkjxzY'
+                        : '0770 000 0000'
+                    }
                     placeholderTextColor={UI.text3}
                     value={accountNumber}
                     onChangeText={setAccountNumber}
@@ -827,7 +963,7 @@ export default function AdminPaymentMethodsScreen() {
                 </>
               ) : (
                 <>
-                  <Text style={styles.label}>Withdraw Note (optional)</Text>
+                  <Text style={styles.label}>Withdraw Note / Instructions</Text>
                   <TextInput
                     style={[styles.input, styles.bigInput]}
                     placeholder="Optional note for withdraw page..."
@@ -839,6 +975,80 @@ export default function AdminPaymentMethodsScreen() {
                   />
                 </>
               )}
+
+              {isUSDTForm ? (
+                <View style={styles.usdtFormBox}>
+                  <View style={styles.usdtFormTitleRow}>
+                    <BadgeInfo size={16} color={UI.blue} />
+                    <Text style={styles.usdtFormTitle}>USDT Rate Settings</Text>
+                  </View>
+
+                  <Text style={styles.helperText}>
+                    Example: if 100 USD = 155,000 IQD, enter rate as 1550
+                  </Text>
+
+                  <Text style={styles.label}>Address Label</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="USDT TRC20 Address"
+                    placeholderTextColor={UI.text3}
+                    value={addressLabel}
+                    onChangeText={setAddressLabel}
+                  />
+
+                  <Text style={styles.label}>Exchange Rate (IQD per 1 USD)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="1550"
+                    placeholderTextColor={UI.text3}
+                    value={exchangeRateIqd}
+                    onChangeText={setExchangeRateIqd}
+                    keyboardType="decimal-pad"
+                  />
+
+                  <View style={styles.infoGrid}>
+                    <View style={styles.infoMiniCard}>
+                      <Text style={styles.infoMiniLabel}>Preview</Text>
+                      <Text style={styles.infoMiniValue}>
+                        100 USD = {formatIQD(Number(exchangeRateIqd || 0) * 100)} IQD
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoMiniCard}>
+                      <Text style={styles.infoMiniLabel}>1 USD</Text>
+                      <Text style={styles.infoMiniValue}>
+                        {formatIQD(Number(exchangeRateIqd || 0))} IQD
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.infoGrid}>
+                    <View style={styles.flex1}>
+                      <Text style={styles.label}>Minimum USD</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="5"
+                        placeholderTextColor={UI.text3}
+                        value={minAmountUsd}
+                        onChangeText={setMinAmountUsd}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
+
+                    <View style={styles.flex1}>
+                      <Text style={styles.label}>Maximum USD</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="10000"
+                        placeholderTextColor={UI.text3}
+                        value={maxAmountUsd}
+                        onChangeText={setMaxAmountUsd}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
+                  </View>
+                </View>
+              ) : null}
 
               <Text style={styles.label}>Bank Image</Text>
               <TouchableOpacity
@@ -968,7 +1178,6 @@ export default function AdminPaymentMethodsScreen() {
 function decode(base64: string) {
   const chars =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-  let str = '';
   let output = [];
 
   for (
@@ -987,6 +1196,8 @@ function decode(base64: string) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: UI.bg },
+
+  flex1: { flex: 1 },
 
   header: {
     flexDirection: 'row',
@@ -1251,6 +1462,37 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
+  usdtRateBox: {
+    marginTop: 2,
+    marginBottom: 10,
+    backgroundColor: UI.blueSoft,
+    borderRadius: 18,
+    padding: 12,
+  },
+
+  usdtRateRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+
+  usdtChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+
+  usdtChipText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: UI.blue,
+  },
+
   noteBox: {
     marginTop: 12,
     borderRadius: 16,
@@ -1397,6 +1639,37 @@ const styles = StyleSheet.create({
     color: UI.text,
     marginBottom: 8,
     marginTop: 6,
+  },
+
+  helperText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: UI.text2,
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+
+  usdtFormBox: {
+    marginTop: 10,
+    marginBottom: 6,
+    borderRadius: 18,
+    backgroundColor: UI.blueSoft,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: UI.border,
+  },
+
+  usdtFormTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+
+  usdtFormTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: UI.blue,
   },
 
   input: {
