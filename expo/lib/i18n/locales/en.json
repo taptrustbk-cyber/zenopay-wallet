@@ -8,6 +8,7 @@
   "resetPasswordDesc": "Enter your email to receive a password reset code.",
   "resetPasswordDesc2": "We'll send you instructions",
   "email": "Email",
+  
   "resetPasswordOtpDesc": "Enter your email to receive a 6-digit verification code.",
   "sendVerificationCode": "Send Verification Code",
   "important": "Important",
