@@ -7,6 +7,7 @@
   "transactions_topupCard": "کارتا بارکرنێ",
   "transactions_cardValue": "بڕا کارتێ",
   "transactions": "مامەڵە",
+  
   "transactions_topupCardPurchased": "کارتا بارکرنێ هاتە کرین",
   "transactions_typeTopupCardPurchased": "کارتا بارکرنێ هاتە کرین",
   "transactions_provider": "دابینکەر",
@@ -45,6 +46,10 @@
   "somethingWentWrong": "شتیەک ب هەڵە چوو",
   
   "sendMoney": "هنارتنا پارێ",
+  "resetPasswordOtpDesc": "ئیمێلێ خۆ بنڤیسە دا کۆدێ پشتڕاستکرنێ یا 6 ژمارەیی وەرگری.",
+    "sendVerificationCode": "کۆدێ پشتڕاستکرنێ بنێرە",
+    "important": "گرنگە",
+    "resetHelpOtpText": "ئیمێلێ خۆ بنڤیسە، ئێمە دێ کۆدێ پشتڕاستکرنێ یا 6 ژمارەیی بنێرین بۆ گۆهارتنا وشەی نهێنی.",
   "loginSubWelcome": "هیڤیە هەرە ژوورێ بۆ هەژمارا خۆ",
   "sendMoneySubtitle": "فرێکرنەکا پاراستی ب د.غ",
   "sendMoneyFormSubtitle": "ئیمەیلا وەرگر، بڕا پارە و تێبینی بنڤیسە",
