@@ -11,6 +11,7 @@
   "transactions_typeGiftCardPurchased": "گیفت کارت کڕدرا",
   "transactions_provider": "دابینکەر",
   "transactions_pinCode": "PIN کۆد",
+  
   "transactions_addBalanceViaAdmin": "زیادکردنی باڵانس لە ڕێگەی زینۆپەی",
   "transactions_balanceReceivedFromZenopay": "باڵانس لە زینۆپەی وەرگیرا",
   "transactions_withdrawBalanceViaAdmin": "کەمکردنەوەی باڵانس لە ڕێگەی زینۆپەی",
@@ -37,6 +38,10 @@
   "recipientEmail": "ئیمەیڵی وەرگر",
   "enterEmail": "ناونیشانی ئیمەیڵ بنووسە",
   "amount": "بڕ",
+  "resetPasswordOtpDesc": "ئیمەیڵەکەت بنووسە بۆ وەرگرتنی کۆدی دڵنیاکردنەوەی ٦ ژمارەیی.",
+    "sendVerificationCode": "ناردنی کۆدی دڵنیاکردنەوە",
+    "important": "گرنگ",
+    "resetHelpOtpText": "ئیمەیڵەکەت بنووسە و ئێمە کۆدی دڵنیاکردنەوەی ٦ ژمارەیی بۆت دەنێرین بۆ گۆڕینی وشەی نهێنی.",
   "enterAmount": "بڕ بنووسە",
   "invalidAmount": "بڕەکە دروست نییە",
   "addNoteOptional": "تێبینی زیاد بکە (ئیختیاری)",
