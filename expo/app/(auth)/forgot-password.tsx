@@ -74,11 +74,15 @@ export default function ForgotPasswordScreen() {
       const cleanEmail = email.trim().toLowerCase();
 
       if (!cleanEmail) {
-        throw new Error(i18n.t('enterEmail') || 'Enter email');
+        throw new Error(
+          (i18n.t('auth.enterEmail') as string) || 'Enter email'
+        );
       }
 
       if (!isValidEmail(cleanEmail)) {
-        throw new Error(i18n.t('invalidEmail') || 'Invalid email');
+        throw new Error(
+          (i18n.t('auth.invalidEmail') as string) || 'Invalid email'
+        );
       }
 
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail);
@@ -103,12 +107,12 @@ export default function ForgotPasswordScreen() {
       }
 
       Alert.alert(
-        i18n.t('success') || 'Success',
-        i18n.t('resetCodeSent') ||
+        (i18n.t('common.success') as string) || 'Success',
+        (i18n.t('auth.resetCodeSent') as string) ||
           'We sent a 6-digit reset code to your email. Please check your inbox and spam folder.',
         [
           {
-            text: i18n.t('ok') || 'OK',
+            text: (i18n.t('common.ok') as string) || 'OK',
             onPress: () => {
               router.push({
                 pathname: '/(auth)/verify-reset-code' as any,
@@ -121,8 +125,10 @@ export default function ForgotPasswordScreen() {
     },
     onError: (error: any) => {
       Alert.alert(
-        i18n.t('error') || 'Error',
-        error?.message || i18n.t('somethingWentWrong') || 'Something went wrong'
+        (i18n.t('common.error') as string) || 'Error',
+        error?.message ||
+          (i18n.t('common.somethingWentWrong') as string) ||
+          'Something went wrong'
       );
     },
   });
@@ -163,7 +169,7 @@ export default function ForgotPasswordScreen() {
             </TouchableOpacity>
 
             <Text style={styles.headerTitle}>
-              {i18n.t('resetPassword') || 'Reset Password'}
+              {(i18n.t('auth.resetPassword') as string) || 'Reset Password'}
             </Text>
 
             <View style={styles.headerSpacer} />
@@ -184,17 +190,19 @@ export default function ForgotPasswordScreen() {
               </View>
 
               <Text style={styles.title}>
-                {i18n.t('resetPassword') || 'Reset Password'}
+                {(i18n.t('auth.resetPassword') as string) || 'Reset Password'}
               </Text>
 
               <Text style={styles.description}>
-                {i18n.t('resetPasswordOtpDesc') ||
+                {(i18n.t('auth.resetPasswordOtpDesc') as string) ||
                   'Enter your email address and we will send you a 6-digit verification code.'}
               </Text>
             </LinearGradient>
 
             <View style={styles.card}>
-              <Text style={styles.label}>{i18n.t('email') || 'Email'}</Text>
+              <Text style={styles.label}>
+                {(i18n.t('auth.email') as string) || 'Email'}
+              </Text>
 
               <View style={styles.inputWrap}>
                 <View style={[styles.inputIcon, isRTL ? styles.inputIconRTL : null]}>
@@ -203,7 +211,7 @@ export default function ForgotPasswordScreen() {
 
                 <TextInput
                   style={styles.input}
-                  placeholder={i18n.t('email') || 'Email'}
+                  placeholder={(i18n.t('auth.email') as string) || 'Email'}
                   placeholderTextColor={COLORS.textMuted}
                   value={email}
                   onChangeText={setEmail}
@@ -226,7 +234,7 @@ export default function ForgotPasswordScreen() {
                   <>
                     <Ionicons name="paper-plane-outline" size={18} color="#FFFFFF" />
                     <Text style={styles.primaryButtonText}>
-                      {i18n.t('sendVerificationCode') || 'Send Verification Code'}
+                      {(i18n.t('auth.sendVerificationCode') as string) || 'Send Verification Code'}
                     </Text>
                   </>
                 )}
@@ -238,17 +246,17 @@ export default function ForgotPasswordScreen() {
                 activeOpacity={0.9}
               >
                 <Text style={styles.backText}>
-                  {i18n.t('backToLogin') || 'Back to Login'}
+                  {(i18n.t('auth.backToLogin') as string) || 'Back to Login'}
                 </Text>
               </TouchableOpacity>
 
               <View style={styles.helpBox}>
                 <Text style={styles.helpTitle}>
-                  {i18n.t('important') || 'Important'}
+                  {(i18n.t('common.important') as string) || 'Important'}
                 </Text>
 
                 <Text style={styles.helpText}>
-                  {i18n.t('resetHelpOtpText') ||
+                  {(i18n.t('auth.resetHelpOtpText') as string) ||
                     'We will send a 6-digit code to your email. Enter that code on the next screen to continue resetting your password.'}
                 </Text>
 
@@ -269,7 +277,7 @@ export default function ForgotPasswordScreen() {
                         { textAlign: isRTL ? 'right' : 'left' },
                       ]}
                     >
-                      {i18n.t('forgotEmailContact') ||
+                      {(i18n.t('auth.forgotEmailContact') as string) ||
                         'If you forgot your email address, please contact support.'}
                     </Text>
                     <Text
