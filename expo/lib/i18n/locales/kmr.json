@@ -11,6 +11,13 @@
   "genderFemale": "مێ",
   "genderOther": "تر",
 
+  "invalidPhone": "ژمارا مۆبایلە دروست نینە",
+  "userAlreadyExists": "ئەڤ ئیمێلە پێشتر هاتیە تۆمارکرن",
+  "continueToLogin": "چوون بۆ چوونەژوورەوە",
+  "verificationEmailSent": "ئیمێلا ڤێرڤیکەیشن هاتیە ناردن",
+  "checkEmailInbox": "صندوقا ئیمێلێ خۆ بپشکنە",
+  "checkSpamFolder": "ئەگەر نەهات، فولدەرا سپام بپشکنە",
+  
   "login": "چونا ژوورێ",
   "signup": "تۆمارکرن",
   "createAccount": "ئەکاونتی دروستبکە",
