@@ -147,6 +147,27 @@
   "transactions_noteTopup": "تۆپ ئاپ بە سەرکەوتوویی ئەنجام درا",
   "transactions_notePurchase": "کڕین بە سەرکەوتوویی تەواو بوو",
 
+  "resetPassword": {
+    "title": "گۆڕینی وشەی نهێنی",
+    "heroTitle": "دانانی وشەی نهێنیی نوێ",
+    "heroSubtitle": "وشەی نهێنییەکی نوێ و بەهێز بۆ هەژمارەکەت هەڵبژێرە.",
+    "newPasswordLabel": "وشەی نهێنیی نوێ",
+    "newPasswordPlaceholder": "وشەی نهێنیی نوێ",
+    "confirmPasswordLabel": "دووپاتکردنەوەی وشەی نهێنی",
+    "confirmPasswordPlaceholder": "دووپاتکردنەوەی وشەی نهێنی",
+    "updatePasswordButton": "نوێکردنەوەی وشەی نهێنی",
+    "backToLogin": "گەڕانەوە بۆ چوونەژوورەوە",
+    "verifyingTitle": "بەستەری گۆڕینی وشەی نهێنی پشکنین دەکرێت...",
+    "verifyingSubtitle": "تکایە چاوەڕێبە تا گۆڕینی وشەی نهێنی بۆت ئامادە دەکەین.",
+    "alertErrorTitle": "هەڵە",
+    "alertSuccessTitle": "سەرکەوتوو بوو",
+    "invalidOrExpiredLink": "بەستەری گۆڕینی وشەی نهێنی نادروستە یان ماوەی بەسەرچووە. تکایە داوای بەستەرێکی نوێ بکە.",
+    "fillAllFields": "تکایە هەموو خانەکان پڕ بکەرەوە",
+    "passwordMinLength": "وشەی نهێنی دەبێت لانیکەم 6 پیت بێت",
+    "passwordsDoNotMatch": "وشە نهێنییەکان وەک یەک نین",
+    "passwordUpdatedSuccess": "وشەی نهێنی بە سەرکەوتوویی نوێکرایەوە! تکایە بە وشەی نهێنیی نوێ بچۆ ژوورەوە."
+  },
+  
   "transactions_unknownUser": "بەکارهێنەری نەناسراو",
   "transactions_status_completed": "تەواوبوو",
   "transactions_status_pending": "چاوەڕوانە",
