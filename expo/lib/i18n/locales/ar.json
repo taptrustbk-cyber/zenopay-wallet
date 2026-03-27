@@ -127,6 +127,29 @@
   "transactions_copyFailed": "فشل النسخ",
   "transactions_adminNote": "ملاحظة الأدمن",
 
+  "common": {
+    "ok": "حسناً"
+  },
+  "resetPassword": {
+    "title": "إعادة تعيين كلمة المرور",
+    "heroTitle": "تعيين كلمة مرور جديدة",
+    "heroSubtitle": "اختر كلمة مرور جديدة وقوية لحسابك.",
+    "newPasswordLabel": "كلمة المرور الجديدة",
+    "newPasswordPlaceholder": "كلمة المرور الجديدة",
+    "confirmPasswordLabel": "تأكيد كلمة المرور",
+    "confirmPasswordPlaceholder": "تأكيد كلمة المرور",
+    "updatePasswordButton": "تحديث كلمة المرور",
+    "backToLogin": "العودة إلى تسجيل الدخول",
+    "verifyingTitle": "جارٍ التحقق من رابط إعادة التعيين...",
+    "verifyingSubtitle": "يرجى الانتظار بينما نقوم بتجهيز إعادة تعيين كلمة المرور.",
+    "alertErrorTitle": "خطأ",
+    "alertSuccessTitle": "تم بنجاح",
+    "invalidOrExpiredLink": "رابط إعادة التعيين غير صالح أو منتهي الصلاحية. يرجى طلب إعادة تعيين جديدة لكلمة المرور.",
+    "fillAllFields": "يرجى ملء جميع الحقول",
+    "passwordMinLength": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل",
+    "passwordsDoNotMatch": "كلمتا المرور غير متطابقتين",
+    "passwordUpdatedSuccess": "تم تحديث كلمة المرور بنجاح! يرجى تسجيل الدخول باستخدام كلمة المرور الجديدة."
+  },
   "transactions_transactionHistory": "سجل التحويلات",
   "transactions_searchByTransactionId": "ابحث برقم العملية",
   "transactions_loadingTransactions": "جاري تحميل التحويلات...",
