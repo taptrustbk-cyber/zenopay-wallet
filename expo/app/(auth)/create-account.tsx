@@ -37,7 +37,6 @@ const COLORS = {
   white: '#FFFFFF',
   danger: '#DC2626',
   shadow: '#7DA8E6',
-  success: '#16A34A',
 };
 
 const SHADOWS = {
@@ -57,11 +56,23 @@ const SHADOWS = {
   },
 };
 
-const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v2';
+export const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v3';
 
 type GenderValue = 'male' | 'female' | 'other';
 
 const GENDER_OPTIONS: GenderValue[] = ['male', 'female', 'other'];
+
+type PendingProfilePayload = {
+  email: string;
+  password: string;
+  full_name: string;
+  city: string;
+  country: string;
+  phone: string;
+  gender: GenderValue;
+  date_of_brith: string;
+  pending_profile_created_at: string;
+};
 
 function isAtLeast18(dob: Date): boolean {
   const today = new Date();
@@ -94,31 +105,61 @@ function normalizeIraqPhoneToE164(input: string) {
 }
 
 function getGenderLabel(value: GenderValue | '') {
-  if (!value) return i18n.t('selectGender') || 'Select gender';
+  if (!value) return (i18n.t('selectGender') as string) || 'Select gender';
 
   switch (value) {
     case 'male':
-      return i18n.t('genderMale') || 'Male';
+      return (i18n.t('genderMale') as string) || 'Male';
     case 'female':
-      return i18n.t('genderFemale') || 'Female';
+      return (i18n.t('genderFemale') as string) || 'Female';
     case 'other':
-      return i18n.t('genderOther') || 'Other';
+      return (i18n.t('genderOther') as string) || 'Other';
     default:
       return value;
   }
 }
 
+function getSafeErrorMessage(error: unknown) {
+  const fallback = (i18n.t('somethingWentWrong') as string) || 'Something went wrong';
+
+  if (!error || typeof error !== 'object') return fallback;
+
+  const maybeMessage = 'message' in error ? String((error as any).message || '') : '';
+  const lower = maybeMessage.toLowerCase();
+
+  if (!maybeMessage) return fallback;
+
+  if (lower.includes('database error saving new user')) {
+    return (
+      (i18n.t('signupDatabaseError') as string) ||
+      'Signup is temporarily unavailable. Please check Supabase signup trigger or profiles table settings.'
+    );
+  }
+
+  if (lower.includes('user already registered')) {
+    return (i18n.t('userAlreadyRegistered') as string) || 'This email is already registered.';
+  }
+
+  if (lower.includes('password should be at least')) {
+    return (
+      (i18n.t('passwordTooShort') as string) || 'Password must be at least 6 characters'
+    );
+  }
+
+  return maybeMessage;
+}
+
 export default function CreateAccount() {
   const router = useRouter();
 
-  const [fullName, setFullName] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
-  const [city, setCity] = useState<string>('');
-  const [country, setCountry] = useState<string>('Iraq');
-  const [phone, setPhone] = useState<string>('');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [city, setCity] = useState('');
+  const [country, setCountry] = useState('Iraq');
+  const [phone, setPhone] = useState('');
   const [gender, setGender] = useState<GenderValue | ''>('');
-  const [openGender, setOpenGender] = useState<boolean>(false);
+  const [openGender, setOpenGender] = useState(false);
 
   const [dob, setDob] = useState<Date | null>(null);
   const [dobError, setDobError] = useState<string | null>(null);
@@ -130,27 +171,33 @@ export default function CreateAccount() {
     return d;
   }, []);
 
-  const [openDob, setOpenDob] = useState<boolean>(false);
+  const [openDob, setOpenDob] = useState(false);
   const [tempDob, setTempDob] = useState<Date>(new Date(1995, 0, 1));
-  const [isCreating, setIsCreating] = useState<boolean>(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   function handleDobChange(date: Date) {
     if (!isAtLeast18(date)) {
       setDob(null);
-      setDobError(i18n.t('mustBe18') || 'You must be 18 or older');
+      setDobError((i18n.t('mustBe18') as string) || 'You must be 18 or older');
       return;
     }
+
     setDob(date);
     setDobError(null);
+  }
+
+  async function savePendingProfile(payload: PendingProfilePayload) {
+    await AsyncStorage.setItem(PENDING_PROFILE_KEY, JSON.stringify(payload));
   }
 
   async function createAccount() {
     const cleanFullName = fullName.trim();
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password;
     const cleanCity = city.trim();
     const cleanCountry = country.trim() || 'Iraq';
-    const cleanPassword = password;
     const cleanGender = gender;
+    const cleanPhone = phone.trim();
 
     if (
       !cleanFullName ||
@@ -159,38 +206,53 @@ export default function CreateAccount() {
       !cleanCity ||
       !cleanCountry ||
       !cleanGender ||
-      !phone.trim()
+      !cleanPhone
     ) {
-      Alert.alert(i18n.t('error') || 'Error', i18n.t('completeAllFields') || 'Please complete all fields');
+      Alert.alert(
+        (i18n.t('error') as string) || 'Error',
+        (i18n.t('completeAllFields') as string) || 'Please complete all fields'
+      );
       return;
     }
 
     if (!isValidEmail(cleanEmail)) {
-      Alert.alert(i18n.t('error') || 'Error', i18n.t('invalidEmail') || 'Invalid email');
+      Alert.alert(
+        (i18n.t('error') as string) || 'Error',
+        (i18n.t('invalidEmail') as string) || 'Invalid email'
+      );
       return;
     }
 
     if (cleanPassword.length < 6) {
       Alert.alert(
-        i18n.t('error') || 'Error',
-        i18n.t('passwordTooShort') || 'Password must be at least 6 characters'
+        (i18n.t('error') as string) || 'Error',
+        (i18n.t('passwordTooShort') as string) || 'Password must be at least 6 characters'
       );
       return;
     }
 
     if (!dob) {
-      Alert.alert(i18n.t('error') || 'Error', i18n.t('pleaseSelectDOB') || 'Please select date of birth');
+      Alert.alert(
+        (i18n.t('error') as string) || 'Error',
+        (i18n.t('pleaseSelectDOB') as string) || 'Please select date of birth'
+      );
       return;
     }
 
     if (!isAtLeast18(dob)) {
-      Alert.alert(i18n.t('error') || 'Error', i18n.t('mustBe18') || 'You must be 18 or older');
+      Alert.alert(
+        (i18n.t('error') as string) || 'Error',
+        (i18n.t('mustBe18') as string) || 'You must be 18 or older'
+      );
       return;
     }
 
-    const phoneE164 = normalizeIraqPhoneToE164(phone);
+    const phoneE164 = normalizeIraqPhoneToE164(cleanPhone);
     if (!phoneE164 || phoneE164.length < 8) {
-      Alert.alert(i18n.t('error') || 'Error', i18n.t('invalidPhone') || 'Invalid phone number');
+      Alert.alert(
+        (i18n.t('error') as string) || 'Error',
+        (i18n.t('invalidPhone') as string) || 'Invalid phone number'
+      );
       return;
     }
 
@@ -199,21 +261,21 @@ export default function CreateAccount() {
     try {
       const dobISO = toISODateOnly(dob);
 
-      await AsyncStorage.setItem(
-        PENDING_PROFILE_KEY,
-        JSON.stringify({
-          email: cleanEmail,
-          full_name: cleanFullName,
-          city: cleanCity,
-          country: cleanCountry,
-          phone: phoneE164,
-          gender: cleanGender,
-          date_of_brith: dobISO,
-          pending_profile_created_at: new Date().toISOString(),
-        })
-      );
+      const pendingPayload: PendingProfilePayload = {
+        email: cleanEmail,
+        password: cleanPassword,
+        full_name: cleanFullName,
+        city: cleanCity,
+        country: cleanCountry,
+        phone: phoneE164,
+        gender: cleanGender,
+        date_of_brith: dobISO,
+        pending_profile_created_at: new Date().toISOString(),
+      };
 
-      const { data, error } = await supabase.auth.signUp({
+      await savePendingProfile(pendingPayload);
+
+      const { error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: cleanPassword,
         options: {
@@ -224,12 +286,9 @@ export default function CreateAccount() {
       });
 
       if (error) {
-        const msg = String(error.message || '');
-        Alert.alert(i18n.t('error') || 'Error', msg);
-        return;
+        throw error;
       }
 
-      // OTP signup flow
       router.replace({
         pathname: '/email-verification' as any,
         params: {
@@ -237,8 +296,11 @@ export default function CreateAccount() {
           mode: 'signup',
         },
       } as any);
-    } catch (e: any) {
-      Alert.alert(i18n.t('error') || 'Error', e?.message ?? 'Unknown error');
+    } catch (e: unknown) {
+      Alert.alert(
+        (i18n.t('error') as string) || 'Error',
+        getSafeErrorMessage(e)
+      );
     } finally {
       setIsCreating(false);
     }
@@ -261,7 +323,9 @@ export default function CreateAccount() {
           <Ionicons name="arrow-back" size={22} color={COLORS.blueDark} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>{i18n.t('createAccount') || 'Create Account'}</Text>
+        <Text style={styles.headerTitle}>
+          {(i18n.t('createAccount') as string) || 'Create Account'}
+        </Text>
 
         <View style={styles.headerRightSpacer} />
       </View>
@@ -280,17 +344,22 @@ export default function CreateAccount() {
             <Ionicons name="person-add-outline" size={26} color="#FFFFFF" />
           </View>
 
-          <Text style={styles.heroTitle}>{i18n.t('createAccount') || 'Create Account'}</Text>
+          <Text style={styles.heroTitle}>
+            {(i18n.t('createAccount') as string) || 'Create Account'}
+          </Text>
           <Text style={styles.heroSubtitle}>
-            {i18n.t('completeAllFields') || 'Complete all fields to create your account'}
+            {(i18n.t('completeAllFields') as string) ||
+              'Complete all fields to create your account'}
           </Text>
         </View>
 
         <View style={styles.card}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('fullName') || 'Full Name'}</Text>
+            <Text style={styles.label}>
+              {(i18n.t('fullName') as string) || 'Full Name'}
+            </Text>
             <TextInput
-              placeholder={i18n.t('fullName') || 'Full Name'}
+              placeholder={(i18n.t('fullName') as string) || 'Full Name'}
               value={fullName}
               onChangeText={setFullName}
               style={styles.input}
@@ -299,9 +368,11 @@ export default function CreateAccount() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('email') || 'Email'}</Text>
+            <Text style={styles.label}>
+              {(i18n.t('email') as string) || 'Email'}
+            </Text>
             <TextInput
-              placeholder={i18n.t('email') || 'Email'}
+              placeholder={(i18n.t('email') as string) || 'Email'}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -312,19 +383,25 @@ export default function CreateAccount() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('password') || 'Password'}</Text>
+            <Text style={styles.label}>
+              {(i18n.t('password') as string) || 'Password'}
+            </Text>
             <TextInput
-              placeholder={i18n.t('password') || 'Password'}
+              placeholder={(i18n.t('password') as string) || 'Password'}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               style={styles.input}
               placeholderTextColor={COLORS.textSecondary}
+              autoCapitalize="none"
+              autoCorrect={false}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('dateOfBirth') || 'Date of Birth'}</Text>
+            <Text style={styles.label}>
+              {(i18n.t('dateOfBirth') as string) || 'Date of Birth'}
+            </Text>
             <TouchableOpacity
               testID="dob-open"
               onPress={() => {
@@ -341,7 +418,7 @@ export default function CreateAccount() {
                       month: 'short',
                       year: 'numeric',
                     })
-                  : i18n.t('dateOfBirth') || 'Date of Birth'}
+                  : ((i18n.t('dateOfBirth') as string) || 'Date of Birth')}
               </Text>
               <Ionicons name="calendar-outline" size={18} color={COLORS.blueDark} />
             </TouchableOpacity>
@@ -370,7 +447,9 @@ export default function CreateAccount() {
             >
               <Pressable style={styles.dobModalBackdrop} onPress={() => setOpenDob(false)}>
                 <Pressable style={styles.dobModalCard} onPress={() => null}>
-                  <Text style={styles.dobModalTitle}>{i18n.t('dateOfBirth') || 'Date of Birth'}</Text>
+                  <Text style={styles.dobModalTitle}>
+                    {(i18n.t('dateOfBirth') as string) || 'Date of Birth'}
+                  </Text>
 
                   <View style={styles.webDatePickerContainer}>
                     {React.createElement('input', {
@@ -409,7 +488,9 @@ export default function CreateAccount() {
                       activeOpacity={0.85}
                       style={[styles.dobActionSecondary, styles.dobActionLeft]}
                     >
-                      <Text style={styles.dobActionSecondaryText}>{i18n.t('cancel') || 'Cancel'}</Text>
+                      <Text style={styles.dobActionSecondaryText}>
+                        {(i18n.t('cancel') as string) || 'Cancel'}
+                      </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -420,7 +501,9 @@ export default function CreateAccount() {
                       activeOpacity={0.85}
                       style={styles.dobActionPrimary}
                     >
-                      <Text style={styles.dobActionPrimaryText}>{i18n.t('confirm') || 'Confirm'}</Text>
+                      <Text style={styles.dobActionPrimaryText}>
+                        {(i18n.t('confirm') as string) || 'Confirm'}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </Pressable>
@@ -435,7 +518,9 @@ export default function CreateAccount() {
             >
               <Pressable style={styles.dobModalBackdrop} onPress={() => setOpenDob(false)}>
                 <Pressable style={styles.dobModalCard} onPress={() => null}>
-                  <Text style={styles.dobModalTitle}>{i18n.t('dateOfBirth') || 'Date of Birth'}</Text>
+                  <Text style={styles.dobModalTitle}>
+                    {(i18n.t('dateOfBirth') as string) || 'Date of Birth'}
+                  </Text>
 
                   <View style={styles.iosPickerContainer}>
                     <DateTimePicker
@@ -457,7 +542,9 @@ export default function CreateAccount() {
                       activeOpacity={0.85}
                       style={[styles.dobActionSecondary, styles.dobActionLeft]}
                     >
-                      <Text style={styles.dobActionSecondaryText}>{i18n.t('cancel') || 'Cancel'}</Text>
+                      <Text style={styles.dobActionSecondaryText}>
+                        {(i18n.t('cancel') as string) || 'Cancel'}
+                      </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -468,7 +555,9 @@ export default function CreateAccount() {
                       activeOpacity={0.85}
                       style={styles.dobActionPrimary}
                     >
-                      <Text style={styles.dobActionPrimaryText}>{i18n.t('confirm') || 'Confirm'}</Text>
+                      <Text style={styles.dobActionPrimaryText}>
+                        {(i18n.t('confirm') as string) || 'Confirm'}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </Pressable>
@@ -479,11 +568,14 @@ export default function CreateAccount() {
           {dobError ? <Text style={styles.errorText}>{dobError}</Text> : null}
 
           <Text style={styles.complianceText}>
-            {i18n.t('mustBe18OrOlder') || 'You must be 18 or older to use this service'}
+            {(i18n.t('mustBe18OrOlder') as string) ||
+              'You must be 18 or older to use this service'}
           </Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('gender') || 'Gender'}</Text>
+            <Text style={styles.label}>
+              {(i18n.t('gender') as string) || 'Gender'}
+            </Text>
             <TouchableOpacity
               onPress={() => setOpenGender(true)}
               activeOpacity={0.85}
@@ -504,7 +596,7 @@ export default function CreateAccount() {
               <Pressable style={styles.genderModal} onPress={() => null}>
                 <View style={styles.genderHeader}>
                   <Text style={styles.genderTitle}>
-                    {i18n.t('selectGender') || 'Select Gender'}
+                    {(i18n.t('selectGender') as string) || 'Select Gender'}
                   </Text>
 
                   <TouchableOpacity
@@ -549,16 +641,20 @@ export default function CreateAccount() {
                   onPress={() => setOpenGender(false)}
                   activeOpacity={0.9}
                 >
-                  <Text style={styles.genderCancelText}>{i18n.t('cancel') || 'Cancel'}</Text>
+                  <Text style={styles.genderCancelText}>
+                    {(i18n.t('cancel') as string) || 'Cancel'}
+                  </Text>
                 </TouchableOpacity>
               </Pressable>
             </Pressable>
           </Modal>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('city') || 'City'}</Text>
+            <Text style={styles.label}>
+              {(i18n.t('city') as string) || 'City'}
+            </Text>
             <TextInput
-              placeholder={i18n.t('city') || 'City'}
+              placeholder={(i18n.t('city') as string) || 'City'}
               value={city}
               onChangeText={setCity}
               style={styles.input}
@@ -567,9 +663,11 @@ export default function CreateAccount() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('country') || 'Country'}</Text>
+            <Text style={styles.label}>
+              {(i18n.t('country') as string) || 'Country'}
+            </Text>
             <TextInput
-              placeholder={i18n.t('country') || 'Country'}
+              placeholder={(i18n.t('country') as string) || 'Country'}
               value={country}
               onChangeText={setCountry}
               style={styles.input}
@@ -578,11 +676,13 @@ export default function CreateAccount() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('phoneLabel') || 'Phone'}</Text>
+            <Text style={styles.label}>
+              {(i18n.t('phoneLabel') as string) || 'Phone'}
+            </Text>
             <View style={styles.phoneContainer}>
               <Text style={styles.phonePrefix}>+964</Text>
               <TextInput
-                placeholder={i18n.t('phonePlaceholder') || 'Enter phone number'}
+                placeholder={(i18n.t('phonePlaceholder') as string) || 'Enter phone number'}
                 keyboardType="phone-pad"
                 value={phone}
                 onChangeText={setPhone}
@@ -606,14 +706,20 @@ export default function CreateAccount() {
             ) : (
               <>
                 <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.createBtnText}>{i18n.t('createAccount') || 'Create Account'}</Text>
+                <Text style={styles.createBtnText}>
+                  {(i18n.t('createAccount') as string) || 'Create Account'}
+                </Text>
               </>
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.9}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            activeOpacity={0.9}
+          >
             <Text style={styles.backText}>
-              {i18n.t('alreadyHaveAccountShort') || 'Already have an account?'}
+              {(i18n.t('alreadyHaveAccountShort') as string) || 'Already have an account?'}
             </Text>
           </TouchableOpacity>
         </View>
