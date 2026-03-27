@@ -1,3 +1,4 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +14,6 @@ import {
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
-import { useState, useRef } from 'react';
 import i18n from '@/lib/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,8 +52,9 @@ const SHADOWS = {
   },
 };
 
-const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v2';
+const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v3';
 const CODE_LENGTH = 6;
+const RESEND_COOLDOWN_SECONDS = 30;
 
 function safeStr(v: unknown): string {
   if (typeof v === 'string') return v;
@@ -65,15 +66,45 @@ function isValidEmail(v: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }
 
+function maskEmail(email: string) {
+  if (!email) return '';
+  const parts = email.split('@');
+  if (parts.length !== 2) return email;
+
+  const name = parts[0];
+  const domain = parts[1];
+
+  if (name.length <= 2) return `${name[0] || ''}***@${domain}`;
+  return `${name.slice(0, 2)}${'*'.repeat(Math.max(2, name.length - 2))}@${domain}`;
+}
+
 type PendingProfile = {
   email?: string;
+  password?: string;
   full_name?: string;
   city?: string;
   country?: string;
   phone?: string;
   gender?: string;
   date_of_brith?: string;
+  pending_profile_created_at?: string;
 };
+
+function t(key: string, fallback: string) {
+  const value = i18n.t(key) as string;
+  if (!value) return fallback;
+
+  const lower = String(value).toLowerCase();
+  if (
+    lower.includes('missing "') ||
+    lower.includes('missing translation') ||
+    lower === key.toLowerCase()
+  ) {
+    return fallback;
+  }
+
+  return value;
+}
 
 export default function EmailVerificationScreen() {
   const router = useRouter();
@@ -86,30 +117,35 @@ export default function EmailVerificationScreen() {
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [autoFocusing, setAutoFocusing] = useState(false);
 
   const hiddenInputRef = useRef<TextInput>(null);
+  const didAutoFocusRef = useRef(false);
 
-  useState(() => {
+  useEffect(() => {
     if (cooldown <= 0) return;
-  });
 
-  React.useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       setCooldown((prev) => Math.max(0, prev - 1));
     }, 1000);
-    return () => clearInterval(t);
+
+    return () => clearInterval(timer);
   }, [cooldown]);
 
-  const maskedEmail = email
-    ? email.replace(/^(.{2})(.*)(@.*)$/, (_, a, b, c) => {
-        const hidden = String(b || '')
-          .split('')
-          .map(() => '*')
-          .join('');
-        return `${a}${hidden}${c}`;
-      })
-    : '';
+  useEffect(() => {
+    if (didAutoFocusRef.current) return;
+    didAutoFocusRef.current = true;
+
+    const timer = setTimeout(() => {
+      setAutoFocusing(true);
+      hiddenInputRef.current?.focus();
+      setTimeout(() => setAutoFocusing(false), 400);
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const maskedEmail = useMemo(() => maskEmail(email), [email]);
 
   const handleCodeChange = (value: string) => {
     const digitsOnly = value.replace(/[^\d]/g, '').slice(0, CODE_LENGTH);
@@ -120,14 +156,46 @@ export default function EmailVerificationScreen() {
     hiddenInputRef.current?.focus();
   };
 
-  async function upsertPendingProfileForCurrentUser() {
-    const pendingRaw = await AsyncStorage.getItem(PENDING_PROFILE_KEY);
-    const pending: PendingProfile | null = pendingRaw ? JSON.parse(pendingRaw) : null;
-    if (!pending) return;
+  async function getPendingProfile(): Promise<PendingProfile | null> {
+    try {
+      const raw = await AsyncStorage.getItem(PENDING_PROFILE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
 
-    const { data: sessionData } = await supabase.auth.getSession();
+  async function clearPendingProfile() {
+    try {
+      await AsyncStorage.removeItem(PENDING_PROFILE_KEY);
+    } catch {
+      // ignore
+    }
+  }
+
+  async function upsertPendingProfileForCurrentUser() {
+    const pending = await getPendingProfile();
+    if (!pending) {
+      throw new Error(
+        t(
+          'pendingProfileNotFound',
+          'Your temporary signup data was not found. Please create your account again.'
+        )
+      );
+    }
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+
     const user = sessionData?.session?.user;
-    if (!user?.id) return;
+    if (!user?.id) {
+      throw new Error(
+        t(
+          'sessionNotFoundAfterVerification',
+          'Could not create a session after verification. Please try again.'
+        )
+      );
+    }
 
     const payload = {
       id: user.id,
@@ -143,24 +211,65 @@ export default function EmailVerificationScreen() {
     const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
     if (error) throw error;
 
-    await AsyncStorage.removeItem(PENDING_PROFILE_KEY).catch(() => null);
+    await clearPendingProfile();
+  }
+
+  function getOtpErrorMessage(error: unknown) {
+    const fallback = t('somethingWentWrong', 'Something went wrong');
+
+    if (!error || typeof error !== 'object') return fallback;
+
+    const message = String((error as any)?.message || '');
+    const lower = message.toLowerCase();
+
+    if (
+      lower.includes('invalid token') ||
+      lower.includes('otp') ||
+      lower.includes('token') ||
+      lower.includes('code verifier') ||
+      lower.includes('verification code')
+    ) {
+      if (
+        lower.includes('expired') ||
+        lower.includes('token has expired') ||
+        lower.includes('otp_expired')
+      ) {
+        return t(
+          'verificationCodeExpired',
+          'This verification code has expired. Please request a new one.'
+        );
+      }
+
+      return t(
+        'invalidVerificationCode',
+        'Incorrect code. Please try again and enter the correct 6-digit code.'
+      );
+    }
+
+    return message || fallback;
   }
 
   const verifyCode = async () => {
     if (!email) {
-      Alert.alert(i18n.t('error') || 'Error', i18n.t('missingEmail') || 'Email is missing');
+      Alert.alert(
+        t('error', 'Error'),
+        t('missingEmail', 'Email is missing')
+      );
       return;
     }
 
     if (!isValidEmail(email)) {
-      Alert.alert(i18n.t('error') || 'Error', i18n.t('invalidEmail') || 'Invalid email');
+      Alert.alert(
+        t('error', 'Error'),
+        t('invalidEmail', 'Invalid email')
+      );
       return;
     }
 
     if (code.length !== CODE_LENGTH) {
       Alert.alert(
-        i18n.t('error') || 'Error',
-        i18n.t('enterSixDigitCode') || 'Please enter the 6-digit verification code'
+        t('error', 'Error'),
+        t('enterSixDigitCode', 'Please enter the 6-digit verification code')
       );
       return;
     }
@@ -175,39 +284,23 @@ export default function EmailVerificationScreen() {
       });
 
       if (error) {
-        const msg = String(error.message || '').toLowerCase();
-
-        if (
-          msg.includes('expired') ||
-          msg.includes('otp_expired') ||
-          msg.includes('token has expired')
-        ) {
-          Alert.alert(
-            i18n.t('error') || 'Error',
-            i18n.t('verificationCodeExpired') || 'This code has expired. Please request a new one.'
-          );
-          return;
-        }
-
-        Alert.alert(
-          i18n.t('error') || 'Error',
-          i18n.t('invalidVerificationCode') || 'The verification code is invalid.'
-        );
+        Alert.alert(t('error', 'Error'), getOtpErrorMessage(error));
         return;
       }
 
-      await upsertPendingProfileForCurrentUser().catch((e: any) => {
-        console.log('profile upsert error:', e?.message);
-      });
+      await upsertPendingProfileForCurrentUser();
 
       await supabase.auth.signOut().catch(() => null);
 
       Alert.alert(
-        i18n.t('success') || 'Success',
-        i18n.t('accountSuccessfullyConfirmed') || 'Your account has been successfully confirmed.',
+        t('success', 'Success'),
+        t(
+          'accountSuccessfullyConfirmed',
+          'Your account has been successfully confirmed.'
+        ),
         [
           {
-            text: i18n.t('ok') || 'OK',
+            text: t('ok', 'OK'),
             onPress: () => {
               router.replace({
                 pathname: '/(auth)/login' as any,
@@ -220,8 +313,13 @@ export default function EmailVerificationScreen() {
           },
         ]
       );
-    } catch (e: any) {
-      Alert.alert(i18n.t('error') || 'Error', e?.message || 'Something went wrong');
+    } catch (e: unknown) {
+      const message =
+        e && typeof e === 'object' && 'message' in e
+          ? String((e as any).message || '')
+          : t('somethingWentWrong', 'Something went wrong');
+
+      Alert.alert(t('error', 'Error'), message);
     } finally {
       setVerifying(false);
     }
@@ -229,7 +327,18 @@ export default function EmailVerificationScreen() {
 
   const resendCode = async () => {
     if (!email) {
-      Alert.alert(i18n.t('error') || 'Error', i18n.t('missingEmail') || 'Email is missing');
+      Alert.alert(
+        t('error', 'Error'),
+        t('missingEmail', 'Email is missing')
+      );
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      Alert.alert(
+        t('error', 'Error'),
+        t('invalidEmail', 'Invalid email')
+      );
       return;
     }
 
@@ -245,15 +354,23 @@ export default function EmailVerificationScreen() {
 
       if (error) throw error;
 
-      setCooldown(30);
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+      setCode('');
 
       Alert.alert(
-        i18n.t('success') || 'Success',
-        i18n.t('newVerificationCodeSent') ||
+        t('success', 'Success'),
+        t(
+          'newVerificationCodeSent',
           'A new 6-digit verification code has been sent to your email.'
+        )
       );
-    } catch (e: any) {
-      Alert.alert(i18n.t('error') || 'Error', e?.message || 'Something went wrong');
+    } catch (e: unknown) {
+      const message =
+        e && typeof e === 'object' && 'message' in e
+          ? String((e as any).message || '')
+          : t('somethingWentWrong', 'Something went wrong');
+
+      Alert.alert(t('error', 'Error'), message);
     } finally {
       setResending(false);
     }
@@ -281,7 +398,7 @@ export default function EmailVerificationScreen() {
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>
-            {i18n.t('verifyYourEmail') || 'Verify Your Email'}
+            {t('verifyYourEmail', 'Verify Your Email')}
           </Text>
 
           <View style={styles.headerSpacer} />
@@ -296,12 +413,14 @@ export default function EmailVerificationScreen() {
           </View>
 
           <Text style={styles.title}>
-            {i18n.t('enterVerificationCode') || 'Enter Verification Code'}
+            {t('enterVerificationCode', 'Enter Verification Code')}
           </Text>
 
           <Text style={styles.description}>
-            {i18n.t('verificationCodeDesc') ||
-              'Enter the 6-digit code we sent to your email address.'}
+            {t(
+              'verificationCodeDesc',
+              'Enter the 6-digit verification code we sent to your email address.'
+            )}
           </Text>
 
           {!!maskedEmail ? <Text style={styles.emailText}>{maskedEmail}</Text> : null}
@@ -309,13 +428,15 @@ export default function EmailVerificationScreen() {
 
         <View style={styles.card}>
           <Text style={styles.label}>
-            {i18n.t('verificationCode') || 'Verification Code'}
+            {t('verificationCode', 'Verification Code')}
           </Text>
 
           <Pressable onPress={focusCodeInput} style={styles.codeWrap}>
             {Array.from({ length: CODE_LENGTH }).map((_, index) => {
               const digit = code[index] || '';
-              const isActive = index === code.length && code.length < CODE_LENGTH;
+              const isActive =
+                (index === code.length && code.length < CODE_LENGTH) ||
+                (code.length === CODE_LENGTH && index === CODE_LENGTH - 1 && autoFocusing);
 
               return (
                 <View
@@ -341,12 +462,15 @@ export default function EmailVerificationScreen() {
               importantForAutofill="yes"
               maxLength={CODE_LENGTH}
               style={styles.hiddenInput}
+              autoFocus={false}
             />
           </Pressable>
 
           <Text style={styles.hintText}>
-            {i18n.t('enterSixDigitCodeHint') ||
-              'Please enter the 6-digit code sent to your email.'}
+            {t(
+              'enterSixDigitCodeHint',
+              'Please enter the 6-digit code sent to your email.'
+            )}
           </Text>
 
           <TouchableOpacity
@@ -361,7 +485,7 @@ export default function EmailVerificationScreen() {
               <>
                 <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>
-                  {i18n.t('verifyCode') || 'Verify Code'}
+                  {t('confirmAccount', 'Confirm Account')}
                 </Text>
               </>
             )}
@@ -383,8 +507,8 @@ export default function EmailVerificationScreen() {
                 <Ionicons name="refresh-outline" size={18} color={COLORS.blueDark} />
                 <Text style={styles.secondaryButtonText}>
                   {cooldown > 0
-                    ? `${i18n.t('resendCode') || 'Resend Code'} (${cooldown}s)`
-                    : i18n.t('resendCode') || 'Resend Code'}
+                    ? `${t('resendCode', 'Resend Code')} (${cooldown}s)`
+                    : t('resendCodeToEmail', 'Resend Code to Email')}
                 </Text>
               </>
             )}
@@ -396,16 +520,20 @@ export default function EmailVerificationScreen() {
             activeOpacity={0.9}
           >
             <Text style={styles.backText}>
-              {i18n.t('backToLogin') || 'Back to Login'}
+              {t('backToCreateAccount', 'Back')}
             </Text>
           </TouchableOpacity>
 
           <View style={styles.helpBox}>
-            <Text style={styles.helpTitle}>{i18n.t('important') || 'Important'}</Text>
+            <Text style={styles.helpTitle}>
+              {t('important', 'Important')}
+            </Text>
 
             <Text style={styles.helpText}>
-              {i18n.t('verifyCodeHelpText') ||
-                'If the code is wrong or expired, request a new code and try again.'}
+              {t(
+                'verifyCodeHelpText',
+                'If the code is incorrect or expired, request a new code and try again.'
+              )}
             </Text>
 
             <View style={styles.supportRow}>
@@ -415,12 +543,23 @@ export default function EmailVerificationScreen() {
 
               <View style={styles.supportTextWrap}>
                 <Text style={styles.supportTextTop}>
-                  {i18n.t('needHelpVerifyCode') ||
-                    'Need help with the verification code? Contact support.'}
+                  {t(
+                    'needHelpVerifyCode',
+                    'Need help with the verification code? Contact support.'
+                  )}
                 </Text>
                 <Text style={styles.supportEmail}>info@zenopay.bond</Text>
               </View>
             </View>
+
+            {mode === 'signup' ? (
+              <Text style={styles.bottomInfoText}>
+                {t(
+                  'signupProfileSaveAfterVerify',
+                  'Your account information will be saved only after the verification code is confirmed successfully.'
+                )}
+              </Text>
+            ) : null}
           </View>
         </View>
       </ScrollView>
@@ -693,5 +832,13 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     color: COLORS.blue,
     fontWeight: '900',
+  },
+  bottomInfoText: {
+    marginTop: 14,
+    fontSize: 12.5,
+    lineHeight: 19,
+    color: COLORS.textSecondary,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });
