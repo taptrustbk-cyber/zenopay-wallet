@@ -6,6 +6,12 @@
   "consulateDirectoryTitle": "بەڕێوەبەری باڵیۆزخانە و کۆنسوڵخانەکان",
   "consulateDirectorySubtitle": "زانیاریی پەیوەندیی خێرا، پایتەخت، و ناونیشانی کۆنسوڵخانە بەردەستەکان لە عێراق بدۆزەرەوە.",
   "consulate": "کۆنسوڵگەری",
+  "invalidPhone": "ژمارەی مۆبایل دروست نیە",
+  "userAlreadyExists": "ئەم ئیمەیڵە پێشتر تۆمارکراوە",
+  "continueToLogin": "بڕۆ بۆ چوونەژوورەوە",
+  "verificationEmailSent": "ئیمەیڵی پشتڕاستکردنەوە نێردرا",
+  "checkEmailInbox": "سندوقی ئیمەیڵەکەت بپشکنە",
+  "checkSpamFolder": "ئەگەر نەبینیت، فولدەری سپام بپشکنە",
   "capital": "پایتەخت",
   "consulateInfo": "زانیاری کۆنسوڵخانە",
 
