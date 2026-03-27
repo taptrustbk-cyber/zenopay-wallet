@@ -197,7 +197,7 @@
   "depositSuccessMessage": "دانان سەرکەفتی بوو",
   "photoPermissionDenied": "هیڤیە ڕێکێ بدە بۆ وێنەکان بەلگێن تە باربن.",
   "noPaymentMethods": "هیچ ڕێکەکا پارەدانێ نینە",
-  "noPaymentMethodsDesc": "هێشتا ئەدمین هیچ ڕێکەکا پارەدانێ زیاد نەکریە",
+  "noPaymentMethodsDesc": "هێشتا ئەدمین چ ڕێکەکا پارەدانێ زێدە نەکریە",
   "back": "ڤەگەڕان",
   "transactionReceipt": "QR Code هاتیە بارکرن",
   "noReceiptImageUploaded": "هیچ QR Code نەهاتیە بارکرن",
@@ -212,8 +212,8 @@
   "withdrawalAmount": "بڕا راکێشانێ",
   "submitWithdrawRequest": "هنارتنا داخوازا راکێشانێ",
   "fillWithdrawForm": "ڕێکا پارەدانێ هەلبژێرە و زانیاریێن هنارتنێ بنڤیسە",
-  "minimumWithdrawAmount": "کەمترین بڕی راکێشان",
-  "maximumWithdrawAmount": "زۆرترین بڕی راکێشان",
+  "minimumWithdrawAmount": "کێمترین بڕا راکێشان",
+  "maximumWithdrawAmount": "زێدەترین بڕا راکێشان",
   "bankImage": "وێنەی بانکی",
   "status": "دۆخ",
   "withdrawHistoryEmptyDesc": "هەمی داخوازێن راکێشانێ ل ڤێرە دێنە دیارکرن",
@@ -342,6 +342,7 @@
   "cards.created_success_iqd": "کارت ب سەرکەفتی هاتە دروست کردن 25.000 دینار ژ هژمارا هاتنە کێمکرن.",
   "Cards": "کارت",
   "one_card_inline": "کارتا ڤێرتواڵا تە چالاکە. تۆ تنێ دشی ئێک کارت دروست بکەی.",
+<<<<<<< Updated upstream
   "cards": {
     "title": "کارت",
     "available_balance": "بالانسا بەردەست",
@@ -375,12 +376,31 @@
     "insufficient_desc": "پێدڤیە لایونێ کێم 25.٠٠٠ د.غ هەبیت.",
     "create_failed": "نەشیا کارتێ دروست بکەت.",
     "created_success": "کارت هاتە دروستکرن. ٢٥.٠٠٠ هزار ژ بالانسا تە هاتە کێمکرن."
+=======
+  "unknownUser": "بەکارهێنەرێ نەناس",
+
+  "common": {
+    "back": "ڤەگەڕان",
+    "cancel": "هەلوەشاندن",
+    "error": "خەلەت",
+    "failed": "سەرکەفتی نەبوو",
+    "success": "سەرکەفتی بوو",
+    "failed_to_load": "بارکرن سەرکەفتی نەبوو",
+    "something_wrong": "کێشەیەک چێبوو.",
+    "ok": "باشە"
+  },
+
+  "auth": {
+    "loginRequired": "تکایە سەرەتا بچۆ ناڤ هەژمارێ.",
+    "user_not_found": "بەکارهێنەر نەدۆزرایەوە"
+>>>>>>> Stashed changes
   },
 
   "buyCard": {
     "title": "کرینا کارتێ",
     "mobileCard": "کارتا موبایلێ",
     "giftCard": "کارتا دیاریێ",
+<<<<<<< Updated upstream
     "topupCard": "کارتا بارکرنێ",
     "playerIdLabel": "زانیاریێن پێدڤی بنڤیسە",
     "enterYourPlayerId": "ئایدیا پوبجیێ خو بنڤیسە",
@@ -399,6 +419,26 @@
     "defaultInputHelp": "ئەڤ زانیاری دگەل داواکاریا تە بۆ ئەدمین دێتە هنارتن.",
     "enterRequiredInformation": "تکایە زانیاری یا پێدڤی بنڤیسە.",
     "invalidProfileUrl": "هیڤیە لینکەکا دروست یا پڕۆفایلێ بنڤیسە.",
+=======
+    "topupCard": "کارتا موبایلێ",
+    "playerIdLabel": " زانیاریێن پێدڤی بنڤێسە",
+"enterYourPlayerId": " ئایدیا پوبجیێ خو بنڤێسە",
+"pubgPlayerIdHelp": "هیڤیە ID ـیا پوبجیا خو دروست بنڤیسە داکو ئەدمین بشێت PUBG UC ب دروستی بگەهینیت.",
+"pubgAccountNameOptional": "ناڤێ ئەکاونتا PUBG ـێ خو بنڤیسە (ئیختیاری)",
+"enterPubgAccountNameOptional": "ناڤێ ئەکاونتا PUBG ـێ خو بنڤیسە (ئیختیاری)",
+"gameIdHelp": " هیڤیەGame ID ـیا دروست بنڤیسە داکو ئەدمین بشێت داواکاریا تە ب دروستی بگەهینیت.",
+"profileUrlLabel": "لینکا پڕۆفایلێ",
+"enterProfileUrl": "لینکا پڕۆفایلا خود بنڤیسە",
+"profileUrlHelp": "ئەڤ زانیاری دگەل داواکاریا تە بۆ ئەدمین دێتە هنارتن.",
+"playerIdSummaryLabel": "ID ـیا پوبجیا تە",
+"profileUrlSummaryLabel": "لینکا پڕۆفایلێ",
+"requiredInfoSummaryLabel": "زانیاری یا پێدڤی",
+"pubgAccountNameSummaryLabel": "ناڤێ ئەکاونتا PUBG",
+"requiredInformation": "زانیاری یا پێدڤی",
+"defaultInputHelp": "ئەڤ زانیاری دگەل داواکاریا تە بۆ ئەدمین دێتە هنارتن.",
+"enterRequiredInformation": "تکایە زانیاری یا پێدڤی بنڤیسە.",
+"invalidProfileUrl": "هیڤیە لینکەکا دروست یا پڕۆفایلێ بنڤیسە.",
+>>>>>>> Stashed changes
     "reviewYourOrder": "داواکارییا خۆ بپشکنە",
     "walletNotFound": "جزدان نەهاتیە دۆزین.",
     "insufficientBalanceForPurchase": "بالانسا تە بۆ کرینێ نەبەسە.",
@@ -537,7 +577,7 @@
   "brandTecno": "تێکنۆ",
   "unknownCity": "نەناس",
   "locationUnavailable": "شوێن",
-  "detectingLocation": "شوێن دێتە دیارکرن...",
+  "detectingLocation": "جهێ دێتە دیارکرن...",
   "zenopayMobileShop": "فرۆشگەها مۆبایلێن Zenopay",
   "mobileShopHome": "مال",
   "searchMobiles": "ب دووی مۆدێلا مۆبایلێ بگەڕێ",
@@ -583,6 +623,7 @@
   "purchase": "کرین",
   "remove": "لابە",
 
+<<<<<<< Updated upstream
   "security": "پاراستن",
   "contactSupport": "پەیوەندیێ بکە بو پشتەڤانیێ",
   "changePhoto": "گوهارتنا وێنەی",
@@ -591,6 +632,18 @@
   "tapToChangePhoto": "کرتە بکە بۆ گوهارتنا وێنەی",
   "profilePhoto": "وێنەی پرۆفایل",
   "profile": "پرۆفایل",
+=======
+  "mobileCards": "کارتێن موبایل",
+  "welcomeBack": "بخێربهێی",
+  "supportChat": "چاتێ پشتگیری",
+  "typeMessage": "نامەکێ بنڤیسە...",
+  "needHelp": "تە پێدڤی ب هاریکاریێ هەیە؟",
+  "pleaseLoginToYourAccount": "هیڤیە هەژمارا خۆ ڤەکە",
+  "rememberMe": "من ژبیر نەکە؟",
+  "createNewAccount": "هەژمارەکا نوو دروست بکە",
+  "contactUsAt": "پەیوەندیێ ب مە بکە ل",
+  "retry": "دووبارە هەولدە",
+>>>>>>> Stashed changes
   "settings": "ڕێکخستن",
   "language": "زمان",
   "support": "پشتگیری",
@@ -749,6 +802,7 @@
   "cannotOpenLink": "نەشێ ڤێ لینکێ ڤەکە",
   "failedToOpenLink": "سەرکەفتی نەبوو ل ڤەکرنا لینکێ",
 
+<<<<<<< Updated upstream
   "common": {
     "back": "ڤەگەڕان",
     "cancel": "هەلوەشاندن",
@@ -759,6 +813,55 @@
     "something_wrong": "کێشەیەک چێبوو.",
     "ok": "باشە"
   },
+=======
+  "kycVerificationRequired": "پشتڕاستکرنا ناسنامێ پێدڤیە",
+  "kycPendingMessage": "بەڵگەنامێن تە ل بن پێداچوونەوەیێن",
+  "whatsNext": "ئێدی چی دبیت؟",
+  "kycNextSteps": "تیمێ مە دێ زو بەڵگەنامێن تە پێبڤەچێت",
+  "documentsSecure": "بەڵگەنامێن تە شفرەکری و پارێزراون",
+  "kycDocuments": "بەڵگەنامێن پشتڕاستکرنێ",
+  "uploadKycDocs": "بەڵگەنامێن پشتڕاستکرنێ باربکە",
+  "uploadDocuments": "بەڵگەنامان باربکە",
+  "permissionRequired": "ڕێگەپێدان پێدڤیە",
+  "failedPickImage": "هەڵە د هەلبژارتنا وێنەیێدا چێبوو. هیڤیە دووبارە بکە.",
+  "kycSubmitFailed": "سیستەم نەشیا بەڵگەنامێن KYC وەربگریت. هیڤیە دووبارە هەول بدە.",
+  "tapToUpload": "دەست بدە بۆ بارکرنێ",
+  "uploadHint": "وێنەیەکا ڕوون، بێ کڕۆپ",
+  "change": "گوهارتن",
+  "approvalTimeNote": "هیڤیە چاڤەرێبە ژ ١ کاتژمێر تا ١٢ کاتژمێر بۆ پەسەندکرنا هەژمارا تە.",
+  "kycPrivacyNote": "بەڵگەنامێن تە پارێزراون و ب شێوەیەکی ئەمنی هەڵدەگیرن.",
+  "submitKycDocuments": "بەڵگەنامێن پشتڕاستکرنێ بنێرە",
+  "uploadAllKycDocs": "هەمی بەڵگەنامێن پشتڕاستکرنێ باربکە",
+  "uploadDocsToComplete": "بەڵگەنامان باربکە بۆ تەواوکرنا پشتڕاستکرنێ",
+  "governmentIDFront": "ناسنامێ حکومی (لایێ پێش)",
+  "governmentIDBack": "ناسنامێ حکومی (لایێ پشت)",
+  "selfieWithID": "وێنێ خۆ لگەڵ ناسنامێ",
+  "uploadScreenshot": "وێنێ شاشێ باربکە",
+  "uploadIDFront": "ناسنامێ پێش باربکە",
+  "uploadIDBack": "ناسنامێ پشت باربکە",
+  "uploadSelfie": "وێنێ خۆ باربکە",
+  "idFrontSelected": "ناسنامێ پێش هەلبژێردرا",
+  "idBackSelected": "ناسنامێ پشت هەلبژێردرا",
+  "selfieSelected": "وێنێ خۆ هەلبژێردرا",
+  "screenshotSelected": "وێنێ شاشێ هەلبژێردرا",
+  "chooseScreenshot": "وێنێ شاشێ هەلبژێرە",
+  "resetLinkSent": "لینکێ ڕێکخستنێ هاتە فرێکرن",
+  "kycDocsSubmitted": "بەڵگەنامێن پشتڕاستکرنێ ب سەرکەفتی هاتنە فرێکرن",
+  "kycDocsUploadedSuccess": "بەڵگەنامان ب سەرکەفتی بارکران",
+  "completeAllFields": "تکایە هەمی خانان تەواو بکە",
+  "kycApprovedInfo": "ئەکاونتا تە پەسەندکرا",
+  "docsSecure": "بەڵگەنامان پارێزراون",
+  "infoSecure": "زانیارییێن تە پاراستینە",
+  "signOut": "دەرکەفتن",
+  "language": "زمان",
+  "support": "پشتگیری",
+  "profile": "پرۆفایل",
+  "darkMode": "دۆخا تاری",
+  "lightMode": "دۆخا ڕووناک",
+  "adminPanel": "بەشێ ڕێڤەبەری",
+  "internetSim": "ئینتەرنێت و کارتێن SIM",
+  "selectSimCard": "کارتەک لە خوارەوە هەلبژێرە",
+>>>>>>> Stashed changes
 
   "auth": {
     "loginRequired": "تکایە سەرەتا بچۆ ناڤ هەژمارێ.",
