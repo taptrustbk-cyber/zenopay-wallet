@@ -22,6 +22,18 @@
   "checkSpamFolder": "تحقق من مجلد الرسائل غير المرغوب فيها",
   "consulateInfo": "معلومات القنصلية",
 
+  "invalidOrExpiredResetLink": "رابط إعادة التعيين غير صالح أو منتهي الصلاحية. يرجى طلب إعادة تعيين كلمة المرور من جديد.",
+"verifyingResetLink": "جارٍ التحقق من رابط إعادة التعيين...",
+"preparingPasswordReset": "يرجى الانتظار بينما نقوم بتجهيز إعادة تعيين كلمة المرور.",
+"setNewPassword": "تعيين كلمة مرور جديدة",
+"setNewPasswordSubtitle": "اختر كلمة مرور جديدة قوية لحسابك.",
+"newPassword": "كلمة المرور الجديدة",
+"confirmPassword": "تأكيد كلمة المرور",
+"fillAllFields": "يرجى ملء جميع الحقول",
+"passwordUpdatedSuccessfully": "تم تحديث كلمة المرور بنجاح! يرجى تسجيل الدخول باستخدام كلمة المرور الجديدة.",
+"updatePassword": "تحديث كلمة المرور",
+"backToLogin": "العودة إلى تسجيل الدخول",
+
   "sendMoney": "إرسال الأموال",
   "sendMoneySubtitle": "تحويل آمن بالدينار العراقي",
   "sendMoneyFormSubtitle": "أدخل بريد المستلم والمبلغ والملاحظة",
