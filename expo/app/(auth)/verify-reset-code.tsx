@@ -138,16 +138,21 @@ export default function VerifyResetCodeScreen() {
       const cleanCode = code.replace(/[^\d]/g, '');
 
       if (!cleanEmail) {
-        throw new Error(i18n.t('missingEmail') || 'Email is missing');
+        throw new Error(
+          (i18n.t('auth.missingEmail') as string) || 'Email is missing'
+        );
       }
 
       if (!isValidEmail(cleanEmail)) {
-        throw new Error(i18n.t('invalidEmail') || 'Invalid email');
+        throw new Error(
+          (i18n.t('auth.invalidEmail') as string) || 'Invalid email'
+        );
       }
 
       if (cleanCode.length !== CODE_LENGTH) {
         throw new Error(
-          i18n.t('enterSixDigitCode') || 'Please enter the 6-digit verification code'
+          (i18n.t('auth.enterSixDigitCode') as string) ||
+            'Please enter the 6-digit verification code'
         );
       }
 
@@ -161,12 +166,15 @@ export default function VerifyResetCodeScreen() {
         !sentAt || Number.isNaN(sentAt) || Date.now() - sentAt > RESET_CODE_EXPIRES_MS;
 
       if (savedEmail && savedEmail !== cleanEmail) {
-        throw new Error(i18n.t('invalidVerificationCode') || 'Incorrect code, please try again.');
+        throw new Error(
+          (i18n.t('auth.invalidVerificationCode') as string) ||
+            'Incorrect code, please try again.'
+        );
       }
 
       if (expiredByTime) {
         throw new Error(
-          i18n.t('verificationCodeExpired') ||
+          (i18n.t('auth.verificationCodeExpired') as string) ||
             'This code has expired. Please request a new one.'
         );
       }
@@ -188,13 +196,14 @@ export default function VerifyResetCodeScreen() {
 
         if (looksExpired) {
           throw new Error(
-            i18n.t('verificationCodeExpired') ||
+            (i18n.t('auth.verificationCodeExpired') as string) ||
               'This code has expired. Please request a new one.'
           );
         }
 
         throw new Error(
-          i18n.t('invalidVerificationCode') || 'Incorrect code, please try again.'
+          (i18n.t('auth.invalidVerificationCode') as string) ||
+            'Incorrect code, please try again.'
         );
       }
 
@@ -211,8 +220,8 @@ export default function VerifyResetCodeScreen() {
     },
     onError: (error: any) => {
       Alert.alert(
-        i18n.t('error') || 'Error',
-        error?.message || i18n.t('somethingWentWrong') || 'Something went wrong'
+        (i18n.t('common.error') as string) || 'Error',
+        error?.message || (i18n.t('common.somethingWentWrong') as string) || 'Something went wrong'
       );
     },
   });
@@ -222,11 +231,15 @@ export default function VerifyResetCodeScreen() {
       const cleanEmail = email.trim().toLowerCase();
 
       if (!cleanEmail) {
-        throw new Error(i18n.t('missingEmail') || 'Email is missing');
+        throw new Error(
+          (i18n.t('auth.missingEmail') as string) || 'Email is missing'
+        );
       }
 
       if (!isValidEmail(cleanEmail)) {
-        throw new Error(i18n.t('invalidEmail') || 'Invalid email');
+        throw new Error(
+          (i18n.t('auth.invalidEmail') as string) || 'Invalid email'
+        );
       }
 
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail);
@@ -241,15 +254,15 @@ export default function VerifyResetCodeScreen() {
       setIsCodeExpired(false);
 
       Alert.alert(
-        i18n.t('success') || 'Success',
-        i18n.t('newVerificationCodeSent') ||
+        (i18n.t('common.success') as string) || 'Success',
+        (i18n.t('auth.newVerificationCodeSent') as string) ||
           'A new 6-digit verification code has been sent to your email.'
       );
     },
     onError: (error: any) => {
       Alert.alert(
-        i18n.t('error') || 'Error',
-        error?.message || i18n.t('somethingWentWrong') || 'Something went wrong'
+        (i18n.t('common.error') as string) || 'Error',
+        error?.message || (i18n.t('common.somethingWentWrong') as string) || 'Something went wrong'
       );
     },
   });
@@ -312,7 +325,7 @@ export default function VerifyResetCodeScreen() {
             </TouchableOpacity>
 
             <Text style={styles.headerTitle}>
-              {i18n.t('verifyResetCode') || 'Verify Reset Code'}
+              {(i18n.t('auth.verifyResetCode') as string) || 'Verify Reset Code'}
             </Text>
 
             <View style={styles.headerSpacer} />
@@ -333,17 +346,15 @@ export default function VerifyResetCodeScreen() {
               </View>
 
               <Text style={styles.title}>
-                {i18n.t('enterVerificationCode') || 'Enter Verification Code'}
+                {(i18n.t('auth.enterVerificationCode') as string) || 'Enter Verification Code'}
               </Text>
 
               <Text style={styles.description}>
-                {i18n.t('verificationCodeDesc') ||
+                {(i18n.t('auth.resetVerificationCodeDesc') as string) ||
                   'Enter the 6-digit code we sent to your email address.'}
               </Text>
 
-              {!!maskedEmail ? (
-                <Text style={styles.emailText}>{maskedEmail}</Text>
-              ) : null}
+              {!!maskedEmail ? <Text style={styles.emailText}>{maskedEmail}</Text> : null}
 
               <View
                 style={[
@@ -363,9 +374,9 @@ export default function VerifyResetCodeScreen() {
                   ]}
                 >
                   {isCodeExpired
-                    ? i18n.t('verificationCodeExpired') ||
+                    ? (i18n.t('auth.verificationCodeExpired') as string) ||
                       'This code has expired. Please request a new one.'
-                    : `${i18n.t('timeRemaining') || 'Time remaining'}: ${formatTimeLeft(
+                    : `${(i18n.t('auth.timeRemaining') as string) || 'Time remaining'}: ${formatTimeLeft(
                         remainingSeconds
                       )}`}
                 </Text>
@@ -374,7 +385,7 @@ export default function VerifyResetCodeScreen() {
 
             <View style={styles.card}>
               <Text style={styles.label}>
-                {i18n.t('verificationCode') || 'Verification Code'}
+                {(i18n.t('auth.verificationCode') as string) || 'Verification Code'}
               </Text>
 
               <Pressable onPress={focusCodeInput} style={styles.codeWrap}>
@@ -410,7 +421,7 @@ export default function VerifyResetCodeScreen() {
               </Pressable>
 
               <Text style={styles.hintText}>
-                {i18n.t('enterSixDigitCodeHint') ||
+                {(i18n.t('auth.enterSixDigitCodeHint') as string) ||
                   'Please enter the 6-digit code sent to your email.'}
               </Text>
 
@@ -429,7 +440,7 @@ export default function VerifyResetCodeScreen() {
                   <>
                     <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
                     <Text style={styles.primaryButtonText}>
-                      {i18n.t('verifyCode') || 'Verify Code'}
+                      {(i18n.t('auth.verifyCode') as string) || 'Verify Code'}
                     </Text>
                   </>
                 )}
@@ -447,7 +458,7 @@ export default function VerifyResetCodeScreen() {
                   <>
                     <Ionicons name="refresh-outline" size={18} color={COLORS.blueDark} />
                     <Text style={styles.secondaryButtonText}>
-                      {i18n.t('resendCode') || 'Resend Code'}
+                      {(i18n.t('auth.resendCode') as string) || 'Resend Code'}
                     </Text>
                   </>
                 )}
@@ -459,17 +470,17 @@ export default function VerifyResetCodeScreen() {
                 activeOpacity={0.9}
               >
                 <Text style={styles.backText}>
-                  {i18n.t('backToForgotPassword') || 'Back'}
+                  {(i18n.t('auth.backToForgotPassword') as string) || 'Back'}
                 </Text>
               </TouchableOpacity>
 
               <View style={styles.helpBox}>
                 <Text style={styles.helpTitle}>
-                  {i18n.t('important') || 'Important'}
+                  {(i18n.t('common.important') as string) || 'Important'}
                 </Text>
 
                 <Text style={styles.helpText}>
-                  {i18n.t('verifyCodeHelpText') ||
+                  {(i18n.t('auth.verifyCodeHelpText') as string) ||
                     'If the code is wrong or expired, request a new code and try again.'}
                 </Text>
 
@@ -480,7 +491,7 @@ export default function VerifyResetCodeScreen() {
 
                   <View style={styles.supportTextWrap}>
                     <Text style={styles.supportTextTop}>
-                      {i18n.t('needHelpVerifyCode') ||
+                      {(i18n.t('auth.needHelpVerifyCode') as string) ||
                         'Need help with the verification code? Contact support.'}
                     </Text>
                     <Text style={styles.supportEmail}>info@zenopay.bond</Text>
