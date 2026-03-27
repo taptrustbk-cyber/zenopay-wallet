@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import * as Linking from 'expo-linking';
+import i18n from '@/lib/i18n';
 
 export const options = {
   headerShown: false,
@@ -62,13 +63,35 @@ export default function ResetPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isReady, setIsReady] = useState(false);
 
+  const t = (key: string, options?: any) => i18n.t(key, options as any);
+
+  const goToForgotPassword = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.log('Sign out before forgot-password failed:', e);
+    } finally {
+      router.replace('/(auth)/forgot-password' as any);
+    }
+  }, [router]);
+
+  const goToLogin = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.log('Sign out before login failed:', e);
+    } finally {
+      router.replace('/(auth)/login' as any);
+    }
+  }, [router]);
+
   const failAndGoBack = useCallback(() => {
     Alert.alert(
-      'Error',
-      'Invalid or expired reset link. Please request a new password reset.',
-      [{ text: 'OK', onPress: () => router.replace('/(auth)/forgot-password' as any) }]
+      t('resetPassword.alertErrorTitle'),
+      t('resetPassword.invalidOrExpiredLink'),
+      [{ text: t('common.ok'), onPress: goToForgotPassword }]
     );
-  }, [router]);
+  }, [goToForgotPassword]);
 
   const handleIncomingUrl = useCallback(
     async (url: string) => {
@@ -117,6 +140,7 @@ export default function ResetPasswordScreen() {
 
     const init = async () => {
       const initialUrl = await Linking.getInitialURL();
+
       if (initialUrl) {
         await handleIncomingUrl(initialUrl);
       } else {
@@ -139,9 +163,17 @@ export default function ResetPasswordScreen() {
 
   const resetMutation = useMutation({
     mutationFn: async () => {
-      if (!newPassword || !confirmPassword) throw new Error('Please fill in all fields');
-      if (newPassword.length < 6) throw new Error('Password must be at least 6 characters');
-      if (newPassword !== confirmPassword) throw new Error('Passwords do not match');
+      if (!newPassword || !confirmPassword) {
+        throw new Error(t('resetPassword.fillAllFields'));
+      }
+
+      if (newPassword.length < 6) {
+        throw new Error(t('resetPassword.passwordMinLength'));
+      }
+
+      if (newPassword !== confirmPassword) {
+        throw new Error(t('resetPassword.passwordsDoNotMatch'));
+      }
 
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
@@ -149,13 +181,13 @@ export default function ResetPasswordScreen() {
     onSuccess: async () => {
       await supabase.auth.signOut();
       Alert.alert(
-        'Success',
-        'Your password has been updated successfully! Please log in with your new password.',
-        [{ text: 'OK', onPress: () => router.replace('/(auth)/login' as any) }]
+        t('resetPassword.alertSuccessTitle'),
+        t('resetPassword.passwordUpdatedSuccess'),
+        [{ text: t('common.ok'), onPress: goToLogin }]
       );
     },
     onError: (error: any) => {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('resetPassword.alertErrorTitle'), error.message);
     },
   });
 
@@ -168,15 +200,18 @@ export default function ResetPasswordScreen() {
           <View style={styles.loadingIconWrap}>
             <ActivityIndicator size="large" color={UI.blue} />
           </View>
-          <Text style={styles.loadingTitle}>Verifying reset link...</Text>
-          <Text style={styles.loadingText}>Please wait while we prepare your password reset.</Text>
+          <Text style={styles.loadingTitle}>{t('resetPassword.verifyingTitle')}</Text>
+          <Text style={styles.loadingText}>{t('resetPassword.verifyingSubtitle')}</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.screen}>
@@ -185,11 +220,11 @@ export default function ResetPasswordScreen() {
 
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backIconBtn} activeOpacity={0.8}>
+            <TouchableOpacity onPress={goToLogin} style={styles.backIconBtn} activeOpacity={0.8}>
               <Ionicons name="arrow-back" size={22} color={UI.blueDark} />
             </TouchableOpacity>
 
-            <Text style={styles.headerTitle}>Reset Password</Text>
+            <Text style={styles.headerTitle}>{t('resetPassword.title')}</Text>
             <View style={{ width: 40 }} />
           </View>
 
@@ -197,20 +232,20 @@ export default function ResetPasswordScreen() {
             <View style={styles.heroIconWrap}>
               <Ionicons name="shield-checkmark-outline" size={28} color={UI.blue} />
             </View>
-            <Text style={styles.heroTitle}>Set New Password</Text>
-            <Text style={styles.heroSubtitle}>Choose a strong new password for your account.</Text>
+            <Text style={styles.heroTitle}>{t('resetPassword.heroTitle')}</Text>
+            <Text style={styles.heroSubtitle}>{t('resetPassword.heroSubtitle')}</Text>
           </View>
 
           <View style={styles.card}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>New Password</Text>
+              <Text style={styles.label}>{t('resetPassword.newPasswordLabel')}</Text>
               <View style={styles.inputWrap}>
                 <View style={styles.inputIconBox}>
                   <Ionicons name="lock-closed-outline" size={18} color={UI.blue} />
                 </View>
                 <TextInput
                   style={styles.input}
-                  placeholder="New Password"
+                  placeholder={t('resetPassword.newPasswordPlaceholder')}
                   placeholderTextColor={UI.text3}
                   value={newPassword}
                   onChangeText={setNewPassword}
@@ -221,14 +256,14 @@ export default function ResetPasswordScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Confirm Password</Text>
+              <Text style={styles.label}>{t('resetPassword.confirmPasswordLabel')}</Text>
               <View style={styles.inputWrap}>
                 <View style={styles.inputIconBox}>
                   <Ionicons name="checkmark-done-outline" size={18} color={UI.blue} />
                 </View>
                 <TextInput
                   style={styles.input}
-                  placeholder="Confirm Password"
+                  placeholder={t('resetPassword.confirmPasswordPlaceholder')}
                   placeholderTextColor={UI.text3}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -249,13 +284,13 @@ export default function ResetPasswordScreen() {
               ) : (
                 <>
                   <Ionicons name="key-outline" size={18} color="#FFFFFF" />
-                  <Text style={styles.resetButtonText}>Update Password</Text>
+                  <Text style={styles.resetButtonText}>{t('resetPassword.updatePasswordButton')}</Text>
                 </>
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.backToLoginButton} onPress={() => router.replace('/(auth)/login' as any)}>
-              <Text style={styles.backToLoginText}>Back to Login</Text>
+            <TouchableOpacity style={styles.backToLoginButton} onPress={goToLogin}>
+              <Text style={styles.backToLoginText}>{t('resetPassword.backToLogin')}</Text>
             </TouchableOpacity>
           </View>
 
