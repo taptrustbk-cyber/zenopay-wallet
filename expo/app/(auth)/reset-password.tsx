@@ -191,6 +191,9 @@ export default function ResetPasswordScreen() {
     },
   });
 
+  const isSubmitting =
+    (resetMutation as any).isPending ?? (resetMutation as any).isLoading ?? false;
+
   if (!isReady) {
     return (
       <View style={styles.loadingContainer}>
@@ -274,12 +277,12 @@ export default function ResetPasswordScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.resetButton, { opacity: resetMutation.isPending ? 0.7 : 1 }]}
+              style={[styles.resetButton, { opacity: isSubmitting ? 0.7 : 1 }]}
               onPress={() => resetMutation.mutate()}
-              disabled={resetMutation.isPending}
+              disabled={isSubmitting}
               activeOpacity={0.9}
             >
-              {resetMutation.isPending ? (
+              {isSubmitting ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <>
