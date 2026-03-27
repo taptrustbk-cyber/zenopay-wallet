@@ -209,6 +209,29 @@
   "failedToLoadBalance": "Failed to load balance",
   "recipientEmail": "Recipient Email",
 
+  "common": {
+    "ok": "OK"
+  },
+  "resetPassword": {
+    "title": "Reset Password",
+    "heroTitle": "Set New Password",
+    "heroSubtitle": "Choose a strong new password for your account.",
+    "newPasswordLabel": "New Password",
+    "newPasswordPlaceholder": "New Password",
+    "confirmPasswordLabel": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm Password",
+    "updatePasswordButton": "Update Password",
+    "backToLogin": "Back to Login",
+    "verifyingTitle": "Verifying reset link...",
+    "verifyingSubtitle": "Please wait while we prepare your password reset.",
+    "alertErrorTitle": "Error",
+    "alertSuccessTitle": "Success",
+    "invalidOrExpiredLink": "Invalid or expired reset link. Please request a new password reset.",
+    "fillAllFields": "Please fill in all fields",
+    "passwordMinLength": "Password must be at least 6 characters",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "passwordUpdatedSuccess": "Your password has been updated successfully! Please log in with your new password."
+  },
   "gender": "Gender",
   "selectGender": "Select gender",
   "genderMale": "Male",
