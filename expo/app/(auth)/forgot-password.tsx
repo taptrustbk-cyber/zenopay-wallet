@@ -18,6 +18,10 @@ import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import i18n from '@/lib/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const RESET_CODE_SENT_AT_KEY = 'zenopay_reset_code_sent_at';
+const RESET_CODE_EMAIL_KEY = 'zenopay_reset_code_email';
 
 const COLORS = {
   bg: '#EEF4FF',
@@ -77,15 +81,27 @@ export default function ForgotPasswordScreen() {
         throw new Error(i18n.t('invalidEmail') || 'Invalid email');
       }
 
-      // We still use Supabase recovery flow.
-      // The 6-digit OTP comes from the email template using {{ .Token }}
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail);
 
       if (error) throw error;
 
       return cleanEmail;
     },
-    onSuccess: (cleanEmail) => {
+    onSuccess: async (cleanEmail) => {
+      try {
+        await AsyncStorage.setItem(
+          RESET_CODE_SENT_AT_KEY,
+          String(Date.now())
+        );
+
+        await AsyncStorage.setItem(
+          RESET_CODE_EMAIL_KEY,
+          cleanEmail
+        );
+      } catch (storageError) {
+        console.log('Failed to save reset code metadata:', storageError);
+      }
+
       Alert.alert(
         i18n.t('success') || 'Success',
         i18n.t('resetCodeSent') ||
@@ -97,7 +113,7 @@ export default function ForgotPasswordScreen() {
               router.push({
                 pathname: '/(auth)/verify-reset-code' as any,
                 params: { email: cleanEmail },
-              });
+              } as any);
             },
           },
         ]
@@ -181,7 +197,7 @@ export default function ForgotPasswordScreen() {
               <Text style={styles.label}>{i18n.t('email') || 'Email'}</Text>
 
               <View style={styles.inputWrap}>
-                <View style={styles.inputIcon}>
+                <View style={[styles.inputIcon, isRTL ? styles.inputIconRTL : null]}>
                   <Ionicons name="mail-outline" size={18} color={COLORS.blue} />
                 </View>
 
@@ -194,6 +210,7 @@ export default function ForgotPasswordScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  textAlign={isRTL ? 'right' : 'left'}
                 />
               </View>
 
@@ -235,17 +252,34 @@ export default function ForgotPasswordScreen() {
                     'We will send a 6-digit code to your email. Enter that code on the next screen to continue resetting your password.'}
                 </Text>
 
-                <View style={styles.supportRow}>
-                  <View style={styles.supportIconWrap}>
+                <View
+                  style={[
+                    styles.supportRow,
+                    { flexDirection: isRTL ? 'row-reverse' : 'row' },
+                  ]}
+                >
+                  <View style={[styles.supportIconWrap, isRTL ? styles.supportIconWrapRTL : null]}>
                     <Ionicons name="mail-outline" size={18} color={COLORS.blue} />
                   </View>
 
                   <View style={styles.supportTextWrap}>
-                    <Text style={styles.supportTextTop}>
+                    <Text
+                      style={[
+                        styles.supportTextTop,
+                        { textAlign: isRTL ? 'right' : 'left' },
+                      ]}
+                    >
                       {i18n.t('forgotEmailContact') ||
                         'If you forgot your email address, please contact support.'}
                     </Text>
-                    <Text style={styles.supportEmail}>info@zenopay.bond</Text>
+                    <Text
+                      style={[
+                        styles.supportEmail,
+                        { textAlign: isRTL ? 'right' : 'left' },
+                      ]}
+                    >
+                      info@zenopay.bond
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -425,6 +459,11 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
 
+  inputIconRTL: {
+    marginRight: 0,
+    marginLeft: 10,
+  },
+
   input: {
     flex: 1,
     fontSize: 16,
@@ -509,8 +548,14 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
 
+  supportIconWrapRTL: {
+    marginRight: 0,
+    marginLeft: 10,
+  },
+
   supportTextWrap: {
     flexShrink: 1,
+    flex: 1,
   },
 
   supportTextTop: {
