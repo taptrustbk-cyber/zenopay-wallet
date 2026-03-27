@@ -342,7 +342,7 @@
   "cards.created_success_iqd": "کارت ب سەرکەفتی هاتە دروست کردن 25.000 دینار ژ هژمارا هاتنە کێمکرن.",
   "Cards": "کارت",
   "one_card_inline": "کارتا ڤێرتواڵا تە چالاکە. تۆ تنێ دشی ئێک کارت دروست بکەی.",
-<<<<<<< Updated upstream
+
   "cards": {
     "title": "کارت",
     "available_balance": "بالانسا بەردەست",
@@ -376,8 +376,7 @@
     "insufficient_desc": "پێدڤیە لایونێ کێم 25.٠٠٠ د.غ هەبیت.",
     "create_failed": "نەشیا کارتێ دروست بکەت.",
     "created_success": "کارت هاتە دروستکرن. ٢٥.٠٠٠ هزار ژ بالانسا تە هاتە کێمکرن."
-=======
-  "unknownUser": "بەکارهێنەرێ نەناس",
+    "unknownUser": "بەکارهێنەرێ نەناس",
 
   "common": {
     "back": "ڤەگەڕان",
@@ -393,14 +392,12 @@
   "auth": {
     "loginRequired": "تکایە سەرەتا بچۆ ناڤ هەژمارێ.",
     "user_not_found": "بەکارهێنەر نەدۆزرایەوە"
->>>>>>> Stashed changes
   },
 
   "buyCard": {
     "title": "کرینا کارتێ",
     "mobileCard": "کارتا موبایلێ",
     "giftCard": "کارتا دیاریێ",
-<<<<<<< Updated upstream
     "topupCard": "کارتا بارکرنێ",
     "playerIdLabel": "زانیاریێن پێدڤی بنڤیسە",
     "enterYourPlayerId": "ئایدیا پوبجیێ خو بنڤیسە",
@@ -419,26 +416,25 @@
     "defaultInputHelp": "ئەڤ زانیاری دگەل داواکاریا تە بۆ ئەدمین دێتە هنارتن.",
     "enterRequiredInformation": "تکایە زانیاری یا پێدڤی بنڤیسە.",
     "invalidProfileUrl": "هیڤیە لینکەکا دروست یا پڕۆفایلێ بنڤیسە.",
-=======
     "topupCard": "کارتا موبایلێ",
     "playerIdLabel": " زانیاریێن پێدڤی بنڤێسە",
-"enterYourPlayerId": " ئایدیا پوبجیێ خو بنڤێسە",
-"pubgPlayerIdHelp": "هیڤیە ID ـیا پوبجیا خو دروست بنڤیسە داکو ئەدمین بشێت PUBG UC ب دروستی بگەهینیت.",
-"pubgAccountNameOptional": "ناڤێ ئەکاونتا PUBG ـێ خو بنڤیسە (ئیختیاری)",
-"enterPubgAccountNameOptional": "ناڤێ ئەکاونتا PUBG ـێ خو بنڤیسە (ئیختیاری)",
-"gameIdHelp": " هیڤیەGame ID ـیا دروست بنڤیسە داکو ئەدمین بشێت داواکاریا تە ب دروستی بگەهینیت.",
-"profileUrlLabel": "لینکا پڕۆفایلێ",
-"enterProfileUrl": "لینکا پڕۆفایلا خود بنڤیسە",
-"profileUrlHelp": "ئەڤ زانیاری دگەل داواکاریا تە بۆ ئەدمین دێتە هنارتن.",
-"playerIdSummaryLabel": "ID ـیا پوبجیا تە",
-"profileUrlSummaryLabel": "لینکا پڕۆفایلێ",
-"requiredInfoSummaryLabel": "زانیاری یا پێدڤی",
-"pubgAccountNameSummaryLabel": "ناڤێ ئەکاونتا PUBG",
-"requiredInformation": "زانیاری یا پێدڤی",
-"defaultInputHelp": "ئەڤ زانیاری دگەل داواکاریا تە بۆ ئەدمین دێتە هنارتن.",
-"enterRequiredInformation": "تکایە زانیاری یا پێدڤی بنڤیسە.",
-"invalidProfileUrl": "هیڤیە لینکەکا دروست یا پڕۆفایلێ بنڤیسە.",
->>>>>>> Stashed changes
+    "enterYourPlayerId": " ئایدیا پوبجیێ خو بنڤێسە",
+    "pubgPlayerIdHelp": "هیڤیە ID ـیا پوبجیا خو دروست بنڤیسە داکو ئەدمین بشێت PUBG UC ب دروستی بگەهینیت.",
+    "pubgAccountNameOptional": "ناڤێ ئەکاونتا PUBG ـێ خو بنڤیسە (ئیختیاری)",
+    "enterPubgAccountNameOptional": "ناڤێ ئەکاونتا PUBG ـێ خو بنڤیسە (ئیختیاری)",
+    "gameIdHelp": " هیڤیەGame ID ـیا دروست بنڤیسە داکو ئەدمین بشێت داواکاریا تە ب دروستی بگەهینیت.",
+    "profileUrlLabel": "لینکا پڕۆفایلێ",
+    "enterProfileUrl": "لینکا پڕۆفایلا خود بنڤیسە",
+    "profileUrlHelp": "ئەڤ زانیاری دگەل داواکاریا تە بۆ ئەدمین دێتە هنارتن.",
+    "playerIdSummaryLabel": "ID ـیا پوبجیا تە",
+    "profileUrlSummaryLabel": "لینکا پڕۆفایلێ",
+    "requiredInfoSummaryLabel": "زانیاری یا پێدڤی",
+    "pubgAccountNameSummaryLabel": "ناڤێ ئەکاونتا PUBG",
+    "requiredInformation": "زانیاری یا پێدڤی",
+    "defaultInputHelp": "ئەڤ زانیاری دگەل داواکاریا تە بۆ ئەدمین دێتە هنارتن.",
+    "enterRequiredInformation": "تکایە زانیاری یا پێدڤی بنڤیسە.",
+    "invalidProfileUrl": "هیڤیە لینکەکا دروست یا پڕۆفایلێ بنڤیسە.",
+
     "reviewYourOrder": "داواکارییا خۆ بپشکنە",
     "walletNotFound": "جزدان نەهاتیە دۆزین.",
     "insufficientBalanceForPurchase": "بالانسا تە بۆ کرینێ نەبەسە.",
@@ -622,8 +618,6 @@
   "to": "بۆ",
   "purchase": "کرین",
   "remove": "لابە",
-
-<<<<<<< Updated upstream
   "security": "پاراستن",
   "contactSupport": "پەیوەندیێ بکە بو پشتەڤانیێ",
   "changePhoto": "گوهارتنا وێنەی",
@@ -632,7 +626,6 @@
   "tapToChangePhoto": "کرتە بکە بۆ گوهارتنا وێنەی",
   "profilePhoto": "وێنەی پرۆفایل",
   "profile": "پرۆفایل",
-=======
   "mobileCards": "کارتێن موبایل",
   "welcomeBack": "بخێربهێی",
   "supportChat": "چاتێ پشتگیری",
@@ -643,7 +636,6 @@
   "createNewAccount": "هەژمارەکا نوو دروست بکە",
   "contactUsAt": "پەیوەندیێ ب مە بکە ل",
   "retry": "دووبارە هەولدە",
->>>>>>> Stashed changes
   "settings": "ڕێکخستن",
   "language": "زمان",
   "support": "پشتگیری",
@@ -801,8 +793,6 @@
   "invalidValue": "بەهایەکا نادروست",
   "cannotOpenLink": "نەشێ ڤێ لینکێ ڤەکە",
   "failedToOpenLink": "سەرکەفتی نەبوو ل ڤەکرنا لینکێ",
-
-<<<<<<< Updated upstream
   "common": {
     "back": "ڤەگەڕان",
     "cancel": "هەلوەشاندن",
@@ -813,7 +803,6 @@
     "something_wrong": "کێشەیەک چێبوو.",
     "ok": "باشە"
   },
-=======
   "kycVerificationRequired": "پشتڕاستکرنا ناسنامێ پێدڤیە",
   "kycPendingMessage": "بەڵگەنامێن تە ل بن پێداچوونەوەیێن",
   "whatsNext": "ئێدی چی دبیت؟",
@@ -861,7 +850,6 @@
   "adminPanel": "بەشێ ڕێڤەبەری",
   "internetSim": "ئینتەرنێت و کارتێن SIM",
   "selectSimCard": "کارتەک لە خوارەوە هەلبژێرە",
->>>>>>> Stashed changes
 
   "auth": {
     "loginRequired": "تکایە سەرەتا بچۆ ناڤ هەژمارێ.",
@@ -963,11 +951,11 @@
   "tcNewSection8Item3": "دڵنیایی خزمەتگوزاری بێ وەستان یان بێ هەڵە ناکەین",
   "tcNewSection9Title": "9. موڵکێ زیهنی",
   "tcNewTitle": "مەرج و یاسا",
-"tcSupportTitle": "پشتگیری",
-"tcSupportLine": "پشتگیری: info@zenopay.bond",
-"tcSupportReply": "ئەمە دێ هەول بدەین ل ماوەی 48 کاتژمێردا وەڵام بدەینەوە",
-"tcPlatformNotice8Title": "جیاکراوەیی",
-"tcPlatformNotice8Desc": "ئەگەر هەر بڕیارەکا ڤان مەرجان ب ناجێبەجێکراو دۆزرابیت، بڕیارێن دی هەر دەمیننەوە.",
+  "tcSupportTitle": "پشتگیری",
+  "tcSupportLine": "پشتگیری: info@zenopay.bond",
+  "tcSupportReply": "ئەمە دێ هەول بدەین ل ماوەی 48 کاتژمێردا وەڵام بدەینەوە",
+  "tcPlatformNotice8Title": "جیاکراوەیی",
+  "tcPlatformNotice8Desc": "ئەگەر هەر بڕیارەکا ڤان مەرجان ب ناجێبەجێکراو دۆزرابیت، بڕیارێن دی هەر دەمیننەوە.",
   "tcNewSection9Item1": "هەمی ناوەڕۆک و مارکێن بازرگانی موڵکا ZenoPay یان مۆڵەتدەرێن مەنە",
   "tcNewSection9Item2": "نەشێیت دووبارە بەرهەمهێنان یان بڵاوکرنەوێ ناوەڕۆکا مە بێ مۆڵەت",
   "tcNewSection9Item3": "ناوەڕۆکا دروستکری ژلایێ بکارهێنەرێڤە موڵکا خۆتە، بەڵام مۆڵەتەک دەیتە مە بۆ بکارهێنانێ",
