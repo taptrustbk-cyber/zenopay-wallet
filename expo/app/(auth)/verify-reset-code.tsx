@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -19,8 +19,12 @@ import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import i18n from '@/lib/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CODE_LENGTH = 6;
+const RESET_CODE_SENT_AT_KEY = 'zenopay_reset_code_sent_at';
+const RESET_CODE_EMAIL_KEY = 'zenopay_reset_code_email';
+const RESET_CODE_EXPIRES_MS = 10 * 60 * 1000;
 
 const COLORS = {
   bg: '#EEF4FF',
@@ -64,6 +68,13 @@ function isValidEmail(v: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }
 
+function formatTimeLeft(totalSeconds: number) {
+  const safe = Math.max(0, totalSeconds);
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 export default function VerifyResetCodeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ email?: string }>();
@@ -72,6 +83,54 @@ export default function VerifyResetCodeScreen() {
   const email = String(params?.email || '').trim().toLowerCase();
   const [code, setCode] = useState('');
   const hiddenInputRef = useRef<TextInput>(null);
+
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
+  const [isCodeExpired, setIsCodeExpired] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const loadTimer = async () => {
+      try {
+        const sentAtRaw = await AsyncStorage.getItem(RESET_CODE_SENT_AT_KEY);
+        const sentAt = sentAtRaw ? Number(sentAtRaw) : 0;
+
+        const updateRemaining = () => {
+          if (!sentAt || Number.isNaN(sentAt)) {
+            if (mounted) {
+              setRemainingSeconds(0);
+              setIsCodeExpired(true);
+            }
+            return;
+          }
+
+          const diff = sentAt + RESET_CODE_EXPIRES_MS - Date.now();
+          const secondsLeft = Math.max(0, Math.ceil(diff / 1000));
+
+          if (mounted) {
+            setRemainingSeconds(secondsLeft);
+            setIsCodeExpired(secondsLeft <= 0);
+          }
+        };
+
+        updateRemaining();
+        interval = setInterval(updateRemaining, 1000);
+      } catch {
+        if (mounted) {
+          setRemainingSeconds(0);
+          setIsCodeExpired(true);
+        }
+      }
+    };
+
+    loadTimer();
+
+    return () => {
+      mounted = false;
+      if (interval) clearInterval(interval);
+    };
+  }, []);
 
   const verifyMutation = useMutation({
     mutationFn: async () => {
@@ -92,13 +151,56 @@ export default function VerifyResetCodeScreen() {
         );
       }
 
+      const sentAtRaw = await AsyncStorage.getItem(RESET_CODE_SENT_AT_KEY);
+      const savedEmailRaw = await AsyncStorage.getItem(RESET_CODE_EMAIL_KEY);
+
+      const sentAt = sentAtRaw ? Number(sentAtRaw) : 0;
+      const savedEmail = String(savedEmailRaw || '').trim().toLowerCase();
+
+      const expiredByTime =
+        !sentAt || Number.isNaN(sentAt) || Date.now() - sentAt > RESET_CODE_EXPIRES_MS;
+
+      if (savedEmail && savedEmail !== cleanEmail) {
+        throw new Error(i18n.t('invalidVerificationCode') || 'Incorrect code, please try again.');
+      }
+
+      if (expiredByTime) {
+        throw new Error(
+          i18n.t('verificationCodeExpired') ||
+            'This code has expired. Please request a new one.'
+        );
+      }
+
       const { error } = await supabase.auth.verifyOtp({
         email: cleanEmail,
         token: cleanCode,
         type: 'recovery',
       });
 
-      if (error) throw error;
+      if (error) {
+        const msg = String(error?.message || '').toLowerCase();
+
+        const looksExpired =
+          msg.includes('expired') ||
+          msg.includes('otp_expired') ||
+          msg.includes('token has expired') ||
+          msg.includes('email link is invalid or has expired');
+
+        if (looksExpired) {
+          throw new Error(
+            i18n.t('verificationCodeExpired') ||
+              'This code has expired. Please request a new one.'
+          );
+        }
+
+        throw new Error(
+          i18n.t('invalidVerificationCode') || 'Incorrect code, please try again.'
+        );
+      }
+
+      await AsyncStorage.removeItem(RESET_CODE_SENT_AT_KEY);
+      await AsyncStorage.removeItem(RESET_CODE_EMAIL_KEY);
+
       return { cleanEmail };
     },
     onSuccess: ({ cleanEmail }) => {
@@ -108,32 +210,6 @@ export default function VerifyResetCodeScreen() {
       });
     },
     onError: (error: any) => {
-      const msg = String(error?.message || '').toLowerCase();
-
-      if (
-        msg.includes('expired') ||
-        msg.includes('otp_expired') ||
-        msg.includes('token has expired')
-      ) {
-        Alert.alert(
-          i18n.t('error') || 'Error',
-          i18n.t('verificationCodeExpired') || 'This code has expired. Please request a new one.'
-        );
-        return;
-      }
-
-      if (
-        msg.includes('invalid') ||
-        msg.includes('otp') ||
-        msg.includes('token')
-      ) {
-        Alert.alert(
-          i18n.t('error') || 'Error',
-          i18n.t('invalidVerificationCode') || 'The verification code is invalid.'
-        );
-        return;
-      }
-
       Alert.alert(
         i18n.t('error') || 'Error',
         error?.message || i18n.t('somethingWentWrong') || 'Something went wrong'
@@ -155,8 +231,15 @@ export default function VerifyResetCodeScreen() {
 
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail);
       if (error) throw error;
+
+      await AsyncStorage.setItem(RESET_CODE_SENT_AT_KEY, String(Date.now()));
+      await AsyncStorage.setItem(RESET_CODE_EMAIL_KEY, cleanEmail);
     },
     onSuccess: () => {
+      setCode('');
+      setRemainingSeconds(Math.ceil(RESET_CODE_EXPIRES_MS / 1000));
+      setIsCodeExpired(false);
+
       Alert.alert(
         i18n.t('success') || 'Success',
         i18n.t('newVerificationCodeSent') ||
@@ -261,6 +344,32 @@ export default function VerifyResetCodeScreen() {
               {!!maskedEmail ? (
                 <Text style={styles.emailText}>{maskedEmail}</Text>
               ) : null}
+
+              <View
+                style={[
+                  styles.timerBadge,
+                  isCodeExpired ? styles.timerBadgeExpired : styles.timerBadgeActive,
+                ]}
+              >
+                <Ionicons
+                  name={isCodeExpired ? 'time-outline' : 'timer-outline'}
+                  size={16}
+                  color={isCodeExpired ? '#7F1D1D' : '#FFFFFF'}
+                />
+                <Text
+                  style={[
+                    styles.timerText,
+                    isCodeExpired ? styles.timerTextExpired : styles.timerTextActive,
+                  ]}
+                >
+                  {isCodeExpired
+                    ? i18n.t('verificationCodeExpired') ||
+                      'This code has expired. Please request a new one.'
+                    : `${i18n.t('timeRemaining') || 'Time remaining'}: ${formatTimeLeft(
+                        remainingSeconds
+                      )}`}
+                </Text>
+              </View>
             </LinearGradient>
 
             <View style={styles.card}>
@@ -306,9 +415,12 @@ export default function VerifyResetCodeScreen() {
               </Text>
 
               <TouchableOpacity
-                style={[styles.primaryButton, isVerifying && styles.primaryButtonDisabled]}
+                style={[
+                  styles.primaryButton,
+                  (isVerifying || isCodeExpired) && styles.primaryButtonDisabled,
+                ]}
                 onPress={() => (verifyMutation as any).mutate()}
-                disabled={isVerifying}
+                disabled={isVerifying || isCodeExpired}
                 activeOpacity={0.9}
               >
                 {isVerifying ? (
@@ -520,6 +632,42 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '900',
     textAlign: 'center',
+  },
+
+  timerBadge: {
+    marginTop: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  timerBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+
+  timerBadgeExpired: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+
+  timerText: {
+    marginLeft: 8,
+    fontSize: 12.5,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+
+  timerTextActive: {
+    color: '#FFFFFF',
+  },
+
+  timerTextExpired: {
+    color: '#7F1D1D',
   },
 
   card: {
