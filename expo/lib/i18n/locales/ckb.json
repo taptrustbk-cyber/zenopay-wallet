@@ -13,6 +13,12 @@
   "checkEmailInbox": "سندوقی ئیمەیڵەکەت بپشکنە",
   "checkSpamFolder": "ئەگەر نەبینیت، فولدەری سپام بپشکنە",
   "capital": "پایتەخت",
+   "tcNewTitle": "مەرج و ڕێساکان",
+"tcSupportTitle": "پشتگیری",
+"tcSupportLine": "پشتگیری: info@zenopay.bond",
+"tcSupportReply": "هەوڵ دەدەین لە ماوەی 48 کاتژمێردا وەڵام بدەینەوە",
+"tcPlatformNotice8Title": "جیاکراوەیی",
+"tcPlatformNotice8Desc": "ئەگەر هەر بڕیارێک لەم مەرجانە بە ناجێبەجێکراو دۆزرایەوە، بڕیارەکانی تر هەر بە کارا دەمێننەوە.",
   "consulateInfo": "زانیاری کۆنسوڵخانە",
 
   "cards.virtual_brand": "کارتی ڤێرتواڵی زینوپەی",
