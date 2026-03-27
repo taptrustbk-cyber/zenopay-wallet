@@ -7,6 +7,12 @@
   "consulateDirectorySubtitle": "اعثر على تفاصيل الاتصال السريعة، وعاصمة الدولة، ومعلومات العنوان للقنصليات المتوفرة في العراق.",
   "consulate": "القنصلية",
   "capital": "العاصمة",
+  "invalidPhone": "رقم الهاتف غير صالح",
+  "userAlreadyExists": "هذا البريد الإلكتروني مستخدم بالفعل",
+  "continueToLogin": "المتابعة إلى تسجيل الدخول",
+  "verificationEmailSent": "تم إرسال بريد التحقق",
+  "checkEmailInbox": "تحقق من صندوق بريدك الإلكتروني",
+  "checkSpamFolder": "تحقق من مجلد الرسائل غير المرغوب فيها",
   "consulateInfo": "معلومات القنصلية",
 
   "sendMoney": "إرسال الأموال",
