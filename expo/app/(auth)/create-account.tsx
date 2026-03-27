@@ -57,7 +57,7 @@ const SHADOWS = {
   },
 };
 
-const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v1';
+const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v2';
 
 type GenderValue = 'male' | 'female' | 'other';
 
@@ -74,7 +74,7 @@ function toISODateOnly(d: Date) {
 }
 
 function isValidEmail(v: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }
 
 function normalizeIraqPhoneToE164(input: string) {
@@ -137,7 +137,7 @@ export default function CreateAccount() {
   function handleDobChange(date: Date) {
     if (!isAtLeast18(date)) {
       setDob(null);
-      setDobError(i18n.t('mustBe18'));
+      setDobError(i18n.t('mustBe18') || 'You must be 18 or older');
       return;
     }
     setDob(date);
@@ -157,44 +157,40 @@ export default function CreateAccount() {
       !cleanEmail ||
       !cleanPassword ||
       !cleanCity ||
-      !phone.trim() ||
       !cleanCountry ||
-      !cleanGender
+      !cleanGender ||
+      !phone.trim()
     ) {
-      Alert.alert(i18n.t('error'), i18n.t('completeAllFields'));
+      Alert.alert(i18n.t('error') || 'Error', i18n.t('completeAllFields') || 'Please complete all fields');
       return;
     }
 
     if (!isValidEmail(cleanEmail)) {
-      Alert.alert(i18n.t('error'), i18n.t('invalidEmail') || 'Invalid email');
+      Alert.alert(i18n.t('error') || 'Error', i18n.t('invalidEmail') || 'Invalid email');
       return;
     }
 
     if (cleanPassword.length < 6) {
       Alert.alert(
-        i18n.t('error'),
+        i18n.t('error') || 'Error',
         i18n.t('passwordTooShort') || 'Password must be at least 6 characters'
       );
       return;
     }
 
     if (!dob) {
-      Alert.alert(i18n.t('error'), i18n.t('pleaseSelectDOB'));
+      Alert.alert(i18n.t('error') || 'Error', i18n.t('pleaseSelectDOB') || 'Please select date of birth');
       return;
     }
 
-    const age = Math.floor(
-      (new Date().getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
-    );
-
-    if (age < 18) {
-      Alert.alert(i18n.t('error'), i18n.t('mustBe18'));
+    if (!isAtLeast18(dob)) {
+      Alert.alert(i18n.t('error') || 'Error', i18n.t('mustBe18') || 'You must be 18 or older');
       return;
     }
 
     const phoneE164 = normalizeIraqPhoneToE164(phone);
     if (!phoneE164 || phoneE164.length < 8) {
-      Alert.alert(i18n.t('error'), i18n.t('invalidPhone') || 'Invalid phone number');
+      Alert.alert(i18n.t('error') || 'Error', i18n.t('invalidPhone') || 'Invalid phone number');
       return;
     }
 
@@ -221,31 +217,28 @@ export default function CreateAccount() {
         email: cleanEmail,
         password: cleanPassword,
         options: {
-          data: {},
+          data: {
+            full_name: cleanFullName,
+          },
         },
       });
 
       if (error) {
-        const extra = (error as any)?.status ? ` (status ${(error as any).status})` : '';
-        Alert.alert(i18n.t('error'), `${error.message}${extra}`);
+        const msg = String(error.message || '');
+        Alert.alert(i18n.t('error') || 'Error', msg);
         return;
       }
 
-      const identities = data?.user?.identities ?? [];
-      if (data?.user && identities.length === 0) {
-        Alert.alert(
-          i18n.t('error') || 'Error',
-          i18n.t('userAlreadyExists') || 'This email is already registered.'
-        );
-        return;
-      }
-
+      // OTP signup flow
       router.replace({
         pathname: '/email-verification' as any,
-        params: { email: cleanEmail },
+        params: {
+          email: cleanEmail,
+          mode: 'signup',
+        },
       } as any);
     } catch (e: any) {
-      Alert.alert(i18n.t('error'), e?.message ?? 'Unknown error');
+      Alert.alert(i18n.t('error') || 'Error', e?.message ?? 'Unknown error');
     } finally {
       setIsCreating(false);
     }
@@ -268,7 +261,7 @@ export default function CreateAccount() {
           <Ionicons name="arrow-back" size={22} color={COLORS.blueDark} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>{i18n.t('createAccount')}</Text>
+        <Text style={styles.headerTitle}>{i18n.t('createAccount') || 'Create Account'}</Text>
 
         <View style={styles.headerRightSpacer} />
       </View>
@@ -287,7 +280,7 @@ export default function CreateAccount() {
             <Ionicons name="person-add-outline" size={26} color="#FFFFFF" />
           </View>
 
-          <Text style={styles.heroTitle}>{i18n.t('createAccount')}</Text>
+          <Text style={styles.heroTitle}>{i18n.t('createAccount') || 'Create Account'}</Text>
           <Text style={styles.heroSubtitle}>
             {i18n.t('completeAllFields') || 'Complete all fields to create your account'}
           </Text>
@@ -295,9 +288,9 @@ export default function CreateAccount() {
 
         <View style={styles.card}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('fullName')}</Text>
+            <Text style={styles.label}>{i18n.t('fullName') || 'Full Name'}</Text>
             <TextInput
-              placeholder={i18n.t('fullName')}
+              placeholder={i18n.t('fullName') || 'Full Name'}
               value={fullName}
               onChangeText={setFullName}
               style={styles.input}
@@ -306,9 +299,9 @@ export default function CreateAccount() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('email')}</Text>
+            <Text style={styles.label}>{i18n.t('email') || 'Email'}</Text>
             <TextInput
-              placeholder={i18n.t('email')}
+              placeholder={i18n.t('email') || 'Email'}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -319,9 +312,9 @@ export default function CreateAccount() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('password')}</Text>
+            <Text style={styles.label}>{i18n.t('password') || 'Password'}</Text>
             <TextInput
-              placeholder={i18n.t('password')}
+              placeholder={i18n.t('password') || 'Password'}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -331,7 +324,7 @@ export default function CreateAccount() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('dateOfBirth')}</Text>
+            <Text style={styles.label}>{i18n.t('dateOfBirth') || 'Date of Birth'}</Text>
             <TouchableOpacity
               testID="dob-open"
               onPress={() => {
@@ -348,7 +341,7 @@ export default function CreateAccount() {
                       month: 'short',
                       year: 'numeric',
                     })
-                  : i18n.t('dateOfBirth')}
+                  : i18n.t('dateOfBirth') || 'Date of Birth'}
               </Text>
               <Ionicons name="calendar-outline" size={18} color={COLORS.blueDark} />
             </TouchableOpacity>
@@ -375,13 +368,9 @@ export default function CreateAccount() {
               animationType="fade"
               onRequestClose={() => setOpenDob(false)}
             >
-              <Pressable
-                testID="dob-backdrop"
-                style={styles.dobModalBackdrop}
-                onPress={() => setOpenDob(false)}
-              >
+              <Pressable style={styles.dobModalBackdrop} onPress={() => setOpenDob(false)}>
                 <Pressable style={styles.dobModalCard} onPress={() => null}>
-                  <Text style={styles.dobModalTitle}>{i18n.t('dateOfBirth')}</Text>
+                  <Text style={styles.dobModalTitle}>{i18n.t('dateOfBirth') || 'Date of Birth'}</Text>
 
                   <View style={styles.webDatePickerContainer}>
                     {React.createElement('input', {
@@ -416,16 +405,14 @@ export default function CreateAccount() {
 
                   <View style={styles.dobModalActions}>
                     <TouchableOpacity
-                      testID="dob-cancel"
                       onPress={() => setOpenDob(false)}
                       activeOpacity={0.85}
                       style={[styles.dobActionSecondary, styles.dobActionLeft]}
                     >
-                      <Text style={styles.dobActionSecondaryText}>{i18n.t('cancel')}</Text>
+                      <Text style={styles.dobActionSecondaryText}>{i18n.t('cancel') || 'Cancel'}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      testID="dob-confirm"
                       onPress={() => {
                         handleDobChange(tempDob);
                         setOpenDob(false);
@@ -433,7 +420,7 @@ export default function CreateAccount() {
                       activeOpacity={0.85}
                       style={styles.dobActionPrimary}
                     >
-                      <Text style={styles.dobActionPrimaryText}>{i18n.t('confirm')}</Text>
+                      <Text style={styles.dobActionPrimaryText}>{i18n.t('confirm') || 'Confirm'}</Text>
                     </TouchableOpacity>
                   </View>
                 </Pressable>
@@ -446,13 +433,9 @@ export default function CreateAccount() {
               animationType="fade"
               onRequestClose={() => setOpenDob(false)}
             >
-              <Pressable
-                testID="dob-backdrop"
-                style={styles.dobModalBackdrop}
-                onPress={() => setOpenDob(false)}
-              >
+              <Pressable style={styles.dobModalBackdrop} onPress={() => setOpenDob(false)}>
                 <Pressable style={styles.dobModalCard} onPress={() => null}>
-                  <Text style={styles.dobModalTitle}>{i18n.t('dateOfBirth')}</Text>
+                  <Text style={styles.dobModalTitle}>{i18n.t('dateOfBirth') || 'Date of Birth'}</Text>
 
                   <View style={styles.iosPickerContainer}>
                     <DateTimePicker
@@ -470,16 +453,14 @@ export default function CreateAccount() {
 
                   <View style={styles.dobModalActions}>
                     <TouchableOpacity
-                      testID="dob-cancel"
                       onPress={() => setOpenDob(false)}
                       activeOpacity={0.85}
                       style={[styles.dobActionSecondary, styles.dobActionLeft]}
                     >
-                      <Text style={styles.dobActionSecondaryText}>{i18n.t('cancel')}</Text>
+                      <Text style={styles.dobActionSecondaryText}>{i18n.t('cancel') || 'Cancel'}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      testID="dob-confirm"
                       onPress={() => {
                         handleDobChange(tempDob);
                         setOpenDob(false);
@@ -487,7 +468,7 @@ export default function CreateAccount() {
                       activeOpacity={0.85}
                       style={styles.dobActionPrimary}
                     >
-                      <Text style={styles.dobActionPrimaryText}>{i18n.t('confirm')}</Text>
+                      <Text style={styles.dobActionPrimaryText}>{i18n.t('confirm') || 'Confirm'}</Text>
                     </TouchableOpacity>
                   </View>
                 </Pressable>
@@ -497,7 +478,9 @@ export default function CreateAccount() {
 
           {dobError ? <Text style={styles.errorText}>{dobError}</Text> : null}
 
-          <Text style={styles.complianceText}>{i18n.t('mustBe18OrOlder')}</Text>
+          <Text style={styles.complianceText}>
+            {i18n.t('mustBe18OrOlder') || 'You must be 18 or older to use this service'}
+          </Text>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{i18n.t('gender') || 'Gender'}</Text>
@@ -573,9 +556,9 @@ export default function CreateAccount() {
           </Modal>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('city')}</Text>
+            <Text style={styles.label}>{i18n.t('city') || 'City'}</Text>
             <TextInput
-              placeholder={i18n.t('city')}
+              placeholder={i18n.t('city') || 'City'}
               value={city}
               onChangeText={setCity}
               style={styles.input}
@@ -584,9 +567,9 @@ export default function CreateAccount() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('country')}</Text>
+            <Text style={styles.label}>{i18n.t('country') || 'Country'}</Text>
             <TextInput
-              placeholder={i18n.t('country')}
+              placeholder={i18n.t('country') || 'Country'}
               value={country}
               onChangeText={setCountry}
               style={styles.input}
@@ -599,7 +582,7 @@ export default function CreateAccount() {
             <View style={styles.phoneContainer}>
               <Text style={styles.phonePrefix}>+964</Text>
               <TextInput
-                placeholder={i18n.t('phonePlaceholder')}
+                placeholder={i18n.t('phonePlaceholder') || 'Enter phone number'}
                 keyboardType="phone-pad"
                 value={phone}
                 onChangeText={setPhone}
@@ -623,13 +606,15 @@ export default function CreateAccount() {
             ) : (
               <>
                 <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.createBtnText}>{i18n.t('createAccount')}</Text>
+                <Text style={styles.createBtnText}>{i18n.t('createAccount') || 'Create Account'}</Text>
               </>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.9}>
-            <Text style={styles.backText}>{i18n.t('alreadyHaveAccountShort')}</Text>
+            <Text style={styles.backText}>
+              {i18n.t('alreadyHaveAccountShort') || 'Already have an account?'}
+            </Text>
           </TouchableOpacity>
         </View>
 
