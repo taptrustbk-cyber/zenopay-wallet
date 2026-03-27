@@ -52,6 +52,15 @@
   "walletLocked": "المحفظة مقفلة",
   "cannotSendToYourself": "لا يمكنك إرسال الأموال إلى نفسك",
   "common_error": "خطأ",
+  
+  "confirmAccount": "تأكيد الحساب",
+"resendCodeToEmail": "إعادة إرسال الرمز إلى البريد الإلكتروني",
+"backToCreateAccount": "رجوع",
+"signupProfileSaveAfterVerify": "سيتم حفظ معلومات حسابك فقط بعد تأكيد رمز التحقق بنجاح.",
+"pendingProfileNotFound": "لم يتم العثور على بيانات التسجيل المؤقتة الخاصة بك. يرجى إنشاء الحساب مرة أخرى.",
+"sessionNotFoundAfterVerification": "تعذر إنشاء جلسة بعد التحقق. يرجى المحاولة مرة أخرى.",
+"signupDatabaseError": "التسجيل غير متاح مؤقتًا. يرجى التحقق من إعدادات trigger التسجيل أو جدول profiles في Supabase.",
+"userAlreadyRegistered": "هذا البريد الإلكتروني مسجل بالفعل.",
 
   "gender": "الجنس",
   "selectGender": "اختر الجنس",
