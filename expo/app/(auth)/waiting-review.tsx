@@ -26,16 +26,26 @@ export default function WaitingReviewScreen() {
   const [uploading, setUploading] = useState(false);
 
   async function pickImage(setter: Function) {
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-    if (!res.canceled) setter(res.assets[0]);
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+      });
+      if (!res.canceled) setter(res.assets[0]);
+    } catch (error) {
+      Alert.alert(
+        (i18n.t('common.error') as string) || 'Error',
+        (i18n.t('kyc.failedPickImage') as string) || 'Failed to pick image.'
+      );
+    }
   }
 
   async function uploadKYCDocuments() {
     if (!idFront || !idBack || !selfie) {
-      Alert.alert(i18n.t('error'), i18n.t('uploadAllKycDocs'));
+      Alert.alert(
+        (i18n.t('common.error') as string) || 'Error',
+        (i18n.t('kyc.uploadAllKycDocs') as string) || 'Please upload all KYC documents.'
+      );
       return;
     }
 
@@ -51,9 +61,15 @@ export default function WaitingReviewScreen() {
 
       if (error) throw error;
 
-      Alert.alert(i18n.t('success'), i18n.t('kycDocsUploadedSuccess'));
+      Alert.alert(
+        (i18n.t('common.success') as string) || 'Success',
+        (i18n.t('kyc.kycDocsUploadedSuccess') as string) || 'KYC documents uploaded successfully.'
+      );
     } catch (error: any) {
-      Alert.alert(i18n.t('error'), error.message);
+      Alert.alert(
+        (i18n.t('common.error') as string) || 'Error',
+        error.message
+      );
     } finally {
       setUploading(false);
     }
@@ -101,8 +117,12 @@ export default function WaitingReviewScreen() {
             <Clock size={62} color="#FFFFFF" strokeWidth={1.8} />
           </View>
 
-          <Text style={styles.title}>{i18n.t('pendingAdminReview')}</Text>
-          <Text style={styles.subtitle}>{i18n.t('accountUnderReview')}</Text>
+          <Text style={styles.title}>
+            {(i18n.t('kyc.pendingAdminReview') as string) || 'Pending Admin Review'}
+          </Text>
+          <Text style={styles.subtitle}>
+            {(i18n.t('kyc.accountUnderReview') as string) || 'Your account is currently under review.'}
+          </Text>
         </View>
 
         <View style={styles.infoCard}>
@@ -111,15 +131,26 @@ export default function WaitingReviewScreen() {
           </View>
 
           <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>{i18n.t('emailNotification')}</Text>
-            <Text style={styles.cardDescription}>{i18n.t('emailNotificationDesc')}</Text>
+            <Text style={styles.cardTitle}>
+              {(i18n.t('kyc.emailNotification') as string) || 'Email Notification'}
+            </Text>
+            <Text style={styles.cardDescription}>
+              {(i18n.t('kyc.emailNotificationDesc') as string) ||
+                'We will notify you by email once your account review is complete.'}
+            </Text>
           </View>
         </View>
 
         <View style={styles.infoBox}>
-          <Text style={styles.infoText}>{i18n.t('checkEmailRegularly')}</Text>
-          <Text style={styles.infoText}>{i18n.t('reviewTakes1To6Hours')}</Text>
-          <Text style={styles.infoText}>{i18n.t('infoSecure')}</Text>
+          <Text style={styles.infoText}>
+            {(i18n.t('kyc.checkEmailRegularly') as string) || 'Please check your email regularly.'}
+          </Text>
+          <Text style={styles.infoText}>
+            {(i18n.t('kyc.reviewTakes1To6Hours') as string) || 'Review usually takes 1 to 6 hours.'}
+          </Text>
+          <Text style={styles.infoText}>
+            {(i18n.t('kyc.infoSecure') as string) || 'Your information is secure and protected.'}
+          </Text>
         </View>
 
         <TouchableOpacity style={styles.primaryButton} onPress={checkStatus} disabled={checking}>
@@ -128,30 +159,55 @@ export default function WaitingReviewScreen() {
           ) : (
             <>
               <RefreshCw size={18} color="#FFFFFF" />
-              <Text style={styles.primaryButtonText}>{i18n.t('checkStatus')}</Text>
+              <Text style={styles.primaryButtonText}>
+                {(i18n.t('kyc.checkStatus') as string) || 'Check Status'}
+              </Text>
             </>
           )}
         </TouchableOpacity>
 
         <View style={styles.kycSection}>
-          <Text style={styles.kycTitle}>{i18n.t('kycDocuments')}</Text>
-          <Text style={styles.kycSubtitle}>{i18n.t('uploadDocsToComplete')}</Text>
+          <Text style={styles.kycTitle}>
+            {(i18n.t('kyc.kycDocuments') as string) || 'KYC Documents'}
+          </Text>
+          <Text style={styles.kycSubtitle}>
+            {(i18n.t('kyc.uploadDocsToComplete') as string) ||
+              'Upload your documents to complete the review process.'}
+          </Text>
 
-          <TouchableOpacity onPress={() => pickImage(setIdFront)} style={styles.uploadBtn} activeOpacity={0.9}>
+          <TouchableOpacity
+            onPress={() => pickImage(setIdFront)}
+            style={styles.uploadBtn}
+            activeOpacity={0.9}
+          >
             <Text style={styles.uploadText}>
-              {idFront ? `${i18n.t('idFrontSelected')} ✅` : i18n.t('uploadIDFront')}
+              {idFront
+                ? `${(i18n.t('kyc.idFrontSelected') as string) || 'ID Front Selected'} ✅`
+                : (i18n.t('kyc.uploadIDFront') as string) || 'Upload ID Front'}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => pickImage(setIdBack)} style={styles.uploadBtn} activeOpacity={0.9}>
+          <TouchableOpacity
+            onPress={() => pickImage(setIdBack)}
+            style={styles.uploadBtn}
+            activeOpacity={0.9}
+          >
             <Text style={styles.uploadText}>
-              {idBack ? `${i18n.t('idBackSelected')} ✅` : i18n.t('uploadIDBack')}
+              {idBack
+                ? `${(i18n.t('kyc.idBackSelected') as string) || 'ID Back Selected'} ✅`
+                : (i18n.t('kyc.uploadIDBack') as string) || 'Upload ID Back'}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => pickImage(setSelfie)} style={styles.uploadBtn} activeOpacity={0.9}>
+          <TouchableOpacity
+            onPress={() => pickImage(setSelfie)}
+            style={styles.uploadBtn}
+            activeOpacity={0.9}
+          >
             <Text style={styles.uploadText}>
-              {selfie ? `${i18n.t('selfieSelected')} ✅` : i18n.t('uploadSelfie')}
+              {selfie
+                ? `${(i18n.t('kyc.selfieSelected') as string) || 'Selfie Selected'} ✅`
+                : (i18n.t('kyc.uploadSelfie') as string) || 'Upload Selfie'}
             </Text>
           </TouchableOpacity>
 
@@ -168,13 +224,17 @@ export default function WaitingReviewScreen() {
             {uploading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.primaryButtonText}>{i18n.t('uploadDocuments')}</Text>
+              <Text style={styles.primaryButtonText}>
+                {(i18n.t('kyc.uploadDocuments') as string) || 'Upload Documents'}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} activeOpacity={0.85}>
-          <Text style={styles.signOutText}>{i18n.t('signOut')}</Text>
+          <Text style={styles.signOutText}>
+            {(i18n.t('auth.signOut') as string) || 'Sign Out'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
