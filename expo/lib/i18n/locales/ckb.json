@@ -36,6 +36,14 @@
 "passwordUpdatedSuccessfully": "وشەی نهێنی بە سەرکەوتوویی نوێکرایەوە! تکایە بە وشەی نهێنی نوێ بچۆ ژوورەوە.",
 "updatePassword": "نوێکردنەوەی وشەی نهێنی",
 
+  "confirmAccount": "پشتڕاستکردنی هەژمار",
+"resendCodeToEmail": "دووبارە ناردنی کۆد بۆ ئیمەیڵ",
+"backToCreateAccount": "گەڕانەوە",
+"signupProfileSaveAfterVerify": "زانیارییەکانی هەژمارەکەت تەنها دوای پشتڕاستکردنی سەرکەوتووانەی کۆدی دڵنیابوونەوە هەڵدەگیرێن.",
+"pendingProfileNotFound": "زانیارییە کاتییەکانی تۆماربوونەکەت نەدۆزرایەوە. تکایە هەژمارەکەت دووبارە دروست بکە.",
+"sessionNotFoundAfterVerification": "دروستکردنی دانیشتن دوای پشتڕاستکردن نەکرا. تکایە دووبارە هەوڵبدە.",
+"signupDatabaseError": "تۆماربوون بە شێوەیەکی کاتی بەردەست نییە. تکایە trigger ـی signup یان ڕێکخستنەکانی خشتەی profiles لە Supabase بپشکنە.",
+"userAlreadyRegistered": "ئەم ئیمەیڵە پێشتر تۆمار کراوە.",
 
   "installmentTotalPrice": "هەمی بهای قست",
 
