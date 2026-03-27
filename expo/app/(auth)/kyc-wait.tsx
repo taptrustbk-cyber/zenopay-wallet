@@ -78,7 +78,10 @@ export default function KycWait() {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert(i18n.t('permissionRequired'), i18n.t('photoPermissionDenied'));
+        Alert.alert(
+          (i18n.t('common.permissionRequired') as string) || 'Permission Required',
+          (i18n.t('kyc.photoPermissionDenied') as string) || 'Photo permission was denied'
+        );
         return;
       }
 
@@ -104,7 +107,10 @@ export default function KycWait() {
       }
     } catch (e) {
       console.error('pickImage error:', e);
-      Alert.alert(i18n.t('error'), i18n.t('failedPickImage'));
+      Alert.alert(
+        (i18n.t('common.error') as string) || 'Error',
+        (i18n.t('kyc.failedPickImage') as string) || 'Failed to pick image'
+      );
     }
   };
 
@@ -114,7 +120,10 @@ export default function KycWait() {
     if (type === 'selfie') setSelfie(null);
   };
 
-  const uploadAsJpeg = async (imageData: PickedImage, fixedBaseName: 'id_front' | 'id_back' | 'selfie') => {
+  const uploadAsJpeg = async (
+    imageData: PickedImage,
+    fixedBaseName: 'id_front' | 'id_back' | 'selfie'
+  ) => {
     if (!user) throw new Error('No user');
 
     const filename = `${fixedBaseName}.jpeg`;
@@ -162,7 +171,10 @@ export default function KycWait() {
       setSubmitted(true);
     } catch (error: any) {
       console.error('KYC submission error:', error);
-      Alert.alert(i18n.t('error'), `${i18n.t('kycSubmitFailed')}\n${error?.message || ''}`.trim());
+      Alert.alert(
+        (i18n.t('common.error') as string) || 'Error',
+        `${(i18n.t('kyc.kycSubmitFailed') as string) || 'KYC submission failed'}\n${error?.message || ''}`.trim()
+      );
     } finally {
       setLoading(false);
     }
@@ -196,7 +208,9 @@ export default function KycWait() {
             <View style={styles.actionsRow}>
               <TouchableOpacity style={styles.smallBtn} onPress={onPick} activeOpacity={0.85}>
                 <RefreshCw size={16} color={UI.text} />
-                <Text style={styles.smallBtnText}>{i18n.t('change')}</Text>
+                <Text style={styles.smallBtnText}>
+                  {(i18n.t('common.change') as string) || 'Change'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -205,7 +219,9 @@ export default function KycWait() {
                 activeOpacity={0.85}
               >
                 <X size={16} color={UI.danger} />
-                <Text style={[styles.smallBtnText, { color: UI.danger }]}>{i18n.t('remove')}</Text>
+                <Text style={[styles.smallBtnText, { color: UI.danger }]}>
+                  {(i18n.t('common.remove') as string) || 'Remove'}
+                </Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -229,8 +245,12 @@ export default function KycWait() {
               <View style={styles.iconCircle}>
                 <Upload size={22} color={UI.blue} />
               </View>
-              <Text style={styles.placeholderTitle}>{i18n.t('tapToUpload')}</Text>
-              <Text style={styles.placeholderSub}>{i18n.t('uploadHint')}</Text>
+              <Text style={styles.placeholderTitle}>
+                {(i18n.t('kyc.tapToUpload') as string) || 'Tap to upload'}
+              </Text>
+              <Text style={styles.placeholderSub}>
+                {(i18n.t('kyc.uploadHint') as string) || 'Upload a clear image'}
+              </Text>
             </View>
           )}
         </TouchableOpacity>
@@ -247,21 +267,36 @@ export default function KycWait() {
               <CheckCircle size={62} color={UI.blue} strokeWidth={2.2} />
             </View>
 
-            <Text style={styles.successTitle}>{i18n.t('kycDocsSubmitted')}</Text>
-
-            <Text style={styles.successText}>{i18n.t('waitForApproval2')}</Text>
+            <Text style={styles.successTitle}>
+              {(i18n.t('kyc.kycDocsSubmitted') as string) || 'KYC documents submitted'}
+            </Text>
 
             <Text style={styles.successText}>
-              {i18n.t('contactSupport')}{' '}
+              {(i18n.t('kyc.waitForApproval2') as string) || 'Please wait for approval.'}
+            </Text>
+
+            <Text style={styles.successText}>
+              {(i18n.t('kyc.contactSupport') as string) || 'Contact support'}{' '}
               <Text style={styles.emailText}>info@zenopay.bond</Text>
             </Text>
 
-            <Text style={styles.securityText}>{i18n.t('docsSecure')}</Text>
+            <Text style={styles.securityText}>
+              {(i18n.t('kyc.docsSecure') as string) || 'Your documents are stored securely.'}
+            </Text>
 
-            <Text style={styles.approvalTimeNote}>{i18n.t('approvalTimeNote')}</Text>
+            <Text style={styles.approvalTimeNote}>
+              {(i18n.t('kyc.approvalTimeNote') as string) ||
+                'Approval may take some time. We will review your documents as soon as possible.'}
+            </Text>
 
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleBackToLogin} activeOpacity={0.9}>
-              <Text style={styles.primaryBtnText}>{i18n.t('backToLogin2')}</Text>
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={handleBackToLogin}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.primaryBtnText}>
+                {(i18n.t('auth.backToLogin') as string) || 'Back to Login'}
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -279,26 +314,31 @@ export default function KycWait() {
         <View style={styles.heroCard}>
           <View style={styles.heroGlowOne} />
           <View style={styles.heroGlowTwo} />
-          <Text style={styles.title}>{i18n.t('uploadKycDocs')}</Text>
-          <Text style={styles.desc}>{i18n.t('approveAccountPrompt')}</Text>
+          <Text style={styles.title}>
+            {(i18n.t('kyc.uploadKycDocs') as string) || 'Upload KYC Documents'}
+          </Text>
+          <Text style={styles.desc}>
+            {(i18n.t('kyc.approveAccountPrompt') as string) ||
+              'Upload the required documents to approve your account.'}
+          </Text>
         </View>
 
         <UploadCard
-          label={i18n.t('governmentIDFront')}
+          label={(i18n.t('kyc.governmentIDFront') as string) || 'Government ID Front'}
           value={idFront}
           onPick={() => pickImage('idFront')}
           onClear={() => clearImage('idFront')}
         />
 
         <UploadCard
-          label={i18n.t('governmentIDBack')}
+          label={(i18n.t('kyc.governmentIDBack') as string) || 'Government ID Back'}
           value={idBack}
           onPick={() => pickImage('idBack')}
           onClear={() => clearImage('idBack')}
         />
 
         <UploadCard
-          label={i18n.t('selfieWithID')}
+          label={(i18n.t('kyc.selfieWithID') as string) || 'Selfie with ID'}
           value={selfie}
           onPick={() => pickImage('selfie')}
           onClear={() => clearImage('selfie')}
@@ -313,14 +353,21 @@ export default function KycWait() {
           {loading ? (
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color="#FFFFFF" />
-              <Text style={styles.primaryBtnText}>{i18n.t('submitting')}</Text>
+              <Text style={styles.primaryBtnText}>
+                {(i18n.t('kyc.submitting') as string) || 'Submitting...'}
+              </Text>
             </View>
           ) : (
-            <Text style={styles.primaryBtnText}>{i18n.t('submitKycDocuments')}</Text>
+            <Text style={styles.primaryBtnText}>
+              {(i18n.t('kyc.submitKycDocuments') as string) || 'Submit KYC Documents'}
+            </Text>
           )}
         </TouchableOpacity>
 
-        <Text style={styles.footerNote}>{i18n.t('kycPrivacyNote')}</Text>
+        <Text style={styles.footerNote}>
+          {(i18n.t('kyc.kycPrivacyNote') as string) ||
+            'Your documents are used only for identity verification and account approval.'}
+        </Text>
       </ScrollView>
     </View>
   );
