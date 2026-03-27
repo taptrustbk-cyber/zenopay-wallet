@@ -23,6 +23,30 @@
 "passwordUpdatedSuccessfully": "ژمارا ڤەشارتی ب سەرکەفتی هاتە نوێکرن! هیڤیە ب ژمارا ڤەشارتی یا نوو هەرە ژوورەوە.",
 "updatePassword": "نوێکرنا ژمارا ڤەشارتی",
 
+  "common": {
+    "ok": "باشە"
+  },
+  "resetPassword": {
+    "title": "نویكرنا ژمارا ڤەشارتی",
+    "heroTitle": "دانانا ژمارا ڤەشارتی یا نوی",
+    "heroSubtitle": "ژمارا ڤەشارتی یا نوی و بەهێز بۆ هەژمارا خۆ هەلبژێرە.",
+    "newPasswordLabel": "ژمارا ڤەشارتی یا نوی",
+    "newPasswordPlaceholder": "ژمارا ڤەشارتی یا نوی",
+    "confirmPasswordLabel": "دووبارەكرنا ژمارا ڤەشارتی",
+    "confirmPasswordPlaceholder": "دووبارەكرنا ژمارا ڤەشارتی",
+    "updatePasswordButton": "نویكرنا ژمارا ڤەشارتی",
+    "backToLogin": "ڤەگەڕان بۆ چوونەژوورەوە",
+    "verifyingTitle": "لینكا نویكرنا ژمارا ڤەشارتی دێتە پشكنین...",
+    "verifyingSubtitle": "هیڤیە چاوەڕێبە تاكۆ ئەم نویكرنا ژمارا ڤەشارتی بۆ تە ئامادە بكەین.",
+    "alertErrorTitle": "هەڵە",
+    "alertSuccessTitle": "سەركەفتی",
+    "invalidOrExpiredLink": "لینكا نویكرنا ژمارا ڤەشارتی نەدروستە یان ماوەیا وێ بۆریە. تكایە داخوازا لینكەكا نوی بكە.",
+    "fillAllFields": "هیڤیە7 هەمی خانەیان پڕ بكە",
+    "passwordMinLength": "پێدڤیە ژمارا ڤەشارتی كێمتر نەبیت ژ 6 پیتان",
+    "passwordsDoNotMatch": "ژمارێت ڤەشارتی وەك یێک نینن",
+    "passwordUpdatedSuccess": "ژمارا ڤەشارتی ب سەركەفتی هاتە نویكرن! هیڤیە ب ژمارا ڤەشارتیا یا نوی هەرە ژوورێ."
+  },
+  
   "invalidPhone": "ژمارا مۆبایلە دروست نینە",
   "userAlreadyExists": "ئەڤ ئیمێلە پێشتر هاتیە تۆمارکرن",
   "continueToLogin": "بەردەوام بە بۆ چوونە ژوورێ",
