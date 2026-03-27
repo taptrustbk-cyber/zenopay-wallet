@@ -4,24 +4,21 @@
   "address": "ناڤونیشان",
   "consulateDirectoryTitle": "ڕێبەرا باڵیۆزخانە و کۆنسولخانەیان",
   "consulateDirectorySubtitle": "زانیارییێن پەیوەندیێ یێن بلەز، پایتەخت، و ناڤونیشانا کۆنسولخانەیێن هەیی ل عێراقێ لێبگەرە.",
-
   "gender": "ڕەگەز",
   "selectGender": "ڕەگەزێ هەلبژێرە",
   "genderMale": "نێر",
   "genderFemale": "مێ",
   "genderOther": "تر",
-
   "invalidPhone": "ژمارا مۆبایلە دروست نینە",
   "userAlreadyExists": "ئەڤ ئیمێلە پێشتر هاتیە تۆمارکرن",
-  "continueToLogin": "چوون بۆ چوونەژوورەوە",
-  "verificationEmailSent": "ئیمێلا ڤێرڤیکەیشن هاتیە ناردن",
-  "checkEmailInbox": "صندوقا ئیمێلێ خۆ بپشکنە",
-  "checkSpamFolder": "ئەگەر نەهات، فولدەرا سپام بپشکنە",
-  
+  "continueToLogin": "بەردەوام بە بۆ چوونە ژوورێ",
+  "verificationEmailSent": "ئیمەیلا پشتڕاستکرنێ هاتە فرێکرن",
+  "checkEmailInbox": "سندوقا ئیمەیلا خۆ پشکنین بکە بۆ لینکا پشتڕاستکرنێ",
+  "checkSpamFolder": "فۆڵدەرا سپام بپشکنە ئەگەر تە نەدیت",
   "login": "چونا ژوورێ",
   "signup": "تۆمارکرن",
   "createAccount": "ئەکاونتی دروستبکە",
-  "createNewAccount": "هەژمارەکا نوی دروست بکە",
+  "createNewAccount": "هەژمارەکا نوو دروست بکە",
   "dontHaveAccount": "ئەکاونت نینە؟",
   "alreadyHaveAccountShort": "پێشتر تە ئەکاونت هەیە؟",
   "loginSubWelcome": "هیڤیە هەرە ژوورێ بۆ هەژمارا خۆ",
@@ -37,7 +34,6 @@
   "needHelp": "تە پێدڤی ب هاریکاریێ هەیە؟",
   "supportChat": "چاتێ پشتگیری",
   "typeMessage": "نامەکێ بنڤیسە...",
-
   "resetPassword": "ڕێکخستنا ژمارا ڤەشارتی",
   "resetPasswordDesc": "ئیمەیلا خۆ بنڤیسە بۆ ڕێکخستنا ژمارا ڤەشارتی",
   "resetPasswordDesc2": "ڕێنماییان بۆ تە دێ هنێرن",
@@ -72,22 +68,17 @@
   "resetPasswordSuccess": "ژمارا ڤەشارتی ب سەرکەفتی هاتە نوێکرن.",
   "backToLogin": "زڤرین بۆ چوونا ژوورێ",
   "backToLogin2": "بڕۆ بۆ چوونا ژوورێ",
-
   "invalidEmail": "ئیمەیل نەیا دروستە",
   "checkEmail": "ئیمەیلا خۆ پشکنین بکە",
-  "checkEmailInbox": "سندوقا ئیمەیلا خۆ پشکنین بکە بۆ لینکا پشتڕاستکرنێ",
   "clickVerificationLink": "کرتە بکە لسەر لینکێ د ئیمەیلا خۆدا بۆ پشتڕاستکرنێ",
   "checkEmailRegularly": "ئیمەیلا خۆ ب بەردەوامی بپشکنە",
-  "checkSpamFolder": "فۆڵدەرا سپام بپشکنە ئەگەر تە نەدیت",
   "verifyYourEmail": "ئیمەیلا خۆ پشتڕاست بکە",
   "pleaseConfirmEmail": "تکایە ناڤنیشانا ئیمەیلا خۆ پشتڕاست بکە",
-  "verificationEmailSent": "ئیمەیلا پشتڕاستکرنێ هاتە فرێکرن",
   "verificationEmailResent": "ئیمەیلا پشتڕاستکرنێ دووبارە هاتە فرێکرن",
   "emailNotVerifiedYet": "ئیمەیڵ هێشتا پشتڕاست نەبوویە",
   "emailVerified": "ئیمەیڵ پشتڕاستکرا!",
   "accountCreatedSuccessfully": "ئەکاونت ب سەرکەفتی هاتە دروستکرن",
   "accountSuccessfullyConfirmed": "هەژمارا تە ب سەرکەفتی هاتە پشتڕاستکرن.",
-  "continueToLogin": "بەردەوام بە بۆ چوونە ژوورێ",
   "openEmailAppHint": "پاش کلیککرن لسەر لینکێ د ئیمەیلا تەدا، ئەپ خۆکارانە دڤەکرێتەوە.",
   "afterConfirmOpenApp": "پاش کلیککرن لسەر لینکێ پشتڕاستکرنێ د ئیمەیلا تەدا، Zenopay خۆکارانە دڤەکرێتەوە.",
   "openEmailWebHint": "د ئیمەیلا تەدا کرتە لسەر لینکێ پشتڕاستکرن بکە، پاشی بگەڕێوە بۆ ئەپێ.",
@@ -102,7 +93,6 @@
   "autoCheckingStatus": "پشکنینا خۆکاریا دۆخێ...",
   "resendEmail": "دووبارە ئیمەیڵ بنێرە",
   "pleaseWait": "هیڤیە چاڤەرێبە",
-
   "fullName": "ناڤێ تەمام",
   "enterFullName": "ناڤێ تەمام بنڤیسە",
   "fullNamePlaceholder": "ناڤێ خۆیێ تەمام بنڤیسە",
@@ -125,7 +115,6 @@
   "phoneNumberPlaceholder": "ژمارا تەلەفۆنێ بنڤیسە",
   "phoneLabel": "تەلەفۆن",
   "phonePlaceholder": "ژمارا تەلەفۆنێ بنڤیسە",
-
   "sendMoney": "هنارتنا پارەی",
   "sendMoneySubtitle": "فرێکرنەکا پاراستی و بلەز ب د.غ",
   "sendMoneyFormSubtitle": "ئیمەیلا وەرگری، بڕا پارە و تێبینی بنڤیسە",
@@ -144,7 +133,6 @@
   "walletLocked": "جزدان قوفلکریە",
   "cannotSendToYourself": "تو نەشێی پارا بۆ خۆ بنێری",
   "common_error": "شکەستن",
-
   "viewQrCode": "ببینە QR وێنێ",
   "receiveName": "ناڤێ وەرگر",
   "receiveNumber": "ژمارا وەرگر",
@@ -154,7 +142,6 @@
   "uploadQrCode": "QR Code ـا خۆ بار بکە",
   "uploadQrCodeHelp": "QR Code ـا هەژمارا خۆ ل ڤێرە بار بکە",
   "createWithdrawRequestSub": "داخوازا راکێشانێ دروست بکە بۆ هنارتنا پارێ",
-
   "deposit": "دانان",
   "depositMoney": "دانانا پارەی",
   "depositPageSubtitle": "داخوازا دانانا پارەی دروست بکە بۆ زیادکرنا پارەی",
@@ -203,7 +190,6 @@
   "noReceiptImageUploaded": "هیچ QR Code نەهاتیە بارکرن",
   "qrCodeUploaded": "QR Code هاتیە بارکرن",
   "viewFullScreen": "دیتنا تەواو شاشە",
-
   "withdraw": "راکێشان",
   "withdrawRequest": "داخوازا راکێشانێ",
   "withdrawHistory": "مێژووا دەرکشانێ",
@@ -218,7 +204,6 @@
   "status": "دۆخ",
   "withdrawHistoryEmptyDesc": "هەمی داخوازێن راکێشانێ ل ڤێرە دێنە دیارکرن",
   "noWithdrawalsYet": "هێشتا چ راکێشانێ نینە",
-
   "transactions": "مامەڵە",
   "transactions_title": "مامەڵە",
   "transactions_transactionHistory": "مێژوویا مامەڵەیان",
@@ -336,12 +321,12 @@
   "transactions_refundAmount": "بڕا هاتیە گەڕاندن",
   "transactions_cash": "نەقد",
   "transactions_installment": "قست",
-
   "cards.virtual_brand": "کارتا ڤێرتوالا زینوپەی",
   "cards.one_card_inline": "کارتا تەیا چالاکە. بتنێ تو دشێی ئێک کارتێ دروست بکەی و تە هەبیت.",
   "cards.created_success_iqd": "کارت ب سەرکەفتی هاتە دروست کردن 25.000 دینار ژ هژمارا هاتنە کێمکرن.",
   "Cards": "کارت",
   "one_card_inline": "کارتا ڤێرتواڵا تە چالاکە. تۆ تنێ دشی ئێک کارت دروست بکەی.",
+  
   "cards": {
     "title": "کارت",
     "available_balance": "بالانسا بەردەست",
@@ -374,25 +359,23 @@
     "insufficient_title": "بالانس بەس نینە",
     "insufficient_desc": "پێدڤیە لایونێ کێم 25.٠٠٠ د.غ هەبیت.",
     "create_failed": "نەشیا کارتێ دروست بکەت.",
-    "created_success": "کارت هاتە دروستکرن. ٢٥.٠٠٠ هزار ژ بالانسا تە هاتە کێمکرن."
-
+    "created_success": "کارت هاتە دروستکرن. ٢٥.٠٠٠ هزار ژ بالانسا تە هاتە کێمکرن.",
+    },
   "common": {
     "back": "ڤەگەڕان",
     "cancel": "هەلوەشاندن",
-    "error": "خەلەت",
+    "error": "هەڵە",
     "failed": "سەرکەفتی نەبوو",
     "success": "سەرکەفتی بوو",
     "failed_to_load": "بارکرن سەرکەفتی نەبوو",
     "something_wrong": "کێشەیەک چێبوو.",
     "ok": "باشە"
   },
-
   "auth": {
     "loginRequired": "تکایە سەرەتا بچۆ ناڤ هەژمارێ.",
     "user_not_found": "بەکارهێنەر نەدۆزرایەوە"
 
   },
-
   "buyCard": {
     "title": "کرینا کارتێ",
     "mobileCard": "کارتا موبایلێ",
@@ -400,10 +383,13 @@
     "topupCard": "کارتا بارکرنێ",
     "playerIdLabel": "زانیاریێن پێدڤی بنڤیسە",
     "enterYourPlayerId": "ئایدیا پوبجیێ خو بنڤیسە",
+    "topupCard": "کارتا موبایلێ",
+    "playerIdLabel": " زانیاریێن پێدڤی بنڤێسە",
+    "enterYourPlayerId": " ئایدیا پوبجیێ خو بنڤێسە",
     "pubgPlayerIdHelp": "هیڤیە ID ـیا پوبجیا خو دروست بنڤیسە داکو ئەدمین بشێت PUBG UC ب دروستی بگەهینیت.",
     "pubgAccountNameOptional": "ناڤێ ئەکاونتا PUBG ـێ خو بنڤیسە (ئیختیاری)",
-    "enterPubgAccountNameOptional": "ناڤێ ئەکاونتا PUBG ـێ خود بنڤیسە (ئیختیاری)",
-    "gameIdHelp": "هیڤیە Game ID ـیا دروست بنڤیسە داکو ئەدمین بشێت داواکاریا تە ب دروستی بگەهینیت.",
+    "enterPubgAccountNameOptional": "ناڤێ ئەکاونتا PUBG ـێ خو بنڤیسە (ئیختیاری)",
+    "gameIdHelp": " هیڤیەGame ID ـیا دروست بنڤیسە داکو ئەدمین بشێت داواکاریا تە ب دروستی بگەهینیت.",
     "profileUrlLabel": "لینکا پڕۆفایلێ",
     "enterProfileUrl": "لینکا پڕۆفایلا خود بنڤیسە",
     "profileUrlHelp": "ئەڤ زانیاری دگەل داواکاریا تە بۆ ئەدمین دێتە هنارتن.",
@@ -433,7 +419,6 @@
      "defaultInputHelp": "ئەڤ زانیاری دگەل داواکاریا تە بۆ ئەدمین دێتە هنارتن.",
      "enterRequiredInformation": "تکایە زانیاری یا پێدڤی بنڤیسە.",
      "invalidProfileUrl": "هیڤیە لینکەکا دروست یا پڕۆفایلێ بنڤیسە.",
-
     "reviewYourOrder": "داواکارییا خۆ بپشکنە",
     "walletNotFound": "جزدان نەهاتیە دۆزین.",
     "insufficientBalanceForPurchase": "بالانسا تە بۆ کرینێ نەبەسە.",
@@ -462,7 +447,6 @@
     "orderFailed": "نەشیا داواکاری دروست بکەت.",
     "iqd": "د.ع"
   },
-
   "notifications": {
     "title": "ئاگەهداریکرن",
     "mobileCards": "داواکارییێن کارتێن موبایل",
@@ -492,14 +476,12 @@
     "loadFailed": "بارکرنا ئاگەهداریکرنان سەرکەفتی نەبوو.",
     "unknownCard": "کارتا نەنیاس"
   },
-
   "market": {
     "topup": "کارتێن پڕکرنێ",
     "gift": "کارتێن دیاریکێ",
     "mobile": "دوکانا مۆبایلێ",
     "travel": "حەجزا گەشتێ"
   },
-
   "marketShop": "بازاڕێ فروتنێ",
   "marketShopSubtitle": "کارت، کارتێن دیاریکێ، مۆبایل و گەشت ب سەلامەتی بکڕە",
   "simCards": "کارتێن SIM",
@@ -531,7 +513,6 @@
   "orderPlaced": "داواکاری دانا!",
   "orderPlacedMessage": "داواکاریا تە ب سەرکەفتی دانا.",
   "fillAllFields": "هیڤیە هەمی خانەیێن پێدڤی پڕبکە",
-
   "mobileShopAdBadge": "پلانا فروتنێ ب شێوەی قست و نەقد بەردەستە!",
   "mobileShopAdTitle": "مۆبایلەکا نوو ب نرخەکێ زۆر باش بکرە",
   "mobileShopAdCash": "نەقد",
@@ -541,7 +522,6 @@
   "mobileShopAdInstallmentPrice": "قست ژ 50,000 دینار دەست پێ دکەت",
   "mobileShopAdButton": "نوکە بکرە",
   "mobileShopAdDiscount": "داشکاندن",
-
   "productDetails": "زانیارییێن موبایلێ",
   "purchaseSuccess": "کرین ب سەرکەفتی هاتە ئەنجامدان",
   "mobilePurchasedSuccess": "کرنا مۆبایلێ تە ب سەرکەفتی تەواو بوو و هاتە هنارتن بۆ ئەدمین.",
@@ -617,8 +597,6 @@
   "to": "بۆ",
   "purchase": "کرین",
   "remove": "لابە",
-
-
   "security": "پاراستن",
   "contactSupport": "پەیوەندیێ بکە بو پشتەڤانیێ",
   "changePhoto": "گوهارتنا وێنەی",
@@ -628,14 +606,6 @@
   "profilePhoto": "وێنەی پرۆفایل",
   "profile": "پرۆفایل",
   "mobileCards": "کارتێن موبایل",
-  "welcomeBack": "بخێربهێی",
-  "supportChat": "چاتێ پشتگیری",
-  "typeMessage": "نامەکێ بنڤیسە...",
-  "needHelp": "تە پێدڤی ب هاریکاریێ هەیە؟",
-  "pleaseLoginToYourAccount": "هیڤیە هەژمارا خۆ ڤەکە",
-  "rememberMe": "من ژبیر نەکە؟",
-  "createNewAccount": "هەژمارەکا نوو دروست بکە",
-  "contactUsAt": "پەیوەندیێ ب مە بکە ل",
   "retry": "دووبارە هەولدە",
   "settings": "ڕێکخستن",
   "language": "زمان",
@@ -646,7 +616,6 @@
   "internetSim": "ئینتەرنێت و کارتێن SIM",
   "selectSimCard": "کارتەک لە خوارەوە هەلبژێرە",
   "save": "هەڵگرتن",
-  "retry": "دووبارە هەولدە",
   "logout": "دەرکەفتن",
   "signOut": "دەرکەفتن",
   "confirm": "پشتڕاستکرن",
@@ -655,7 +624,6 @@
   "submit": "ناردن",
   "submitting": "ناردن...",
   "update": "نوێکرن",
-
   "accountStatusActive": "ئەکاونتا تە چالاکە",
   "yourBalance": "بالانسا تە",
   "accountApproved": "ئەکاونت پەسەندکرا!",
@@ -669,7 +637,6 @@
   "waitForApproval2": "چاڤەرێیا پەسەندکرنێ بکە",
   "readyWait": "هیڤیە چاڤەرێبە",
   "securityWaitInfo": "بۆ پاراستن، هەمی ئەکاونتێن نوو پێداچوون بۆ دکەین",
-
   "updateProfile": "نوێکرنا پرۆفایلێ",
   "profileUpdated": "پرۆفایل ب سەرکەفتی نوێکرا",
   "currentPassword": "ژمارا ڤەشارتی یا نوکە",
@@ -678,7 +645,6 @@
   "passwordsDoNotMatch": "ژمارێن ڤەشارتی یەک ناگرن",
   "passwordTooShort": "ژمارا ڤەشارتی دڤێ لانیکەم 6 پیت بیت",
   "passwordChangeError": "سەرکەفتی نەبوو ل گوهارتنا ژمارا ڤەشارتی",
-
   "dangerZone": "ناڤچەیا مەترسیدار",
   "deleteAccount": "سڕینا ئەکاونتێ",
   "deleteAccountDesc": "ئەکاونتا خۆ ب تەمامی بسڕە",
@@ -688,10 +654,8 @@
   "deletingAccount": "سڕینا ئەکاونتێ...",
   "accountDeleted": "ئەکاونتا تە ب سەرکەفتی هاتە سڕین",
   "accountDeleteError": "سەرکەفتی نەبوو ل سڕینا ئەکاونتێ",
-
   "emailNotification": "ئاگەهداریێن ئیمەیلێ",
   "emailNotificationDesc": "نوێکرنان ژ ڕێگا ئیمەیلێڤە وەربگرە",
-
   "loadingTransactions": "بارکرنا کارگێڕانان...",
   "errorLoadingTransactions": "هەڵە ل بارکرنا کارگێڕانان",
   "noTransactions": "هێشتا چ کارگێڕانەک نینە",
@@ -700,7 +664,6 @@
   "sent": "هاتە هنارتن",
   "received": "هاتە وەرگرتن",
   "active": "چالاک",
-
   "cardPurchase": "کرینا کارتێ",
   "mobilePurchase": "کرینا مۆبایلێ",
   "moneyTransfer": "گواستنەوەی پارێ",
@@ -721,10 +684,8 @@
   "seconds": "چرکان",
   "timeRemaining": "دەمێ ماوی",
   "from": "ژ",
-
   "ramadanOfferTitle": "ئۆفەری ڕەمەزان",
   "ramadanOfferMessage": "چێژ لە خەڵاتە تایبەتییەکانی ڕەمەزان وەرگرە. بۆ هەر دانانی پارەیەک تا 1000$ بە USDT (TRC20) خەڵاتی بانگەشەیی 20$ وەردەگریت. خەڵاتەکە بە پێی مەرجی کمپاین و ئەهلیەت دەبێت.",
-
   "permissionRequired": "ڕێگەپێدان پێدڤیە",
   "failedPickImage": "هەڵە د هەلبژارتنا وێنەیێدا چێبوو. هیڤیە دووبارە بکە.",
   "kycSubmitFailed": "سیستەم نەشیا بەڵگەنامێن KYC وەربگریت. هیڤیە دووبارە هەول بدە.",
@@ -733,7 +694,6 @@
   "change": "گوهارتن",
   "approvalTimeNote": "هیڤیە چاڤەرێبە ژ ١ کاتژمێر تا ١٢ کاتژمێر بۆ پەسەندکرنا هەژمارا تە.",
   "kycPrivacyNote": "بەڵگەنامێن تە پارێزراون و ب شێوەیەکی ئەمنی هەڵدەگیرن.",
-
   "kycVerificationRequired": "پشتڕاستکرنا ناسنامێ پێدڤیە",
   "kycPendingMessage": "بەڵگەنامێن تە ل بن پێداچوونەوەیێن",
   "whatsNext": "ئێدی چی دبیت؟",
@@ -762,8 +722,7 @@
   "completeAllFields": "تکایە هەمی خانان تەواو بکە",
   "kycApprovedInfo": "ئەکاونتا تە پەسەندکرا",
   "docsSecure": "بەڵگەنامان پارێزراون",
-  "infoSecure": "زانیارییێن تە پارێزراون",
-
+  "infoSecure": "زانیارییێن تە پاراستینە",
   "cryptoTrade": "کارگێڕانا کریپتۆ",
   "tradeDescription": "کارگێڕانا کریپتۆکارەنسیان لە کاتا ڕاستەقینەدا",
   "buyCrypto": "کڕین",
@@ -780,7 +739,6 @@
   "noCryptoFound": "تو کریپتۆکارەنسی نەهاتە دیتن",
   "liveCharts": "نەخشێن ڕاستەقینە",
   "chartComingSoon": "نەخشە بەم زووانە",
-
   "portfolio": "پۆرتفۆلیۆ",
   "portfolioSubtitle": "وەبەرهێنانا خۆ بەدواداچوو",
   "portfolioItems": "بڕگێن پۆرتفۆلیۆ",
@@ -789,11 +747,11 @@
   "portfolioSyncInfo": "پۆرتفۆلیۆ لەگەڵ جزداندا هاوکات دبێتەوە",
   "value": "بەها",
   "noPortfolioItems": "هیچ بڕگەیەکا پۆرتفۆلیۆ نینە",
-
   "updateFailed": "نوێکرن سەرکەفتی نەبوو",
   "invalidValue": "بەهایەکا نادروست",
   "cannotOpenLink": "نەشێ ڤێ لینکێ ڤەکە",
   "failedToOpenLink": "سەرکەفتی نەبوو ل ڤەکرنا لینکێ",
+
   "common": {
     "back": "ڤەگەڕان",
     "cancel": "هەلوەشاندن",
@@ -856,7 +814,6 @@
     "loginRequired": "تکایە سەرەتا بچۆ ناڤ هەژمارێ.",
     "user_not_found": "بەکارهێنەر نەدۆزرایەوە"
   },
-
   "ppLastUpdated": "دواین نوێکرن: کانوونا دووێ 2025",
   "ppIntro": "جزدانا ZenoPay (\"ئێمە\"، \"یا ئێمە\"، یان \"بۆ ئێمە\") پابەندە ب پاراستنا تایبەتێتیا تە. ئەڤ سیاسەتا تایبەتێتیێ ڕوون دکەتەوە کە چەوا زانیارییێن تە کۆدکەینەوە، بکاردێنین، ئاشکرا دکەین و دپارێزین کاتێ ئەپلیکەیشنا مۆبایلێ و خزمەتگوزارییێن مە بکاردەهێنیت.",
   "ppNewSection1Title": "1. ئەو زانیارییانێ کە کۆیان دکەینەوە",
@@ -913,7 +870,6 @@
   "ppNewSection11Desc2": "ئیمەیل: info@zenopay.bond",
   "ppNewSection12Title": "12. ڕەزامەندی",
   "ppNewSection12Desc": "ب بکارهێنانا جزدانا ZenoPay، ڕەزامەندی لسەر ڤێ سیاسەتا تایبەتێتیێ و ڕازی دبیت ب مەرجێن وێ.",
-
   "tcNewLastUpdated": "دواین نوێکرن: کانوونا دووێ 2025",
   "tcNewIntro": "بەخێربێیت بۆ جزدانا ZenoPay. ب دەستگەهشتن یان بکارهێنانا ئەپلیکەیشنا مۆبایلێ و خزمەتگوزارییێن مە، ڕازی دبیت ب پابەندبوون ب ڤان مەرج و ڕێسایان. تکایە ب وردی بخوێنەرەوە.",
   "tcNewSection1Title": "1. قبوولکرنا مەرجان",
