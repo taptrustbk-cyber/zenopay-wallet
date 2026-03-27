@@ -18,7 +18,6 @@ import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import i18n from '@/lib/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Linking from 'expo-linking';
 
 export const options = {
   headerShown: false,
@@ -218,13 +217,10 @@ export default function CreateAccount() {
         })
       );
 
-      const emailRedirectTo = Linking.createURL('confirm');
-
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: cleanPassword,
         options: {
-          emailRedirectTo,
           data: {},
         },
       });
@@ -235,28 +231,13 @@ export default function CreateAccount() {
         return;
       }
 
-      const userId = data?.user?.id;
-      const hasSession = !!data?.session;
-
-      if (hasSession && userId) {
-        const { error: profileError } = await supabase.from('profiles').upsert(
-          {
-            id: userId,
-            full_name: cleanFullName,
-            city: cleanCity,
-            country: cleanCountry,
-            phone: phoneE164,
-            gender: cleanGender,
-            date_of_brith: dobISO,
-          },
-          { onConflict: 'id' }
+      const identities = data?.user?.identities ?? [];
+      if (data?.user && identities.length === 0) {
+        Alert.alert(
+          i18n.t('error') || 'Error',
+          i18n.t('userAlreadyExists') || 'This email is already registered.'
         );
-
-        if (profileError) {
-          console.log('Profile upsert error:', profileError.message);
-        } else {
-          await AsyncStorage.removeItem(PENDING_PROFILE_KEY);
-        }
+        return;
       }
 
       router.replace({
