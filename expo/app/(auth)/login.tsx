@@ -169,7 +169,9 @@ export default function LoginScreen() {
       const cleanEmail = email.trim().toLowerCase();
 
       if (!cleanEmail || !password) {
-        throw new Error(i18n.t('enterEmail'));
+        throw new Error(
+          (i18n.t('auth.enterEmailAndPassword') as string) || 'Please enter your email and password'
+        );
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -195,7 +197,9 @@ export default function LoginScreen() {
       }
 
       if (!data.user) {
-        throw new Error(i18n.t('loginFailedMessage') || 'Login failed');
+        throw new Error(
+          (i18n.t('auth.loginFailedMessage') as string) || 'Login failed'
+        );
       }
 
       await applyPendingProfileIfExists(data.user.id);
@@ -227,14 +231,17 @@ export default function LoginScreen() {
       }
 
       if (errorMessage.includes('invalid login credentials')) {
-        Alert.alert(i18n.t('error'), i18n.t('invalidLoginCredentials') || 'Your email or password is incorrect');
+        Alert.alert(
+          (i18n.t('common.error') as string) || 'Error',
+          (i18n.t('auth.invalidLoginCredentials') as string) || 'Your email or password is incorrect'
+        );
         return;
       }
 
       if (errorMessage.includes('profile_error')) {
         Alert.alert(
-          i18n.t('error'),
-          i18n.t('profileLoadError') ||
+          (i18n.t('common.error') as string) || 'Error',
+          (i18n.t('auth.profileLoadError') as string) ||
             'Could not load your profile. Please check your database settings or contact support.'
         );
         return;
@@ -242,16 +249,17 @@ export default function LoginScreen() {
 
       if (errorMessage.includes('profile_not_found')) {
         Alert.alert(
-          i18n.t('error'),
-          i18n.t('profileNotFound') || 'Your account profile was not found. Please contact support.'
+          (i18n.t('common.error') as string) || 'Error',
+          (i18n.t('auth.profileNotFound') as string) ||
+            'Your account profile was not found. Please contact support.'
         );
         return;
       }
 
       if (!errorMessage.includes('access denied')) {
         Alert.alert(
-          i18n.t('error'),
-          `${i18n.t('loginFailedPrefix') || 'Login failed'}: ${error.message}`
+          (i18n.t('common.error') as string) || 'Error',
+          `${(i18n.t('auth.loginFailedPrefix') as string) || 'Login failed'}: ${error.message}`
         );
       }
     },
@@ -281,10 +289,10 @@ export default function LoginScreen() {
   const getLanguageDisplayText = () => {
     const currentLang = getCurrentLanguage();
 
-    if (currentLang === 'en') return 'English';
-    if (currentLang === 'ar') return 'العربية';
-    if (currentLang === 'ckb') return 'کوردی سۆرانی';
-    return 'کوردی بادینی';
+    if (currentLang === 'en') return i18n.t('common.languageEnglish') || 'English';
+    if (currentLang === 'ar') return i18n.t('common.languageArabic') || 'العربية';
+    if (currentLang === 'ckb') return i18n.t('common.languageSorani') || 'کوردی سۆرانی';
+    return i18n.t('common.languageBadini') || 'کوردی بادینی';
   };
 
   const handleRememberToggle = async () => {
@@ -295,7 +303,12 @@ export default function LoginScreen() {
 
   if (loadingRememberState) {
     return (
-      <View style={[styles.container, { backgroundColor: UI.bg, alignItems: 'center', justifyContent: 'center' }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: UI.bg, alignItems: 'center', justifyContent: 'center' },
+        ]}
+      >
         <ActivityIndicator size="large" color={UI.blue} />
       </View>
     );
@@ -340,9 +353,11 @@ export default function LoginScreen() {
             </View>
 
             <Text style={styles.appName}>ZenoPay</Text>
-            <Text style={styles.welcomeBack}>{i18n.t('welcomeBack') || 'Welcome Back!'}</Text>
+            <Text style={styles.welcomeBack}>
+              {(i18n.t('auth.welcomeBack') as string) || 'Welcome Back!'}
+            </Text>
             <Text style={styles.subWelcome}>
-              {i18n.t('loginSubWelcome') || 'Please log in to your account'}
+              {(i18n.t('auth.loginSubWelcome') as string) || 'Please log in to your account'}
             </Text>
           </View>
 
@@ -353,7 +368,7 @@ export default function LoginScreen() {
               </View>
               <TextInput
                 style={styles.input}
-                placeholder={i18n.t('email')}
+                placeholder={(i18n.t('auth.email') as string) || 'Email'}
                 placeholderTextColor={UI.text3}
                 value={email}
                 onChangeText={(v) => {
@@ -373,7 +388,7 @@ export default function LoginScreen() {
               </View>
               <TextInput
                 style={styles.input}
-                placeholder={i18n.t('password')}
+                placeholder={(i18n.t('auth.password') as string) || 'Password'}
                 placeholderTextColor={UI.text3}
                 value={password}
                 onChangeText={setPassword}
@@ -400,7 +415,7 @@ export default function LoginScreen() {
                 </View>
 
                 <Text style={[styles.rememberText, isRTL ? styles.mr10 : styles.ml10]}>
-                  {i18n.t('rememberMe') || 'Remember me'}
+                  {(i18n.t('auth.rememberMe') as string) || 'Remember me'}
                 </Text>
               </Pressable>
 
@@ -409,7 +424,9 @@ export default function LoginScreen() {
                 style={styles.forgotButton}
                 activeOpacity={0.85}
               >
-                <Text style={styles.forgotText}>{i18n.t('forgotPassword')}</Text>
+                <Text style={styles.forgotText}>
+                  {(i18n.t('auth.forgotPassword') as string) || 'Forgot Password?'}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -422,7 +439,9 @@ export default function LoginScreen() {
               {isSubmitting ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.loginButtonText}>{i18n.t('login')}</Text>
+                <Text style={styles.loginButtonText}>
+                  {(i18n.t('auth.login') as string) || 'Login'}
+                </Text>
               )}
             </TouchableOpacity>
 
@@ -431,7 +450,9 @@ export default function LoginScreen() {
               style={styles.createAccountButton}
               activeOpacity={0.9}
             >
-              <Text style={styles.createAccountText}>{i18n.t('createNewAccount')}</Text>
+              <Text style={styles.createAccountText}>
+                {(i18n.t('auth.createNewAccount') as string) || 'Create New Account'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -448,9 +469,11 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.helpTextWrap}>
-              <Text style={styles.helpTitle}>{i18n.t('needHelp') || 'Need Help?'}</Text>
+              <Text style={styles.helpTitle}>
+                {(i18n.t('auth.needHelp') as string) || 'Need Help?'}
+              </Text>
               <Text style={styles.helpText}>
-                {i18n.t('contactUsAt') || 'Contact us at'}{' '}
+                {(i18n.t('auth.contactUsAt') as string) || 'Contact us at'}{' '}
                 <Text style={styles.helpEmail}>info@zenopay.bond</Text>
               </Text>
             </View>
