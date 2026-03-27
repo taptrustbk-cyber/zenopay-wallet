@@ -178,7 +178,7 @@ export default function EmailVerificationScreen() {
     if (!pending) {
       throw new Error(
         t(
-          'pendingProfileNotFound',
+          'auth.pendingProfileNotFound',
           'Your temporary signup data was not found. Please create your account again.'
         )
       );
@@ -191,7 +191,7 @@ export default function EmailVerificationScreen() {
     if (!user?.id) {
       throw new Error(
         t(
-          'sessionNotFoundAfterVerification',
+          'auth.sessionNotFoundAfterVerification',
           'Could not create a session after verification. Please try again.'
         )
       );
@@ -215,7 +215,7 @@ export default function EmailVerificationScreen() {
   }
 
   function getOtpErrorMessage(error: unknown) {
-    const fallback = t('somethingWentWrong', 'Something went wrong');
+    const fallback = t('common.somethingWentWrong', 'Something went wrong');
 
     if (!error || typeof error !== 'object') return fallback;
 
@@ -235,13 +235,13 @@ export default function EmailVerificationScreen() {
         lower.includes('otp_expired')
       ) {
         return t(
-          'verificationCodeExpired',
+          'auth.verificationCodeExpired',
           'This verification code has expired. Please request a new one.'
         );
       }
 
       return t(
-        'invalidVerificationCode',
+        'auth.invalidVerificationCode',
         'Incorrect code. Please try again and enter the correct 6-digit code.'
       );
     }
@@ -252,24 +252,24 @@ export default function EmailVerificationScreen() {
   const verifyCode = async () => {
     if (!email) {
       Alert.alert(
-        t('error', 'Error'),
-        t('missingEmail', 'Email is missing')
+        t('common.error', 'Error'),
+        t('auth.missingEmail', 'Email is missing')
       );
       return;
     }
 
     if (!isValidEmail(email)) {
       Alert.alert(
-        t('error', 'Error'),
-        t('invalidEmail', 'Invalid email')
+        t('common.error', 'Error'),
+        t('auth.invalidEmail', 'Invalid email')
       );
       return;
     }
 
     if (code.length !== CODE_LENGTH) {
       Alert.alert(
-        t('error', 'Error'),
-        t('enterSixDigitCode', 'Please enter the 6-digit verification code')
+        t('common.error', 'Error'),
+        t('auth.enterSixDigitCode', 'Please enter the 6-digit verification code')
       );
       return;
     }
@@ -284,7 +284,7 @@ export default function EmailVerificationScreen() {
       });
 
       if (error) {
-        Alert.alert(t('error', 'Error'), getOtpErrorMessage(error));
+        Alert.alert(t('common.error', 'Error'), getOtpErrorMessage(error));
         return;
       }
 
@@ -293,14 +293,14 @@ export default function EmailVerificationScreen() {
       await supabase.auth.signOut().catch(() => null);
 
       Alert.alert(
-        t('success', 'Success'),
+        t('common.success', 'Success'),
         t(
-          'accountSuccessfullyConfirmed',
+          'auth.accountSuccessfullyConfirmed',
           'Your account has been successfully confirmed.'
         ),
         [
           {
-            text: t('ok', 'OK'),
+            text: t('common.ok', 'OK'),
             onPress: () => {
               router.replace({
                 pathname: '/(auth)/login' as any,
@@ -317,9 +317,9 @@ export default function EmailVerificationScreen() {
       const message =
         e && typeof e === 'object' && 'message' in e
           ? String((e as any).message || '')
-          : t('somethingWentWrong', 'Something went wrong');
+          : t('common.somethingWentWrong', 'Something went wrong');
 
-      Alert.alert(t('error', 'Error'), message);
+      Alert.alert(t('common.error', 'Error'), message);
     } finally {
       setVerifying(false);
     }
@@ -328,16 +328,16 @@ export default function EmailVerificationScreen() {
   const resendCode = async () => {
     if (!email) {
       Alert.alert(
-        t('error', 'Error'),
-        t('missingEmail', 'Email is missing')
+        t('common.error', 'Error'),
+        t('auth.missingEmail', 'Email is missing')
       );
       return;
     }
 
     if (!isValidEmail(email)) {
       Alert.alert(
-        t('error', 'Error'),
-        t('invalidEmail', 'Invalid email')
+        t('common.error', 'Error'),
+        t('auth.invalidEmail', 'Invalid email')
       );
       return;
     }
@@ -358,9 +358,9 @@ export default function EmailVerificationScreen() {
       setCode('');
 
       Alert.alert(
-        t('success', 'Success'),
+        t('common.success', 'Success'),
         t(
-          'newVerificationCodeSent',
+          'auth.newVerificationCodeSent',
           'A new 6-digit verification code has been sent to your email.'
         )
       );
@@ -368,9 +368,9 @@ export default function EmailVerificationScreen() {
       const message =
         e && typeof e === 'object' && 'message' in e
           ? String((e as any).message || '')
-          : t('somethingWentWrong', 'Something went wrong');
+          : t('common.somethingWentWrong', 'Something went wrong');
 
-      Alert.alert(t('error', 'Error'), message);
+      Alert.alert(t('common.error', 'Error'), message);
     } finally {
       setResending(false);
     }
@@ -398,7 +398,7 @@ export default function EmailVerificationScreen() {
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>
-            {t('verifyYourEmail', 'Verify Your Email')}
+            {t('auth.verifyYourEmail', 'Verify Your Email')}
           </Text>
 
           <View style={styles.headerSpacer} />
@@ -413,12 +413,12 @@ export default function EmailVerificationScreen() {
           </View>
 
           <Text style={styles.title}>
-            {t('enterVerificationCode', 'Enter Verification Code')}
+            {t('auth.enterVerificationCode', 'Enter Verification Code')}
           </Text>
 
           <Text style={styles.description}>
             {t(
-              'verificationCodeDesc',
+              'auth.verificationCodeDesc',
               'Enter the 6-digit verification code we sent to your email address.'
             )}
           </Text>
@@ -428,7 +428,7 @@ export default function EmailVerificationScreen() {
 
         <View style={styles.card}>
           <Text style={styles.label}>
-            {t('verificationCode', 'Verification Code')}
+            {t('auth.verificationCode', 'Verification Code')}
           </Text>
 
           <Pressable onPress={focusCodeInput} style={styles.codeWrap}>
@@ -468,7 +468,7 @@ export default function EmailVerificationScreen() {
 
           <Text style={styles.hintText}>
             {t(
-              'enterSixDigitCodeHint',
+              'auth.enterSixDigitCodeHint',
               'Please enter the 6-digit code sent to your email.'
             )}
           </Text>
@@ -485,7 +485,7 @@ export default function EmailVerificationScreen() {
               <>
                 <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>
-                  {t('confirmAccount', 'Confirm Account')}
+                  {t('auth.confirmAccount', 'Confirm Account')}
                 </Text>
               </>
             )}
@@ -507,8 +507,8 @@ export default function EmailVerificationScreen() {
                 <Ionicons name="refresh-outline" size={18} color={COLORS.blueDark} />
                 <Text style={styles.secondaryButtonText}>
                   {cooldown > 0
-                    ? `${t('resendCode', 'Resend Code')} (${cooldown}s)`
-                    : t('resendCodeToEmail', 'Resend Code to Email')}
+                    ? `${t('auth.resendCode', 'Resend Code')} (${cooldown}s)`
+                    : t('auth.resendCodeToEmail', 'Resend Code to Email')}
                 </Text>
               </>
             )}
@@ -520,18 +520,18 @@ export default function EmailVerificationScreen() {
             activeOpacity={0.9}
           >
             <Text style={styles.backText}>
-              {t('backToCreateAccount', 'Back')}
+              {t('auth.backToCreateAccount', 'Back')}
             </Text>
           </TouchableOpacity>
 
           <View style={styles.helpBox}>
             <Text style={styles.helpTitle}>
-              {t('important', 'Important')}
+              {t('common.important', 'Important')}
             </Text>
 
             <Text style={styles.helpText}>
               {t(
-                'verifyCodeHelpText',
+                'auth.verifyCodeHelpText',
                 'If the code is incorrect or expired, request a new code and try again.'
               )}
             </Text>
@@ -544,7 +544,7 @@ export default function EmailVerificationScreen() {
               <View style={styles.supportTextWrap}>
                 <Text style={styles.supportTextTop}>
                   {t(
-                    'needHelpVerifyCode',
+                    'auth.needHelpVerifyCode',
                     'Need help with the verification code? Contact support.'
                   )}
                 </Text>
@@ -555,7 +555,7 @@ export default function EmailVerificationScreen() {
             {mode === 'signup' ? (
               <Text style={styles.bottomInfoText}>
                 {t(
-                  'signupProfileSaveAfterVerify',
+                  'auth.signupProfileSaveAfterVerify',
                   'Your account information will be saved only after the verification code is confirmed successfully.'
                 )}
               </Text>
