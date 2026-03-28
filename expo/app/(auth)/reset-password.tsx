@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  I18nManager,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from '@tanstack/react-query';
@@ -57,13 +58,34 @@ const SHADOWS = {
   },
 };
 
+function tSafe(key: string, fallback: string) {
+  try {
+    const value = i18n.t(key as any);
+
+    if (
+      value === null ||
+      value === undefined ||
+      typeof value === 'object' ||
+      String(value).trim() === '' ||
+      String(value) === key ||
+      String(value).includes('[missing')
+    ) {
+      return fallback;
+    }
+
+    return String(value);
+  } catch {
+    return fallback;
+  }
+}
+
 export default function ResetPasswordScreen() {
   const router = useRouter();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isReady, setIsReady] = useState(false);
 
-  const t = (key: string, options?: any) => i18n.t(key, options as any);
+  const isRTL = I18nManager.isRTL;
 
   const goToForgotPassword = useCallback(async () => {
     try {
@@ -87,9 +109,12 @@ export default function ResetPasswordScreen() {
 
   const failAndGoBack = useCallback(() => {
     Alert.alert(
-      t('resetPassword.alertErrorTitle'),
-      t('resetPassword.invalidOrExpiredLink'),
-      [{ text: t('common.ok'), onPress: goToForgotPassword }]
+      tSafe('resetPassword.alertErrorTitle', 'Error'),
+      tSafe(
+        'resetPassword.invalidOrExpiredLink',
+        'This reset link is invalid or expired. Please request a new password reset link.'
+      ),
+      [{ text: tSafe('common.ok', 'OK'), onPress: goToForgotPassword }]
     );
   }, [goToForgotPassword]);
 
@@ -164,15 +189,17 @@ export default function ResetPasswordScreen() {
   const resetMutation = useMutation({
     mutationFn: async () => {
       if (!newPassword || !confirmPassword) {
-        throw new Error(t('resetPassword.fillAllFields'));
+        throw new Error(tSafe('resetPassword.fillAllFields', 'Please complete all fields'));
       }
 
       if (newPassword.length < 6) {
-        throw new Error(t('resetPassword.passwordMinLength'));
+        throw new Error(
+          tSafe('resetPassword.passwordMinLength', 'Password must be at least 6 characters')
+        );
       }
 
       if (newPassword !== confirmPassword) {
-        throw new Error(t('resetPassword.passwordsDoNotMatch'));
+        throw new Error(tSafe('resetPassword.passwordsDoNotMatch', 'Passwords do not match'));
       }
 
       const { error } = await supabase.auth.updateUser({ password: newPassword });
@@ -181,13 +208,19 @@ export default function ResetPasswordScreen() {
     onSuccess: async () => {
       await supabase.auth.signOut();
       Alert.alert(
-        t('resetPassword.alertSuccessTitle'),
-        t('resetPassword.passwordUpdatedSuccess'),
-        [{ text: t('common.ok'), onPress: goToLogin }]
+        tSafe('resetPassword.alertSuccessTitle', 'Success'),
+        tSafe(
+          'resetPassword.passwordUpdatedSuccess',
+          'Your password has been updated successfully.'
+        ),
+        [{ text: tSafe('common.ok', 'OK'), onPress: goToLogin }]
       );
     },
     onError: (error: any) => {
-      Alert.alert(t('resetPassword.alertErrorTitle'), error.message);
+      Alert.alert(
+        tSafe('resetPassword.alertErrorTitle', 'Error'),
+        error?.message || tSafe('common.somethingWentWrong', 'Something went wrong')
+      );
     },
   });
 
@@ -203,8 +236,15 @@ export default function ResetPasswordScreen() {
           <View style={styles.loadingIconWrap}>
             <ActivityIndicator size="large" color={UI.blue} />
           </View>
-          <Text style={styles.loadingTitle}>{t('resetPassword.verifyingTitle')}</Text>
-          <Text style={styles.loadingText}>{t('resetPassword.verifyingSubtitle')}</Text>
+          <Text style={[styles.loadingTitle, isRTL && styles.textRTL]}>
+            {tSafe('resetPassword.verifyingTitle', 'Verifying Reset Link')}
+          </Text>
+          <Text style={[styles.loadingText, isRTL && styles.textRTL]}>
+            {tSafe(
+              'resetPassword.verifyingSubtitle',
+              'Please wait while we verify your password reset session.'
+            )}
+          </Text>
         </View>
       </View>
     );
@@ -224,10 +264,16 @@ export default function ResetPasswordScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <TouchableOpacity onPress={goToLogin} style={styles.backIconBtn} activeOpacity={0.8}>
-              <Ionicons name="arrow-back" size={22} color={UI.blueDark} />
+              <Ionicons
+                name={isRTL ? 'arrow-forward' : 'arrow-back'}
+                size={22}
+                color={UI.blueDark}
+              />
             </TouchableOpacity>
 
-            <Text style={styles.headerTitle}>{t('resetPassword.title')}</Text>
+            <Text style={[styles.headerTitle, isRTL && styles.textRTL]}>
+              {tSafe('resetPassword.title', 'Reset Password')}
+            </Text>
             <View style={{ width: 40 }} />
           </View>
 
@@ -235,43 +281,59 @@ export default function ResetPasswordScreen() {
             <View style={styles.heroIconWrap}>
               <Ionicons name="shield-checkmark-outline" size={28} color={UI.blue} />
             </View>
-            <Text style={styles.heroTitle}>{t('resetPassword.heroTitle')}</Text>
-            <Text style={styles.heroSubtitle}>{t('resetPassword.heroSubtitle')}</Text>
+            <Text style={[styles.heroTitle, isRTL && styles.textRTL]}>
+              {tSafe('resetPassword.heroTitle', 'Create New Password')}
+            </Text>
+            <Text style={[styles.heroSubtitle, isRTL && styles.textRTL]}>
+              {tSafe(
+                'resetPassword.heroSubtitle',
+                'Enter your new password below and confirm it to finish resetting your account password.'
+              )}
+            </Text>
           </View>
 
           <View style={styles.card}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>{t('resetPassword.newPasswordLabel')}</Text>
-              <View style={styles.inputWrap}>
-                <View style={styles.inputIconBox}>
+              <Text style={[styles.label, isRTL && styles.textRTL]}>
+                {tSafe('resetPassword.newPasswordLabel', 'New Password')}
+              </Text>
+              <View style={[styles.inputWrap, isRTL && styles.inputWrapRTL]}>
+                <View style={[styles.inputIconBox, isRTL && styles.inputIconBoxRTL]}>
                   <Ionicons name="lock-closed-outline" size={18} color={UI.blue} />
                 </View>
                 <TextInput
-                  style={styles.input}
-                  placeholder={t('resetPassword.newPasswordPlaceholder')}
+                  style={[styles.input, isRTL && styles.inputRTL]}
+                  placeholder={tSafe('resetPassword.newPasswordPlaceholder', 'Enter new password')}
                   placeholderTextColor={UI.text3}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry
                   autoCapitalize="none"
+                  textAlign={isRTL ? 'right' : 'left'}
                 />
               </View>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>{t('resetPassword.confirmPasswordLabel')}</Text>
-              <View style={styles.inputWrap}>
-                <View style={styles.inputIconBox}>
+              <Text style={[styles.label, isRTL && styles.textRTL]}>
+                {tSafe('resetPassword.confirmPasswordLabel', 'Confirm Password')}
+              </Text>
+              <View style={[styles.inputWrap, isRTL && styles.inputWrapRTL]}>
+                <View style={[styles.inputIconBox, isRTL && styles.inputIconBoxRTL]}>
                   <Ionicons name="checkmark-done-outline" size={18} color={UI.blue} />
                 </View>
                 <TextInput
-                  style={styles.input}
-                  placeholder={t('resetPassword.confirmPasswordPlaceholder')}
+                  style={[styles.input, isRTL && styles.inputRTL]}
+                  placeholder={tSafe(
+                    'resetPassword.confirmPasswordPlaceholder',
+                    'Re-enter new password'
+                  )}
                   placeholderTextColor={UI.text3}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry
                   autoCapitalize="none"
+                  textAlign={isRTL ? 'right' : 'left'}
                 />
               </View>
             </View>
@@ -287,13 +349,17 @@ export default function ResetPasswordScreen() {
               ) : (
                 <>
                   <Ionicons name="key-outline" size={18} color="#FFFFFF" />
-                  <Text style={styles.resetButtonText}>{t('resetPassword.updatePasswordButton')}</Text>
+                  <Text style={styles.resetButtonText}>
+                    {tSafe('resetPassword.updatePasswordButton', 'Update Password')}
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.backToLoginButton} onPress={goToLogin}>
-              <Text style={styles.backToLoginText}>{t('resetPassword.backToLogin')}</Text>
+              <Text style={styles.backToLoginText}>
+                {tSafe('resetPassword.backToLogin', 'Back to Login')}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -367,7 +433,7 @@ const styles = StyleSheet.create({
   },
   loadingTitle: {
     fontSize: 20,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     color: UI.text,
     textAlign: 'center',
     marginBottom: 8,
@@ -375,7 +441,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     color: UI.text2,
-    fontWeight: '700' as const,
+    fontWeight: '700',
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -407,7 +473,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     color: UI.text,
   },
 
@@ -432,7 +498,7 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontSize: 22,
-    fontWeight: '900' as const,
+    fontWeight: '900',
     color: UI.text,
     textAlign: 'center',
     marginBottom: 6,
@@ -441,7 +507,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: UI.text2,
     textAlign: 'center',
-    fontWeight: '700' as const,
+    fontWeight: '700',
     lineHeight: 20,
   },
 
@@ -457,7 +523,7 @@ const styles = StyleSheet.create({
   inputGroup: { marginBottom: 14 },
   label: {
     fontSize: 13,
-    fontWeight: '800' as const,
+    fontWeight: '800',
     color: UI.text,
     marginBottom: 8,
   },
@@ -471,6 +537,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     minHeight: 54,
   },
+  inputWrapRTL: {
+    flexDirection: 'row-reverse',
+  },
   inputIconBox: {
     width: 34,
     height: 34,
@@ -480,12 +549,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
+  inputIconBoxRTL: {
+    marginRight: 0,
+    marginLeft: 10,
+  },
   input: {
     flex: 1,
     paddingVertical: 12,
     fontSize: 16,
     color: UI.text,
-    fontWeight: '700' as const,
+    fontWeight: '700',
+  },
+  inputRTL: {
+    textAlign: 'right',
   },
 
   resetButton: {
@@ -502,7 +578,7 @@ const styles = StyleSheet.create({
   resetButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900' as const,
+    fontWeight: '900',
   },
 
   backToLoginButton: {
@@ -513,7 +589,11 @@ const styles = StyleSheet.create({
   backToLoginText: {
     color: UI.blue,
     fontSize: 14,
-    fontWeight: '900' as const,
-    textDecorationLine: 'underline' as const,
+    fontWeight: '900',
+    textDecorationLine: 'underline',
+  },
+
+  textRTL: {
+    textAlign: 'right',
   },
 });
