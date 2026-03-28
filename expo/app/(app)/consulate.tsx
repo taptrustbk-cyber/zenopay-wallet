@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   StyleSheet,
   View,
@@ -152,33 +152,22 @@ const CAPITAL_TRANSLATIONS: Record<string, Record<string, string>> = {
   Amsterdam: { en: 'Amsterdam', ar: 'أمستردام', ckb: 'ئەمستەردام', kmr: 'ئەمستەردام' },
 };
 
-function isRenderableText(value: unknown) {
-  return typeof value === 'string' || typeof value === 'number';
-}
-
 function tSafe(key: string, fallback: string) {
   try {
-    const translated = i18n.t(key);
+    const value = i18n.t(key as any);
 
-    if (!isRenderableText(translated)) {
-      return fallback;
-    }
-
-    const str = String(translated).trim();
-
-    if (!str) return fallback;
-    if (str === key) return fallback;
-
-    const lower = str.toLowerCase();
     if (
-      lower.includes('[missing') ||
-      lower.includes('missing translation') ||
-      lower.includes('" translation')
+      value === null ||
+      value === undefined ||
+      typeof value === 'object' ||
+      String(value).trim() === '' ||
+      String(value) === key ||
+      String(value).includes('[missing')
     ) {
       return fallback;
     }
 
-    return str;
+    return String(value);
   } catch {
     return fallback;
   }
@@ -198,13 +187,26 @@ export default function ConsulateScreen() {
   const router = useRouter();
   const currentLang = getCurrentLanguage?.() || 'en';
 
-  const groupedByCity = useMemo(() => {
-    return CONSULATES.reduce((acc, consulate) => {
-      if (!acc[consulate.city]) acc[consulate.city] = [];
-      acc[consulate.city].push(consulate);
-      return acc;
-    }, {} as Record<string, Consulate[]>);
-  }, []);
+  const groupedByCity = CONSULATES.reduce((acc, consulate) => {
+    if (!acc[consulate.city]) acc[consulate.city] = [];
+    acc[consulate.city].push(consulate);
+    return acc;
+  }, {} as Record<string, Consulate[]>);
+
+  const titleText = tSafe('consulateInfo.title', 'Consulate Info');
+  const cityText = tSafe('consulateInfo.city', 'City');
+  const capitalText = tSafe('consulateInfo.capital', 'Capital');
+  const addressText = tSafe('consulateInfo.address', 'Address');
+  const contactText = tSafe('consulateInfo.contact', 'Contact');
+  const consulateText = tSafe('consulateInfo.consulate', 'Consulate');
+  const directoryTitleText = tSafe(
+    'consulateInfo.directoryTitle',
+    'Embassy & Consulate Directory'
+  );
+  const directorySubtitleText = tSafe(
+    'consulateInfo.directorySubtitle',
+    'Find quick contact details, capital city, and address information for consulates available in Iraq.'
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -221,11 +223,9 @@ export default function ConsulateScreen() {
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>
-            {tSafe('consulateInfo.title', 'Consulate Info')}
-          </Text>
+          <Text style={styles.headerTitle}>{titleText}</Text>
           <Text style={styles.headerSubtitle}>
-            {tSafe('consulateInfo.city', 'City')} & {tSafe('consulateInfo.capital', 'Capital')}
+            {cityText} & {capitalText}
           </Text>
         </View>
 
@@ -239,21 +239,12 @@ export default function ConsulateScreen() {
         <View style={styles.heroCard}>
           <View style={styles.heroBadge}>
             <Ionicons name="business-outline" size={18} color={UI.blueDark} />
-            <Text style={styles.heroBadgeText}>
-              {tSafe('consulateInfo.title', 'Consulate Info')}
-            </Text>
+            <Text style={styles.heroBadgeText}>{titleText}</Text>
           </View>
 
-          <Text style={styles.heroTitle}>
-            {tSafe('consulateInfo.directoryTitle', 'Embassy & Consulate Directory')}
-          </Text>
+          <Text style={styles.heroTitle}>{directoryTitleText}</Text>
 
-          <Text style={styles.heroText}>
-            {tSafe(
-              'consulateInfo.directorySubtitle',
-              'Find quick contact details, capital city, and address information for consulates available in Iraq.'
-            )}
-          </Text>
+          <Text style={styles.heroText}>{directorySubtitleText}</Text>
         </View>
 
         {Object.entries(groupedByCity).map(([city, cityConsulates]) => (
@@ -309,7 +300,7 @@ export default function ConsulateScreen() {
 
                     <View style={styles.cardContent}>
                       <Text style={styles.cardTitle}>
-                        {localizedCountry} {tSafe('consulateInfo.consulate', 'Consulate')}
+                        {localizedCountry} {consulateText}
                       </Text>
 
                       <View style={styles.infoCard}>
@@ -318,9 +309,7 @@ export default function ConsulateScreen() {
                             <Ionicons name="location-outline" size={15} color={UI.blueDark} />
                           </View>
                           <View style={styles.infoTextWrap}>
-                            <Text style={styles.infoLabel}>
-                              {tSafe('consulateInfo.city', 'City')}
-                            </Text>
+                            <Text style={styles.infoLabel}>{cityText}</Text>
                             <Text style={styles.infoValue}>{localizedCity}</Text>
                           </View>
                         </View>
@@ -332,9 +321,7 @@ export default function ConsulateScreen() {
                             <Ionicons name="flag-outline" size={15} color={UI.blueDark} />
                           </View>
                           <View style={styles.infoTextWrap}>
-                            <Text style={styles.infoLabel}>
-                              {tSafe('consulateInfo.capital', 'Capital')}
-                            </Text>
+                            <Text style={styles.infoLabel}>{capitalText}</Text>
                             <Text style={styles.infoValue}>{localizedCapital}</Text>
                           </View>
                         </View>
@@ -346,9 +333,7 @@ export default function ConsulateScreen() {
                             <Ionicons name="navigate-outline" size={15} color={UI.blueDark} />
                           </View>
                           <View style={styles.infoTextWrap}>
-                            <Text style={styles.infoLabel}>
-                              {tSafe('consulateInfo.address', 'Address')}
-                            </Text>
+                            <Text style={styles.infoLabel}>{addressText}</Text>
                             <Text style={styles.infoValueAddress}>{consulate.address}</Text>
                           </View>
                         </View>
@@ -360,9 +345,7 @@ export default function ConsulateScreen() {
                             <Ionicons name="call-outline" size={15} color={UI.blueDark} />
                           </View>
                           <View style={styles.infoTextWrap}>
-                            <Text style={styles.infoLabel}>
-                              {tSafe('consulateInfo.contact', 'Contact')}
-                            </Text>
+                            <Text style={styles.infoLabel}>{contactText}</Text>
                             <Text style={styles.infoValuePhone}>{consulate.contact}</Text>
                           </View>
                         </View>
