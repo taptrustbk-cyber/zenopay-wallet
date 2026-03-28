@@ -49,13 +49,38 @@ const SHADOWS = {
   },
 };
 
+function tSafe(key: string, fallback: string) {
+  try {
+    const value = i18n.t(key as any);
+
+    if (
+      value === null ||
+      value === undefined ||
+      typeof value === 'object' ||
+      String(value).trim() === '' ||
+      String(value) === key ||
+      String(value).includes('[missing')
+    ) {
+      return fallback;
+    }
+
+    return String(value);
+  } catch {
+    return fallback;
+  }
+}
+
 function ErrorFallback({ error, resetErrorBoundary }: any) {
   return (
     <View style={styles.errorContainer}>
-      <Text style={styles.errorTitle}>Something went wrong</Text>
-      <Text style={styles.errorMessage}>{error?.message || 'Unknown error'}</Text>
+      <Text style={styles.errorTitle}>
+        {tSafe('common.somethingWentWrong', 'Something went wrong')}
+      </Text>
+      <Text style={styles.errorMessage}>
+        {error?.message || tSafe('common.error', 'Unknown error')}
+      </Text>
       <TouchableOpacity style={styles.retryButton} onPress={resetErrorBoundary}>
-        <Text style={styles.retryText}>Try again</Text>
+        <Text style={styles.retryText}>{tSafe('common.retry', 'Try again')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -71,23 +96,38 @@ function KycPendingScreen() {
           <Ionicons name="shield-checkmark-outline" size={64} color={UI.warning} />
         </View>
 
-        <Text style={styles.kycTitle}>{i18n.t('kycVerificationRequired')}</Text>
-        <Text style={styles.kycSubtitle}>{i18n.t('kycPendingMessage')}</Text>
+        <Text style={styles.kycTitle}>
+          {tSafe('kyc.pendingAdminReview', 'Pending Admin Review')}
+        </Text>
+        <Text style={styles.kycSubtitle}>
+          {tSafe('kyc.accountUnderReview', 'Your account is currently under review.')}
+        </Text>
 
         <View style={styles.kycInfoBox}>
           <Ionicons name="time-outline" size={20} color={UI.text3} style={styles.kycInfoIcon} />
           <View style={styles.kycInfoContent}>
-            <Text style={styles.kycInfoTitle}>{i18n.t('whatsNext')}</Text>
-            <Text style={styles.kycInfoText}>{i18n.t('kycNextSteps')}</Text>
+            <Text style={styles.kycInfoTitle}>
+              {tSafe('kyc.emailNotification', 'Email Notification')}
+            </Text>
+            <Text style={styles.kycInfoText}>
+              {tSafe(
+                'kyc.emailNotificationDesc',
+                'We will notify you by email once your account review is complete.'
+              )}
+            </Text>
           </View>
         </View>
 
         <View style={styles.kycSecurityNote}>
-          <Text style={styles.kycSecurityText}>{i18n.t('documentsSecure')}</Text>
+          <Text style={styles.kycSecurityText}>
+            {tSafe('kyc.infoSecure', 'Your information is secure and protected.')}
+          </Text>
         </View>
 
         <TouchableOpacity style={styles.kycSignOutButton} onPress={signOut}>
-          <Text style={styles.kycSignOutText}>{i18n.t('signOut')}</Text>
+          <Text style={styles.kycSignOutText}>
+            {tSafe('auth.signOut', 'Sign Out')}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -102,38 +142,31 @@ function MainBottomNav() {
   const tabs = [
     {
       key: 'dashboard',
-      label: i18n.t('home'),
+      label: tSafe('home', 'Home'),
       icon: 'home' as const,
-      path: '/(app)/dashboard',
-      active:
-        pathname === '/(app)/dashboard' ||
-        pathname === '/dashboard',
+      path: '/dashboard',
+      active: pathname === '/(app)/dashboard' || pathname === '/dashboard',
     },
     {
-      key: 'Cards',
-      label: i18n.t('Cards'),
+      key: 'cards',
+      label: tSafe('cards.title', 'Cards'),
       icon: 'card' as const,
       path: '/Cards',
-      active:
-         pathname === '/Cards',
+      active: pathname === '/Cards' || pathname === '/(app)/Cards',
     },
     {
       key: 'consulate',
-      label: i18n.t('consulateInfo'),
+      label: tSafe('consulateInfo.title', 'Consulate Info'),
       icon: 'chatbox' as const,
-      path: '/(app)/consulate',
-      active:
-        pathname === '/(app)/consulate' ||
-        pathname === '/consulate',
+      path: '/consulate',
+      active: pathname === '/(app)/consulate' || pathname === '/consulate',
     },
     {
       key: 'settings',
-      label: i18n.t('settings'),
+      label: tSafe('settings', 'Settings'),
       icon: 'settings' as const,
-      path: '/(app)/settings',
-      active:
-        pathname === '/(app)/settings' ||
-        pathname === '/settings',
+      path: '/settings',
+      active: pathname === '/(app)/settings' || pathname === '/settings',
     },
   ];
 
@@ -176,11 +209,15 @@ export default function AppLayout() {
   const pathname = usePathname();
 
   const mainNavPaths = [
-  '/dashboard',
-  '/Cards',
-  '/consulate',
-  '/settings',
-];
+    '/dashboard',
+    '/Cards',
+    '/consulate',
+    '/settings',
+    '/(app)/dashboard',
+    '/(app)/Cards',
+    '/(app)/consulate',
+    '/(app)/settings',
+  ];
 
   const showMainBottomNav = mainNavPaths.includes(pathname);
 
@@ -221,38 +258,46 @@ export default function AppLayout() {
             <Stack.Screen name="dashboard" options={{ headerShown: false }} />
             <Stack.Screen name="Cards" options={{ headerShown: false }} />
             <Stack.Screen name="settings" options={{ headerShown: false }} />
+
             <Stack.Screen
               name="consulate"
               options={({ navigation }) => ({
-                title: i18n.t('consulateInfo'),
+                title: tSafe('consulateInfo.title', 'Consulate Info'),
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard')}
+                    onPress={() => navigation.navigate('dashboard' as never)}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
                     <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{i18n.t('back')}</Text>
+                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
                   </TouchableOpacity>
                 ),
               })}
             />
 
-            <Stack.Screen name="profile" options={{ title: 'Profile' }} />
-            <Stack.Screen name="kyc" options={{ title: 'KYC Verification' }} />
+            <Stack.Screen
+              name="profile"
+              options={{ title: tSafe('profile.title', 'Profile') }}
+            />
+
+            <Stack.Screen
+              name="kyc"
+              options={{ title: tSafe('kyc.kycDocuments', 'KYC Verification') }}
+            />
 
             <Stack.Screen
               name="send"
               options={({ navigation }) => ({
-                title: i18n.t('sendMoney'),
+                title: tSafe('sendMoney', 'Send Money'),
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard')}
+                    onPress={() => navigation.navigate('dashboard' as never)}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
                     <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{i18n.t('back')}</Text>
+                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
                   </TouchableOpacity>
                 ),
               })}
@@ -261,40 +306,47 @@ export default function AppLayout() {
             <Stack.Screen
               name="receive"
               options={({ navigation }) => ({
-                title: i18n.t('deposit'),
+                title: tSafe('deposit.depositMoney', 'Deposit'),
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard')}
+                    onPress={() => navigation.navigate('dashboard' as never)}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
                     <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{i18n.t('back')}</Text>
+                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
                   </TouchableOpacity>
                 ),
               })}
             />
 
-            <Stack.Screen name="transactions" options={{ title: 'Transactions' }} />
+            <Stack.Screen
+              name="transactions"
+              options={{ title: tSafe('transactions.title', 'Transactions') }}
+            />
 
             <Stack.Screen
               name="withdraw"
               options={({ navigation }) => ({
-                title: i18n.t('withdraw'),
+                title: tSafe('withdraw', 'Withdraw'),
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard')}
+                    onPress={() => navigation.navigate('dashboard' as never)}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
                     <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{i18n.t('back')}</Text>
+                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
                   </TouchableOpacity>
                 ),
               })}
             />
 
-            <Stack.Screen name="admin" options={{ title: 'Admin Panel' }} />
+            <Stack.Screen
+              name="admin"
+              options={{ title: tSafe('adminPanel', 'Admin Panel') }}
+            />
+
             <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
             <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
             <Stack.Screen name="security" options={{ headerShown: false }} />
@@ -302,16 +354,16 @@ export default function AppLayout() {
             <Stack.Screen
               name="sim-cards"
               options={({ navigation }) => ({
-                title: i18n.t('simCards'),
+                title: tSafe('simCards.pageTitle', 'Buy Mobile Cards'),
                 headerShown: true,
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard')}
+                    onPress={() => navigation.navigate('dashboard' as never)}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
                     <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{i18n.t('back')}</Text>
+                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
                   </TouchableOpacity>
                 ),
               })}
@@ -320,16 +372,16 @@ export default function AppLayout() {
             <Stack.Screen
               name="gift-cards"
               options={({ navigation }) => ({
-                title: i18n.t('giftCards'),
+                title: tSafe('giftCards.pageTitle', 'Online Gift Cards'),
                 headerShown: true,
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard')}
+                    onPress={() => navigation.navigate('dashboard' as never)}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
                     <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{i18n.t('back')}</Text>
+                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
                   </TouchableOpacity>
                 ),
               })}
@@ -338,16 +390,16 @@ export default function AppLayout() {
             <Stack.Screen
               name="mobile-shop"
               options={({ navigation }) => ({
-                title: i18n.t('mobileShop'),
+                title: tSafe('zenopayMobileShop', 'Zenopay Mobile Shop'),
                 headerShown: true,
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard')}
+                    onPress={() => navigation.navigate('dashboard' as never)}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
                     <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{i18n.t('back')}</Text>
+                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
                   </TouchableOpacity>
                 ),
               })}
@@ -356,16 +408,16 @@ export default function AppLayout() {
             <Stack.Screen
               name="travel-booking"
               options={({ navigation }) => ({
-                title: i18n.t('travelBooking'),
+                title: tSafe('travelBooking', 'Travel Booking'),
                 headerShown: true,
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard')}
+                    onPress={() => navigation.navigate('dashboard' as never)}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
                     <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{i18n.t('back')}</Text>
+                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
                   </TouchableOpacity>
                 ),
               })}
@@ -456,6 +508,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: UI.danger,
     marginBottom: 16,
+    textAlign: 'center',
   },
   errorMessage: {
     fontSize: 16,
