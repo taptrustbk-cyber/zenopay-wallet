@@ -11,6 +11,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  I18nManager,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Stack } from 'expo-router';
@@ -100,88 +101,27 @@ const SHADOWS = {
   },
 };
 
-function getCurrentLang() {
-  const raw = String((i18n as any)?.language || (i18n as any)?.locale || 'en').toLowerCase();
-  if (raw.startsWith('ar')) return 'ar';
-  if (raw.startsWith('ckb')) return 'ckb';
-  if (raw.startsWith('ku') || raw.startsWith('kmr')) return 'kmr';
-  return 'en';
-}
+function tSafe(key: string, fallback: string) {
+  try {
+    const value = i18n.t(key as any);
+    if (!value) return fallback;
 
-const TEXTS = {
-  en: {
-    pageTitle: 'Buy Mobile Cards',
-    heroTitle: 'Choose mobile cards',
-    heroSub: 'Open a provider and choose an available card easily.',
-    search: 'Search by provider or card',
-    noProviders: 'No providers available',
-    noProvidersSub: 'No active mobile cards found in Supabase.',
-    providers: 'Providers',
-    cardsCount: 'cards',
-    chooseProvider: 'Choose a provider to see available cards',
-    selectedProvider: 'Selected provider',
-    availableCards: 'Available cards',
-    amount: 'Amount',
-    price: 'Price',
-    buyNow: 'Buy now',
-    backToProviders: 'Back to providers',
-  },
-  ar: {
-    pageTitle: 'شراء بطاقات الموبايل',
-    heroTitle: 'اختر بطاقات الموبايل',
-    heroSub: 'افتح مزود الخدمة واختر البطاقة المتوفرة بسهولة.',
-    search: 'ابحث باسم الشركة أو البطاقة',
-    noProviders: 'لا يوجد مزودون متوفرون',
-    noProvidersSub: 'لا توجد بطاقات موبايل مفعلة في Supabase.',
-    providers: 'الشركات',
-    cardsCount: 'بطاقات',
-    chooseProvider: 'اختر شركة لعرض البطاقات المتوفرة',
-    selectedProvider: 'الشركة المحددة',
-    availableCards: 'البطاقات المتوفرة',
-    amount: 'القيمة',
-    price: 'السعر',
-    buyNow: 'اشتر الآن',
-    backToProviders: 'العودة للشركات',
-  },
-  ckb: {
-    pageTitle: 'کرینا کارتێن مۆبایل',
-    heroTitle: 'کارتێن مۆبایل هەڵبژێرە',
-    heroSub: 'تۆڕێک هەڵبژێرە و کارتێکا بەردەست بکڕە.',
-    search: 'لەگەڕێ بە ناوی تۆڕ یان کارت',
-    noProviders: 'هیچ تۆڕێک بەردەست نییە',
-    noProvidersSub: 'هیچ کارتێکی مۆبایلێکی چالاک لە Supabase نەدۆزرایەوە.',
-    providers: 'تۆڕەکان',
-    cardsCount: 'کارت',
-    chooseProvider: 'تۆڕێک هەڵبژێرە بۆ بینینی کارتە بەردەستەکان',
-    selectedProvider: 'تۆڕی هەڵبژێردراو',
-    availableCards: 'کارتە بەردەستەکان',
-    amount: 'بڕ',
-    price: 'نرخ',
-    buyNow: 'ئێستا بکڕە',
-    backToProviders: 'گەڕانەوە بۆ تۆڕەکان',
-  },
-  kmr: {
-    pageTitle: 'کرینا کارتێن موبایل',
-    heroTitle: 'کارتێن موبایل هەلبژێرە',
-    heroSub: 'تورەکێ هەلبژێرە و کارتێکا بەردەست بکرە.',
-    search: 'لێگەڕێ ب ناڤێ تورێ یان کارتێ',
-    noProviders: 'هیچ تورەک بەردەست نینە',
-    noProvidersSub: 'هیچ کارتێن موبایلێن چالاک ل Supabase نەهاتیە دیتن.',
-    providers: 'تور',
-    cardsCount: 'کارت',
-    chooseProvider: 'تورەکێ هەلبژێرە بۆ دیتنا کارتێن بەردەست',
-    selectedProvider: 'تورا هەلبژێردی',
-    availableCards: 'کارتێن بەردەست',
-    amount: 'بڕ',
-    price: 'نرخ',
-    buyNow: 'ئێستا بکرە',
-    backToProviders: 'ڤەگەڕان بۆ توران',
-  },
-} as const;
+    const text = String(value);
+    const lower = text.toLowerCase();
 
-function useT() {
-  const lang = getCurrentLang() as keyof typeof TEXTS;
-  return TEXTS[lang] || TEXTS.en;
+    if (
+      text === key ||
+      lower.includes('missing translation') ||
+      lower.includes('missing "') ||
+      text.includes(`"${key}"`)
+    ) {
+      return fallback;
+    }
+
+    return text;
+  } catch {
+    return fallback;
+  }
 }
 
 function normalizeProvider(value?: string | null) {
@@ -195,7 +135,7 @@ function normalizeProvider(value?: string | null) {
 
 function prettyProviderName(value?: string | null) {
   const raw = String(value || '').trim();
-  if (!raw) return 'Provider';
+  if (!raw) return tSafe('simCards.providerFallback', 'Provider');
 
   if (normalizeProvider(raw) === 'asiacell') return 'AsiaCell';
   if (normalizeProvider(raw) === 'ftth') return 'FTTH';
@@ -216,6 +156,13 @@ function formatAmountPlain(value?: number | null) {
   const num = Number(value || 0);
   const rounded = Math.round(num);
   return rounded.toString();
+}
+
+function getCurrencyLabel() {
+  const lang = String(i18n.language || '').toLowerCase();
+  return ['ar', 'ckb', 'cbk', 'kmr', 'ku'].includes(lang)
+    ? tSafe('iqdShort', 'د.غ')
+    : tSafe('iqdShort', 'IQD');
 }
 
 function pickProviderTheme(key?: string | null) {
@@ -259,7 +206,7 @@ function getItemTitle(row: SimCardRow, providerMeta?: ProviderCard | null) {
     return `${formatIQD(amount)}`;
   }
 
-  return providerMeta?.title || 'Mobile Card';
+  return providerMeta?.title || tSafe('simCards.mobileCardFallback', 'Mobile Card');
 }
 
 function getAmountLabel(row: SimCardRow) {
@@ -275,7 +222,7 @@ function getCardImage(row: SimCardRow) {
 export default function SimCardsScreen() {
   useTheme();
   const router = useRouter();
-  const t = useT();
+  const isRTL = I18nManager.isRTL;
 
   const [providersRows, setProvidersRows] = useState<TopupProviderRow[]>([]);
   const [simCards, setSimCards] = useState<SimCardRow[]>([]);
@@ -323,8 +270,8 @@ export default function SimCardsScreen() {
     } catch (error: any) {
       console.log('sim-cards screen error:', error);
       Alert.alert(
-        i18n.t('common.error') || 'Error',
-        error?.message || 'Could not load mobile cards.'
+        tSafe('common.error', 'Error'),
+        error?.message || tSafe('simCards.loadFailed', 'Could not load mobile cards.')
       );
       setProvidersRows([]);
       setSimCards([]);
@@ -375,7 +322,9 @@ export default function SimCardsScreen() {
       const providerTitle = prettyProviderName(
         providerRow?.title || row.provider_title || row.provider
       );
-      const providerSubtitle = String(providerRow?.subtitle || 'Mobile Cards');
+      const providerSubtitle = String(
+        providerRow?.subtitle || tSafe('simCards.providerSubtitleDefault', 'Mobile Cards')
+      );
 
       const currentSortOrder = Number(providerRow?.sort_order ?? row.sort_order ?? 0);
 
@@ -515,11 +464,15 @@ export default function SimCardsScreen() {
           activeOpacity={0.9}
           style={styles.iconButton}
         >
-          <Ionicons name="arrow-back" size={22} color={UI.blueDark} />
+          <Ionicons
+            name={isRTL ? 'arrow-forward' : 'arrow-back'}
+            size={22}
+            color={UI.blueDark}
+          />
         </TouchableOpacity>
 
         <Text numberOfLines={1} style={styles.headerTitle}>
-          {selectedMeta?.title || t.pageTitle}
+          {selectedMeta?.title || tSafe('simCards.pageTitle', 'Buy Mobile Cards')}
         </Text>
 
         <TouchableOpacity
@@ -535,16 +488,25 @@ export default function SimCardsScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={UI.blue} colors={[UI.blue]} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={UI.blue}
+            colors={[UI.blue]}
+          />
+        }
       >
         <View style={styles.heroCard}>
           <View style={styles.heroGlowOne} />
           <View style={styles.heroGlowTwo} />
           <Text style={styles.heroTitle}>
-            {selectedMeta ? selectedMeta.title : t.heroTitle}
+            {selectedMeta?.title || tSafe('simCards.heroTitle', 'Choose mobile cards')}
           </Text>
           <Text style={styles.heroSubtitle}>
-            {selectedMeta ? `${t.selectedProvider}: ${selectedMeta.title}` : t.chooseProvider}
+            {selectedMeta
+              ? `${tSafe('simCards.selectedProvider', 'Selected provider')}: ${selectedMeta.title}`
+              : tSafe('simCards.chooseProvider', 'Choose a provider to see available cards')}
           </Text>
         </View>
 
@@ -553,9 +515,10 @@ export default function SimCardsScreen() {
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder={t.search}
+            placeholder={tSafe('simCards.search', 'Search by provider or card')}
             placeholderTextColor={UI.text3}
             style={styles.searchInput}
+            textAlign={isRTL ? 'right' : 'left'}
           />
           {!!search && (
             <TouchableOpacity onPress={() => setSearch('')}>
@@ -572,13 +535,19 @@ export default function SimCardsScreen() {
           filteredProviders.length === 0 ? (
             <View style={styles.emptyCard}>
               <Ionicons name="card-outline" size={36} color={UI.blue} />
-              <Text style={styles.emptyTitle}>{t.noProviders}</Text>
-              <Text style={styles.emptyText}>{t.noProvidersSub}</Text>
+              <Text style={styles.emptyTitle}>
+                {tSafe('simCards.noProviders', 'No providers available')}
+              </Text>
+              <Text style={styles.emptyText}>
+                {tSafe('simCards.noProvidersSub', 'No active mobile cards found in Supabase.')}
+              </Text>
             </View>
           ) : (
             <>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t.providers}</Text>
+                <Text style={styles.sectionTitle}>
+                  {tSafe('simCards.providers', 'Providers')}
+                </Text>
               </View>
 
               <View style={styles.providersGrid}>
@@ -639,7 +608,8 @@ export default function SimCardsScreen() {
                           {provider.title}
                         </Text>
                         <Text style={styles.providerCount}>
-                          {Number(provider.count || 0)} {t.cardsCount}
+                          {Number(provider.count || 0)}{' '}
+                          {tSafe('simCards.cardsCount', 'cards')}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -651,8 +621,12 @@ export default function SimCardsScreen() {
         ) : filteredItems.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="card-outline" size={36} color={UI.blue} />
-            <Text style={styles.emptyTitle}>{t.noProviders}</Text>
-            <Text style={styles.emptyText}>{t.noProvidersSub}</Text>
+            <Text style={styles.emptyTitle}>
+              {tSafe('simCards.noProviders', 'No providers available')}
+            </Text>
+            <Text style={styles.emptyText}>
+              {tSafe('simCards.noProvidersSub', 'No active mobile cards found in Supabase.')}
+            </Text>
 
             <TouchableOpacity
               activeOpacity={0.92}
@@ -662,13 +636,17 @@ export default function SimCardsScreen() {
                 setSearch('');
               }}
             >
-              <Text style={styles.backToProvidersButtonText}>{t.backToProviders}</Text>
+              <Text style={styles.backToProvidersButtonText}>
+                {tSafe('simCards.backToProviders', 'Back to providers')}
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (
           <>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t.availableCards}</Text>
+              <Text style={styles.sectionTitle}>
+                {tSafe('simCards.availableCards', 'Available cards')}
+              </Text>
 
               <TouchableOpacity
                 onPress={() => {
@@ -679,7 +657,9 @@ export default function SimCardsScreen() {
                 style={styles.backProvidersMini}
               >
                 <Ionicons name="grid-outline" size={14} color={UI.blueDark} />
-                <Text style={styles.backProvidersMiniText}>{t.providers}</Text>
+                <Text style={styles.backProvidersMiniText}>
+                  {tSafe('simCards.providers', 'Providers')}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -746,7 +726,7 @@ export default function SimCardsScreen() {
 
                       {!!amountLabel && (
                         <Text style={styles.cardAmountText}>
-                          {t.amount}: {amountLabel}
+                          {tSafe('simCards.amount', 'Amount')}: {amountLabel}
                         </Text>
                       )}
 
@@ -759,12 +739,14 @@ export default function SimCardsScreen() {
 
                     <View style={styles.cardRight}>
                       <Text style={styles.cardPriceValue}>
-                        {formatIQD(item.price_iqd)} IQD
+                        {formatIQD(item.price_iqd)} {getCurrencyLabel()}
                       </Text>
 
                       <View style={styles.buyMiniButton}>
                         <Ionicons name="cart-outline" size={14} color="#FFFFFF" />
-                        <Text style={styles.buyMiniButtonText}>{t.buyNow}</Text>
+                        <Text style={styles.buyMiniButtonText}>
+                          {tSafe('simCards.buyNow', 'Buy now')}
+                        </Text>
                       </View>
                     </View>
                   </TouchableOpacity>
