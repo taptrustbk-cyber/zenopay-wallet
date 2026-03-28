@@ -56,6 +56,29 @@ const SHADOWS = {
   },
 };
 
+function tSafe(key: string, fallback: string) {
+  try {
+    const value = i18n.t(key as any);
+    if (!value) return fallback;
+
+    const text = String(value);
+    const lower = text.toLowerCase();
+
+    if (
+      text === key ||
+      lower.includes('missing translation') ||
+      lower.includes('missing "') ||
+      text.includes(`"${key}"`)
+    ) {
+      return fallback;
+    }
+
+    return text;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function SecurityScreen() {
   const router = useRouter();
 
@@ -71,78 +94,113 @@ export default function SecurityScreen() {
   const { signOut } = useAuth();
 
   const handleDeleteAccount = async () => {
-    Alert.alert(i18n.t('deleteAccountWarning'), i18n.t('deleteAccountConfirm'), [
-      { text: i18n.t('cancel'), style: 'cancel' },
-      {
-        text: i18n.t('deleteAccountButton'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            setLoading(true);
-
-            const {
-              data: { session },
-            } = await supabase.auth.getSession();
-            const token = session?.access_token;
-
-            if (!token) {
-              Alert.alert(i18n.t('error'), 'Not authenticated');
-              return;
-            }
-
-            const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-            const res = await fetch(`${supabaseUrl}/functions/v1/delete-account`, {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-            });
-
-            if (!res.ok) {
-              const errorText = await res.text();
-              console.error('Delete account error:', errorText);
-              Alert.alert(i18n.t('error'), i18n.t('accountDeleteError'));
-              return;
-            }
-
-            Alert.alert(i18n.t('success'), i18n.t('accountDeleted'), [
-              {
-                text: 'OK',
-                onPress: async () => {
-                  await signOut();
-                },
-              },
-            ]);
-          } catch (error: any) {
-            console.error('Error deleting account:', error);
-            Alert.alert(i18n.t('error'), error.message || i18n.t('accountDeleteError'));
-          } finally {
-            setLoading(false);
-          }
+    Alert.alert(
+      tSafe('securityPage.deleteAccountWarning', 'Delete Account Warning'),
+      tSafe(
+        'securityPage.deleteAccountConfirm',
+        'Are you sure you want to delete your account? This action cannot be undone.'
+      ),
+      [
+        {
+          text: tSafe('cancel', 'Cancel'),
+          style: 'cancel',
         },
-      },
-    ]);
+        {
+          text: tSafe('securityPage.deleteAccountButton', 'Delete Account'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
+              const token = session?.access_token;
+
+              if (!token) {
+                Alert.alert(
+                  tSafe('error', 'Error'),
+                  tSafe('securityPage.notAuthenticated', 'Not authenticated')
+                );
+                return;
+              }
+
+              const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+              const res = await fetch(`${supabaseUrl}/functions/v1/delete-account`, {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+              });
+
+              if (!res.ok) {
+                const errorText = await res.text();
+                console.error('Delete account error:', errorText);
+                Alert.alert(
+                  tSafe('error', 'Error'),
+                  tSafe('securityPage.accountDeleteError', 'Failed to delete account')
+                );
+                return;
+              }
+
+              Alert.alert(
+                tSafe('success', 'Success'),
+                tSafe('securityPage.accountDeleted', 'Your account has been deleted'),
+                [
+                  {
+                    text: tSafe('ok', 'OK'),
+                    onPress: async () => {
+                      await signOut();
+                    },
+                  },
+                ]
+              );
+            } catch (error: any) {
+              console.error('Error deleting account:', error);
+              Alert.alert(
+                tSafe('error', 'Error'),
+                error?.message || tSafe('securityPage.accountDeleteError', 'Failed to delete account')
+              );
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleResetPassword = async () => {
     if (!currentPassword.trim()) {
-      Alert.alert(i18n.t('error'), i18n.t('enterCurrentPassword'));
+      Alert.alert(
+        tSafe('error', 'Error'),
+        tSafe('securityPage.enterCurrentPassword', 'Enter current password')
+      );
       return;
     }
 
     if (!newPassword.trim()) {
-      Alert.alert(i18n.t('error'), i18n.t('enterNewPassword'));
+      Alert.alert(
+        tSafe('error', 'Error'),
+        tSafe('securityPage.enterNewPassword', 'Enter new password')
+      );
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert(i18n.t('error'), i18n.t('passwordTooShort'));
+      Alert.alert(
+        tSafe('error', 'Error'),
+        tSafe('securityPage.passwordTooShort', 'Password must be at least 6 characters')
+      );
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert(i18n.t('error'), i18n.t('passwordsDoNotMatch'));
+      Alert.alert(
+        tSafe('error', 'Error'),
+        tSafe('securityPage.passwordsDoNotMatch', 'Passwords do not match')
+      );
       return;
     }
 
@@ -154,7 +212,10 @@ export default function SecurityScreen() {
       } = await supabase.auth.getUser();
 
       if (!user?.email) {
-        Alert.alert(i18n.t('error'), i18n.t('userNotFound'));
+        Alert.alert(
+          tSafe('error', 'Error'),
+          tSafe('securityPage.userNotFound', 'User not found')
+        );
         return;
       }
 
@@ -164,7 +225,10 @@ export default function SecurityScreen() {
       });
 
       if (signInError) {
-        Alert.alert(i18n.t('error'), i18n.t('currentPasswordIncorrect'));
+        Alert.alert(
+          tSafe('error', 'Error'),
+          tSafe('securityPage.currentPasswordIncorrect', 'Current password is incorrect')
+        );
         return;
       }
 
@@ -174,20 +238,27 @@ export default function SecurityScreen() {
 
       if (updateError) throw updateError;
 
-      Alert.alert(i18n.t('success'), i18n.t('passwordResetSuccess'), [
-        {
-          text: 'OK',
-          onPress: () => {
-            setCurrentPassword('');
-            setNewPassword('');
-            setConfirmPassword('');
-            router.back();
+      Alert.alert(
+        tSafe('success', 'Success'),
+        tSafe('securityPage.passwordResetSuccess', 'Password changed successfully'),
+        [
+          {
+            text: tSafe('ok', 'OK'),
+            onPress: () => {
+              setCurrentPassword('');
+              setNewPassword('');
+              setConfirmPassword('');
+              router.back();
+            },
           },
-        },
-      ]);
+        ]
+      );
     } catch (error: any) {
       console.error('Error changing password:', error);
-      Alert.alert(i18n.t('error'), error.message || i18n.t('passwordChangeError'));
+      Alert.alert(
+        tSafe('error', 'Error'),
+        error?.message || tSafe('securityPage.passwordChangeError', 'Failed to change password')
+      );
     } finally {
       setLoading(false);
     }
@@ -200,7 +271,7 @@ export default function SecurityScreen() {
           <Ionicons name="arrow-back" size={22} color={UI.blueDark} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>{i18n.t('security')}</Text>
+        <Text style={styles.headerTitle}>{tSafe('security', 'Security')}</Text>
 
         <View style={styles.headerGhost} />
       </View>
@@ -218,17 +289,22 @@ export default function SecurityScreen() {
             <Ionicons name="lock-closed" size={30} color={UI.blue} />
           </View>
 
-          <Text style={styles.mainTitle}>{i18n.t('resetPassword')}</Text>
-          <Text style={styles.subTitle}>{i18n.t('resetPasswordDesc2')}</Text>
+          <Text style={styles.mainTitle}>{tSafe('securityPage.resetPassword', 'Reset Password')}</Text>
+          <Text style={styles.subTitle}>
+            {tSafe(
+              'securityPage.resetPasswordDesc2',
+              'Update your password to keep your account secure.'
+            )}
+          </Text>
         </View>
 
         <View style={styles.formCard}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('currentPassword')}</Text>
+            <Text style={styles.label}>{tSafe('securityPage.currentPassword', 'Current Password')}</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
-                placeholder={i18n.t('enterCurrentPassword')}
+                placeholder={tSafe('securityPage.enterCurrentPassword', 'Enter current password')}
                 placeholderTextColor={UI.text3}
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
@@ -250,11 +326,11 @@ export default function SecurityScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('newPassword')}</Text>
+            <Text style={styles.label}>{tSafe('securityPage.newPassword', 'New Password')}</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
-                placeholder={i18n.t('enterNewPassword')}
+                placeholder={tSafe('securityPage.enterNewPassword', 'Enter new password')}
                 placeholderTextColor={UI.text3}
                 value={newPassword}
                 onChangeText={setNewPassword}
@@ -276,11 +352,11 @@ export default function SecurityScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>{i18n.t('confirmNewPassword')}</Text>
+            <Text style={styles.label}>{tSafe('securityPage.confirmNewPassword', 'Confirm New Password')}</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
-                placeholder={i18n.t('confirmNewPassword')}
+                placeholder={tSafe('securityPage.confirmNewPassword', 'Confirm New Password')}
                 placeholderTextColor={UI.text3}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
@@ -311,7 +387,7 @@ export default function SecurityScreen() {
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.primaryButtonText}>
-                {i18n.t('resetPassword')}
+                {tSafe('securityPage.resetPassword', 'Reset Password')}
               </Text>
             )}
           </TouchableOpacity>
@@ -322,10 +398,15 @@ export default function SecurityScreen() {
             <View style={styles.dangerIconWrap}>
               <Ionicons name="warning" size={20} color={UI.danger} />
             </View>
-            <Text style={styles.dangerTitle}>{i18n.t('dangerZone')}</Text>
+            <Text style={styles.dangerTitle}>{tSafe('securityPage.dangerZone', 'Danger Zone')}</Text>
           </View>
 
-          <Text style={styles.dangerDesc}>{i18n.t('deleteAccountDesc')}</Text>
+          <Text style={styles.dangerDesc}>
+            {tSafe(
+              'securityPage.deleteAccountDesc',
+              'Deleting your account is permanent and cannot be undone.'
+            )}
+          </Text>
 
           <TouchableOpacity
             style={[styles.deleteButton, loading && styles.buttonDisabled]}
@@ -339,7 +420,7 @@ export default function SecurityScreen() {
               <>
                 <Ionicons name="trash" size={20} color="#FFFFFF" />
                 <Text style={styles.deleteButtonText}>
-                  {i18n.t('deleteAccount')}
+                  {tSafe('securityPage.deleteAccount', 'Delete Account')}
                 </Text>
               </>
             )}
