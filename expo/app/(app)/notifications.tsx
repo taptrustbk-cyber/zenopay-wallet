@@ -96,60 +96,6 @@ const SHADOWS = {
   },
 };
 
-const providerConfig: Record<
-  string,
-  {
-    label: string;
-    color: string;
-    soft: string;
-    border: string;
-    icon: keyof typeof Ionicons.glyphMap;
-  }
-> = {
-  korek: {
-    label: 'Korek',
-    color: '#1570A6',
-    soft: '#EEF7FF',
-    border: '#CDE5F7',
-    icon: 'phone-portrait-outline',
-  },
-  zain: {
-    label: 'Zain',
-    color: '#7C3AED',
-    soft: '#F5F3FF',
-    border: '#DDD6FE',
-    icon: 'radio-outline',
-  },
-  asiacell: {
-    label: 'AsiaCell',
-    color: '#D53434',
-    soft: '#FFF1F1',
-    border: '#F6CACA',
-    icon: 'cellular-outline',
-  },
-  ftth: {
-    label: 'FTTH',
-    color: '#2563EB',
-    soft: '#EFF6FF',
-    border: '#BFDBFE',
-    icon: 'wifi-outline',
-  },
-  fasthope: {
-    label: 'Fast Hope',
-    color: '#DB2777',
-    soft: '#FDF2F8',
-    border: '#FBCFE8',
-    icon: 'heart-outline',
-  },
-  kurdtel: {
-    label: 'Kurdtel',
-    color: '#475569',
-    soft: '#F8FAFC',
-    border: '#E2E8F0',
-    icon: 'call-outline',
-  },
-};
-
 function isBadTranslationValue(value: unknown, originalKey?: string) {
   const str = String(value ?? '').trim();
   if (!str) return true;
@@ -183,8 +129,65 @@ function tSafe(key: string, fallback: string) {
   }
 }
 
+function getProviderConfig(): Record<
+  string,
+  {
+    label: string;
+    color: string;
+    soft: string;
+    border: string;
+    icon: keyof typeof Ionicons.glyphMap;
+  }
+> {
+  return {
+    korek: {
+      label: tSafe('notifications.providers.korek', 'Korek'),
+      color: '#1570A6',
+      soft: '#EEF7FF',
+      border: '#CDE5F7',
+      icon: 'phone-portrait-outline',
+    },
+    zain: {
+      label: tSafe('notifications.providers.zain', 'Zain'),
+      color: '#7C3AED',
+      soft: '#F5F3FF',
+      border: '#DDD6FE',
+      icon: 'radio-outline',
+    },
+    asiacell: {
+      label: tSafe('notifications.providers.asiacell', 'AsiaCell'),
+      color: '#D53434',
+      soft: '#FFF1F1',
+      border: '#F6CACA',
+      icon: 'cellular-outline',
+    },
+    ftth: {
+      label: tSafe('notifications.providers.ftth', 'FTTH'),
+      color: '#2563EB',
+      soft: '#EFF6FF',
+      border: '#BFDBFE',
+      icon: 'wifi-outline',
+    },
+    fasthope: {
+      label: tSafe('notifications.providers.fasthope', 'Fast Hope'),
+      color: '#DB2777',
+      soft: '#FDF2F8',
+      border: '#FBCFE8',
+      icon: 'heart-outline',
+    },
+    kurdtel: {
+      label: tSafe('notifications.providers.kurdtel', 'Kurdtel'),
+      color: '#475569',
+      soft: '#F8FAFC',
+      border: '#E2E8F0',
+      icon: 'call-outline',
+    },
+  };
+}
+
 function getProviderStyle(provider?: string | null, source?: OrderSource) {
   const key = String(provider || '').toLowerCase();
+  const providerConfig = getProviderConfig();
 
   if (providerConfig[key]) return providerConfig[key];
 
@@ -201,10 +204,14 @@ function getProviderStyle(provider?: string | null, source?: OrderSource) {
   };
 }
 
-function formatIQD(value?: number | null) {
+function formatNumber(value?: number | null) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
+}
+
+function formatIQD(value?: number | null) {
+  return `${formatNumber(value)} ${tSafe('iqdShort', 'IQD')}`;
 }
 
 function formatDate(value?: string | null) {
@@ -283,7 +290,7 @@ function uniqueIds(values: Array<string | null | undefined>) {
 function buildDisplayTitle(order: NotificationOrderRow) {
   const providerStyle = getProviderStyle(order.provider, order.source);
   const title = String(order.card_title || '').trim();
-  const amountText = order.amount_iqd ? formatIQD(order.amount_iqd) : '';
+  const amountText = order.amount_iqd ? formatNumber(order.amount_iqd) : '';
 
   if (title) return title;
   if (amountText) return `${providerStyle.label} ${amountText}`;
@@ -359,11 +366,11 @@ function buildGiftAmount(order: NotificationOrderRow, fallbackProvider?: string)
   const raw = Number(order.amount_iqd || 0);
   const joined = `${String(order.card_title || '')} ${String(order.provider || fallbackProvider || '')}`.toLowerCase();
 
-  if (joined.includes('pubg') || joined.includes('uc')) return `${formatIQD(raw)} UC`;
-  if (joined.includes('tiktok') || joined.includes('coin')) return `${formatIQD(raw)} Coins`;
-  if (joined.includes('free fire') || joined.includes('diamond')) return `${formatIQD(raw)} Diamonds`;
+  if (joined.includes('pubg') || joined.includes('uc')) return `${formatNumber(raw)} UC`;
+  if (joined.includes('tiktok') || joined.includes('coin')) return `${formatNumber(raw)} Coins`;
+  if (joined.includes('free fire') || joined.includes('diamond')) return `${formatNumber(raw)} Diamonds`;
 
-  return `${formatIQD(raw)}`;
+  return `${formatNumber(raw)}`;
 }
 
 function buildDisplaySubtitle(order: NotificationOrderRow) {
@@ -372,9 +379,9 @@ function buildDisplaySubtitle(order: NotificationOrderRow) {
     order.source === 'gift'
       ? String(order.amount_iqd ? buildGiftAmount(order, providerStyle.label) : '')
       : order.amount_iqd
-      ? `${formatIQD(order.amount_iqd)} IQD`
+      ? formatIQD(order.amount_iqd)
       : '';
-  const priceText = order.price_iqd ? `${formatIQD(order.price_iqd)} IQD` : '';
+  const priceText = order.price_iqd ? formatIQD(order.price_iqd) : '';
 
   if (amountText && priceText) {
     return `${providerStyle.label} • ${amountText} • ${priceText}`;
@@ -810,7 +817,7 @@ export default function NotificationsScreen() {
                   </View>
 
                   <Text style={styles.cardTitle}>
-                    {buildDisplayTitle(order) || tSafe('notifications.unknownCard', 'Unknown card')}
+                    {buildDisplayTitle(order) || tSafe('notifications.unknownCard', 'Unknown Card')}
                   </Text>
 
                   <View style={styles.infoGrid}>
@@ -821,7 +828,7 @@ export default function NotificationsScreen() {
                       <Text style={styles.infoValue}>
                         {order.source === 'gift'
                           ? buildGiftAmount(order, provider.label)
-                          : `${formatIQD(order.amount_iqd)} IQD`}
+                          : formatIQD(order.amount_iqd)}
                       </Text>
                     </View>
 
@@ -829,7 +836,7 @@ export default function NotificationsScreen() {
                       <Text style={styles.infoLabel}>
                         {tSafe('notifications.priceIqd', 'Price (IQD)')}
                       </Text>
-                      <Text style={styles.infoValue}>{formatIQD(order.price_iqd)} IQD</Text>
+                      <Text style={styles.infoValue}>{formatIQD(order.price_iqd)}</Text>
                     </View>
 
                     <View style={styles.infoBoxWide}>
