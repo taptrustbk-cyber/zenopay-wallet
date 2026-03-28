@@ -26,8 +26,8 @@ export default function PrivacyPolicyScreen() {
 
     if (
       !str ||
-      lower.includes('missing') ||
       str === key ||
+      lower.includes('missing') ||
       str.includes(`"${key}"`)
     ) {
       return fallback;
@@ -38,92 +38,133 @@ export default function PrivacyPolicyScreen() {
 
   const UI = useMemo(
     () => ({
-      title: t('privacyPolicy', 'Privacy Policy'),
-      lastUpdated: t('ppLastUpdated', 'Last updated: January 2025'),
+      title: t('privacyPolicy.title', 'Privacy Policy'),
+      lastUpdated: t('privacyPolicy.lastUpdated', 'Last updated: March 28, 2026'),
       intro: t(
-        'ppIntro',
-        'This Privacy Policy explains how ZenoPay collects, uses, and protects your information when you use our application.'
+        'privacyPolicy.intro',
+        'This Privacy Policy explains how ZenoPay collects, uses, stores, and protects your information when you use the app and related services.'
       ),
 
-      s1: t('ppNewSection1Title', 'Information We Collect'),
-      s1Desc: t(
-        'ppPersonalInfoDesc',
-        'We may collect basic information required to create and manage your account.'
+      section1Title: t('privacyPolicy.section1Title', 'Information We Collect'),
+      section1Desc: t(
+        'privacyPolicy.section1Desc',
+        'We collect information that is needed to create and protect your account, provide wallet features, process purchases, and improve app security and support.'
       ),
-      s1Items: [
-        t('ppPersonalInfoItem1', 'Full name and account details'),
-        t('ppPersonalInfoItem3', 'Email address and login credentials'),
-        t('ppPersonalInfoItem5', 'Optional phone number and profile details'),
+      section1Items: [
+        t(
+          'privacyPolicy.section1Item1',
+          'Account details such as full name, email address, password or login information, city, country, phone number, gender, and date of birth when you create an account.'
+        ),
+        t(
+          'privacyPolicy.section1Item2',
+          'Profile information such as profile photo, avatar, city, phone number, email, and other details you choose to add or update.'
+        ),
+        t(
+          'privacyPolicy.section1Item3',
+          'Wallet and transaction information such as deposits, withdrawals, money transfers, balances, transaction history, and related records.'
+        ),
+        t(
+          'privacyPolicy.section1Item4',
+          'Purchase and order information related to mobile shop, gift cards, top-up cards, and virtual card creation, including product details, order status, payment amount, and delivery-related information.'
+        ),
+        t(
+          'privacyPolicy.section1Item5',
+          'Card information related to internal virtual card creation, including one-card-per-user setup and creation fee records such as 25,000 IQD where applicable.'
+        ),
+        t(
+          'privacyPolicy.section1Item6',
+          'Additional account protection information such as selfie or document images, including ID front, ID back, and selfie, when needed to help protect accounts and reduce fraud or misuse of the platform.'
+        ),
+        t(
+          'privacyPolicy.section1Item7',
+          'Location information may be used only to help suggest or display your city inside the mobile shop page. Users can still manually enter their city.'
+        ),
+        t(
+          'privacyPolicy.section1Item8',
+          'Support, password reset, security check, and account recovery information when you contact support or use account security features.'
+        ),
       ],
 
-      s2: t('ppNewSection2Title', 'How We Use Information'),
-      s2Desc: t(
-        'ppNewSection2Desc',
-        'We use your information to operate and improve our services.'
+      section2Title: t('privacyPolicy.section2Title', 'How We Use Information'),
+      section2Desc: t(
+        'privacyPolicy.section2Desc',
+        'We use your information only for purposes related to operating, securing, and improving the app.'
       ),
-      s2Items: [
-        t('ppNewSection2Item1', 'Provide wallet and app functionality'),
-        t('ppNewSection2Item3', 'Improve user experience'),
-        t('ppNewSection2Item4', 'Ensure account security'),
-        t('ppNewSection2Item5', 'Provide support services'),
-        t('ppNewSection2Item6', 'Maintain system performance'),
+      section2Items: [
+        t('privacyPolicy.section2Item1', 'To create, manage, and secure your account.'),
+        t('privacyPolicy.section2Item2', 'To process deposits, withdrawals, wallet transfers, and other wallet activity.'),
+        t('privacyPolicy.section2Item3', 'To process purchases from mobile shop, gift cards, top-up cards, and virtual card services.'),
+        t('privacyPolicy.section2Item4', 'To display your profile information, account settings, and transaction history inside the app.'),
+        t('privacyPolicy.section2Item5', 'To help protect accounts, review suspicious activity, and prevent fraud or misuse.'),
+        t('privacyPolicy.section2Item6', 'To support password reset, login verification, and account recovery features.'),
+        t('privacyPolicy.section2Item7', 'To improve app performance, user experience, and feature reliability.'),
+        t('privacyPolicy.section2Item8', 'To respond to support requests and communicate important service updates.'),
       ],
 
-      s3: t('ppNewSection3Title', 'Data Sharing'),
-      s3Desc: t(
-        'ppNewSection3Desc',
-        'We do not sell your personal data. Limited data may be shared with service providers when necessary.'
+      section3Title: t('privacyPolicy.section3Title', 'Location Information'),
+      section3Desc: t(
+        'privacyPolicy.section3Desc',
+        'If you allow location access, ZenoPay may use it only to suggest or show your city in the mobile shop page. Location is not required for general app use, and users may manually enter their city instead.'
       ),
 
-      s4: t('ppNewSection4Title', 'Data Security'),
-      s4Desc: t(
-        'ppNewSection4Desc',
-        'We use security measures to protect your account and information.'
+      section4Title: t('privacyPolicy.section4Title', 'Data Sharing'),
+      section4Desc: t(
+        'privacyPolicy.section4Desc',
+        'We do not sell your personal information. Some information may be processed using secure service providers or internal admin tools only when needed to operate the app, provide support, store account data, process orders, or maintain security.'
       ),
 
-      s5: t('ppNewSection5Title', 'Data Retention'),
-      s5Desc: t(
-        'ppNewSection5Desc1',
-        'We retain data only as long as necessary for app functionality and legal obligations.'
+      section5Title: t('privacyPolicy.section5Title', 'Data Security'),
+      section5Desc: t(
+        'privacyPolicy.section5Desc',
+        'We use reasonable technical and organizational measures to help protect your account and information. No system can guarantee absolute security, but we work to reduce unauthorized access, misuse, and loss of data.'
       ),
 
-      s6: t('ppNewSection6Title', 'User Rights'),
-      s6Desc: t(
-        'ppNewSection6Desc',
-        'You can access, update, or delete your account through settings.'
+      section6Title: t('privacyPolicy.section6Title', 'Data Retention'),
+      section6Desc: t(
+        'privacyPolicy.section6Desc',
+        'We retain information for as long as needed to operate the app, maintain wallet and order records, protect accounts, resolve disputes, meet legal obligations, and improve service reliability.'
       ),
 
-      s7: t('ppNewSection7Title', 'Third-Party Services'),
-      s7Desc: t(
-        'ppNewSection7Desc',
-        'Some features may connect to external services with their own policies.'
+      section7Title: t('privacyPolicy.section7Title', 'User Rights and Choices'),
+      section7Desc: t(
+        'privacyPolicy.section7Desc',
+        'You may review or update parts of your account information inside the app. You may also contact support regarding account information, security issues, or other privacy-related requests.'
       ),
 
-      s8: t('ppNewSection8Title', 'Children'),
-      s8Desc: t(
-        'ppNewSection8Desc',
-        'This app is intended for users aged 18 and above.'
+      section8Title: t('privacyPolicy.section8Title', 'Third-Party Services'),
+      section8Desc: t(
+        'privacyPolicy.section8Desc',
+        'Some app features may rely on secure external services such as hosting, authentication, storage, notifications, or app infrastructure providers. These services may process data only as needed to support app functionality.'
       ),
 
-      s9: t('ppNewSection9Title', 'Changes'),
-      s9Desc: t(
-        'ppNewSection9Desc',
-        'We may update this Privacy Policy from time to time.'
+      section9Title: t('privacyPolicy.section9Title', 'Children'),
+      section9Desc: t(
+        'privacyPolicy.section9Desc',
+        'ZenoPay is intended for users aged 18 and above.'
       ),
 
-      contact: t('ppNewSection12Title', 'Contact Us'),
-      contactDesc: t(
-        'ppNewSection12Desc',
-        'If you have questions, contact us at:'
+      section10Title: t('privacyPolicy.section10Title', 'Changes to This Policy'),
+      section10Desc: t(
+        'privacyPolicy.section10Desc',
+        'We may update this Privacy Policy from time to time. When we do, the updated version will appear in the app with a revised last updated date.'
       ),
-      emailLabel: t('contactEmail', 'Email'),
+
+      section11Title: t('privacyPolicy.section11Title', 'Contact Us'),
+      section11Desc: t(
+        'privacyPolicy.section11Desc',
+        'If you have any questions about this Privacy Policy or your information, please contact us at:'
+      ),
+      contactLabel: t('privacyPolicy.contactEmailLabel', 'Email'),
     }),
     []
   );
 
-  const bullet = (text: string, idx: number) => (
-    <View key={idx} style={[styles.bulletRow, isRTL && styles.bulletRowRTL]}>
-      <Text style={styles.bulletDot}>•</Text>
+  const renderBullet = (text: string, index: number) => (
+    <View
+      key={index}
+      style={[styles.bulletRow, isRTL && styles.bulletRowRTL]}
+    >
+      <Text style={[styles.bulletDot, isRTL && styles.bulletDotRTL]}>•</Text>
       <Text style={[styles.bulletText, isRTL && styles.textRTL]}>{text}</Text>
     </View>
   );
@@ -160,41 +201,66 @@ export default function PrivacyPolicyScreen() {
           <View style={styles.card}>
             <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.intro}</Text>
 
-            <Text style={[styles.title, isRTL && styles.textRTL]}>1. {UI.s1}</Text>
-            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.s1Desc}</Text>
-            {UI.s1Items.map((item, idx) => bullet(item, idx))}
+            <Text style={[styles.title, isRTL && styles.textRTL]}>
+              1. {UI.section1Title}
+            </Text>
+            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.section1Desc}</Text>
+            {UI.section1Items.map(renderBullet)}
 
-            <Text style={[styles.title, isRTL && styles.textRTL]}>2. {UI.s2}</Text>
-            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.s2Desc}</Text>
-            {UI.s2Items.map((item, idx) => bullet(item, idx))}
+            <Text style={[styles.title, isRTL && styles.textRTL]}>
+              2. {UI.section2Title}
+            </Text>
+            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.section2Desc}</Text>
+            {UI.section2Items.map(renderBullet)}
 
-            <Text style={[styles.title, isRTL && styles.textRTL]}>3. {UI.s3}</Text>
-            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.s3Desc}</Text>
+            <Text style={[styles.title, isRTL && styles.textRTL]}>
+              3. {UI.section3Title}
+            </Text>
+            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.section3Desc}</Text>
 
-            <Text style={[styles.title, isRTL && styles.textRTL]}>4. {UI.s4}</Text>
-            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.s4Desc}</Text>
+            <Text style={[styles.title, isRTL && styles.textRTL]}>
+              4. {UI.section4Title}
+            </Text>
+            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.section4Desc}</Text>
 
-            <Text style={[styles.title, isRTL && styles.textRTL]}>5. {UI.s5}</Text>
-            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.s5Desc}</Text>
+            <Text style={[styles.title, isRTL && styles.textRTL]}>
+              5. {UI.section5Title}
+            </Text>
+            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.section5Desc}</Text>
 
-            <Text style={[styles.title, isRTL && styles.textRTL]}>6. {UI.s6}</Text>
-            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.s6Desc}</Text>
+            <Text style={[styles.title, isRTL && styles.textRTL]}>
+              6. {UI.section6Title}
+            </Text>
+            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.section6Desc}</Text>
 
-            <Text style={[styles.title, isRTL && styles.textRTL]}>7. {UI.s7}</Text>
-            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.s7Desc}</Text>
+            <Text style={[styles.title, isRTL && styles.textRTL]}>
+              7. {UI.section7Title}
+            </Text>
+            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.section7Desc}</Text>
 
-            <Text style={[styles.title, isRTL && styles.textRTL]}>8. {UI.s8}</Text>
-            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.s8Desc}</Text>
+            <Text style={[styles.title, isRTL && styles.textRTL]}>
+              8. {UI.section8Title}
+            </Text>
+            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.section8Desc}</Text>
 
-            <Text style={[styles.title, isRTL && styles.textRTL]}>9. {UI.s9}</Text>
-            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.s9Desc}</Text>
+            <Text style={[styles.title, isRTL && styles.textRTL]}>
+              9. {UI.section9Title}
+            </Text>
+            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.section9Desc}</Text>
 
-            <Text style={[styles.title, isRTL && styles.textRTL]}>{UI.contact}</Text>
-            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.contactDesc}</Text>
+            <Text style={[styles.title, isRTL && styles.textRTL]}>
+              10. {UI.section10Title}
+            </Text>
+            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.section10Desc}</Text>
+
+            <Text style={[styles.title, isRTL && styles.textRTL]}>
+              11. {UI.section11Title}
+            </Text>
+            <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.section11Desc}</Text>
 
             <View style={[styles.contactBox, isRTL && styles.contactBoxRTL]}>
               <Ionicons name="mail-outline" size={18} color="#2563EB" />
-              <Text style={styles.contactLabel}>{UI.emailLabel}:</Text>
+              <Text style={styles.contactLabel}>{UI.contactLabel}:</Text>
               <Text style={styles.contactText}>info@zenopay.bond</Text>
             </View>
           </View>
@@ -239,7 +305,9 @@ const styles = StyleSheet.create({
     height: 42,
   },
 
-  content: { padding: 20 },
+  content: {
+    padding: 20,
+  },
 
   hero: {
     borderRadius: 22,
@@ -296,6 +364,10 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     marginRight: 8,
     marginTop: 1,
+  },
+  bulletDotRTL: {
+    marginRight: 0,
+    marginLeft: 8,
   },
   bulletText: {
     flex: 1,
