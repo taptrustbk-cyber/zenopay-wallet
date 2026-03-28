@@ -281,7 +281,10 @@ export default function CardsScreen() {
 
   const createCard = async () => {
     if (!user?.id) {
-      Alert.alert(t('common.error', 'Error'), t('auth.user_not_found', 'User not found'));
+      Alert.alert(
+        t('common.error', 'Error'),
+        t('auth.user_not_found', 'User not found')
+      );
       return;
     }
 
@@ -399,7 +402,9 @@ export default function CardsScreen() {
 
           <View style={styles.itemBottomRow}>
             <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={styles.smallLabel}>{t('cards.card_holder', 'CARD HOLDER')}</Text>
+              <Text style={styles.smallLabel}>
+                {t('cards.card_holder', 'CARD HOLDER')}
+              </Text>
               <Text style={styles.smallValue} numberOfLines={1}>
                 {(card.full_name || '').toUpperCase()}
               </Text>
@@ -432,14 +437,24 @@ export default function CardsScreen() {
     <View style={[styles.container, { backgroundColor: UI.bg }]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 28 }}
+        >
           <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
             <View style={{ width: 40 }} />
             <Text style={styles.headerTitle} numberOfLines={1}>
               {t('cards.title', 'Cards')}
             </Text>
-            <TouchableOpacity activeOpacity={0.85} onPress={() => cardsQuery.refetch()} style={styles.refreshBtn}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => cardsQuery.refetch()}
+              style={styles.refreshBtn}
+            >
               <Ionicons name="refresh" size={18} color={UI.text} />
             </TouchableOpacity>
           </View>
@@ -447,7 +462,9 @@ export default function CardsScreen() {
           <View style={styles.balanceCard}>
             <View style={styles.balanceRow}>
               <View style={{ flex: 1, paddingRight: 10 }}>
-                <Text style={styles.balanceLabel}>{t('cards.available_balance', 'Available Balance')}</Text>
+                <Text style={styles.balanceLabel}>
+                  {t('cards.available_balance', 'Available Balance')}
+                </Text>
 
                 {walletQuery.isLoading ? (
                   <View style={{ marginTop: 8 }}>
@@ -459,7 +476,8 @@ export default function CardsScreen() {
                   </Text>
                 ) : (
                   <Text style={styles.balanceValue} numberOfLines={1} ellipsizeMode="tail">
-                    {formatNumberWithDots(balance)} <Text style={styles.balanceCurrency}>{currency}</Text>
+                    {formatNumberWithDots(balance)}{' '}
+                    <Text style={styles.balanceCurrency}>{currency}</Text>
                   </Text>
                 )}
               </View>
@@ -487,7 +505,10 @@ export default function CardsScreen() {
               <View style={[styles.warnRow, { marginTop: 10 }]}>
                 <Ionicons name="checkmark-circle" size={18} color={UI.blue} />
                 <Text style={styles.oneCardInlineText}>
-                  {t('cards.one_card_inline', 'Your virtual card is active. You can only have one card.')}
+                  {t(
+                    'cards.one_card_inline',
+                    'Your virtual card is active. You can only have one card.'
+                  )}
                 </Text>
               </View>
             ) : null}
@@ -495,13 +516,17 @@ export default function CardsScreen() {
 
           <View style={styles.listWrap}>
             <View style={styles.listHeaderRow}>
-              <Text style={styles.listTitle}>{t('cards.your_cards', 'Your Cards')}</Text>
+              <Text style={styles.listTitle}>
+                {t('cards.your_cards', 'Your Cards')}
+              </Text>
             </View>
 
             {cardsQuery.isLoading ? (
               <View style={styles.loadingBox}>
                 <ActivityIndicator color={UI.blue} />
-                <Text style={styles.loadingText}>{t('cards.loading_cards', 'Loading cards...')}</Text>
+                <Text style={styles.loadingText}>
+                  {t('cards.loading_cards', 'Loading cards...')}
+                </Text>
               </View>
             ) : cardsQuery.isError ? (
               <View style={styles.loadingBox}>
@@ -513,7 +538,9 @@ export default function CardsScreen() {
             ) : !hasCard ? (
               <View style={styles.emptyBox}>
                 <Ionicons name="card-outline" size={26} color={UI.text2} />
-                <Text style={styles.emptyText}>{t('cards.empty', 'No cards yet. Create your first card below.')}</Text>
+                <Text style={styles.emptyText}>
+                  {t('cards.empty', 'No cards yet. Create your first card below.')}
+                </Text>
               </View>
             ) : (
               <CardItem card={firstCard!} />
@@ -522,10 +549,14 @@ export default function CardsScreen() {
 
           {!hasCard ? (
             <View style={styles.formCard}>
-              <Text style={styles.formTitle}>{t('cards.create_new', 'Create New Card')}</Text>
+              <Text style={styles.formTitle}>
+                {t('cards.create_new', 'Create New Card')}
+              </Text>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>{t('cards.full_name', 'Full Name')}</Text>
+                <Text style={styles.fieldLabel}>
+                  {t('cards.full_name', 'Full Name')}
+                </Text>
                 <TextInput
                   value={fullName}
                   onChangeText={setFullName}
@@ -536,7 +567,9 @@ export default function CardsScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>{t('cards.phone', 'Phone')}</Text>
+                <Text style={styles.fieldLabel}>
+                  {t('cards.phone', 'Phone')}
+                </Text>
                 <TextInput
                   value={phone}
                   onChangeText={setPhone}
@@ -549,7 +582,9 @@ export default function CardsScreen() {
 
               <View style={styles.twoCol}>
                 <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.fieldLabel}>{t('cards.country', 'Country')}</Text>
+                  <Text style={styles.fieldLabel}>
+                    {t('cards.country', 'Country')}
+                  </Text>
                   <TextInput
                     value={country}
                     onChangeText={setCountry}
@@ -560,7 +595,9 @@ export default function CardsScreen() {
                 </View>
 
                 <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.fieldLabel}>{t('cards.city', 'City')}</Text>
+                  <Text style={styles.fieldLabel}>
+                    {t('cards.city', 'City')}
+                  </Text>
                   <TextInput
                     value={city}
                     onChangeText={setCity}
@@ -572,7 +609,9 @@ export default function CardsScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>{t('cards.address', 'Address')}</Text>
+                <Text style={styles.fieldLabel}>
+                  {t('cards.address', 'Address')}
+                </Text>
                 <TextInput
                   value={address}
                   onChangeText={setAddress}
@@ -586,7 +625,10 @@ export default function CardsScreen() {
                 activeOpacity={0.9}
                 onPress={createCard}
                 disabled={!canBuy || !isFormValid || isCreating}
-                style={[styles.createBtnWrap, (!canBuy || !isFormValid || isCreating) && { opacity: 0.55 }]}
+                style={[
+                  styles.createBtnWrap,
+                  (!canBuy || !isFormValid || isCreating) && { opacity: 0.55 },
+                ]}
               >
                 <LinearGradient
                   colors={['#79B7FF', '#4C92F7', '#2563EB']}
@@ -599,14 +641,19 @@ export default function CardsScreen() {
                   ) : (
                     <>
                       <Ionicons name="card" size={18} color="#fff" />
-                      <Text style={styles.createBtnText}>{t('cards.create_btn', 'Create Virtual Card')}</Text>
+                      <Text style={styles.createBtnText}>
+                        {t('cards.create_btn', 'Create Virtual Card')}
+                      </Text>
                     </>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
 
               <Text style={styles.virtualInfo}>
-                {t('cards.virtual_info', 'This is a virtual internal card for Zenopay wallet use only.')}
+                {t(
+                  'cards.virtual_info',
+                  'This is a virtual internal card for Zenopay wallet use only.'
+                )}
               </Text>
 
               <Text style={styles.note}>
@@ -695,7 +742,12 @@ const styles = StyleSheet.create({
   },
 
   listWrap: { marginTop: 14, paddingHorizontal: 16 },
-  listHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  listHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
   listTitle: { fontSize: 17, fontWeight: '900', color: UI.text },
 
   loadingBox: {
@@ -798,7 +850,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
   },
-  smallLabel: { color: 'rgba(255,255,255,0.85)', fontWeight: '800', fontSize: 11, letterSpacing: 0.6 },
+  smallLabel: {
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '800',
+    fontSize: 11,
+    letterSpacing: 0.6,
+  },
   smallValue: { marginTop: 4, color: '#fff', fontWeight: '900', fontSize: 13 },
 
   itemMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 6 },
