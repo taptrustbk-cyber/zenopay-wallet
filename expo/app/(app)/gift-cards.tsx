@@ -117,94 +117,6 @@ const SHADOWS = {
   },
 };
 
-function getCurrentLang() {
-  const raw = String((i18n as any)?.language || (i18n as any)?.locale || 'en').toLowerCase();
-  if (raw.startsWith('ar')) return 'ar';
-  if (raw.startsWith('ckb') || raw.startsWith('cbk')) return 'ckb';
-  if (raw.startsWith('ku') || raw.startsWith('kmr')) return 'kmr';
-  return 'en';
-}
-
-const TEXTS = {
-  en: {
-    pageTitle: 'Online Gift Cards',
-    heroTitle: 'Choose your gift card',
-    heroSub: 'Open a category, choose the amount, and continue your order easily.',
-    searchCategories: 'Search gift card or category',
-    noCategories: 'No gift cards available',
-    noCategoriesSub: 'No active gift cards found in Supabase.',
-    categories: 'Categories',
-    cardsCount: 'cards',
-    chooseCategory: 'Choose a category to see available cards',
-    selectedCategory: 'Selected category',
-    availableCards: 'Available cards',
-    amount: 'Amount',
-    price: 'Price',
-    buyNow: 'Buy now',
-    backToCategories: 'Back to categories',
-    providers: 'Categories',
-  },
-  ar: {
-    pageTitle: 'بطاقات الهدايا',
-    heroTitle: 'اختر بطاقة الهدية',
-    heroSub: 'افتح الفئة، اختر المبلغ، وأكمل طلبك بسهولة.',
-    searchCategories: 'ابحث عن بطاقة أو فئة',
-    noCategories: 'لا توجد بطاقات هدايا',
-    noCategoriesSub: 'لا توجد بطاقات هدايا مفعلة في Supabase.',
-    categories: 'الفئات',
-    cardsCount: 'بطاقات',
-    chooseCategory: 'اختر فئة لعرض البطاقات المتوفرة',
-    selectedCategory: 'الفئة المحددة',
-    availableCards: 'البطاقات المتوفرة',
-    amount: 'القيمة',
-    price: 'السعر',
-    buyNow: 'اشتر الآن',
-    backToCategories: 'العودة للفئات',
-    providers: 'الفئات',
-  },
-  ckb: {
-    pageTitle: 'کارتین دیاری',
-    heroTitle: 'کارتا دیارییەکەت هەڵبژێرە',
-    heroSub: 'بەشێک هەڵبژێرە، بڕەکە دیاری بکە و بە ئاسانی داواکارییەکەت تەواو بکە.',
-    searchCategories: 'لێگەڕان بە ناوی کارت یان بەش',
-    noCategories: 'هیچ کارتێکی دیاری بەردەست نییە',
-    noCategoriesSub: 'هیچ کارتێکی دیاریی چالاک لە Supabase نەدۆزرایەوە.',
-    categories: 'بەشەکان',
-    cardsCount: 'کارت',
-    chooseCategory: 'بەشێک هەڵبژێرە بۆ بینینی کارتە بەردەستەکان',
-    selectedCategory: 'بەشی هەڵبژێردراو',
-    availableCards: 'کارتە بەردەستەکان',
-    amount: 'بڕ',
-    price: 'نرخ',
-    buyNow: 'ئێستا بکڕە',
-    backToCategories: 'گەڕانەوە بۆ بەشەکان',
-    providers: 'بەشەکان',
-  },
-  kmr: {
-    pageTitle: 'کارتێن دیاریێ',
-    heroTitle: 'کارتا دیاریێ هەلبژێرە',
-    heroSub: 'بەشەکێ هەلبژێرە، بڕێ دیاری بکە و داواکارییا خۆ ب ساناهی تەواو بکە.',
-    searchCategories: 'لێگەڕێ ب ناڤێ کارتێ یان بەشێ',
-    noCategories: 'هیچ کارتێن دیاریێ بەردەست نینن',
-    noCategoriesSub: 'هیچ کارتێن دیاریێن چالاک لە Supabase نەهاتیە دیتن.',
-    categories: 'بەش',
-    cardsCount: 'کارت',
-    chooseCategory: 'بەشەکێ هەلبژێرە بۆ دیتنا کارتێن بەردەست',
-    selectedCategory: 'بەشا هەلبژێردی',
-    availableCards: 'کارتێن بەردەست',
-    amount: 'بڕ',
-    price: 'نرخ',
-    buyNow: 'ئێستا بکرە',
-    backToCategories: 'ڤەگەڕان بۆ بەشان',
-    providers: 'بەش',
-  },
-} as const;
-
-function useT() {
-  const lang = getCurrentLang() as keyof typeof TEXTS;
-  return TEXTS[lang] || TEXTS.en;
-}
-
 function formatIQD(value?: number | null) {
   const num = Number(value || 0);
   const rounded = Math.round(num);
@@ -221,7 +133,7 @@ function normalizeKey(value?: string | null) {
 
 function titleFromKey(value?: string | null) {
   const raw = String(value || '').trim();
-  if (!raw) return 'Gift Card';
+  if (!raw) return i18n.t('giftCards.giftCardFallbackTitle') || 'Gift Card';
 
   return raw
     .replace(/_/g, ' ')
@@ -304,7 +216,7 @@ function getItemTitle(
     categoryRow?.title ||
     row.brand ||
     row.category ||
-    'Gift Card';
+    (i18n.t('giftCards.giftCardFallbackTitle') || 'Gift Card');
 
   const key = normalizeKey(categoryRow?.slug || row.category || row.brand);
 
@@ -320,7 +232,6 @@ function getItemTitle(
 export default function GiftCardsScreen() {
   useTheme();
   const router = useRouter();
-  const t = useT();
 
   const [giftCards, setGiftCards] = useState<GiftCardRow[]>([]);
   const [giftCategories, setGiftCategories] = useState<GiftCardCategoryRow[]>([]);
@@ -357,7 +268,7 @@ export default function GiftCardsScreen() {
       console.log('gift-cards screen error:', error);
       Alert.alert(
         i18n.t('common.error') || 'Error',
-        error?.message || 'Could not load gift cards.'
+        error?.message || i18n.t('giftCards.loadError') || 'Could not load gift cards.'
       );
       setGiftCards([]);
       setGiftCategories([]);
@@ -402,7 +313,7 @@ export default function GiftCardsScreen() {
         key: String(category.id),
         id: String(category.id),
         title: String(category.title || titleFromKey(category.slug)),
-        subtitle: String(category.subtitle || 'Gift Cards'),
+        subtitle: String(category.subtitle || (i18n.t('giftCards.giftCardsSubtitle') || 'Gift Cards')),
         image:
           category.cover_image_url ||
           getCategoryPreviewImage(firstLinked as GiftCardRow, category) ||
@@ -449,7 +360,7 @@ export default function GiftCardsScreen() {
           key: fallbackKey,
           id: row.category_id || null,
           title: titleFromKey(row.brand || row.category || row.title),
-          subtitle: 'Gift Cards',
+          subtitle: i18n.t('giftCards.giftCardsSubtitle') || 'Gift Cards',
           image: getCategoryPreviewImage(row, null),
           icon: pickIconFromSlug(slug),
           color: theme.color,
@@ -578,7 +489,7 @@ export default function GiftCardsScreen() {
         </TouchableOpacity>
 
         <Text numberOfLines={1} style={styles.headerTitle}>
-          {selectedMeta?.title || t.pageTitle}
+          {selectedMeta?.title || (i18n.t('giftCards.pageTitle') || 'Online Gift Cards')}
         </Text>
 
         <TouchableOpacity
@@ -603,10 +514,12 @@ export default function GiftCardsScreen() {
           <View style={styles.heroGlowTwo} />
 
           <Text style={styles.heroTitle}>
-            {selectedMeta ? selectedMeta.title : t.heroTitle}
+            {selectedMeta ? selectedMeta.title : (i18n.t('giftCards.heroTitle') || 'Choose your gift card')}
           </Text>
           <Text style={styles.heroSubtitle}>
-            {selectedMeta ? `${t.selectedCategory}: ${selectedMeta.title}` : t.chooseCategory}
+            {selectedMeta
+              ? `${i18n.t('giftCards.selectedCategory') || 'Selected category'}: ${selectedMeta.title}`
+              : (i18n.t('giftCards.chooseCategory') || 'Choose a category to see available cards')}
           </Text>
         </View>
 
@@ -615,7 +528,7 @@ export default function GiftCardsScreen() {
           <TextInput
             value={search}
             onChangeText={setSearch}
-            placeholder={t.searchCategories}
+            placeholder={i18n.t('giftCards.searchCategories') || 'Search gift card or category'}
             placeholderTextColor={UI.text3}
             style={styles.searchInput}
           />
@@ -634,13 +547,19 @@ export default function GiftCardsScreen() {
           filteredCategories.length === 0 ? (
             <View style={styles.emptyCard}>
               <Ionicons name="gift-outline" size={36} color={UI.blue} />
-              <Text style={styles.emptyTitle}>{t.noCategories}</Text>
-              <Text style={styles.emptyText}>{t.noCategoriesSub}</Text>
+              <Text style={styles.emptyTitle}>
+                {i18n.t('giftCards.noCategories') || 'No gift cards available'}
+              </Text>
+              <Text style={styles.emptyText}>
+                {i18n.t('giftCards.noCategoriesSub') || 'No active gift cards found in Supabase.'}
+              </Text>
             </View>
           ) : (
             <>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t.categories}</Text>
+                <Text style={styles.sectionTitle}>
+                  {i18n.t('giftCards.categories') || 'Categories'}
+                </Text>
               </View>
 
               <View style={styles.providersGrid}>
@@ -690,7 +609,7 @@ export default function GiftCardsScreen() {
                         {category.title}
                       </Text>
                       <Text style={styles.providerCount}>
-                        {Number(category.count || 0)} {t.cardsCount}
+                        {Number(category.count || 0)} {i18n.t('giftCards.cardsCount') || 'cards'}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -701,8 +620,12 @@ export default function GiftCardsScreen() {
         ) : filteredItems.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="gift-outline" size={36} color={UI.blue} />
-            <Text style={styles.emptyTitle}>{t.noCategories}</Text>
-            <Text style={styles.emptyText}>{t.noCategoriesSub}</Text>
+            <Text style={styles.emptyTitle}>
+              {i18n.t('giftCards.noCategories') || 'No gift cards available'}
+            </Text>
+            <Text style={styles.emptyText}>
+              {i18n.t('giftCards.noCategoriesSub') || 'No active gift cards found in Supabase.'}
+            </Text>
 
             <TouchableOpacity
               activeOpacity={0.9}
@@ -712,13 +635,17 @@ export default function GiftCardsScreen() {
                 setSearch('');
               }}
             >
-              <Text style={styles.backToCategoriesButtonText}>{t.backToCategories}</Text>
+              <Text style={styles.backToCategoriesButtonText}>
+                {i18n.t('giftCards.backToCategories') || 'Back to categories'}
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (
           <>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t.availableCards}</Text>
+              <Text style={styles.sectionTitle}>
+                {i18n.t('giftCards.availableCards') || 'Available cards'}
+              </Text>
 
               <TouchableOpacity
                 onPress={() => {
@@ -729,7 +656,9 @@ export default function GiftCardsScreen() {
                 style={styles.backProvidersMini}
               >
                 <Ionicons name="grid-outline" size={14} color={UI.blueDark} />
-                <Text style={styles.backProvidersMiniText}>{t.providers}</Text>
+                <Text style={styles.backProvidersMiniText}>
+                  {i18n.t('giftCards.providers') || 'Categories'}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -782,7 +711,7 @@ export default function GiftCardsScreen() {
                       </Text>
 
                       <Text style={styles.cardAmountText}>
-                        {t.amount}:{' '}
+                        {(i18n.t('giftCards.amount') || 'Amount')}: {' '}
                         {normalizeKey(categoryRow?.slug || item.category || item.brand).includes('pubg')
                           ? `${formatIQD(Number(item.amount || 0))} UC`
                           : normalizeKey(categoryRow?.slug || item.category || item.brand).includes('free_fire')
@@ -804,7 +733,9 @@ export default function GiftCardsScreen() {
 
                       <View style={styles.buyMiniButton}>
                         <Ionicons name="cart-outline" size={14} color={UI.blueDark} />
-                        <Text style={styles.buyMiniButtonText}>{t.buyNow}</Text>
+                        <Text style={styles.buyMiniButtonText}>
+                          {i18n.t('giftCards.buyNow') || 'Buy now'}
+                        </Text>
                       </View>
                     </View>
                   </TouchableOpacity>
