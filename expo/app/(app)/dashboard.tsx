@@ -82,12 +82,12 @@ const getCurrentLocale = () => {
     .trim()
     .toLowerCase();
 
-  if (raw.includes('ckb') || raw.includes('sorani')) return 'ckb';
+  if (raw.includes('ckb') || raw.includes('sorani') || raw.includes('cbk')) return 'cbk';
   if (raw.includes('kmr') || raw.includes('badini') || raw === 'ku') return 'kmr';
   if (raw.startsWith('ar')) return 'ar';
   if (raw.startsWith('en')) return 'en';
 
-  return 'ckb';
+  return 'cbk';
 };
 
 const ActionCircle = ({
@@ -110,7 +110,7 @@ const ActionCircle = ({
 export default function DashboardScreen() {
   const router = useRouter();
   const { user, profile, hardRefresh } = useAuth();
-  const { theme } = useTheme();
+  useTheme();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
@@ -121,7 +121,7 @@ export default function DashboardScreen() {
 
   const locale = getCurrentLocale();
   const isRTL =
-    locale === 'ckb' || locale === 'kmr' || locale === 'ar' || I18nManager.isRTL;
+    locale === 'cbk' || locale === 'kmr' || locale === 'ar' || I18nManager.isRTL;
 
   useEffect(() => {
     let mounted = true;
@@ -163,7 +163,7 @@ export default function DashboardScreen() {
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
     queryFn: async () => {
-      if (!user?.id) throw new Error('User ID not found');
+      if (!user?.id) throw new Error(i18n.t('auth.userNotFound') || 'User ID not found');
 
       const { data, error } = await supabase
         .from('wallets')
@@ -314,7 +314,9 @@ export default function DashboardScreen() {
           <View style={styles.balanceGlowTwo} />
 
           <View style={styles.balanceTopRow}>
-            <Text style={styles.balanceTitle}>{i18n.t('accountBalance')}</Text>
+            <Text style={styles.balanceTitle}>
+              {i18n.t('dashboard.accountBalance') || 'Account Balance'}
+            </Text>
 
             <View style={styles.balanceRightRow}>
               <TouchableOpacity
@@ -338,13 +340,17 @@ export default function DashboardScreen() {
           ) : walletQuery.isError ? (
             <View style={styles.errorContainer}>
               <Ionicons name="alert-circle" size={32} color="#FFFFFF" />
-              <Text style={styles.errorTextLight}>{i18n.t('failedToLoadBalance')}</Text>
+              <Text style={styles.errorTextLight}>
+                {i18n.t('dashboard.failedToLoadBalance') || 'Failed to load balance'}
+              </Text>
               <TouchableOpacity
                 style={styles.retryButton}
                 onPress={() => walletQuery.refetch()}
                 activeOpacity={0.85}
               >
-                <Text style={styles.retryText}>{i18n.t('retry')}</Text>
+                <Text style={styles.retryText}>
+                  {i18n.t('common.retry') || 'Retry'}
+                </Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -358,22 +364,22 @@ export default function DashboardScreen() {
         <View style={styles.quickRow}>
           <ActionCircle
             icon="send"
-            label={i18n.t('send')}
+            label={i18n.t('dashboard.send') || 'Send'}
             onPress={() => router.push('/(app)/send' as any)}
           />
           <ActionCircle
             icon="cash"
-            label={i18n.t('withdraw')}
+            label={i18n.t('dashboard.withdraw') || 'Withdraw'}
             onPress={() => router.push('/(app)/withdraw' as any)}
           />
           <ActionCircle
             icon="download"
-            label={i18n.t('deposit')}
+            label={i18n.t('dashboard.deposit') || 'Deposit'}
             onPress={() => router.push('/(app)/receive' as any)}
           />
           <ActionCircle
             icon="receipt"
-            label={i18n.t('transactions')}
+            label={i18n.t('dashboard.transactions') || 'Transactions'}
             onPress={() => router.push('/(app)/transactions' as any)}
           />
         </View>
@@ -390,7 +396,7 @@ export default function DashboardScreen() {
               style={[styles.mobileAdTopBadgeText, isRTL && styles.textRTL]}
               numberOfLines={1}
             >
-              {i18n.t('mobileShopAdBadge')}
+              {i18n.t('dashboard.mobileShopAdBadge') || 'Special Offer'}
             </Text>
           </View>
 
@@ -429,7 +435,7 @@ export default function DashboardScreen() {
                 >
                   <Text style={styles.discountTagTop}>-10%</Text>
                   <Text style={styles.discountTagBottom} numberOfLines={1}>
-                    {i18n.t('mobileShopAdDiscount')}
+                    {i18n.t('dashboard.mobileShopAdDiscount') || 'Discount'}
                   </Text>
                 </LinearGradient>
               </View>
@@ -440,31 +446,34 @@ export default function DashboardScreen() {
                 style={[styles.mobileAdTitle, isRTL && styles.mobileAdTitleRTL]}
                 numberOfLines={3}
               >
-                {i18n.t('mobileShopAdTitle')}
+                {i18n.t('dashboard.mobileShopAdTitle') ||
+                  'Buy the latest phones with cash or installment'}
               </Text>
 
               <View style={[styles.mobileAdPillsWrap, isRTL && styles.mobileAdPillsWrapRTL]}>
                 <View style={styles.mobileAdPillBlue}>
                   <Ionicons name="cash-outline" size={12} color="#FFFFFF" />
                   <Text style={styles.mobileAdPillBlueText} numberOfLines={1}>
-                    {i18n.t('mobileShopAdCash')}
+                    {i18n.t('dashboard.mobileShopAdCash') || 'Cash'}
                   </Text>
                 </View>
 
                 <View style={styles.mobileAdPillSoft}>
                   <Ionicons name="calendar-outline" size={12} color={UI.blueDark} />
                   <Text style={styles.mobileAdPillSoftText} numberOfLines={1}>
-                    {i18n.t('mobileShopAdInstallment')}
+                    {i18n.t('dashboard.mobileShopAdInstallment') || 'Installment'}
                   </Text>
                 </View>
               </View>
 
               <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]} numberOfLines={2}>
-                {i18n.t('mobileShopAdLine1')}
+                {i18n.t('dashboard.mobileShopAdLine1') ||
+                  'New iPhone and Samsung models available now.'}
               </Text>
 
               <Text style={[styles.mobileAdLine, isRTL && styles.textRTL]} numberOfLines={2}>
-                {i18n.t('mobileShopAdLine2')}
+                {i18n.t('dashboard.mobileShopAdLine2') ||
+                  'Easy payment options directly from your wallet.'}
               </Text>
             </View>
           </View>
@@ -488,7 +497,7 @@ export default function DashboardScreen() {
                 adjustsFontSizeToFit
                 minimumFontScale={0.76}
               >
-                {i18n.t('mobileShopAdInstallmentPrice')}
+                {i18n.t('dashboard.mobileShopAdInstallmentPrice') || 'Installment starts from low monthly price'}
               </Text>
             </LinearGradient>
 
@@ -499,7 +508,7 @@ export default function DashboardScreen() {
               style={styles.mobileAdButton}
             >
               <Text style={styles.mobileAdButtonText} numberOfLines={1}>
-                {i18n.t('mobileShopAdButton')}
+                {i18n.t('dashboard.mobileShopAdButton') || 'Shop Now'}
               </Text>
               <Ionicons
                 name={isRTL ? 'arrow-back' : 'arrow-forward'}
@@ -512,8 +521,13 @@ export default function DashboardScreen() {
 
         <View style={styles.marketLightCard}>
           <View style={styles.marketHeader}>
-            <Text style={styles.marketTitle}>{i18n.t('marketShop')}</Text>
-            <Text style={styles.marketSub}>{i18n.t('marketShopSubtitle')}</Text>
+            <Text style={styles.marketTitle}>
+              {i18n.t('dashboard.marketShop') || 'Market Shop'}
+            </Text>
+            <Text style={styles.marketSub}>
+              {i18n.t('dashboard.marketShopSubtitle') ||
+                'Choose from top-up, gift cards, mobiles, and travel booking.'}
+            </Text>
           </View>
 
           <View style={styles.marketMiniGrid}>
@@ -525,7 +539,9 @@ export default function DashboardScreen() {
               <View style={styles.marketMiniIcon}>
                 <Ionicons name="card" size={22} color={UI.blueDark} />
               </View>
-              <Text style={styles.marketMiniLabel}>{i18n.t('market.topup')}</Text>
+              <Text style={styles.marketMiniLabel}>
+                {i18n.t('dashboard.market.topup') || 'Top Up'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -536,7 +552,9 @@ export default function DashboardScreen() {
               <View style={styles.marketMiniIcon}>
                 <Ionicons name="gift" size={22} color={UI.blueDark} />
               </View>
-              <Text style={styles.marketMiniLabel}>{i18n.t('market.gift')}</Text>
+              <Text style={styles.marketMiniLabel}>
+                {i18n.t('dashboard.market.gift') || 'Gift Cards'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -547,7 +565,9 @@ export default function DashboardScreen() {
               <View style={styles.marketMiniIcon}>
                 <Ionicons name="phone-portrait" size={22} color={UI.blueDark} />
               </View>
-              <Text style={styles.marketMiniLabel}>{i18n.t('market.mobile')}</Text>
+              <Text style={styles.marketMiniLabel}>
+                {i18n.t('dashboard.market.mobile') || 'Mobiles'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -558,7 +578,9 @@ export default function DashboardScreen() {
               <View style={styles.marketMiniIcon}>
                 <Ionicons name="airplane" size={22} color={UI.blueDark} />
               </View>
-              <Text style={styles.marketMiniLabel}>{i18n.t('market.travel')}</Text>
+              <Text style={styles.marketMiniLabel}>
+                {i18n.t('dashboard.market.travel') || 'Travel'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
