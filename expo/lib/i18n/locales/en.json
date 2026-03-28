@@ -16,6 +16,7 @@
     "permissionRequired": "Permission Required",
     "back": "Back"
   },
+
   "auth": {
     "createAccount": "Create Account",
     "completeAllFields": "Please complete all fields",
@@ -94,6 +95,7 @@
     "userNotFound": "User not found",
     "loginRequired": "Please login first."
   },
+
   "resetPassword": {
     "title": "Reset Password",
     "heroTitle": "Create New Password",
@@ -114,6 +116,7 @@
     "verifyingTitle": "Verifying Reset Link",
     "verifyingSubtitle": "Please wait while we verify your password reset session."
   },
+
   "kyc": {
     "photoPermissionDenied": "Photo permission was denied.",
     "failedPickImage": "Failed to pick image.",
@@ -153,6 +156,7 @@
     "uploadAllKycDocs": "Please upload all KYC documents.",
     "kycDocsUploadedSuccess": "KYC documents uploaded successfully."
   },
+
   "cards": {
     "title": "Cards",
     "available_balance": "Available Balance",
@@ -191,6 +195,7 @@
     "last4": "LAST 4",
     "created": "Created"
   },
+
   "buyCard": {
     "title": "Buy Card",
     "giftCard": "Gift Card",
@@ -234,6 +239,7 @@
     "requiredInfoSummaryLabel": "Required Info",
     "pubgAccountNameSummaryLabel": "PUBG Account Name"
   },
+
   "consulateInfo": {
     "title": "Consulate Info",
     "city": "City",
@@ -244,6 +250,7 @@
     "directoryTitle": "Embassy & Consulate Directory",
     "directorySubtitle": "Find quick contact details, capital city, and address information for consulates available in Iraq."
   },
+
   "dashboard": {
     "accountBalance": "Account Balance",
     "failedToLoadBalance": "Failed to load balance",
@@ -269,6 +276,7 @@
       "travel": "Travel"
     }
   },
+
   "giftCards": {
     "pageTitle": "Online Gift Cards",
     "heroTitle": "Choose your gift card",
@@ -290,84 +298,7 @@
     "giftCardsSubtitle": "Gift Cards",
     "giftCardFallbackTitle": "Gift Card"
   },
-  "iqdShort": "IQD",
-  "unknownCity": "Unknown",
-  "walletTableNotFound": "Wallet table not found",
-  "loginRequired": "Please login first",
-  "selectProductFirst": "Please select a product first",
-  "fillAllRequiredFields": "Please fill all required fields",
-  "insufficientCashBalance": "You don't have enough balance for cash purchase. Please deposit balance and try again.",
-  "insufficientFirstMonthBalance": "You don't have enough balance for the first monthly payment. Please deposit balance and try again.",
-  "productOutOfStock": "This product is out of stock",
-  "purchaseSuccess": "Purchase successful",
-  "mobilePurchasedSuccess": "Your mobile purchase was completed successfully and sent to admin.",
-  "purchaseType": "Purchase type",
-  "cash": "Cash",
-  "installment": "Installment",
-  "paidAmount": "Paid amount",
-  "walletBalanceAfterPayment": "Wallet Balance After Payment",
-  "remainingInstallmentAmount": "Remaining Installment Amount",
-  "done": "Done",
-  "error": "Error",
-  "purchaseFailed": "Purchase failed",
-  "all": "All",
-  "brandApple": "Apple",
-  "brandSamsung": "Samsung",
-  "brandXiaomi": "Xiaomi",
-  "brandInfinix": "Infinix",
-  "brandTecno": "Tecno",
-  "discounts": "Discounts",
-  "newModels": "New Models",
-  "specialOffers": "Special Offers",
-  "new": "New",
-  "specialOffer": "Special Offer",
-  "discount": "Discount",
-  "preorder": "Pre-order",
-  "available": "Available",
-  "inStock": "In stock",
-  "outOfStock": "Out of stock",
-  "monthly": "monthly",
-  "zenopayShop": "zenopay shop",
-  "locationUnavailable": "Location",
-  "detectingLocation": "Detecting...",
-  "zenopayMobileShop": "Zenopay Mobile Shop",
-  "mobileShopHome": "Home",
-  "searchMobiles": "Search for mobile model",
-  "privacyPolicy": "Privacy Policy",
-  "termsConditions": "Terms & Conditions",
-  "balance": "Balance",
-  "zenopayWallet": "Zenopay Wallet",
-  "latestMobileSeries": "Latest Mobile Series",
-  "startingFrom": "Starting from",
-  "buyNow": "Buy Now",
-  "yourWalletBalance": "Your Wallet Balance",
-  "allMobiles": "All Mobiles",
-  "showAll": "Show All",
-  "noProductsFound": "No products found",
-  "tryAnotherSearchOrBrand": "Try another search or brand",
-  "completeMobilePurchase": "Complete Mobile Purchase",
-  "productDetails": "Product Details",
-  "cashPrice": "Cash Price",
-  "payNow": "Pay Now",
-  "installmentTotalPrice": "Installment Total Price",
-  "monthlyInstallment": "Monthly Installment",
-  "numberOfMonths": "Number of Months",
-  "city": "City",
-  "enterCity": "Enter city",
-  "streetAddress": "Street Address",
-  "enterStreetAddress": "Enter street address",
-  "phoneNumber": "Phone Number",
-  "enterPhoneNumber": "Enter phone number",
-  "fullName": "Full Name",
-  "enterFullName": "Enter full name",
-  "email": "Email",
-  "enterEmail": "Enter email",
-  "note": "Note",
-  "optionalNote": "Optional note",
-  "quantity": "Quantity",
-  "firstMonthPayment": "First Month Payment",
-  "buyCashWithWallet": "Buy Cash with Wallet",
-  "buyInstallmentWithWallet": "Pay First Month with Wallet",
+
   "notifications": {
     "title": "Notifications",
     "mobileCards": "Card Orders",
@@ -409,6 +340,7 @@
       "kurdtel": "Kurdtel"
     }
   },
+
   "privacyPolicyData": {
     "title": "Privacy Policy",
     "lastUpdated": "Last updated: March 28, 2026",
@@ -453,6 +385,7 @@
     "section11Desc": "If you have any questions about this Privacy Policy or your information, please contact us at:",
     "contactEmailLabel": "Email"
   },
+
   "terms": {
     "headerTitle": "Terms & Conditions",
     "mainTitle": "Terms & Conditions",
@@ -520,6 +453,7 @@
     "supportLine": "Support email: info@zenopay.bond",
     "supportReply": "We aim to respond as soon as reasonably possible."
   },
+
   "profile": {
     "title": "Profile",
     "fullName": "Full Name",
@@ -554,6 +488,7 @@
     "photoPermissionRequired": "Permission to access photos is required",
     "cameraPermissionRequired": "Permission to use camera is required"
   },
+
   "deposit": {
     "approved": "Approved",
     "rejected": "Rejected",
@@ -615,6 +550,7 @@
     "noPaymentMethods": "No payment methods",
     "noPaymentMethodsDesc": "Admin has not added any payment methods yet"
   },
+
   "withdrawPage": {
     "approved": "Approved",
     "rejected": "Rejected",
@@ -671,6 +607,7 @@
     "noPaymentMethods": "No payment methods",
     "noPaymentMethodsDesc": "Admin has not added any payment methods yet"
   },
+
   "securityPage": {
     "resetPassword": "Reset Password",
     "resetPasswordDesc2": "Update your password to keep your account secure.",
@@ -695,44 +632,18 @@
     "passwordResetSuccess": "Password changed successfully",
     "passwordChangeError": "Failed to change password"
   },
+
   "sendPage": {
     "userIdNotFound": "User ID not found",
     "failedToFetchWallet": "Failed to fetch wallet",
     "userEmailNotFound": "User email not found",
     "failedToSendMoney": "Failed to send money"
   },
-  "sendMoney": "Send Money",
-  "sendMoneySubtitle": "Secure Iraqi Dinar transfer",
-  "sendMoneyFormSubtitle": "Enter receiver email, amount, and note",
-  "recipientEmail": "Recipient Email",
-  "enterAmount": "Please enter amount",
-  "amount": "Amount",
-  "transactionAmount": "Transaction Amount",
-  "transactionFee": "Transaction Fee",
-  "totalSend": "Total Send",
-  "send": "Send",
-  "walletNotFound": "Wallet not found",
-  "walletLocked": "Wallet is locked",
-  "insufficientBalance": "Insufficient balance",
-  "cannotSendToYourself": "You cannot send money to yourself",
-  "transactionSuccess": "Money sent successfully",
-  "iqdArabic": "د.غ",
-  "settings": "Settings",
-  "language": "Language",
-  "support": "Support",
-  "profile": "Profile",
-  "security": "Security",
-  "adminPanel": "Admin Panel",
-  "logout": "Logout",
-  "settingsLanguageChanged": "Language changed successfully",
-  "settingsLanguageChangeFailed": "Failed to change language",
-  "settingsCannotOpenLink": "Cannot open this link",
-  "settingsOpenLinkFailed": "Failed to open link",
-  "settingsLogoutConfirm": "Are you sure you want to logout?",
-  "settingsSupportEmail": "Email Support",
-  "settingsSupportFacebook": "Facebook",
-  "settingsSupportInstagram": "Instagram",
-  "settingsSupportTiktok": "TikTok",
+
+  "settings": {
+    "title": "Settings"
+  },
+
   "simCards": {
     "pageTitle": "Buy Mobile Cards",
     "heroTitle": "Choose mobile cards",
@@ -754,6 +665,7 @@
     "providerSubtitleDefault": "Mobile Cards",
     "loadFailed": "Could not load mobile cards."
   },
+
   "transactions": {
     "title": "Transactions",
     "transactionDetails": "Transaction Details",
@@ -847,6 +759,139 @@
     "status_failed": "Failed",
     "status_refunded": "Refunded"
   },
+
+  "travelBookingData": {
+    "title": "Travel Booking",
+    "info": "Use trusted travel platforms to book hotels, flights, cars, and train tickets.",
+    "safe": "You will be redirected to external trusted booking services. Please review their prices, policies, and terms before booking.",
+    "hotelsTitle": "Hotels",
+    "hotelsDesc": "Book hotels worldwide with best prices",
+    "agodaTitle": "Hotels (Agoda)",
+    "agodaDesc": "Alternative hotel booking platform",
+    "flightsTitle": "Flights",
+    "flightsDesc": "Search and compare flight prices",
+    "carsTitle": "Car Rentals",
+    "carsDesc": "Rent cars for your journey",
+    "trainsTitle": "Train Tickets",
+    "trainsDesc": "Book train tickets worldwide"
+  },
+
+  "iqdShort": "IQD",
+  "iqdArabic": "د.غ",
+  "unknownCity": "Unknown",
+  "walletTableNotFound": "Wallet table not found",
+  "loginRequired": "Please login first",
+  "selectProductFirst": "Please select a product first",
+  "fillAllRequiredFields": "Please fill all required fields",
+  "insufficientCashBalance": "You don't have enough balance for cash purchase. Please deposit balance and try again.",
+  "insufficientFirstMonthBalance": "You don't have enough balance for the first monthly payment. Please deposit balance and try again.",
+  "productOutOfStock": "This product is out of stock",
+  "purchaseSuccess": "Purchase successful",
+  "mobilePurchasedSuccess": "Your mobile purchase was completed successfully and sent to admin.",
+  "purchaseType": "Purchase type",
+  "cash": "Cash",
+  "installment": "Installment",
+  "paidAmount": "Paid amount",
+  "walletBalanceAfterPayment": "Wallet Balance After Payment",
+  "remainingInstallmentAmount": "Remaining Installment Amount",
+  "done": "Done",
+  "error": "Error",
+  "purchaseFailed": "Purchase failed",
+  "all": "All",
+  "brandApple": "Apple",
+  "brandSamsung": "Samsung",
+  "brandXiaomi": "Xiaomi",
+  "brandInfinix": "Infinix",
+  "brandTecno": "Tecno",
+  "discounts": "Discounts",
+  "newModels": "New Models",
+  "specialOffers": "Special Offers",
+  "new": "New",
+  "specialOffer": "Special Offer",
+  "discount": "Discount",
+  "preorder": "Pre-order",
+  "available": "Available",
+  "inStock": "In stock",
+  "outOfStock": "Out of stock",
+  "monthly": "monthly",
+  "zenopayShop": "zenopay shop",
+  "locationUnavailable": "Location",
+  "detectingLocation": "Detecting...",
+  "zenopayMobileShop": "Zenopay Mobile Shop",
+  "mobileShopHome": "Home",
+  "searchMobiles": "Search for mobile model",
+  "privacyPolicy": "Privacy Policy",
+  "termsConditions": "Terms & Conditions",
+  "balance": "Balance",
+  "zenopayWallet": "Zenopay Wallet",
+  "latestMobileSeries": "Latest Mobile Series",
+  "startingFrom": "Starting from",
+  "buyNow": "Buy Now",
+  "yourWalletBalance": "Your Wallet Balance",
+  "allMobiles": "All Mobiles",
+  "showAll": "Show All",
+  "noProductsFound": "No products found",
+  "tryAnotherSearchOrBrand": "Try another search or brand",
+  "completeMobilePurchase": "Complete Mobile Purchase",
+  "productDetails": "Product Details",
+  "cashPrice": "Cash Price",
+  "payNow": "Pay Now",
+  "installmentTotalPrice": "Installment Total Price",
+  "monthlyInstallment": "Monthly Installment",
+  "numberOfMonths": "Number of Months",
+  "city": "City",
+  "enterCity": "Enter city",
+  "streetAddress": "Street Address",
+  "enterStreetAddress": "Enter street address",
+  "phoneNumber": "Phone Number",
+  "enterPhoneNumber": "Enter phone number",
+  "fullName": "Full Name",
+  "enterFullName": "Enter full name",
+  "email": "Email",
+  "enterEmail": "Enter email",
+  "note": "Note",
+  "optionalNote": "Optional note",
+  "quantity": "Quantity",
+  "firstMonthPayment": "First Month Payment",
+  "buyCashWithWallet": "Buy Cash with Wallet",
+  "buyInstallmentWithWallet": "Pay First Month with Wallet",
+
+  "sendMoney": "Send Money",
+  "sendMoneySubtitle": "Secure Iraqi Dinar transfer",
+  "sendMoneyFormSubtitle": "Enter receiver email, amount, and note",
+  "recipientEmail": "Recipient Email",
+  "enterAmount": "Please enter amount",
+  "amount": "Amount",
+  "transactionAmount": "Transaction Amount",
+  "transactionFee": "Transaction Fee",
+  "totalSend": "Total Send",
+  "send": "Send",
+  "accountBalance": "Account Balance",
+  "failedToLoadBalance": "Failed to load balance",
+  "walletNotFound": "Wallet not found",
+  "walletLocked": "Wallet is locked",
+  "insufficientBalance": "Insufficient balance",
+  "cannotSendToYourself": "You cannot send money to yourself",
+  "transactionSuccess": "Money sent successfully",
+  "addNoteOptional": "Add note (optional)",
+
+  "settings": "Settings",
+  "language": "Language",
+  "support": "Support",
+  "profile": "Profile",
+  "security": "Security",
+  "adminPanel": "Admin Panel",
+  "logout": "Logout",
+  "settingsLanguageChanged": "Language changed successfully",
+  "settingsLanguageChangeFailed": "Failed to change language",
+  "settingsCannotOpenLink": "Cannot open this link",
+  "settingsOpenLinkFailed": "Failed to open link",
+  "settingsLogoutConfirm": "Are you sure you want to logout?",
+  "settingsSupportEmail": "Email Support",
+  "settingsSupportFacebook": "Facebook",
+  "settingsSupportInstagram": "Instagram",
+  "settingsSupportTiktok": "TikTok",
+
   "travelBooking": "Travel Booking",
   "travelBookingInfo": "Use trusted travel platforms to book hotels, flights, cars, and train tickets.",
   "travelBookingSafe": "You will be redirected to external trusted booking services. Please review their prices, policies, and terms before booking.",
@@ -862,8 +907,53 @@
   "travelBookingTrainsDesc": "Book train tickets worldwide",
   "cannotOpenLink": "Cannot open this link",
   "failedToOpenLink": "Failed to open link",
+
   "languageEnglish": "English",
   "languageArabic": "العربية",
   "languageSorani": "کوردی سۆرانی",
-  "languageBadini": "کوردی بادینی"
+  "languageBadini": "کوردی بادینی",
+
+  "fullNamePlaceholder": "Enter full name",
+  "dateOfBirth": "Date of Birth",
+  "dateOfBirthPlaceholder": "YYYY-MM-DD",
+  "phoneNumberPlaceholder": "Enter phone number",
+  "country": "Country",
+  "countryPlaceholder": "Enter country",
+  "accountActive": "Account is active",
+  "active": "Active",
+  "save": "Save",
+  "profileUpdated": "Profile updated successfully",
+  "changePhoto": "Change photo",
+  "selectExistingPhoto": "Select existing photo",
+  "takeNewPhoto": "Take new photo",
+  "tapToChangePhoto": "Tap to change photo",
+
+  "approved": "Approved",
+  "rejected": "Rejected",
+  "pending": "Pending",
+
+  "withdraw": "Withdraw",
+  "deposit": "Deposit",
+  "transactions": "Transactions",
+
+  "resetPassword": "Reset Password",
+  "resetPasswordDesc2": "Update your password to keep your account secure.",
+  "currentPassword": "Current Password",
+  "enterCurrentPassword": "Enter current password",
+  "newPassword": "New Password",
+  "enterNewPassword": "Enter new password",
+  "confirmNewPassword": "Confirm New Password",
+  "dangerZone": "Danger Zone",
+  "deleteAccountDesc": "Deleting your account is permanent and cannot be undone.",
+  "deleteAccount": "Delete Account",
+  "deleteAccountButton": "Delete Account",
+  "deleteAccountWarning": "Delete Account Warning",
+  "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone.",
+  "notAuthenticated": "Not authenticated",
+  "accountDeleteError": "Failed to delete account",
+  "accountDeleted": "Your account has been deleted",
+  "passwordsDoNotMatch": "Passwords do not match",
+  "currentPasswordIncorrect": "Current password is incorrect",
+  "passwordResetSuccess": "Password changed successfully",
+  "passwordChangeError": "Failed to change password"
 }
