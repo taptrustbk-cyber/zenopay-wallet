@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -152,12 +152,36 @@ const CAPITAL_TRANSLATIONS: Record<string, Record<string, string>> = {
   Amsterdam: { en: 'Amsterdam', ar: 'أمستردام', ckb: 'ئەمستەردام', kmr: 'ئەمستەردام' },
 };
 
+function isRenderableText(value: unknown) {
+  return typeof value === 'string' || typeof value === 'number';
+}
+
 function tSafe(key: string, fallback: string) {
-  const translated = i18n.t(key);
-  if (!translated || translated === key || String(translated).includes('[missing')) {
+  try {
+    const translated = i18n.t(key);
+
+    if (!isRenderableText(translated)) {
+      return fallback;
+    }
+
+    const str = String(translated).trim();
+
+    if (!str) return fallback;
+    if (str === key) return fallback;
+
+    const lower = str.toLowerCase();
+    if (
+      lower.includes('[missing') ||
+      lower.includes('missing translation') ||
+      lower.includes('" translation')
+    ) {
+      return fallback;
+    }
+
+    return str;
+  } catch {
     return fallback;
   }
-  return String(translated);
 }
 
 function getLocalizedValue(
@@ -174,11 +198,13 @@ export default function ConsulateScreen() {
   const router = useRouter();
   const currentLang = getCurrentLanguage?.() || 'en';
 
-  const groupedByCity = CONSULATES.reduce((acc, consulate) => {
-    if (!acc[consulate.city]) acc[consulate.city] = [];
-    acc[consulate.city].push(consulate);
-    return acc;
-  }, {} as Record<string, Consulate[]>);
+  const groupedByCity = useMemo(() => {
+    return CONSULATES.reduce((acc, consulate) => {
+      if (!acc[consulate.city]) acc[consulate.city] = [];
+      acc[consulate.city].push(consulate);
+      return acc;
+    }, {} as Record<string, Consulate[]>);
+  }, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -195,7 +221,9 @@ export default function ConsulateScreen() {
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{tSafe('consulateInfo.title', 'Consulate Info')}</Text>
+          <Text style={styles.headerTitle}>
+            {tSafe('consulateInfo.title', 'Consulate Info')}
+          </Text>
           <Text style={styles.headerSubtitle}>
             {tSafe('consulateInfo.city', 'City')} & {tSafe('consulateInfo.capital', 'Capital')}
           </Text>
@@ -290,7 +318,9 @@ export default function ConsulateScreen() {
                             <Ionicons name="location-outline" size={15} color={UI.blueDark} />
                           </View>
                           <View style={styles.infoTextWrap}>
-                            <Text style={styles.infoLabel}>{tSafe('consulateInfo.city', 'City')}</Text>
+                            <Text style={styles.infoLabel}>
+                              {tSafe('consulateInfo.city', 'City')}
+                            </Text>
                             <Text style={styles.infoValue}>{localizedCity}</Text>
                           </View>
                         </View>
@@ -302,7 +332,9 @@ export default function ConsulateScreen() {
                             <Ionicons name="flag-outline" size={15} color={UI.blueDark} />
                           </View>
                           <View style={styles.infoTextWrap}>
-                            <Text style={styles.infoLabel}>{tSafe('consulateInfo.capital', 'Capital')}</Text>
+                            <Text style={styles.infoLabel}>
+                              {tSafe('consulateInfo.capital', 'Capital')}
+                            </Text>
                             <Text style={styles.infoValue}>{localizedCapital}</Text>
                           </View>
                         </View>
