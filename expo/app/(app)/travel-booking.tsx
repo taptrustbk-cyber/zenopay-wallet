@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Linking, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Linking, Alert, I18nManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -46,57 +46,82 @@ interface BookingOption {
   id: string;
   title: string;
   description: string;
-  icon: any;
+  icon: keyof typeof Ionicons.glyphMap;
   url: string;
   color: string;
 }
 
-const bookingOptions: BookingOption[] = [
-  {
-    id: '1',
-    title: 'Hotels',
-    description: 'Book hotels worldwide with best prices',
-    icon: 'bed',
-    url: 'https://www.booking.com',
-    color: '#003580',
-  },
-  {
-    id: '2',
-    title: 'Hotels (Agoda)',
-    description: 'Alternative hotel booking platform',
-    icon: 'home',
-    url: 'https://www.agoda.com',
-    color: '#D10074',
-  },
-  {
-    id: '3',
-    title: 'Flights',
-    description: 'Search and compare flight prices',
-    icon: 'airplane',
-    url: 'https://www.skyscanner.com',
-    color: '#00B2D6',
-  },
-  {
-    id: '4',
-    title: 'Car Rentals',
-    description: 'Rent cars for your journey',
-    icon: 'car',
-    url: 'https://www.rentalcars.com',
-    color: '#FF6B00',
-  },
-  {
-    id: '5',
-    title: 'Train Tickets',
-    description: 'Book train tickets worldwide',
-    icon: 'train',
-    url: 'https://www.trainline.com',
-    color: '#55AB26',
-  },
-];
+const tSafe = (key: string, fallback: string) => {
+  try {
+    const value = i18n.t(key) as unknown as string;
+    if (!value) return fallback;
+
+    const s = String(value).trim();
+    const lower = s.toLowerCase();
+
+    if (
+      !s ||
+      s === key ||
+      lower.includes('missing translation') ||
+      lower.includes('[missing') ||
+      lower.includes(`"${key.toLowerCase()}"`)
+    ) {
+      return fallback;
+    }
+
+    return s;
+  } catch {
+    return fallback;
+  }
+};
 
 export default function TravelBookingScreen() {
   useTheme();
   const router = useRouter();
+  const isRTL = I18nManager.isRTL;
+
+  const bookingOptions: BookingOption[] = [
+    {
+      id: '1',
+      title: tSafe('travelBookingHotelsTitle', 'Hotels'),
+      description: tSafe('travelBookingHotelsDesc', 'Book hotels worldwide with best prices'),
+      icon: 'bed',
+      url: 'https://www.booking.com',
+      color: '#003580',
+    },
+    {
+      id: '2',
+      title: tSafe('travelBookingAgodaTitle', 'Hotels (Agoda)'),
+      description: tSafe('travelBookingAgodaDesc', 'Alternative hotel booking platform'),
+      icon: 'home',
+      url: 'https://www.agoda.com',
+      color: '#D10074',
+    },
+    {
+      id: '3',
+      title: tSafe('travelBookingFlightsTitle', 'Flights'),
+      description: tSafe('travelBookingFlightsDesc', 'Search and compare flight prices'),
+      icon: 'airplane',
+      url: 'https://www.skyscanner.com',
+      color: '#00B2D6',
+    },
+    {
+      id: '4',
+      title: tSafe('travelBookingCarsTitle', 'Car Rentals'),
+      description: tSafe('travelBookingCarsDesc', 'Rent cars for your journey'),
+      icon: 'car',
+      url: 'https://www.rentalcars.com',
+      color: '#FF6B00',
+    },
+    {
+      id: '5',
+      title: tSafe('travelBookingTrainsTitle', 'Train Tickets'),
+      description: tSafe('travelBookingTrainsDesc', 'Book train tickets worldwide'),
+      icon: 'train',
+      url: 'https://www.trainline.com',
+      color: '#55AB26',
+    },
+  ];
 
   const handleBookingPress = async (option: BookingOption) => {
     try {
@@ -105,10 +130,16 @@ export default function TravelBookingScreen() {
       if (supported) {
         await Linking.openURL(option.url);
       } else {
-        Alert.alert(i18n.t('error'), i18n.t('cannotOpenLink'));
+        Alert.alert(
+          tSafe('error', 'Error'),
+          tSafe('cannotOpenLink', 'Cannot open this link')
+        );
       }
     } catch {
-      Alert.alert(i18n.t('error'), i18n.t('failedToOpenLink'));
+      Alert.alert(
+        tSafe('error', 'Error'),
+        tSafe('failedToOpenLink', 'Failed to open link')
+      );
     }
   };
 
@@ -120,11 +151,15 @@ export default function TravelBookingScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.9}>
-              <Ionicons name="arrow-back" size={22} color={UI.blueDark} />
-              <Text style={styles.backText}>{i18n.t('back')}</Text>
+              <Ionicons
+                name={isRTL ? 'arrow-forward' : 'arrow-back'}
+                size={22}
+                color={UI.blueDark}
+              />
+              <Text style={styles.backText}>{tSafe('back', 'Back')}</Text>
             </TouchableOpacity>
 
-            <Text style={styles.headerTitle}>{i18n.t('travelBooking')}</Text>
+            <Text style={styles.headerTitle}>{tSafe('travelBooking', 'Travel Booking')}</Text>
 
             <View style={styles.headerGhost} />
           </View>
@@ -133,14 +168,19 @@ export default function TravelBookingScreen() {
             <View style={styles.infoIconCircle}>
               <Ionicons name="information-circle" size={22} color={UI.blue} />
             </View>
-            <Text style={styles.infoText}>{i18n.t('travelBookingInfo')}</Text>
+            <Text style={[styles.infoText, isRTL && styles.textRTL]}>
+              {tSafe(
+                'travelBookingInfo',
+                'Use trusted travel platforms to book hotels, flights, cars, and train tickets.'
+              )}
+            </Text>
           </View>
 
           <View style={styles.optionsList}>
             {bookingOptions.map((option) => (
               <TouchableOpacity
                 key={option.id}
-                style={styles.optionCard}
+                style={[styles.optionCard, isRTL && styles.optionCardRTL]}
                 onPress={() => handleBookingPress(option)}
                 activeOpacity={0.92}
               >
@@ -149,8 +189,10 @@ export default function TravelBookingScreen() {
                 </View>
 
                 <View style={styles.optionInfo}>
-                  <Text style={styles.optionTitle}>{option.title}</Text>
-                  <Text style={styles.optionDescription}>{option.description}</Text>
+                  <Text style={[styles.optionTitle, isRTL && styles.textRTL]}>{option.title}</Text>
+                  <Text style={[styles.optionDescription, isRTL && styles.textRTL]}>
+                    {option.description}
+                  </Text>
                 </View>
 
                 <View style={styles.openPill}>
@@ -164,7 +206,12 @@ export default function TravelBookingScreen() {
             <View style={styles.noteIconCircle}>
               <Ionicons name="shield-checkmark" size={20} color={UI.blue} />
             </View>
-            <Text style={styles.noteText}>{i18n.t('travelBookingSafe')}</Text>
+            <Text style={[styles.noteText, isRTL && styles.textRTL]}>
+              {tSafe(
+                'travelBookingSafe',
+                'You will be redirected to external trusted booking services. Please review their prices, policies, and terms before booking.'
+              )}
+            </Text>
           </View>
 
           <View style={{ height: 24 }} />
@@ -261,6 +308,9 @@ const styles = StyleSheet.create({
     gap: 12,
     ...SHADOWS.soft,
   },
+  optionCardRTL: {
+    flexDirection: 'row-reverse',
+  },
   iconContainer: {
     width: 56,
     height: 56,
@@ -315,5 +365,9 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     color: UI.text2,
     fontWeight: '700',
+  },
+
+  textRTL: {
+    textAlign: 'right',
   },
 });
