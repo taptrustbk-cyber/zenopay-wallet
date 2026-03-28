@@ -73,11 +73,9 @@ function tSafe(key: string, fallback: string) {
 function ErrorFallback({ error, resetErrorBoundary }: any) {
   return (
     <View style={styles.errorContainer}>
-      <Text style={styles.errorTitle}>
-        {tSafe('common.somethingWentWrong', 'Something went wrong')}
-      </Text>
+      <Text style={styles.errorTitle}>{tSafe('common.error', 'Error')}</Text>
       <Text style={styles.errorMessage}>
-        {error?.message || tSafe('common.error', 'Unknown error')}
+        {error?.message || tSafe('common.somethingWentWrong', 'Something went wrong')}
       </Text>
       <TouchableOpacity style={styles.retryButton} onPress={resetErrorBoundary}>
         <Text style={styles.retryText}>{tSafe('common.retry', 'Try again')}</Text>
@@ -97,37 +95,32 @@ function KycPendingScreen() {
         </View>
 
         <Text style={styles.kycTitle}>
-          {tSafe('kyc.pendingAdminReview', 'Pending Admin Review')}
+          {tSafe('kycVerificationRequired', 'KYC Verification Required')}
         </Text>
         <Text style={styles.kycSubtitle}>
-          {tSafe('kyc.accountUnderReview', 'Your account is currently under review.')}
+          {tSafe('kycPendingMessage', 'Your account is under review.')}
         </Text>
 
         <View style={styles.kycInfoBox}>
           <Ionicons name="time-outline" size={20} color={UI.text3} style={styles.kycInfoIcon} />
           <View style={styles.kycInfoContent}>
             <Text style={styles.kycInfoTitle}>
-              {tSafe('kyc.emailNotification', 'Email Notification')}
+              {tSafe('whatsNext', 'What is next?')}
             </Text>
             <Text style={styles.kycInfoText}>
-              {tSafe(
-                'kyc.emailNotificationDesc',
-                'We will notify you by email once your account review is complete.'
-              )}
+              {tSafe('kycNextSteps', 'Please wait while we review your submitted documents.')}
             </Text>
           </View>
         </View>
 
         <View style={styles.kycSecurityNote}>
           <Text style={styles.kycSecurityText}>
-            {tSafe('kyc.infoSecure', 'Your information is secure and protected.')}
+            {tSafe('documentsSecure', 'Your documents are stored securely.')}
           </Text>
         </View>
 
         <TouchableOpacity style={styles.kycSignOutButton} onPress={signOut}>
-          <Text style={styles.kycSignOutText}>
-            {tSafe('auth.signOut', 'Sign Out')}
-          </Text>
+          <Text style={styles.kycSignOutText}>{tSafe('auth.signOut', 'Sign Out')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -144,28 +137,28 @@ function MainBottomNav() {
       key: 'dashboard',
       label: tSafe('home', 'Home'),
       icon: 'home' as const,
-      path: '/dashboard',
+      path: '/(app)/dashboard',
       active: pathname === '/(app)/dashboard' || pathname === '/dashboard',
     },
     {
-      key: 'cards',
+      key: 'Cards',
       label: tSafe('cards.title', 'Cards'),
       icon: 'card' as const,
       path: '/Cards',
-      active: pathname === '/Cards' || pathname === '/(app)/Cards',
+      active: pathname === '/Cards',
     },
     {
       key: 'consulate',
       label: tSafe('consulateInfo.title', 'Consulate Info'),
       icon: 'chatbox' as const,
-      path: '/consulate',
+      path: '/(app)/consulate',
       active: pathname === '/(app)/consulate' || pathname === '/consulate',
     },
     {
       key: 'settings',
       label: tSafe('settings', 'Settings'),
       icon: 'settings' as const,
-      path: '/settings',
+      path: '/(app)/settings',
       active: pathname === '/(app)/settings' || pathname === '/settings',
     },
   ];
@@ -213,10 +206,6 @@ export default function AppLayout() {
     '/Cards',
     '/consulate',
     '/settings',
-    '/(app)/dashboard',
-    '/(app)/Cards',
-    '/(app)/consulate',
-    '/(app)/settings',
   ];
 
   const showMainBottomNav = mainNavPaths.includes(pathname);
@@ -265,7 +254,7 @@ export default function AppLayout() {
                 title: tSafe('consulateInfo.title', 'Consulate Info'),
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard' as never)}
+                    onPress={() => navigation.navigate('dashboard')}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
@@ -276,15 +265,8 @@ export default function AppLayout() {
               })}
             />
 
-            <Stack.Screen
-              name="profile"
-              options={{ title: tSafe('profile.title', 'Profile') }}
-            />
-
-            <Stack.Screen
-              name="kyc"
-              options={{ title: tSafe('kyc.kycDocuments', 'KYC Verification') }}
-            />
+            <Stack.Screen name="profile" options={{ title: tSafe('profile.title', 'Profile') }} />
+            <Stack.Screen name="kyc" options={{ title: 'KYC Verification' }} />
 
             <Stack.Screen
               name="send"
@@ -292,7 +274,7 @@ export default function AppLayout() {
                 title: tSafe('sendMoney', 'Send Money'),
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard' as never)}
+                    onPress={() => navigation.navigate('dashboard')}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
@@ -309,7 +291,7 @@ export default function AppLayout() {
                 title: tSafe('deposit.depositMoney', 'Deposit'),
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard' as never)}
+                    onPress={() => navigation.navigate('dashboard')}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
@@ -328,10 +310,10 @@ export default function AppLayout() {
             <Stack.Screen
               name="withdraw"
               options={({ navigation }) => ({
-                title: tSafe('withdraw', 'Withdraw'),
+                title: tSafe('withdrawPage.withdrawRequest', 'Withdraw'),
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard' as never)}
+                    onPress={() => navigation.navigate('dashboard')}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
@@ -342,11 +324,7 @@ export default function AppLayout() {
               })}
             />
 
-            <Stack.Screen
-              name="admin"
-              options={{ title: tSafe('adminPanel', 'Admin Panel') }}
-            />
-
+            <Stack.Screen name="admin" options={{ title: 'Admin Panel' }} />
             <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
             <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
             <Stack.Screen name="security" options={{ headerShown: false }} />
@@ -358,7 +336,7 @@ export default function AppLayout() {
                 headerShown: true,
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard' as never)}
+                    onPress={() => navigation.navigate('dashboard')}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
@@ -376,7 +354,7 @@ export default function AppLayout() {
                 headerShown: true,
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard' as never)}
+                    onPress={() => navigation.navigate('dashboard')}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
@@ -394,7 +372,7 @@ export default function AppLayout() {
                 headerShown: true,
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard' as never)}
+                    onPress={() => navigation.navigate('dashboard')}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
@@ -412,7 +390,7 @@ export default function AppLayout() {
                 headerShown: true,
                 headerLeft: () => (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('dashboard' as never)}
+                    onPress={() => navigation.navigate('dashboard')}
                     style={styles.headerBackBtn}
                     activeOpacity={0.85}
                   >
@@ -508,7 +486,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: UI.danger,
     marginBottom: 16,
-    textAlign: 'center',
   },
   errorMessage: {
     fontSize: 16,
