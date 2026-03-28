@@ -68,6 +68,29 @@ const SHADOWS = {
 
 const STEP_AMOUNT = 1000;
 
+const tSafe = (key: string, fallback: string) => {
+  try {
+    const value = i18n.t(key as any);
+    if (!value) return fallback;
+
+    const text = String(value);
+    const lower = text.toLowerCase();
+
+    if (
+      text === key ||
+      lower.includes('missing translation') ||
+      lower.includes('missing "') ||
+      text.includes(`"${key}"`)
+    ) {
+      return fallback;
+    }
+
+    return text;
+  } catch {
+    return fallback;
+  }
+};
+
 const safeNumber = (value: string) => {
   const onlyDigits = String(value || '').replace(/[^\d]/g, '');
   return Number(onlyDigits || 0);
@@ -81,11 +104,13 @@ const formatWithDots = (value: number | string) => {
 
 const usesArabicIQD = () => {
   const lang = String(i18n.language || '').toLowerCase();
-  return ['ar', 'ku', 'cbk', 'kmr'].includes(lang);
+  return ['ar', 'ku', 'cbk', 'kmr', 'ckb'].includes(lang);
 };
 
 const currencyLabel = () => {
-  return usesArabicIQD() ? 'د.غ' : 'IQD';
+  return usesArabicIQD()
+    ? tSafe('iqdArabic', 'د.غ')
+    : tSafe('iqdShort', 'IQD');
 };
 
 const formatMoneyText = (value: number | string) => {
@@ -107,7 +132,7 @@ export default function SendMoneyScreen() {
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
     queryFn: async () => {
-      if (!user?.id) throw new Error('User ID not found');
+      if (!user?.id) throw new Error(tSafe('sendPage.userIdNotFound', 'User ID not found'));
 
       const { data, error } = await supabase
         .from('wallets')
@@ -115,7 +140,7 @@ export default function SendMoneyScreen() {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) throw new Error(error.message || 'Failed to fetch wallet');
+      if (error) throw new Error(error.message || tSafe('sendPage.failedToFetchWallet', 'Failed to fetch wallet'));
       return (data as Wallet) || null;
     },
     enabled: !!user?.id,
@@ -146,42 +171,42 @@ export default function SendMoneyScreen() {
   const sendMutation = useMutation({
     mutationFn: async () => {
       if (!recipientEmail.trim()) {
-        throw new Error(String(i18n.t('enterEmail') || 'Please enter recipient email'));
+        throw new Error(tSafe('enterEmail', 'Please enter recipient email'));
       }
 
       if (!amount.trim()) {
-        throw new Error(String(i18n.t('enterAmount') || 'Please enter amount'));
+        throw new Error(tSafe('enterAmount', 'Please enter amount'));
       }
 
       const amountNum = safeNumber(amount);
 
       if (!amountNum || amountNum <= 0) {
-        throw new Error(String(i18n.t('invalidAmount') || 'Invalid amount'));
+        throw new Error(tSafe('invalidAmount', 'Invalid amount'));
       }
 
       if (!walletQuery.data) {
-        throw new Error(String(i18n.t('walletNotFound') || 'Wallet not found'));
+        throw new Error(tSafe('walletNotFound', 'Wallet not found'));
       }
 
       if (walletQuery.data.is_locked) {
-        throw new Error(String(i18n.t('walletLocked') || 'Wallet is locked'));
+        throw new Error(tSafe('walletLocked', 'Wallet is locked'));
       }
 
       if (amountNum > Number(walletQuery.data.balance || 0)) {
         throw new Error(
-          `${String(i18n.t('insufficientBalance') || 'Insufficient balance')}\n${formatMoneyText(
+          `${tSafe('insufficientBalance', 'Insufficient balance')}\n${formatMoneyText(
             walletQuery.data.balance || 0
           )}`
         );
       }
 
       if (!user?.email) {
-        throw new Error('User email not found');
+        throw new Error(tSafe('sendPage.userEmailNotFound', 'User email not found'));
       }
 
       const cleanEmail = recipientEmail.trim().toLowerCase();
       if (cleanEmail === user.email.toLowerCase()) {
-        throw new Error(String(i18n.t('cannotSendToYourself') || 'You cannot send money to yourself'));
+        throw new Error(tSafe('cannotSendToYourself', 'You cannot send money to yourself'));
       }
 
       const cleanNote = note.trim();
@@ -193,7 +218,7 @@ export default function SendMoneyScreen() {
       });
 
       if (error) {
-        throw new Error(error.message || 'Failed to send money');
+        throw new Error(error.message || tSafe('sendPage.failedToSendMoney', 'Failed to send money'));
       }
     },
     onSuccess: () => {
@@ -202,8 +227,8 @@ export default function SendMoneyScreen() {
       queryClient.invalidateQueries({ queryKey: ['transactions-rich-final'] });
 
       Alert.alert(
-        String(i18n.t('success') || 'Success'),
-        String(i18n.t('transactionSuccess') || 'Money sent successfully')
+        tSafe('success', 'Success'),
+        tSafe('transactionSuccess', 'Money sent successfully')
       );
 
       setRecipientEmail('');
@@ -213,8 +238,8 @@ export default function SendMoneyScreen() {
     },
     onError: (error: any) => {
       Alert.alert(
-        String(i18n.t('error') || 'Error'),
-        error?.message || 'Failed to send money'
+        tSafe('error', 'Error'),
+        error?.message || tSafe('sendPage.failedToSendMoney', 'Failed to send money')
       );
     },
   });
@@ -242,13 +267,12 @@ export default function SendMoneyScreen() {
             </TouchableOpacity>
 
             <Text style={styles.headerTitle}>
-              {String(i18n.t('sendMoney') || 'Send Money')}
+              {tSafe('sendMoney', 'Send Money')}
             </Text>
 
             <View style={styles.headerBtnGhost} />
           </View>
 
-          {/* compact balance card */}
           <LinearGradient
             colors={['#77B6FF', '#4D8EF7', '#2563EB']}
             start={{ x: 0, y: 0 }}
@@ -261,7 +285,7 @@ export default function SendMoneyScreen() {
             <View style={styles.balanceCardTop}>
               <View style={styles.balanceTextBlock}>
                 <Text style={styles.balanceLabel}>
-                  {String(i18n.t('accountBalance') || 'Account Balance')}
+                  {tSafe('accountBalance', 'Account Balance')}
                 </Text>
 
                 {walletQuery.isLoading ? (
@@ -282,12 +306,12 @@ export default function SendMoneyScreen() {
               <View style={styles.balanceErrorRow}>
                 <Ionicons name="alert-circle-outline" size={16} color="#fff" />
                 <Text style={styles.balanceErrorText}>
-                  {String(i18n.t('failedToLoadBalance') || 'Failed to load balance')}
+                  {tSafe('failedToLoadBalance', 'Failed to load balance')}
                 </Text>
               </View>
             ) : (
               <Text style={styles.balanceHint}>
-                {String(i18n.t('sendMoneySubtitle') || 'Secure Iraqi Dinar transfer')}
+                {tSafe('sendMoneySubtitle', 'Secure Iraqi Dinar transfer')}
               </Text>
             )}
           </LinearGradient>
@@ -295,21 +319,21 @@ export default function SendMoneyScreen() {
           <View style={styles.formCard}>
             <View style={styles.sectionHead}>
               <Text style={styles.sectionTitle}>
-                {String(i18n.t('sendMoney') || 'Send Money')}
+                {tSafe('sendMoney', 'Send Money')}
               </Text>
               <Text style={styles.sectionSubtitle}>
-                {String(i18n.t('sendMoneyFormSubtitle') || 'Enter receiver email, amount, and note')}
+                {tSafe('sendMoneyFormSubtitle', 'Enter receiver email, amount, and note')}
               </Text>
             </View>
 
             <Text style={styles.label}>
-              {String(i18n.t('recipientEmail') || 'Recipient Email')}
+              {tSafe('recipientEmail', 'Recipient Email')}
             </Text>
             <View style={styles.inputWrap}>
               <Ionicons name="mail-outline" size={20} color={UI.text2} />
               <TextInput
                 style={styles.input}
-                placeholder={String(i18n.t('recipientEmail') || 'Recipient Email')}
+                placeholder={tSafe('recipientEmail', 'Recipient Email')}
                 placeholderTextColor={UI.text3}
                 value={recipientEmail}
                 onChangeText={setRecipientEmail}
@@ -321,13 +345,13 @@ export default function SendMoneyScreen() {
             </View>
 
             <Text style={styles.label}>
-              {String(i18n.t('amount') || 'Amount')}
+              {tSafe('amount', 'Amount')}
             </Text>
 
             <View style={styles.amountCard}>
               <View style={styles.amountHeaderRow}>
                 <Text style={styles.amountHeaderTitle}>
-                  {String(i18n.t('enterAmount') || 'Enter Amount')}
+                  {tSafe('enterAmount', 'Enter Amount')}
                 </Text>
                 <View style={styles.currencyPill}>
                   <Text style={styles.currencyPillText}>{currencyLabel()}</Text>
@@ -372,7 +396,7 @@ export default function SendMoneyScreen() {
             </View>
 
             <Text style={styles.label}>
-              {String(i18n.t('note') || 'Note')}
+              {tSafe('note', 'Note')}
             </Text>
             <View style={[styles.inputWrap, styles.noteWrap]}>
               <Ionicons
@@ -383,7 +407,7 @@ export default function SendMoneyScreen() {
               />
               <TextInput
                 style={[styles.input, styles.noteInput]}
-                placeholder={String(i18n.t('addNoteOptional') || 'Add note (optional)')}
+                placeholder={tSafe('addNoteOptional', 'Add note (optional)')}
                 placeholderTextColor={UI.text3}
                 value={note}
                 onChangeText={setNote}
@@ -397,7 +421,7 @@ export default function SendMoneyScreen() {
             <View style={styles.summaryCard}>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>
-                  {String(i18n.t('transactionAmount') || 'Transaction Amount')}
+                  {tSafe('transactionAmount', 'Transaction Amount')}
                 </Text>
                 <Text style={styles.summaryValue}>
                   {formatMoneyText(amountNumber)}
@@ -406,7 +430,7 @@ export default function SendMoneyScreen() {
 
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>
-                  {String(i18n.t('transactionFee') || 'Transaction Fee')}
+                  {tSafe('transactionFee', 'Transaction Fee')}
                 </Text>
                 <Text style={[styles.summaryValue, styles.feeValue]}>
                   {formatMoneyText(0)}
@@ -415,7 +439,7 @@ export default function SendMoneyScreen() {
 
               <View style={[styles.summaryRow, styles.summaryRowLast]}>
                 <Text style={styles.summaryLabelStrong}>
-                  {String(i18n.t('totalSend') || 'Total Send')}
+                  {tSafe('totalSend', 'Total Send')}
                 </Text>
                 <Text style={styles.summaryValueStrong}>
                   {formatMoneyText(amountNumber)}
@@ -444,7 +468,7 @@ export default function SendMoneyScreen() {
                   <>
                     <Ionicons name="paper-plane-outline" size={20} color="#fff" />
                     <Text style={styles.sendButtonText}>
-                      {String(i18n.t('send') || 'Send')}
+                      {tSafe('send', 'Send')}
                     </Text>
                   </>
                 )}
