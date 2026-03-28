@@ -1,20 +1,20 @@
 {
   "common": {
+    "ok": "OK",
     "confirm": "Confirm",
     "cancel": "Cancel",
-    "error": "Error",
-    "somethingWentWrong": "Something went wrong",
-    "ok": "OK",
-    "success": "Success",
-    "important": "Important",
     "change": "Change",
     "remove": "Remove",
-    "permissionRequired": "Permission Required",
+    "retry": "Retry",
+    "error": "Error",
+    "success": "Success",
+    "important": "Important",
     "failed": "Failed",
     "failed_to_load": "Failed to load",
+    "somethingWentWrong": "Something went wrong",
     "something_wrong": "Something went wrong.",
-    "back": "Back",
-    "retry": "Retry"
+    "permissionRequired": "Permission Required",
+    "back": "Back"
   },
   "auth": {
     "createAccount": "Create Account",
@@ -91,8 +91,8 @@
     "timeRemaining": "Time remaining",
     "signOut": "Sign Out",
     "user_not_found": "User not found",
-    "loginRequired": "Please login first.",
-    "userNotFound": "User not found"
+    "userNotFound": "User not found",
+    "loginRequired": "Please login first."
   },
   "resetPassword": {
     "title": "Reset Password",
@@ -308,6 +308,7 @@
   "walletBalanceAfterPayment": "Wallet Balance After Payment",
   "remainingInstallmentAmount": "Remaining Installment Amount",
   "done": "Done",
+  "error": "Error",
   "purchaseFailed": "Purchase failed",
   "all": "All",
   "brandApple": "Apple",
@@ -408,7 +409,7 @@
       "kurdtel": "Kurdtel"
     }
   },
-  "privacyPolicyPage": {
+  "privacyPolicyData": {
     "title": "Privacy Policy",
     "lastUpdated": "Last updated: March 28, 2026",
     "intro": "This Privacy Policy explains how ZenoPay collects, uses, stores, and protects your information when you use the app and related services.",
@@ -704,17 +705,12 @@
   "sendMoneySubtitle": "Secure Iraqi Dinar transfer",
   "sendMoneyFormSubtitle": "Enter receiver email, amount, and note",
   "recipientEmail": "Recipient Email",
-  "enterEmail": "Please enter recipient email",
-  "amount": "Amount",
   "enterAmount": "Please enter amount",
-  "note": "Note",
-  "addNoteOptional": "Add note (optional)",
+  "amount": "Amount",
   "transactionAmount": "Transaction Amount",
   "transactionFee": "Transaction Fee",
   "totalSend": "Total Send",
   "send": "Send",
-  "accountBalance": "Account Balance",
-  "failedToLoadBalance": "Failed to load balance",
   "walletNotFound": "Wallet not found",
   "walletLocked": "Wallet is locked",
   "insufficientBalance": "Insufficient balance",
@@ -865,5 +861,9 @@
   "travelBookingTrainsTitle": "Train Tickets",
   "travelBookingTrainsDesc": "Book train tickets worldwide",
   "cannotOpenLink": "Cannot open this link",
-  "failedToOpenLink": "Failed to open link"
+  "failedToOpenLink": "Failed to open link",
+  "languageEnglish": "English",
+  "languageArabic": "العربية",
+  "languageSorani": "کوردی سۆرانی",
+  "languageBadini": "کوردی بادینی"
 }
