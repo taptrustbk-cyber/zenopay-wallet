@@ -124,132 +124,32 @@ const UI = {
 };
 
 const COUNTRY_TRANSLATIONS: Record<string, Record<string, string>> = {
-  France: {
-    en: 'France',
-    ar: 'فرنسا',
-    ckb: 'فەرەنسا',
-    kmr: 'فەرەنسا',
-  },
-  Germany: {
-    en: 'Germany',
-    ar: 'ألمانيا',
-    ckb: 'ئەڵمانیا',
-    kmr: 'ئەڵمانیا',
-  },
-  Italy: {
-    en: 'Italy',
-    ar: 'إيطاليا',
-    ckb: 'ئیتالیا',
-    kmr: 'ئیتالیا',
-  },
-  Spain: {
-    en: 'Spain',
-    ar: 'إسبانيا',
-    ckb: 'ئیسپانیا',
-    kmr: 'ئیسپانیا',
-  },
-  UK: {
-    en: 'United Kingdom',
-    ar: 'المملكة المتحدة',
-    ckb: 'شانشینی یەکگرتوو',
-    kmr: 'شانشینی یەکگرتوو',
-  },
-  USA: {
-    en: 'United States',
-    ar: 'الولايات المتحدة',
-    ckb: 'ئەمریکا',
-    kmr: 'ئەمریکا',
-  },
-  Canada: {
-    en: 'Canada',
-    ar: 'كندا',
-    ckb: 'کەنەدا',
-    kmr: 'کەنەدا',
-  },
-  Belgium: {
-    en: 'Belgium',
-    ar: 'بلجيكا',
-    ckb: 'بەلجیکا',
-    kmr: 'بەلجیکا',
-  },
-  Netherlands: {
-    en: 'Netherlands',
-    ar: 'هولندا',
-    ckb: 'هۆڵەندا',
-    kmr: 'هۆڵەندا',
-  },
+  France: { en: 'France', ar: 'فرنسا', ckb: 'فەرەنسا', kmr: 'فەرەنسا' },
+  Germany: { en: 'Germany', ar: 'ألمانيا', ckb: 'ئەڵمانیا', kmr: 'ئەڵمانیا' },
+  Italy: { en: 'Italy', ar: 'إيطاليا', ckb: 'ئیتالیا', kmr: 'ئیتالیا' },
+  Spain: { en: 'Spain', ar: 'إسبانيا', ckb: 'ئیسپانیا', kmr: 'ئیسپانیا' },
+  UK: { en: 'United Kingdom', ar: 'المملكة المتحدة', ckb: 'شانشینی یەکگرتوو', kmr: 'شانشینی یەکگرتوو' },
+  USA: { en: 'United States', ar: 'الولايات المتحدة', ckb: 'ئەمریکا', kmr: 'ئەمریکا' },
+  Canada: { en: 'Canada', ar: 'كندا', ckb: 'کەنەدا', kmr: 'کەنەدا' },
+  Belgium: { en: 'Belgium', ar: 'بلجيكا', ckb: 'بەلجیکا', kmr: 'بەلجیکا' },
+  Netherlands: { en: 'Netherlands', ar: 'هولندا', ckb: 'هۆڵەندا', kmr: 'هۆڵەندا' },
 };
 
 const CITY_TRANSLATIONS: Record<string, Record<string, string>> = {
-  Erbil: {
-    en: 'Erbil',
-    ar: 'أربيل',
-    ckb: 'هەولێر',
-    kmr: 'هەولێر',
-  },
-  Baghdad: {
-    en: 'Baghdad',
-    ar: 'بغداد',
-    ckb: 'بەغدا',
-    kmr: 'بەغدا',
-  },
+  Erbil: { en: 'Erbil', ar: 'أربيل', ckb: 'هەولێر', kmr: 'هەولێر' },
+  Baghdad: { en: 'Baghdad', ar: 'بغداد', ckb: 'بەغدا', kmr: 'بەغدا' },
 };
 
 const CAPITAL_TRANSLATIONS: Record<string, Record<string, string>> = {
-  Paris: {
-    en: 'Paris',
-    ar: 'باريس',
-    ckb: 'پاریس',
-    kmr: 'پاریس',
-  },
-  Berlin: {
-    en: 'Berlin',
-    ar: 'برلين',
-    ckb: 'بەرلین',
-    kmr: 'بەرلین',
-  },
-  Rome: {
-    en: 'Rome',
-    ar: 'روما',
-    ckb: 'ڕۆم',
-    kmr: 'ڕۆم',
-  },
-  Madrid: {
-    en: 'Madrid',
-    ar: 'مدريد',
-    ckb: 'مەدرید',
-    kmr: 'مەدرید',
-  },
-  London: {
-    en: 'London',
-    ar: 'لندن',
-    ckb: 'لەندەن',
-    kmr: 'لەندەن',
-  },
-  'Washington D.C.': {
-    en: 'Washington D.C.',
-    ar: 'واشنطن',
-    ckb: 'واشنتن',
-    kmr: 'واشنتن',
-  },
-  Ottawa: {
-    en: 'Ottawa',
-    ar: 'أوتاوا',
-    ckb: 'ئۆتاوا',
-    kmr: 'ئۆتاوا',
-  },
-  Brussels: {
-    en: 'Brussels',
-    ar: 'بروكسل',
-    ckb: 'بروکسل',
-    kmr: 'بروکسل',
-  },
-  Amsterdam: {
-    en: 'Amsterdam',
-    ar: 'أمستردام',
-    ckb: 'ئەمستەردام',
-    kmr: 'ئەمستەردام',
-  },
+  Paris: { en: 'Paris', ar: 'باريس', ckb: 'پاریس', kmr: 'پاریس' },
+  Berlin: { en: 'Berlin', ar: 'برلين', ckb: 'بەرلین', kmr: 'بەرلین' },
+  Rome: { en: 'Rome', ar: 'روما', ckb: 'ڕۆم', kmr: 'ڕۆم' },
+  Madrid: { en: 'Madrid', ar: 'مدريد', ckb: 'مەدرید', kmr: 'مەدرید' },
+  London: { en: 'London', ar: 'لندن', ckb: 'لەندەن', kmr: 'لەندەن' },
+  'Washington D.C.': { en: 'Washington D.C.', ar: 'واشنطن', ckb: 'واشنتن', kmr: 'واشنتن' },
+  Ottawa: { en: 'Ottawa', ar: 'أوتاوا', ckb: 'ئۆتاوا', kmr: 'ئۆتاوا' },
+  Brussels: { en: 'Brussels', ar: 'بروكسل', ckb: 'بروکسل', kmr: 'بروکسل' },
+  Amsterdam: { en: 'Amsterdam', ar: 'أمستردام', ckb: 'ئەمستەردام', kmr: 'ئەمستەردام' },
 };
 
 function tSafe(key: string, fallback: string) {
@@ -265,7 +165,8 @@ function getLocalizedValue(
   key: string,
   lang: string
 ) {
-  return map[key]?.[lang] || map[key]?.en || key;
+  const normalizedLang = lang === 'cbk' ? 'ckb' : lang;
+  return map[key]?.[normalizedLang] || map[key]?.en || key;
 }
 
 export default function ConsulateScreen() {
@@ -294,9 +195,9 @@ export default function ConsulateScreen() {
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{tSafe('consulateInfo', 'Consulate Info')}</Text>
+          <Text style={styles.headerTitle}>{tSafe('consulateInfo.title', 'Consulate Info')}</Text>
           <Text style={styles.headerSubtitle}>
-            {tSafe('city', 'City')} & {tSafe('capital', 'Capital')}
+            {tSafe('consulateInfo.city', 'City')} & {tSafe('consulateInfo.capital', 'Capital')}
           </Text>
         </View>
 
@@ -311,17 +212,17 @@ export default function ConsulateScreen() {
           <View style={styles.heroBadge}>
             <Ionicons name="business-outline" size={18} color={UI.blueDark} />
             <Text style={styles.heroBadgeText}>
-              {tSafe('consulateInfo', 'Consulate Info')}
+              {tSafe('consulateInfo.title', 'Consulate Info')}
             </Text>
           </View>
 
           <Text style={styles.heroTitle}>
-            {tSafe('consulateDirectoryTitle', 'Embassy & Consulate Directory')}
+            {tSafe('consulateInfo.directoryTitle', 'Embassy & Consulate Directory')}
           </Text>
 
           <Text style={styles.heroText}>
             {tSafe(
-              'consulateDirectorySubtitle',
+              'consulateInfo.directorySubtitle',
               'Find quick contact details, capital city, and address information for consulates available in Iraq.'
             )}
           </Text>
@@ -380,7 +281,7 @@ export default function ConsulateScreen() {
 
                     <View style={styles.cardContent}>
                       <Text style={styles.cardTitle}>
-                        {localizedCountry} {tSafe('consulate', 'Consulate')}
+                        {localizedCountry} {tSafe('consulateInfo.consulate', 'Consulate')}
                       </Text>
 
                       <View style={styles.infoCard}>
@@ -389,7 +290,7 @@ export default function ConsulateScreen() {
                             <Ionicons name="location-outline" size={15} color={UI.blueDark} />
                           </View>
                           <View style={styles.infoTextWrap}>
-                            <Text style={styles.infoLabel}>{tSafe('city', 'City')}</Text>
+                            <Text style={styles.infoLabel}>{tSafe('consulateInfo.city', 'City')}</Text>
                             <Text style={styles.infoValue}>{localizedCity}</Text>
                           </View>
                         </View>
@@ -401,7 +302,7 @@ export default function ConsulateScreen() {
                             <Ionicons name="flag-outline" size={15} color={UI.blueDark} />
                           </View>
                           <View style={styles.infoTextWrap}>
-                            <Text style={styles.infoLabel}>{tSafe('capital', 'Capital')}</Text>
+                            <Text style={styles.infoLabel}>{tSafe('consulateInfo.capital', 'Capital')}</Text>
                             <Text style={styles.infoValue}>{localizedCapital}</Text>
                           </View>
                         </View>
@@ -414,7 +315,7 @@ export default function ConsulateScreen() {
                           </View>
                           <View style={styles.infoTextWrap}>
                             <Text style={styles.infoLabel}>
-                              {tSafe('address', 'Address')}
+                              {tSafe('consulateInfo.address', 'Address')}
                             </Text>
                             <Text style={styles.infoValueAddress}>{consulate.address}</Text>
                           </View>
@@ -428,7 +329,7 @@ export default function ConsulateScreen() {
                           </View>
                           <View style={styles.infoTextWrap}>
                             <Text style={styles.infoLabel}>
-                              {tSafe('contact', 'Contact')}
+                              {tSafe('consulateInfo.contact', 'Contact')}
                             </Text>
                             <Text style={styles.infoValuePhone}>{consulate.contact}</Text>
                           </View>
