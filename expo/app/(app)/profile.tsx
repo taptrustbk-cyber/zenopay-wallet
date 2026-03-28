@@ -13,6 +13,7 @@ import {
   Pressable,
   Animated,
   Easing,
+  I18nManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +44,11 @@ const COLORS = {
   blueSoft: '#EAF2FF',
   blueSoft2: '#DCEBFF',
 
+  success: '#16A34A',
+  successSoft: '#EAF8EF',
+  warning: '#F59E0B',
+  warningSoft: '#FEF3C7',
+
   white: '#FFFFFF',
   overlay: 'rgba(15, 23, 42, 0.28)',
 };
@@ -69,12 +75,37 @@ function safeText(v: any) {
   return String(v);
 }
 
+function tSafe(key: string, fallback: string) {
+  try {
+    const value = i18n.t(key) as unknown as string;
+    if (!value) return fallback;
+
+    const text = String(value).trim();
+    const lower = text.toLowerCase();
+
+    if (
+      !text ||
+      text === key ||
+      lower.includes('missing translation') ||
+      lower.includes('missing "') ||
+      text.includes(`"${key}"`)
+    ) {
+      return fallback;
+    }
+
+    return text;
+  } catch {
+    return fallback;
+  }
+}
+
 const COL_DATE = 'date_of_brith';
 const COL_DATE_FALLBACK = 'date_of_birth';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, profile, refreshProfile } = useAuth();
+  const isRTL = I18nManager.isRTL;
 
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [dob, setDob] = useState(
@@ -82,9 +113,9 @@ export default function ProfileScreen() {
   );
   const [phone, setPhone] = useState(safeText((profile as any)?.phone));
   const [country, setCountry] = useState(safeText((profile as any)?.country));
+  const [city, setCity] = useState(safeText((profile as any)?.city));
+  const [gender, setGender] = useState(safeText((profile as any)?.gender));
   const [email] = useState(user?.email || safeText((profile as any)?.email));
-
-  const [accountActiveText, setAccountActiveText] = useState('Account is active');
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>((profile as any)?.avatar_url ?? null);
   const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(null);
@@ -107,20 +138,23 @@ export default function ProfileScreen() {
     setDob(safeText((profile as any)?.[COL_DATE] ?? (profile as any)?.[COL_DATE_FALLBACK]));
     setPhone(safeText((profile as any)?.phone));
     setCountry(safeText((profile as any)?.country));
+    setCity(safeText((profile as any)?.city));
+    setGender(safeText((profile as any)?.gender));
     setAvatarUrl((profile as any)?.avatar_url ?? null);
-    setAccountActiveText(i18n.t('accountActive') || 'Account is active');
   }, [
     profile?.full_name,
     (profile as any)?.[COL_DATE],
     (profile as any)?.[COL_DATE_FALLBACK],
     (profile as any)?.phone,
     (profile as any)?.country,
+    (profile as any)?.city,
+    (profile as any)?.gender,
     (profile as any)?.avatar_url,
   ]);
 
   useEffect(() => {
     if (!avatarLoaded || savingAvatar) {
-      Animated.loop(
+      const loop = Animated.loop(
         Animated.sequence([
           Animated.timing(shimmerAnim, {
             toValue: 0.85,
@@ -135,7 +169,12 @@ export default function ProfileScreen() {
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      loop.start();
+
+      return () => {
+        loop.stop();
+      };
     } else {
       shimmerAnim.stopAnimation();
       shimmerAnim.setValue(0);
@@ -193,6 +232,8 @@ export default function ProfileScreen() {
     date_of_brith: safeText((profile as any)?.[COL_DATE] ?? (profile as any)?.[COL_DATE_FALLBACK]),
     phone: safeText((profile as any)?.phone),
     country: safeText((profile as any)?.country),
+    city: safeText((profile as any)?.city),
+    gender: safeText((profile as any)?.gender),
   });
 
   useEffect(() => {
@@ -201,6 +242,8 @@ export default function ProfileScreen() {
       date_of_brith: safeText((profile as any)?.[COL_DATE] ?? (profile as any)?.[COL_DATE_FALLBACK]),
       phone: safeText((profile as any)?.phone),
       country: safeText((profile as any)?.country),
+      city: safeText((profile as any)?.city),
+      gender: safeText((profile as any)?.gender),
     };
   }, [
     profile?.full_name,
@@ -208,6 +251,8 @@ export default function ProfileScreen() {
     (profile as any)?.[COL_DATE_FALLBACK],
     (profile as any)?.phone,
     (profile as any)?.country,
+    (profile as any)?.city,
+    (profile as any)?.gender,
   ]);
 
   useEffect(() => {
@@ -218,6 +263,8 @@ export default function ProfileScreen() {
       date_of_brith: dob.trim(),
       phone: phone.trim(),
       country: country.trim(),
+      city: city.trim(),
+      gender: gender.trim(),
     };
 
     const prev = {
@@ -225,13 +272,17 @@ export default function ProfileScreen() {
       date_of_brith: (lastSaved.current.date_of_brith || '').trim(),
       phone: (lastSaved.current.phone || '').trim(),
       country: (lastSaved.current.country || '').trim(),
+      city: (lastSaved.current.city || '').trim(),
+      gender: (lastSaved.current.gender || '').trim(),
     };
 
     if (
       current.full_name === prev.full_name &&
       current.date_of_brith === prev.date_of_brith &&
       current.phone === prev.phone &&
-      current.country === prev.country
+      current.country === prev.country &&
+      current.city === prev.city &&
+      current.gender === prev.gender
     ) {
       return;
     }
@@ -245,6 +296,8 @@ export default function ProfileScreen() {
           [COL_DATE]: current.date_of_brith,
           phone: current.phone,
           country: current.country,
+          city: current.city,
+          gender: current.gender,
         };
 
         const { error } = await supabase.from('profiles').update(payload).eq('id', user.id);
@@ -260,17 +313,19 @@ export default function ProfileScreen() {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [fullName, dob, phone, country, user?.id, refreshProfile]);
+  }, [fullName, dob, phone, country, city, gender, user?.id, refreshProfile]);
 
   const updateMutation = useMutation({
     mutationFn: async () => {
-      if (!user?.id) throw new Error('Not authenticated');
+      if (!user?.id) throw new Error(tSafe('profile.notAuthenticated', 'Not authenticated'));
 
       const payload: any = {
         full_name: fullName.trim(),
         [COL_DATE]: dob.trim(),
         phone: phone.trim(),
         country: country.trim(),
+        city: city.trim(),
+        gender: gender.trim(),
       };
 
       const { error } = await supabase.from('profiles').update(payload).eq('id', user.id);
@@ -282,19 +337,30 @@ export default function ProfileScreen() {
         date_of_brith: dob.trim(),
         phone: phone.trim(),
         country: country.trim(),
+        city: city.trim(),
+        gender: gender.trim(),
       };
 
       await refreshProfile?.();
-      Alert.alert(i18n.t('success') || 'Success', i18n.t('profileUpdated') || 'Profile updated');
+      Alert.alert(
+        tSafe('success', 'Success'),
+        tSafe('profile.profileUpdated', 'Profile updated successfully')
+      );
     },
     onError: (error: any) => {
-      Alert.alert(i18n.t('error') || 'Error', error?.message || 'Failed');
+      Alert.alert(
+        tSafe('error', 'Error'),
+        error?.message || tSafe('profile.updateFailed', 'Failed to update profile')
+      );
     },
   });
 
   const uploadAvatarToSupabase = async (uri: string) => {
     if (!user?.id) {
-      Alert.alert(i18n.t('error') || 'Error', 'Not authenticated');
+      Alert.alert(
+        tSafe('error', 'Error'),
+        tSafe('profile.notAuthenticated', 'Not authenticated')
+      );
       return;
     }
 
@@ -303,15 +369,12 @@ export default function ProfileScreen() {
     try {
       setSavingAvatar(true);
       setAvatarLoaded(false);
-
-      // instant preview
       setLocalAvatarUri(uri);
 
       const response = await fetch(uri);
       const blob = await response.blob();
       const mime = blob.type || 'image/jpeg';
       const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
-
       const filePath = `${user.id}/avatar.${ext}`;
 
       const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, blob, {
@@ -323,7 +386,7 @@ export default function ProfileScreen() {
 
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const publicUrl = data?.publicUrl;
-      if (!publicUrl) throw new Error('Failed to get public URL');
+      if (!publicUrl) throw new Error(tSafe('profile.avatarUrlFailed', 'Failed to get avatar URL'));
 
       const { error: dbError } = await supabase
         .from('profiles')
@@ -340,12 +403,18 @@ export default function ProfileScreen() {
 
       await refreshProfile?.();
 
-      Alert.alert(i18n.t('success') || 'Success', i18n.t('profileUpdated') || 'Profile updated');
+      Alert.alert(
+        tSafe('success', 'Success'),
+        tSafe('profile.photoUpdated', 'Profile photo updated successfully')
+      );
     } catch (e: any) {
       console.error('Avatar upload error:', e);
       setLocalAvatarUri(null);
       setAvatarUrl(previousRemoteAvatar ?? null);
-      Alert.alert(i18n.t('error') || 'Error', e?.message || 'Upload failed');
+      Alert.alert(
+        tSafe('error', 'Error'),
+        e?.message || tSafe('profile.uploadFailed', 'Photo upload failed')
+      );
     } finally {
       setSavingAvatar(false);
     }
@@ -356,7 +425,10 @@ export default function ProfileScreen() {
     setTimeout(() => {
       fn().catch((e) => {
         console.error('Picker/Camera error:', e);
-        Alert.alert(i18n.t('error') || 'Error', e?.message || 'Something went wrong');
+        Alert.alert(
+          tSafe('error', 'Error'),
+          e?.message || tSafe('somethingWentWrong', 'Something went wrong')
+        );
       });
     }, 320);
   };
@@ -366,7 +438,10 @@ export default function ProfileScreen() {
       if (Platform.OS !== 'web') {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!perm.granted) {
-          Alert.alert(i18n.t('error') || 'Error', 'Permission to access photos is required');
+          Alert.alert(
+            tSafe('error', 'Error'),
+            tSafe('profile.photoPermissionRequired', 'Permission to access photos is required')
+          );
           return;
         }
       }
@@ -424,7 +499,10 @@ export default function ProfileScreen() {
 
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert(i18n.t('error') || 'Error', 'Permission to use camera is required');
+        Alert.alert(
+          tSafe('error', 'Error'),
+          tSafe('profile.cameraPermissionRequired', 'Permission to use camera is required')
+        );
         return;
       }
 
@@ -443,10 +521,40 @@ export default function ProfileScreen() {
     });
   };
 
+  const statusKey = String((profile as any)?.kyc_status || '').toLowerCase();
   const statusText =
-    (profile as any)?.kyc_status === 'approved'
-      ? i18n.t('active') || 'Active'
-      : i18n.t((profile as any)?.kyc_status || 'notStarted');
+    statusKey === 'approved'
+      ? tSafe('profile.statusApproved', 'Approved')
+      : statusKey === 'pending'
+      ? tSafe('profile.statusPending', 'Pending')
+      : statusKey === 'rejected'
+      ? tSafe('profile.statusRejected', 'Rejected')
+      : tSafe('profile.statusNotStarted', 'Not started');
+
+  const statusStyles =
+    statusKey === 'approved'
+      ? {
+          box: styles.statusBoxSuccess,
+          dot: styles.statusDotSuccess,
+          text: styles.statusTextSuccess,
+        }
+      : statusKey === 'pending'
+      ? {
+          box: styles.statusBoxWarning,
+          dot: styles.statusDotWarning,
+          text: styles.statusTextWarning,
+        }
+      : statusKey === 'rejected'
+      ? {
+          box: styles.statusBoxWarning,
+          dot: styles.statusDotWarning,
+          text: styles.statusTextWarning,
+        }
+      : {
+          box: styles.statusBoxDefault,
+          dot: styles.statusDotDefault,
+          text: styles.statusTextDefault,
+        };
 
   return (
     <View style={styles.container}>
@@ -454,10 +562,14 @@ export default function ProfileScreen() {
 
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.85}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.blueDark} />
+          <Ionicons
+            name={isRTL ? 'arrow-forward' : 'arrow-back'}
+            size={22}
+            color={COLORS.blueDark}
+          />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>{i18n.t('profile') || 'Profile'}</Text>
+        <Text style={styles.headerTitle}>{tSafe('profile.title', 'Profile')}</Text>
 
         <View style={{ width: 40 }} />
       </View>
@@ -530,57 +642,101 @@ export default function ProfileScreen() {
               </TouchableOpacity>
 
               <Text style={styles.avatarHint}>
-                {i18n.t('tapToChangePhoto') || 'Tap to change photo'}
+                {tSafe('profile.tapToChangePhoto', 'Tap to change photo')}
               </Text>
             </View>
 
-            <Text style={styles.label}>{i18n.t('fullName') || 'Full Name'}</Text>
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {tSafe('profile.fullName', 'Full Name')}
+            </Text>
             <TextInput
-              style={styles.input}
-              placeholder={i18n.t('fullNamePlaceholder') || 'Enter full name'}
+              style={[styles.input, isRTL && styles.inputRTL]}
+              placeholder={tSafe('profile.fullNamePlaceholder', 'Enter full name')}
               placeholderTextColor={COLORS.textMuted}
               value={fullName}
               onChangeText={setFullName}
               autoCapitalize="words"
+              textAlign={isRTL ? 'right' : 'left'}
             />
 
-            <Text style={styles.label}>{i18n.t('dateOfBirth') || 'Date of Birth'}</Text>
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {tSafe('profile.dateOfBirth', 'Date of Birth')}
+            </Text>
             <TextInput
-              style={styles.input}
-              placeholder={i18n.t('dateOfBirthPlaceholder') || 'YYYY-MM-DD'}
+              style={[styles.input, isRTL && styles.inputRTL]}
+              placeholder={tSafe('profile.dateOfBirthPlaceholder', 'YYYY-MM-DD')}
               placeholderTextColor={COLORS.textMuted}
               value={dob}
               onChangeText={setDob}
+              textAlign={isRTL ? 'right' : 'left'}
             />
 
-            <Text style={styles.label}>{i18n.t('phoneNumber') || 'Phone Number'}</Text>
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {tSafe('profile.phoneNumber', 'Phone Number')}
+            </Text>
             <TextInput
-              style={styles.input}
-              placeholder={i18n.t('phoneNumberPlaceholder') || 'Enter phone number'}
+              style={[styles.input, isRTL && styles.inputRTL]}
+              placeholder={tSafe('profile.phoneNumberPlaceholder', 'Enter phone number')}
               placeholderTextColor={COLORS.textMuted}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
+              textAlign={isRTL ? 'right' : 'left'}
             />
 
-            <Text style={styles.label}>{i18n.t('email') || 'Email'}</Text>
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {tSafe('profile.email', 'Email')}
+            </Text>
             <View style={styles.infoBox}>
-              <Text style={styles.infoText}>{user?.email || email}</Text>
+              <Text style={[styles.infoText, isRTL && styles.textRTL]}>
+                {user?.email || email}
+              </Text>
             </View>
 
-            <Text style={styles.label}>{i18n.t('country') || 'Country'}</Text>
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {tSafe('profile.country', 'Country')}
+            </Text>
             <TextInput
-              style={styles.input}
-              placeholder={i18n.t('countryPlaceholder') || 'Enter country'}
+              style={[styles.input, isRTL && styles.inputRTL]}
+              placeholder={tSafe('profile.countryPlaceholder', 'Enter country')}
               placeholderTextColor={COLORS.textMuted}
               value={country}
               onChangeText={setCountry}
+              textAlign={isRTL ? 'right' : 'left'}
             />
 
-            <Text style={styles.label}>{accountActiveText}</Text>
-            <View style={styles.statusBox}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>{statusText}</Text>
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {tSafe('profile.city', 'City')}
+            </Text>
+            <TextInput
+              style={[styles.input, isRTL && styles.inputRTL]}
+              placeholder={tSafe('profile.cityPlaceholder', 'Enter city')}
+              placeholderTextColor={COLORS.textMuted}
+              value={city}
+              onChangeText={setCity}
+              textAlign={isRTL ? 'right' : 'left'}
+            />
+
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {tSafe('profile.gender', 'Gender')}
+            </Text>
+            <TextInput
+              style={[styles.input, isRTL && styles.inputRTL]}
+              placeholder={tSafe('profile.genderPlaceholder', 'Enter gender')}
+              placeholderTextColor={COLORS.textMuted}
+              value={gender}
+              onChangeText={setGender}
+              textAlign={isRTL ? 'right' : 'left'}
+            />
+
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {tSafe('profile.accountStatus', 'Account Status')}
+            </Text>
+            <View style={[styles.statusBox, statusStyles.box]}>
+              <View style={[styles.statusDot, statusStyles.dot]} />
+              <Text style={[styles.statusText, statusStyles.text, isRTL && styles.textRTL]}>
+                {statusText}
+              </Text>
             </View>
 
             <TouchableOpacity
@@ -601,7 +757,9 @@ export default function ProfileScreen() {
                 {updateMutation.isPending ? (
                   <ActivityIndicator color="#FFF" />
                 ) : (
-                  <Text style={styles.primaryButtonText}>{i18n.t('save') || 'Save'}</Text>
+                  <Text style={styles.primaryButtonText}>
+                    {tSafe('profile.save', 'Save')}
+                  </Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>
@@ -619,24 +777,28 @@ export default function ProfileScreen() {
       >
         <Pressable style={styles.modalOverlay} onPress={() => setPickerOpen(false)} />
         <View style={styles.modalSheet}>
-          <Text style={styles.modalTitle}>{i18n.t('changePhoto') || 'Change photo'}</Text>
+          <Text style={styles.modalTitle}>
+            {tSafe('profile.changePhoto', 'Change photo')}
+          </Text>
 
           <TouchableOpacity style={styles.sheetButton} activeOpacity={0.9} onPress={pickFromGallery}>
             <Ionicons name="images" size={18} color={COLORS.blueDark} />
             <Text style={styles.sheetButtonText}>
-              {i18n.t('selectExistingPhoto') || 'Select existing photo'}
+              {tSafe('profile.selectExistingPhoto', 'Select existing photo')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.sheetButton} activeOpacity={0.9} onPress={takeNewPhoto}>
             <Ionicons name="camera" size={18} color={COLORS.blueDark} />
             <Text style={styles.sheetButtonText}>
-              {i18n.t('takeNewPhoto') || 'Take new photo'}
+              {tSafe('profile.takeNewPhoto', 'Take new photo')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.9} onPress={() => setPickerOpen(false)}>
-            <Text style={styles.cancelText}>{i18n.t('cancel') || 'Cancel'}</Text>
+            <Text style={styles.cancelText}>
+              {tSafe('cancel', 'Cancel')}
+            </Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -772,6 +934,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: COLORS.text,
   },
+  textRTL: {
+    textAlign: 'right',
+  },
 
   input: {
     borderRadius: 16,
@@ -785,6 +950,9 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 16,
     ...SHADOWS.soft,
+  },
+  inputRTL: {
+    writingDirection: 'rtl',
   },
 
   infoBox: {
@@ -806,26 +974,54 @@ const styles = StyleSheet.create({
 
   statusBox: {
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#CFE1FF',
-    backgroundColor: COLORS.blueSoft,
     paddingHorizontal: 14,
     height: 54,
     flexDirection: 'row',
     alignItems: 'center',
     columnGap: 10,
     marginBottom: 12,
+    borderWidth: 1,
   },
+  statusBoxDefault: {
+    borderColor: '#CFE1FF',
+    backgroundColor: COLORS.blueSoft,
+  },
+  statusBoxSuccess: {
+    borderColor: '#BBF7D0',
+    backgroundColor: COLORS.successSoft,
+  },
+  statusBoxWarning: {
+    borderColor: '#FDE68A',
+    backgroundColor: COLORS.warningSoft,
+  },
+
   statusDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
+  },
+  statusDotDefault: {
     backgroundColor: COLORS.blue,
   },
+  statusDotSuccess: {
+    backgroundColor: COLORS.success,
+  },
+  statusDotWarning: {
+    backgroundColor: COLORS.warning,
+  },
+
   statusText: {
     fontSize: 15,
     fontWeight: '900',
+  },
+  statusTextDefault: {
     color: COLORS.text,
+  },
+  statusTextSuccess: {
+    color: COLORS.success,
+  },
+  statusTextWarning: {
+    color: '#8A6A18',
   },
 
   primaryButtonWrap: {
