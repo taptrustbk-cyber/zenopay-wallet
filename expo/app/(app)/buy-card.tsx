@@ -267,46 +267,18 @@ function buildGiftAmountLabel(params: {
   category?: string | null;
 }) {
   const amount = Number(params.amount || 0);
-  const joined = [
-    params.cardName,
-    params.provider,
-    params.brand,
-    params.category,
-  ]
+  const joined = [params.cardName, params.provider, params.brand, params.category]
     .map((x) => normalizeText(x))
     .join(' ');
 
-  if (joined.includes('pubg') || joined.includes('uc')) {
-    return `${formatNumberOnly(amount)} UC`;
-  }
-
-  if (joined.includes('tiktok') || joined.includes('coin')) {
-    return `${formatNumberOnly(amount)} Coins`;
-  }
-
-  if (joined.includes('free fire') || joined.includes('diamond')) {
-    return `${formatNumberOnly(amount)} Diamonds`;
-  }
-
-  if (joined.includes('itunes') || joined.includes('apple')) {
-    return `${formatNumberOnly(amount)}`;
-  }
-
-  if (joined.includes('google play') || joined.includes('play store')) {
-    return `${formatNumberOnly(amount)}`;
-  }
-
-  if (joined.includes('steam')) {
-    return `${formatNumberOnly(amount)}`;
-  }
-
-  if (joined.includes('xbox')) {
-    return `${formatNumberOnly(amount)}`;
-  }
-
-  if (joined.includes('playstation') || joined.includes('psn')) {
-    return `${formatNumberOnly(amount)}`;
-  }
+  if (joined.includes('pubg') || joined.includes('uc')) return `${formatNumberOnly(amount)} UC`;
+  if (joined.includes('tiktok') || joined.includes('coin')) return `${formatNumberOnly(amount)} Coins`;
+  if (joined.includes('free fire') || joined.includes('diamond')) return `${formatNumberOnly(amount)} Diamonds`;
+  if (joined.includes('itunes') || joined.includes('apple')) return `${formatNumberOnly(amount)}`;
+  if (joined.includes('google play') || joined.includes('play store')) return `${formatNumberOnly(amount)}`;
+  if (joined.includes('steam')) return `${formatNumberOnly(amount)}`;
+  if (joined.includes('xbox')) return `${formatNumberOnly(amount)}`;
+  if (joined.includes('playstation') || joined.includes('psn')) return `${formatNumberOnly(amount)}`;
 
   return formatNumberOnly(amount);
 }
@@ -331,12 +303,7 @@ function detectGiftInputRule(params: {
     };
   }
 
-  const joined = [
-    params.cardName,
-    params.provider,
-    params.brand,
-    params.category,
-  ]
+  const joined = [params.cardName, params.provider, params.brand, params.category]
     .map((x) => normalizeText(x))
     .join(' ');
 
@@ -463,8 +430,8 @@ export default function BuyCardScreen() {
         .eq('id', cardId)
         .maybeSingle();
 
-      if (error) throw error;
-      return data as TopupCardRow | null;
+        if (error) throw error;
+        return data as TopupCardRow | null;
     },
   });
 
@@ -600,7 +567,7 @@ export default function BuyCardScreen() {
         throw new Error(i18n.t('buyCard.walletNotFound') || 'Wallet not found.');
       }
       if (priceIqd <= 0) {
-        throw new Error('Price IQD is missing. Please set price_iqd in admin.');
+        throw new Error(i18n.t('buyCard.priceMissingAdmin') || 'Price IQD is missing. Please set price_iqd in admin.');
       }
 
       if (requiresExtraInput && !extraInputValue.trim()) {
@@ -724,11 +691,14 @@ export default function BuyCardScreen() {
     },
   });
 
+  const isPurchasing =
+    (purchaseMutation as any).isPending ?? (purchaseMutation as any).isLoading ?? false;
+
   const handlePurchase = () => {
     if (priceIqd <= 0) {
       Alert.alert(
         i18n.t('common.error') || 'Error',
-        'Price IQD is missing. Please make sure price_iqd is set in admin.'
+        i18n.t('buyCard.priceMissingAdmin') || 'Price IQD is missing. Please make sure price_iqd is set in admin.'
       );
       return;
     }
@@ -998,7 +968,7 @@ export default function BuyCardScreen() {
               {showOptionalPubgName && (
                 <View style={styles.optionalBlock}>
                   <Text style={styles.optionalLabel}>
-                    {i18n.t(extraInputRule.optionalNameKey) || 'Enter name your PUBG account (optional)'}
+                    {i18n.t(extraInputRule.optionalNameKey) || 'Enter your PUBG account name (optional)'}
                   </Text>
 
                   <TextInput
@@ -1035,13 +1005,13 @@ export default function BuyCardScreen() {
           <TouchableOpacity
             style={[
               styles.primaryButton,
-              (purchaseMutation.isPending || !hasEnoughBalance || priceIqd <= 0) && styles.disabledButton,
+              (isPurchasing || !hasEnoughBalance || priceIqd <= 0) && styles.disabledButton,
             ]}
             onPress={handlePurchase}
-            disabled={purchaseMutation.isPending || !hasEnoughBalance || priceIqd <= 0}
+            disabled={isPurchasing || !hasEnoughBalance || priceIqd <= 0}
             activeOpacity={0.9}
           >
-            {purchaseMutation.isPending ? (
+            {isPurchasing ? (
               <ActivityIndicator color={UI.white} />
             ) : (
               <>
