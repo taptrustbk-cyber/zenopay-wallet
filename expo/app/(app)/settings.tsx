@@ -8,6 +8,8 @@ import {
   Linking,
   Modal,
   Pressable,
+  Platform,
+  I18nManager,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,10 +60,35 @@ const LANGUAGES = [
   { code: 'kmr', name: 'کوردی بادینی' },
 ];
 
+const tSafe = (key: string, fallback: string) => {
+  try {
+    const value = i18n.t(key as any);
+    if (!value) return fallback;
+
+    const text = String(value);
+    const lower = text.toLowerCase();
+
+    if (
+      text === key ||
+      lower.includes('missing translation') ||
+      lower.includes('missing "') ||
+      text.includes(`"${key}"`)
+    ) {
+      return fallback;
+    }
+
+    return text;
+  } catch {
+    return fallback;
+  }
+};
+
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { theme } = useTheme();
+  const isRTL = I18nManager.isRTL;
+
   const [showLanguages, setShowLanguages] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
@@ -74,18 +101,30 @@ export default function SettingsScreen() {
   }, []);
 
   const handleLanguageSelect = async (code: string) => {
-    setSelectedLanguage(code);
-    await setLanguage(code);
-    setShowLanguages(false);
-    forceUpdate({});
-    Alert.alert(i18n.t('success'), i18n.t('success'), [
-      {
-        text: 'OK',
-        onPress: () => {
-          router.replace('/(app)/dashboard' as any);
-        },
-      },
-    ]);
+    try {
+      setSelectedLanguage(code);
+      await setLanguage(code);
+      setShowLanguages(false);
+      forceUpdate({});
+
+      Alert.alert(
+        tSafe('success', 'Success'),
+        tSafe('settingsLanguageChanged', 'Language changed successfully'),
+        [
+          {
+            text: tSafe('ok', 'OK'),
+            onPress: () => {
+              router.replace('/(app)/dashboard' as any);
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      Alert.alert(
+        tSafe('error', 'Error'),
+        tSafe('settingsLanguageChangeFailed', 'Failed to change language')
+      );
+    }
   };
 
   const handleLogout = () => {
@@ -95,7 +134,7 @@ export default function SettingsScreen() {
   const supportItems = [
     {
       id: 'email',
-      label: 'Email Support',
+      label: tSafe('settingsSupportEmail', 'Email Support'),
       icon: 'mail' as const,
       url: 'mailto:info@zenopay.bond',
       color: UI.blueSoft,
@@ -103,7 +142,7 @@ export default function SettingsScreen() {
     },
     {
       id: 'facebook',
-      label: 'Facebook',
+      label: tSafe('settingsSupportFacebook', 'Facebook'),
       icon: 'logo-facebook' as const,
       url: 'https://www.facebook.com/profile.php?id=61586118897855',
       color: UI.blueSoft,
@@ -111,7 +150,7 @@ export default function SettingsScreen() {
     },
     {
       id: 'instagram',
-      label: 'Instagram',
+      label: tSafe('settingsSupportInstagram', 'Instagram'),
       icon: 'logo-instagram' as const,
       url: 'https://www.instagram.com/zenopaywallet/',
       color: UI.blueSoft,
@@ -119,7 +158,7 @@ export default function SettingsScreen() {
     },
     {
       id: 'tiktok',
-      label: 'TikTok',
+      label: tSafe('settingsSupportTiktok', 'TikTok'),
       icon: 'logo-tiktok' as const,
       url: 'https://www.tiktok.com/@zenopaywallet?lang=en',
       color: UI.blueSoft,
@@ -133,11 +172,17 @@ export default function SettingsScreen() {
       if (canOpen) {
         await Linking.openURL(url);
       } else {
-        Alert.alert('Error', 'Cannot open this link');
+        Alert.alert(
+          tSafe('error', 'Error'),
+          tSafe('settingsCannotOpenLink', 'Cannot open this link')
+        );
       }
     } catch (error) {
       console.error('Error opening URL:', error);
-      Alert.alert('Error', 'Failed to open link');
+      Alert.alert(
+        tSafe('error', 'Error'),
+        tSafe('settingsOpenLinkFailed', 'Failed to open link')
+      );
     }
   };
 
@@ -148,9 +193,15 @@ export default function SettingsScreen() {
 
         <View style={[styles.subHeader, { borderBottomColor: UI.border, backgroundColor: UI.bg }]}>
           <TouchableOpacity onPress={() => setShowSupport(false)} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={UI.text} />
+            <Ionicons
+              name={isRTL ? 'arrow-forward' : 'arrow-back'}
+              size={22}
+              color={UI.text}
+            />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: UI.text }]}>{i18n.t('support')}</Text>
+          <Text style={[styles.headerTitle, { color: UI.text }]}>
+            {tSafe('support', 'Support')}
+          </Text>
           <View style={{ width: 42 }} />
         </View>
 
@@ -166,7 +217,11 @@ export default function SettingsScreen() {
                 <Ionicons name={item.icon} size={22} color={item.iconColor} />
               </View>
               <Text style={[styles.supportItemText, { color: UI.text }]}>{item.label}</Text>
-              <Ionicons name="open-outline" size={20} color={UI.text2} />
+              <Ionicons
+                name={isRTL ? 'open-outline' : 'open-outline'}
+                size={20}
+                color={UI.text2}
+              />
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -181,9 +236,15 @@ export default function SettingsScreen() {
 
         <View style={[styles.subHeader, { borderBottomColor: UI.border, backgroundColor: UI.bg }]}>
           <TouchableOpacity onPress={() => setShowLanguages(false)} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={UI.text} />
+            <Ionicons
+              name={isRTL ? 'arrow-forward' : 'arrow-back'}
+              size={22}
+              color={UI.text}
+            />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: UI.text }]}>{i18n.t('language')}</Text>
+          <Text style={[styles.headerTitle, { color: UI.text }]}>
+            {tSafe('language', 'Language')}
+          </Text>
           <View style={{ width: 42 }} />
         </View>
 
@@ -218,7 +279,9 @@ export default function SettingsScreen() {
 
       <View style={[styles.mainHeader, { backgroundColor: UI.bg }]}>
         <View style={{ width: 42 }} />
-        <Text style={[styles.headerTitle, { color: UI.text }]}>{i18n.t('settings')}</Text>
+        <Text style={[styles.headerTitle, { color: UI.text }]}>
+          {tSafe('settings', 'Settings')}
+        </Text>
         <View style={{ width: 42 }} />
       </View>
 
@@ -231,8 +294,12 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
             <Ionicons name="person" size={22} color={UI.blue} />
           </View>
-          <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('profile')}</Text>
-          <Ionicons name="chevron-forward" size={20} color={UI.text2} />
+          <Text style={[styles.menuText, { color: UI.text }]}>{tSafe('profile', 'Profile')}</Text>
+          <Ionicons
+            name={isRTL ? 'chevron-back' : 'chevron-forward'}
+            size={20}
+            color={UI.text2}
+          />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -243,8 +310,12 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
             <Ionicons name="language" size={22} color={UI.blue} />
           </View>
-          <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('language')}</Text>
-          <Ionicons name="chevron-forward" size={20} color={UI.text2} />
+          <Text style={[styles.menuText, { color: UI.text }]}>{tSafe('language', 'Language')}</Text>
+          <Ionicons
+            name={isRTL ? 'chevron-back' : 'chevron-forward'}
+            size={20}
+            color={UI.text2}
+          />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -255,8 +326,12 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
             <Ionicons name="lock-closed" size={22} color={UI.blue} />
           </View>
-          <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('security')}</Text>
-          <Ionicons name="chevron-forward" size={20} color={UI.text2} />
+          <Text style={[styles.menuText, { color: UI.text }]}>{tSafe('security', 'Security')}</Text>
+          <Ionicons
+            name={isRTL ? 'chevron-back' : 'chevron-forward'}
+            size={20}
+            color={UI.text2}
+          />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -267,8 +342,14 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
             <Ionicons name="document-text" size={22} color={UI.blue} />
           </View>
-          <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('privacyPolicy')}</Text>
-          <Ionicons name="chevron-forward" size={20} color={UI.text2} />
+          <Text style={[styles.menuText, { color: UI.text }]}>
+            {tSafe('privacyPolicy', 'Privacy Policy')}
+          </Text>
+          <Ionicons
+            name={isRTL ? 'chevron-back' : 'chevron-forward'}
+            size={20}
+            color={UI.text2}
+          />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -279,8 +360,14 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
             <Ionicons name="clipboard" size={22} color={UI.blue} />
           </View>
-          <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('termsConditions')}</Text>
-          <Ionicons name="chevron-forward" size={20} color={UI.text2} />
+          <Text style={[styles.menuText, { color: UI.text }]}>
+            {tSafe('termsConditions', 'Terms & Conditions')}
+          </Text>
+          <Ionicons
+            name={isRTL ? 'chevron-back' : 'chevron-forward'}
+            size={20}
+            color={UI.text2}
+          />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -291,8 +378,12 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
             <Ionicons name="mail" size={22} color={UI.blue} />
           </View>
-          <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('support')}</Text>
-          <Ionicons name="chevron-forward" size={20} color={UI.text2} />
+          <Text style={[styles.menuText, { color: UI.text }]}>{tSafe('support', 'Support')}</Text>
+          <Ionicons
+            name={isRTL ? 'chevron-back' : 'chevron-forward'}
+            size={20}
+            color={UI.text2}
+          />
         </TouchableOpacity>
 
         {isAdmin && (
@@ -304,8 +395,14 @@ export default function SettingsScreen() {
             <View style={[styles.menuIconContainer, styles.adminIcon]}>
               <Ionicons name="shield-checkmark" size={22} color="#FFFFFF" />
             </View>
-            <Text style={[styles.menuText, { color: UI.text }]}>{i18n.t('adminPanel')}</Text>
-            <Ionicons name="chevron-forward" size={20} color={UI.text2} />
+            <Text style={[styles.menuText, { color: UI.text }]}>
+              {tSafe('adminPanel', 'Admin Panel')}
+            </Text>
+            <Ionicons
+              name={isRTL ? 'chevron-back' : 'chevron-forward'}
+              size={20}
+              color={UI.text2}
+            />
           </TouchableOpacity>
         )}
 
@@ -319,7 +416,9 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, styles.logoutIcon]}>
             <Ionicons name="log-out" size={22} color={theme.colors.error} />
           </View>
-          <Text style={[styles.menuText, { color: theme.colors.error }]}>{i18n.t('logout')}</Text>
+          <Text style={[styles.menuText, { color: theme.colors.error }]}>
+            {tSafe('logout', 'Logout')}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -331,8 +430,10 @@ export default function SettingsScreen() {
       >
         <Pressable style={stylesLogout.backdrop} onPress={() => setLogoutOpen(false)}>
           <Pressable style={stylesLogout.card} onPress={() => {}}>
-            <Text style={stylesLogout.title}>{i18n.t('logout')}</Text>
-            <Text style={stylesLogout.message}>{i18n.t('logout')}?</Text>
+            <Text style={stylesLogout.title}>{tSafe('logout', 'Logout')}</Text>
+            <Text style={stylesLogout.message}>
+              {tSafe('settingsLogoutConfirm', 'Are you sure you want to logout?')}
+            </Text>
 
             <View style={stylesLogout.row}>
               <TouchableOpacity
@@ -341,7 +442,7 @@ export default function SettingsScreen() {
                 activeOpacity={0.9}
               >
                 <Text style={[stylesLogout.btnText, stylesLogout.cancelText]}>
-                  {i18n.t('cancel') || 'Cancel'}
+                  {tSafe('cancel', 'Cancel')}
                 </Text>
               </TouchableOpacity>
 
@@ -354,7 +455,7 @@ export default function SettingsScreen() {
                 activeOpacity={0.9}
               >
                 <Text style={[stylesLogout.btnText, stylesLogout.confirmText]}>
-                  {i18n.t('logout')}
+                  {tSafe('logout', 'Logout')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -373,7 +474,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 54,
+    paddingTop: Platform.OS === 'ios' ? 54 : 46,
     paddingBottom: 14,
   },
   subHeader: {
@@ -381,7 +482,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: Platform.OS === 'ios' ? 50 : 42,
     paddingBottom: 14,
     borderBottomWidth: 1,
   },
