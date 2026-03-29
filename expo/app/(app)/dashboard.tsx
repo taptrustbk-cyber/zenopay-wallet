@@ -82,7 +82,7 @@ const getCurrentLocale = () => {
     .trim()
     .toLowerCase();
 
-  if (raw.includes('ckb') || raw.includes('sorani') || raw.includes('cbk')) return 'cbk';
+  if (raw.includes('ckb') || raw.includes('sorani') || raw.includes('ckb')) return 'ckb';
   if (raw.includes('kmr') || raw.includes('badini') || raw === 'ku') return 'kmr';
   if (raw.startsWith('ar')) return 'ar';
   if (raw.startsWith('en')) return 'en';
@@ -250,7 +250,12 @@ export default function DashboardScreen() {
   }, [avatarUrl, user?.id]);
 
   const balanceText = formatIQD(walletQuery.data?.balance);
-  const currencyText = walletQuery.data?.currency || 'IQD';
+  const rawCurrency = String(walletQuery.data?.currency || 'IQD').toUpperCase();
+
+const currencyText =
+  rawCurrency === 'IQD'
+    ? String(i18n.t('iqdShort') || 'IQD')
+    : rawCurrency;
 
   if (!profile) {
     return (
