@@ -69,7 +69,7 @@ const SUPPORT_LINKS = {
 function normalizeLang(code?: string | null) {
   const lang = String(code || '').trim().toLowerCase();
   if (!lang) return 'en';
-  if (lang === 'ckb') return 'ckb';
+  if (lang === 'cbk') return 'ckb';
   return lang;
 }
 
@@ -88,7 +88,7 @@ function safeString(value: any, fallback: string) {
     lower.includes('missing translation') ||
     lower.includes('[missing') ||
     lower.includes('missing "') ||
-    text.includes(`"${text}"`)
+    text.includes('object object')
   ) {
     return fallback;
   }
@@ -154,36 +154,17 @@ export default function SettingsScreen() {
       const normalized = normalizeLang(code);
 
       setSelectedLanguage(normalized);
+
       await setLanguage(normalized);
 
-      if (normalized !== normalizeLang(i18n.language)) {
+      if (normalizeLang(i18n.language) !== normalized) {
         await i18n.changeLanguage(normalized);
       }
 
-      setShowLanguages(false);
       forceUpdate({});
-
-      Alert.alert(
-        tSafe('common.success', 'Success'),
-        tOne(['settingsLanguageChanged', 'settings.languageChanged'], 'Language changed successfully'),
-        [
-          {
-            text: tSafe('common.ok', 'OK'),
-            onPress: () => {
-              router.replace('/(app)/dashboard' as any);
-            },
-          },
-        ]
-      );
+      setShowLanguages(false);
     } catch (error) {
       console.error('Language change error:', error);
-      Alert.alert(
-        tSafe('common.error', 'Error'),
-        tOne(
-          ['settingsLanguageChangeFailed', 'settings.languageChangeFailed'],
-          'Failed to change language'
-        )
-      );
     }
   };
 
