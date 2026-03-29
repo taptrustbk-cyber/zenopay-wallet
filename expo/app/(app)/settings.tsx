@@ -67,12 +67,13 @@ const SUPPORT_LINKS = {
 };
 
 function normalizeLang(code?: string | null) {
-  const lang = String(code || '').toLowerCase();
+  const lang = String(code || '').trim().toLowerCase();
+  if (!lang) return 'en';
   if (lang === 'ckb') return 'cbk';
-  return lang || 'en';
+  return lang;
 }
 
-function getSafeText(value: any, fallback: string) {
+function safeString(value: any, fallback: string) {
   if (value === null || value === undefined) return fallback;
   if (typeof value === 'object') return fallback;
 
@@ -82,10 +83,12 @@ function getSafeText(value: any, fallback: string) {
   if (
     !text ||
     text === '[object Object]' ||
+    text === 'undefined' ||
+    text === 'null' ||
     lower.includes('missing translation') ||
     lower.includes('[missing') ||
     lower.includes('missing "') ||
-    text.includes('"')
+    text.includes(`"${text}"`)
   ) {
     return fallback;
   }
@@ -97,7 +100,7 @@ function tSafe(key: string, fallback: string) {
   try {
     const value = i18n.t(key as any);
     if (String(value) === key) return fallback;
-    return getSafeText(value, fallback);
+    return safeString(value, fallback);
   } catch {
     return fallback;
   }
@@ -107,13 +110,21 @@ function tOne(keys: string[], fallback: string) {
   for (const key of keys) {
     try {
       const value = i18n.t(key as any);
-      const text = getSafeText(value, '__INVALID__');
+      const text = safeString(value, '__INVALID__');
       if (text !== '__INVALID__' && text !== key) {
         return text;
       }
     } catch {}
   }
   return fallback;
+}
+
+function getLanguageDisplayName(code: string) {
+  const lang = normalizeLang(code);
+  if (lang === 'ar') return 'العربية';
+  if (lang === 'cbk') return 'کوردی سۆرانی';
+  if (lang === 'kmr') return 'کوردی بادینی';
+  return 'English';
 }
 
 export default function SettingsScreen() {
@@ -130,24 +141,25 @@ export default function SettingsScreen() {
   const [logoutOpen, setLogoutOpen] = useState(false);
 
   useEffect(() => {
-    setSelectedLanguage(normalizeLang(getCurrentLanguage()));
+    const current = normalizeLang(getCurrentLanguage());
+    setSelectedLanguage(current);
   }, []);
 
   const currentLanguageName = useMemo(() => {
-    const lang = normalizeLang(selectedLanguage);
-
-    if (lang === 'ar') return tSafe('common.languageArabic', 'العربية');
-    if (lang === 'cbk') return tSafe('common.languageSorani', 'کوردی سۆرانی');
-    if (lang === 'kmr') return tSafe('common.languageBadini', 'کوردی بادینی');
-
-    return tSafe('common.languageEnglish', 'English');
+    return getLanguageDisplayName(selectedLanguage);
   }, [selectedLanguage]);
 
   const handleLanguageSelect = async (code: string) => {
     try {
       const normalized = normalizeLang(code);
+
       setSelectedLanguage(normalized);
       await setLanguage(normalized);
+
+      if (normalized !== normalizeLang(i18n.language)) {
+        await i18n.changeLanguage(normalized);
+      }
+
       setShowLanguages(false);
       forceUpdate({});
 
@@ -163,7 +175,8 @@ export default function SettingsScreen() {
           },
         ]
       );
-    } catch {
+    } catch (error) {
+      console.error('Language change error:', error);
       Alert.alert(
         tSafe('common.error', 'Error'),
         tOne(
@@ -219,7 +232,6 @@ export default function SettingsScreen() {
   const handleSupportItemPress = async (url: string) => {
     try {
       const canOpen = await Linking.canOpenURL(url);
-
       if (canOpen) {
         await Linking.openURL(url);
       } else {
@@ -337,13 +349,10 @@ export default function SettingsScreen() {
                     <Ionicons name="language" size={20} color={UI.blue} />
                   </View>
 
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={[styles.languageName, { color: UI.text }]}>
                       {language.name}
                     </Text>
-                    {active ? (
-                      <Text style={styles.languageCurrentText}>{tSafe('common.confirm', 'Selected')}</Text>
-                    ) : null}
                   </View>
                 </View>
 
@@ -686,12 +695,6 @@ const styles = StyleSheet.create({
   languageName: {
     fontSize: 15,
     fontWeight: '900',
-  },
-  languageCurrentText: {
-    marginTop: 4,
-    fontSize: 12,
-    fontWeight: '700',
-    color: UI.blue,
   },
 
   supportList: { flex: 1, padding: 16 },
