@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   StyleSheet,
   View,
@@ -13,151 +13,220 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import i18n from '@/lib/i18n';
 
+function tSafe(keys: string[], fallback: string) {
+  try {
+    for (const key of keys) {
+      const val = i18n.t(key as any);
+
+      if (
+        val !== null &&
+        val !== undefined &&
+        typeof val !== 'object' &&
+        String(val).trim() !== '' &&
+        String(val) !== key &&
+        !String(val).toLowerCase().includes('missing') &&
+        !String(val).includes(`"${key}"`)
+      ) {
+        return String(val);
+      }
+    }
+
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function PrivacyPolicyScreen() {
   const router = useRouter();
   const isRTL = I18nManager.isRTL;
 
-  const t = (key: string, fallback: string) => {
-    const val = i18n.t(key) as unknown as string;
-    if (!val) return fallback;
+  const UI = {
+    title: tSafe(
+      ['privacyPolicy.title', 'privacyPolicyData.title'],
+      'Privacy Policy'
+    ),
+    lastUpdated: tSafe(
+      ['privacyPolicy.lastUpdated', 'privacyPolicyData.lastUpdated'],
+      'Last updated: March 28, 2026'
+    ),
+    intro: tSafe(
+      ['privacyPolicy.intro', 'privacyPolicyData.intro'],
+      'This Privacy Policy explains how ZenoPay collects, uses, stores, and protects your information when you use the app and related services.'
+    ),
 
-    const str = String(val).trim();
-    const lower = str.toLowerCase();
+    section1Title: tSafe(
+      ['privacyPolicy.section1Title', 'privacyPolicyData.section1Title'],
+      'Information We Collect'
+    ),
+    section1Desc: tSafe(
+      ['privacyPolicy.section1Desc', 'privacyPolicyData.section1Desc'],
+      'We collect information that is needed to create and protect your account, provide wallet features, process purchases, and improve app security and support.'
+    ),
+    section1Items: [
+      tSafe(
+        ['privacyPolicy.section1Item1', 'privacyPolicyData.section1Item1'],
+        'Account details such as full name, email address, password or login information, city, country, phone number, gender, and date of birth when you create an account.'
+      ),
+      tSafe(
+        ['privacyPolicy.section1Item2', 'privacyPolicyData.section1Item2'],
+        'Profile information such as profile photo, avatar, city, phone number, email, and other details you choose to add or update.'
+      ),
+      tSafe(
+        ['privacyPolicy.section1Item3', 'privacyPolicyData.section1Item3'],
+        'Wallet and transaction information such as deposits, withdrawals, money transfers, balances, transaction history, and related records.'
+      ),
+      tSafe(
+        ['privacyPolicy.section1Item4', 'privacyPolicyData.section1Item4'],
+        'Purchase and order information related to mobile shop, gift cards, top-up cards, and virtual card creation, including product details, order status, payment amount, and delivery-related information.'
+      ),
+      tSafe(
+        ['privacyPolicy.section1Item5', 'privacyPolicyData.section1Item5'],
+        'Card information related to internal virtual card creation, including one-card-per-user setup and creation fee records such as 25,000 IQD where applicable.'
+      ),
+      tSafe(
+        ['privacyPolicy.section1Item6', 'privacyPolicyData.section1Item6'],
+        'Additional account protection information such as selfie or document images, including ID front, ID back, and selfie, when needed to help protect accounts and reduce fraud or misuse of the platform.'
+      ),
+      tSafe(
+        ['privacyPolicy.section1Item7', 'privacyPolicyData.section1Item7'],
+        'Location information may be used only to help suggest or display your city inside the mobile shop page. Users can still manually enter their city.'
+      ),
+      tSafe(
+        ['privacyPolicy.section1Item8', 'privacyPolicyData.section1Item8'],
+        'Support, password reset, security check, and account recovery information when you contact support or use account security features.'
+      ),
+    ],
 
-    if (
-      !str ||
-      str === key ||
-      lower.includes('missing') ||
-      str.includes(`"${key}"`)
-    ) {
-      return fallback;
-    }
+    section2Title: tSafe(
+      ['privacyPolicy.section2Title', 'privacyPolicyData.section2Title'],
+      'How We Use Information'
+    ),
+    section2Desc: tSafe(
+      ['privacyPolicy.section2Desc', 'privacyPolicyData.section2Desc'],
+      'We use your information only for purposes related to operating, securing, and improving the app.'
+    ),
+    section2Items: [
+      tSafe(
+        ['privacyPolicy.section2Item1', 'privacyPolicyData.section2Item1'],
+        'To create, manage, and secure your account.'
+      ),
+      tSafe(
+        ['privacyPolicy.section2Item2', 'privacyPolicyData.section2Item2'],
+        'To process deposits, withdrawals, wallet transfers, and other wallet activity.'
+      ),
+      tSafe(
+        ['privacyPolicy.section2Item3', 'privacyPolicyData.section2Item3'],
+        'To process purchases from mobile shop, gift cards, top-up cards, and virtual card services.'
+      ),
+      tSafe(
+        ['privacyPolicy.section2Item4', 'privacyPolicyData.section2Item4'],
+        'To display your profile information, account settings, and transaction history inside the app.'
+      ),
+      tSafe(
+        ['privacyPolicy.section2Item5', 'privacyPolicyData.section2Item5'],
+        'To help protect accounts, review suspicious activity, and prevent fraud or misuse.'
+      ),
+      tSafe(
+        ['privacyPolicy.section2Item6', 'privacyPolicyData.section2Item6'],
+        'To support password reset, login verification, and account recovery features.'
+      ),
+      tSafe(
+        ['privacyPolicy.section2Item7', 'privacyPolicyData.section2Item7'],
+        'To improve app performance, user experience, and feature reliability.'
+      ),
+      tSafe(
+        ['privacyPolicy.section2Item8', 'privacyPolicyData.section2Item8'],
+        'To respond to support requests and communicate important service updates.'
+      ),
+    ],
 
-    return str;
+    section3Title: tSafe(
+      ['privacyPolicy.section3Title', 'privacyPolicyData.section3Title'],
+      'Location Information'
+    ),
+    section3Desc: tSafe(
+      ['privacyPolicy.section3Desc', 'privacyPolicyData.section3Desc'],
+      'If you allow location access, ZenoPay may use it only to suggest or show your city in the mobile shop page. Location is not required for general app use, and users may manually enter their city instead.'
+    ),
+
+    section4Title: tSafe(
+      ['privacyPolicy.section4Title', 'privacyPolicyData.section4Title'],
+      'Data Sharing'
+    ),
+    section4Desc: tSafe(
+      ['privacyPolicy.section4Desc', 'privacyPolicyData.section4Desc'],
+      'We do not sell your personal information. Some information may be processed using secure service providers or internal admin tools only when needed to operate the app, provide support, store account data, process orders, or maintain security.'
+    ),
+
+    section5Title: tSafe(
+      ['privacyPolicy.section5Title', 'privacyPolicyData.section5Title'],
+      'Data Security'
+    ),
+    section5Desc: tSafe(
+      ['privacyPolicy.section5Desc', 'privacyPolicyData.section5Desc'],
+      'We use reasonable technical and organizational measures to help protect your account and information. No system can guarantee absolute security, but we work to reduce unauthorized access, misuse, and loss of data.'
+    ),
+
+    section6Title: tSafe(
+      ['privacyPolicy.section6Title', 'privacyPolicyData.section6Title'],
+      'Data Retention'
+    ),
+    section6Desc: tSafe(
+      ['privacyPolicy.section6Desc', 'privacyPolicyData.section6Desc'],
+      'We retain information for as long as needed to operate the app, maintain wallet and order records, protect accounts, resolve disputes, meet legal obligations, and improve service reliability.'
+    ),
+
+    section7Title: tSafe(
+      ['privacyPolicy.section7Title', 'privacyPolicyData.section7Title'],
+      'User Rights and Choices'
+    ),
+    section7Desc: tSafe(
+      ['privacyPolicy.section7Desc', 'privacyPolicyData.section7Desc'],
+      'You may review or update parts of your account information inside the app. You may also contact support regarding account information, security issues, or other privacy-related requests.'
+    ),
+
+    section8Title: tSafe(
+      ['privacyPolicy.section8Title', 'privacyPolicyData.section8Title'],
+      'Third-Party Services'
+    ),
+    section8Desc: tSafe(
+      ['privacyPolicy.section8Desc', 'privacyPolicyData.section8Desc'],
+      'Some app features may rely on secure external services such as hosting, authentication, storage, notifications, or app infrastructure providers. These services may process data only as needed to support app functionality.'
+    ),
+
+    section9Title: tSafe(
+      ['privacyPolicy.section9Title', 'privacyPolicyData.section9Title'],
+      'Children'
+    ),
+    section9Desc: tSafe(
+      ['privacyPolicy.section9Desc', 'privacyPolicyData.section9Desc'],
+      'ZenoPay is intended for users aged 18 and above.'
+    ),
+
+    section10Title: tSafe(
+      ['privacyPolicy.section10Title', 'privacyPolicyData.section10Title'],
+      'Changes to This Policy'
+    ),
+    section10Desc: tSafe(
+      ['privacyPolicy.section10Desc', 'privacyPolicyData.section10Desc'],
+      'We may update this Privacy Policy from time to time. When we do, the updated version will appear in the app with a revised last updated date.'
+    ),
+
+    section11Title: tSafe(
+      ['privacyPolicy.section11Title', 'privacyPolicyData.section11Title'],
+      'Contact Us'
+    ),
+    section11Desc: tSafe(
+      ['privacyPolicy.section11Desc', 'privacyPolicyData.section11Desc'],
+      'If you have any questions about this Privacy Policy or your information, please contact us at:'
+    ),
+
+    contactLabel: tSafe(
+      ['privacyPolicy.contactEmailLabel', 'privacyPolicyData.contactEmailLabel'],
+      'Email'
+    ),
   };
-
-  const UI = useMemo(
-    () => ({
-      title: t('privacyPolicy.title', 'Privacy Policy'),
-      lastUpdated: t('privacyPolicy.lastUpdated', 'Last updated: March 28, 2026'),
-      intro: t(
-        'privacyPolicy.intro',
-        'This Privacy Policy explains how ZenoPay collects, uses, stores, and protects your information when you use the app and related services.'
-      ),
-
-      section1Title: t('privacyPolicy.section1Title', 'Information We Collect'),
-      section1Desc: t(
-        'privacyPolicy.section1Desc',
-        'We collect information that is needed to create and protect your account, provide wallet features, process purchases, and improve app security and support.'
-      ),
-      section1Items: [
-        t(
-          'privacyPolicy.section1Item1',
-          'Account details such as full name, email address, password or login information, city, country, phone number, gender, and date of birth when you create an account.'
-        ),
-        t(
-          'privacyPolicy.section1Item2',
-          'Profile information such as profile photo, avatar, city, phone number, email, and other details you choose to add or update.'
-        ),
-        t(
-          'privacyPolicy.section1Item3',
-          'Wallet and transaction information such as deposits, withdrawals, money transfers, balances, transaction history, and related records.'
-        ),
-        t(
-          'privacyPolicy.section1Item4',
-          'Purchase and order information related to mobile shop, gift cards, top-up cards, and virtual card creation, including product details, order status, payment amount, and delivery-related information.'
-        ),
-        t(
-          'privacyPolicy.section1Item5',
-          'Card information related to internal virtual card creation, including one-card-per-user setup and creation fee records such as 25,000 IQD where applicable.'
-        ),
-        t(
-          'privacyPolicy.section1Item6',
-          'Additional account protection information such as selfie or document images, including ID front, ID back, and selfie, when needed to help protect accounts and reduce fraud or misuse of the platform.'
-        ),
-        t(
-          'privacyPolicy.section1Item7',
-          'Location information may be used only to help suggest or display your city inside the mobile shop page. Users can still manually enter their city.'
-        ),
-        t(
-          'privacyPolicy.section1Item8',
-          'Support, password reset, security check, and account recovery information when you contact support or use account security features.'
-        ),
-      ],
-
-      section2Title: t('privacyPolicy.section2Title', 'How We Use Information'),
-      section2Desc: t(
-        'privacyPolicy.section2Desc',
-        'We use your information only for purposes related to operating, securing, and improving the app.'
-      ),
-      section2Items: [
-        t('privacyPolicy.section2Item1', 'To create, manage, and secure your account.'),
-        t('privacyPolicy.section2Item2', 'To process deposits, withdrawals, wallet transfers, and other wallet activity.'),
-        t('privacyPolicy.section2Item3', 'To process purchases from mobile shop, gift cards, top-up cards, and virtual card services.'),
-        t('privacyPolicy.section2Item4', 'To display your profile information, account settings, and transaction history inside the app.'),
-        t('privacyPolicy.section2Item5', 'To help protect accounts, review suspicious activity, and prevent fraud or misuse.'),
-        t('privacyPolicy.section2Item6', 'To support password reset, login verification, and account recovery features.'),
-        t('privacyPolicy.section2Item7', 'To improve app performance, user experience, and feature reliability.'),
-        t('privacyPolicy.section2Item8', 'To respond to support requests and communicate important service updates.'),
-      ],
-
-      section3Title: t('privacyPolicy.section3Title', 'Location Information'),
-      section3Desc: t(
-        'privacyPolicy.section3Desc',
-        'If you allow location access, ZenoPay may use it only to suggest or show your city in the mobile shop page. Location is not required for general app use, and users may manually enter their city instead.'
-      ),
-
-      section4Title: t('privacyPolicy.section4Title', 'Data Sharing'),
-      section4Desc: t(
-        'privacyPolicy.section4Desc',
-        'We do not sell your personal information. Some information may be processed using secure service providers or internal admin tools only when needed to operate the app, provide support, store account data, process orders, or maintain security.'
-      ),
-
-      section5Title: t('privacyPolicy.section5Title', 'Data Security'),
-      section5Desc: t(
-        'privacyPolicy.section5Desc',
-        'We use reasonable technical and organizational measures to help protect your account and information. No system can guarantee absolute security, but we work to reduce unauthorized access, misuse, and loss of data.'
-      ),
-
-      section6Title: t('privacyPolicy.section6Title', 'Data Retention'),
-      section6Desc: t(
-        'privacyPolicy.section6Desc',
-        'We retain information for as long as needed to operate the app, maintain wallet and order records, protect accounts, resolve disputes, meet legal obligations, and improve service reliability.'
-      ),
-
-      section7Title: t('privacyPolicy.section7Title', 'User Rights and Choices'),
-      section7Desc: t(
-        'privacyPolicy.section7Desc',
-        'You may review or update parts of your account information inside the app. You may also contact support regarding account information, security issues, or other privacy-related requests.'
-      ),
-
-      section8Title: t('privacyPolicy.section8Title', 'Third-Party Services'),
-      section8Desc: t(
-        'privacyPolicy.section8Desc',
-        'Some app features may rely on secure external services such as hosting, authentication, storage, notifications, or app infrastructure providers. These services may process data only as needed to support app functionality.'
-      ),
-
-      section9Title: t('privacyPolicy.section9Title', 'Children'),
-      section9Desc: t(
-        'privacyPolicy.section9Desc',
-        'ZenoPay is intended for users aged 18 and above.'
-      ),
-
-      section10Title: t('privacyPolicy.section10Title', 'Changes to This Policy'),
-      section10Desc: t(
-        'privacyPolicy.section10Desc',
-        'We may update this Privacy Policy from time to time. When we do, the updated version will appear in the app with a revised last updated date.'
-      ),
-
-      section11Title: t('privacyPolicy.section11Title', 'Contact Us'),
-      section11Desc: t(
-        'privacyPolicy.section11Desc',
-        'If you have any questions about this Privacy Policy or your information, please contact us at:'
-      ),
-      contactLabel: t('privacyPolicy.contactEmailLabel', 'Email'),
-    }),
-    []
-  );
 
   const renderBullet = (text: string, index: number) => (
     <View
@@ -173,7 +242,11 @@ export default function PrivacyPolicyScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#EEF4FF', '#F7FAFF']} style={styles.gradient}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.9}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            activeOpacity={0.9}
+          >
             <Ionicons
               name={isRTL ? 'arrow-forward' : 'arrow-back'}
               size={22}
