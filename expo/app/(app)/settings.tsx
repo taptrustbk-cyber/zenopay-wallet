@@ -55,7 +55,7 @@ const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 const LANGUAGES = [
   { code: 'en', name: 'English' },
   { code: 'ar', name: 'العربية' },
-  { code: 'cbk', name: 'کوردی سۆرانی' },
+  { code: 'ckb', name: 'کوردی سۆرانی' },
   { code: 'kmr', name: 'کوردی بادینی' },
 ];
 
@@ -69,7 +69,7 @@ const SUPPORT_LINKS = {
 function normalizeLang(code?: string | null) {
   const lang = String(code || '').trim().toLowerCase();
   if (!lang) return 'en';
-  if (lang === 'ckb') return 'cbk';
+  if (lang === 'ckb') return 'ckb';
   return lang;
 }
 
@@ -122,7 +122,7 @@ function tOne(keys: string[], fallback: string) {
 function getLanguageDisplayName(code: string) {
   const lang = normalizeLang(code);
   if (lang === 'ar') return 'العربية';
-  if (lang === 'cbk') return 'کوردی سۆرانی';
+  if (lang === 'ckb') return 'کوردی سۆرانی';
   if (lang === 'kmr') return 'کوردی بادینی';
   return 'English';
 }
