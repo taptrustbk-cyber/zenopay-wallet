@@ -57,7 +57,7 @@ const LANGUAGES = [
   { code: 'ar', name: 'العربية' },
   { code: 'ckb', name: 'کوردی سۆرانی' },
   { code: 'kmr', name: 'کوردی بادینی' },
-];
+] as const;
 
 const SUPPORT_LINKS = {
   email: 'mailto:info@zenopay.bond',
@@ -70,7 +70,11 @@ function normalizeLang(code?: string | null) {
   const lang = String(code || '').trim().toLowerCase();
   if (!lang) return 'en';
   if (lang === 'cbk') return 'ckb';
-  return lang;
+  if (lang.startsWith('en')) return 'en';
+  if (lang.startsWith('ar')) return 'ar';
+  if (lang.startsWith('ckb')) return 'ckb';
+  if (lang.startsWith('kmr')) return 'kmr';
+  return 'en';
 }
 
 function safeString(value: any, fallback: string) {
@@ -88,7 +92,7 @@ function safeString(value: any, fallback: string) {
     lower.includes('missing translation') ||
     lower.includes('[missing') ||
     lower.includes('missing "') ||
-    text.includes('object object')
+    lower.includes('object object')
   ) {
     return fallback;
   }
@@ -137,8 +141,9 @@ export default function SettingsScreen() {
   const [showSupport, setShowSupport] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [, forceUpdate] = useState({});
-  const isAdmin = !!(user && ADMIN_EMAILS.includes(user.email || ''));
   const [logoutOpen, setLogoutOpen] = useState(false);
+
+  const isAdmin = !!(user && ADMIN_EMAILS.includes(user.email || ''));
 
   useEffect(() => {
     const current = normalizeLang(getCurrentLanguage());
@@ -153,14 +158,10 @@ export default function SettingsScreen() {
     try {
       const normalized = normalizeLang(code);
 
-      setSelectedLanguage(normalized);
-
       await setLanguage(normalized);
+      i18n.locale = normalized;
 
-      if (normalizeLang(i18n.language) !== normalized) {
-        await i18n.changeLanguage(normalized);
-      }
-
+      setSelectedLanguage(normalized);
       forceUpdate({});
       setShowLanguages(false);
     } catch (error) {
@@ -213,6 +214,7 @@ export default function SettingsScreen() {
   const handleSupportItemPress = async (url: string) => {
     try {
       const canOpen = await Linking.canOpenURL(url);
+
       if (canOpen) {
         await Linking.openURL(url);
       } else {
@@ -265,7 +267,9 @@ export default function SettingsScreen() {
               color={UI.text}
             />
           </TouchableOpacity>
+
           <Text style={[styles.headerTitle, { color: UI.text }]}>{supportTitle}</Text>
+
           <View style={{ width: 42 }} />
         </View>
 
@@ -280,7 +284,9 @@ export default function SettingsScreen() {
               <View style={[styles.menuIconContainer, { backgroundColor: item.color }]}>
                 <Ionicons name={item.icon} size={22} color={item.iconColor} />
               </View>
+
               <Text style={[styles.supportItemText, { color: UI.text }]}>{item.label}</Text>
+
               <Ionicons
                 name={isRTL ? 'chevron-back' : 'open-outline'}
                 size={20}
@@ -306,7 +312,9 @@ export default function SettingsScreen() {
               color={UI.text}
             />
           </TouchableOpacity>
+
           <Text style={[styles.headerTitle, { color: UI.text }]}>{languageTitle}</Text>
+
           <View style={{ width: 42 }} />
         </View>
 
@@ -373,9 +381,11 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
             <Ionicons name="person" size={22} color={UI.blue} />
           </View>
+
           <View style={styles.menuTextWrap}>
             <Text style={[styles.menuText, { color: UI.text }]}>{profileTitle}</Text>
           </View>
+
           <Ionicons
             name={isRTL ? 'chevron-back' : 'chevron-forward'}
             size={20}
@@ -391,10 +401,12 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
             <Ionicons name="language" size={22} color={UI.blue} />
           </View>
+
           <View style={styles.menuTextWrap}>
             <Text style={[styles.menuText, { color: UI.text }]}>{languageTitle}</Text>
             <Text style={[styles.menuSubText, { color: UI.text2 }]}>{currentLanguageName}</Text>
           </View>
+
           <Ionicons
             name={isRTL ? 'chevron-back' : 'chevron-forward'}
             size={20}
@@ -410,9 +422,11 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
             <Ionicons name="lock-closed" size={22} color={UI.blue} />
           </View>
+
           <View style={styles.menuTextWrap}>
             <Text style={[styles.menuText, { color: UI.text }]}>{securityTitle}</Text>
           </View>
+
           <Ionicons
             name={isRTL ? 'chevron-back' : 'chevron-forward'}
             size={20}
@@ -428,9 +442,11 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
             <Ionicons name="document-text" size={22} color={UI.blue} />
           </View>
+
           <View style={styles.menuTextWrap}>
             <Text style={[styles.menuText, { color: UI.text }]}>{privacyTitle}</Text>
           </View>
+
           <Ionicons
             name={isRTL ? 'chevron-back' : 'chevron-forward'}
             size={20}
@@ -446,9 +462,11 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
             <Ionicons name="clipboard" size={22} color={UI.blue} />
           </View>
+
           <View style={styles.menuTextWrap}>
             <Text style={[styles.menuText, { color: UI.text }]}>{termsTitle}</Text>
           </View>
+
           <Ionicons
             name={isRTL ? 'chevron-back' : 'chevron-forward'}
             size={20}
@@ -464,9 +482,11 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
             <Ionicons name="mail" size={22} color={UI.blue} />
           </View>
+
           <View style={styles.menuTextWrap}>
             <Text style={[styles.menuText, { color: UI.text }]}>{supportTitle}</Text>
           </View>
+
           <Ionicons
             name={isRTL ? 'chevron-back' : 'chevron-forward'}
             size={20}
@@ -483,9 +503,11 @@ export default function SettingsScreen() {
             <View style={[styles.menuIconContainer, styles.adminIcon]}>
               <Ionicons name="shield-checkmark" size={22} color="#FFFFFF" />
             </View>
+
             <View style={styles.menuTextWrap}>
               <Text style={[styles.menuText, { color: UI.text }]}>{adminTitle}</Text>
             </View>
+
             <Ionicons
               name={isRTL ? 'chevron-back' : 'chevron-forward'}
               size={20}
@@ -508,6 +530,7 @@ export default function SettingsScreen() {
           <View style={[styles.menuIconContainer, styles.logoutIcon]}>
             <Ionicons name="log-out" size={22} color={theme.colors.error} />
           </View>
+
           <View style={styles.menuTextWrap}>
             <Text style={[styles.menuText, { color: theme.colors.error }]}>{logoutTitle}</Text>
           </View>
