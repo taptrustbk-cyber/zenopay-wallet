@@ -1,4 +1,3 @@
-import React, { useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,38 +5,32 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  I18nManager,
-  Platform,
+  Linking,
   Modal,
   Pressable,
+  I18nManager,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, usePathname, useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import i18n from '@/lib/i18n';
 import { useAuth } from '@/contexts/AuthContext';
-
-export const options = { headerShown: false };
+import { useState, useEffect, useMemo } from 'react';
+import i18n, { setLanguage, getCurrentLanguage } from '@/lib/i18n';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const UI = {
   bg: '#EEF4FF',
-  page: '#F7FAFF',
   card: '#FFFFFF',
   cardSoft: '#F8FBFF',
-  cardMuted: '#F3F7FD',
   text: '#0F172A',
   text2: '#64748B',
-  text3: '#94A3B8',
   border: '#D9E5F6',
 
   blue: '#2563EB',
   blueDark: '#1D4ED8',
   blueSoft: '#EAF2FF',
-  blueSoft2: '#DCEBFF',
 
-  red: '#EF4444',
-  redSoft: '#FEECEC',
-  overlay: 'rgba(15, 23, 42, 0.28)',
+  danger: '#DC2626',
+  dangerSoft: '#FEECEC',
 };
 
 const SHADOWS = {
@@ -57,7 +50,29 @@ const SHADOWS = {
   },
 };
 
-function getText(value: any, fallback: string) {
+const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
+
+const LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'ar', name: 'العربية' },
+  { code: 'cbk', name: 'کوردی سۆرانی' },
+  { code: 'kmr', name: 'کوردی بادینی' },
+];
+
+const SUPPORT_LINKS = {
+  email: 'mailto:info@zenopay.bond',
+  facebook: 'https://www.facebook.com/share/16feV1MMSC/?mibextid=wwXIfr',
+  instagram: 'https://www.instagram.com/zenopaywallet?igsh=czRlM2FsZXVxMmkw',
+  tiktok: 'https://www.tiktok.com/@zenopaywallet?_r=1&_t=ZS-955lFybRHAg',
+};
+
+function normalizeLang(code?: string | null) {
+  const lang = String(code || '').toLowerCase();
+  if (lang === 'ckb') return 'cbk';
+  return lang || 'en';
+}
+
+function getSafeText(value: any, fallback: string) {
   if (value === null || value === undefined) return fallback;
   if (typeof value === 'object') return fallback;
 
@@ -66,10 +81,10 @@ function getText(value: any, fallback: string) {
 
   if (
     !text ||
-    lower === '[object object]' ||
+    text === '[object Object]' ||
     lower.includes('missing translation') ||
+    lower.includes('[missing') ||
     lower.includes('missing "') ||
-    text.includes('[missing') ||
     text.includes('"')
   ) {
     return fallback;
@@ -81,8 +96,8 @@ function getText(value: any, fallback: string) {
 function tSafe(key: string, fallback: string) {
   try {
     const value = i18n.t(key as any);
-    if (value === key) return fallback;
-    return getText(value, fallback);
+    if (String(value) === key) return fallback;
+    return getSafeText(value, fallback);
   } catch {
     return fallback;
   }
@@ -92,8 +107,10 @@ function tOne(keys: string[], fallback: string) {
   for (const key of keys) {
     try {
       const value = i18n.t(key as any);
-      const text = getText(value, '__INVALID__');
-      if (text !== '__INVALID__' && text !== key) return text;
+      const text = getSafeText(value, '__INVALID__');
+      if (text !== '__INVALID__' && text !== key) {
+        return text;
+      }
     } catch {}
   }
   return fallback;
@@ -101,32 +118,50 @@ function tOne(keys: string[], fallback: string) {
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const pathname = usePathname();
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
+  const { theme } = useTheme();
   const isRTL = I18nManager.isRTL;
 
-  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showLanguages, setShowLanguages] = useState(false);
+  const [showSupport, setShowSupport] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [, forceUpdate] = useState({});
+  const isAdmin = !!(user && ADMIN_EMAILS.includes(user.email || ''));
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
-  const currentLanguageLabel = useMemo(() => {
-    const lang = String(i18n.language || '').toLowerCase();
+  useEffect(() => {
+    setSelectedLanguage(normalizeLang(getCurrentLanguage()));
+  }, []);
+
+  const currentLanguageName = useMemo(() => {
+    const lang = normalizeLang(selectedLanguage);
 
     if (lang === 'ar') return tSafe('common.languageArabic', 'العربية');
-    if (lang === 'cbk' || lang === 'ckb') {
-      return tSafe('common.languageSorani', 'کوردی سۆرانی');
-    }
+    if (lang === 'cbk') return tSafe('common.languageSorani', 'کوردی سۆرانی');
     if (lang === 'kmr') return tSafe('common.languageBadini', 'کوردی بادینی');
 
     return tSafe('common.languageEnglish', 'English');
-  }, [showLanguageModal, pathname]);
+  }, [selectedLanguage]);
 
-  const changeLanguage = async (lang: 'en' | 'ar' | 'cbk' | 'kmr') => {
+  const handleLanguageSelect = async (code: string) => {
     try {
-      await i18n.changeLanguage(lang);
-      setShowLanguageModal(false);
+      const normalized = normalizeLang(code);
+      setSelectedLanguage(normalized);
+      await setLanguage(normalized);
+      setShowLanguages(false);
+      forceUpdate({});
 
       Alert.alert(
         tSafe('common.success', 'Success'),
-        tOne(['settingsLanguageChanged', 'settings.languageChanged'], 'Language changed successfully')
+        tOne(['settingsLanguageChanged', 'settings.languageChanged'], 'Language changed successfully'),
+        [
+          {
+            text: tSafe('common.ok', 'OK'),
+            onPress: () => {
+              router.replace('/(app)/dashboard' as any);
+            },
+          },
+        ]
       );
     } catch {
       Alert.alert(
@@ -140,266 +175,426 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      tOne(['logout', 'settings.logout'], 'Logout'),
-      tOne(
-        ['settingsLogoutConfirm', 'settings.logoutConfirm'],
-        'Are you sure you want to logout?'
-      ),
-      [
-        {
-          text: tSafe('common.cancel', 'Cancel'),
-          style: 'cancel',
-        },
-        {
-          text: tOne(['logout', 'settings.logout'], 'Logout'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-            } catch {
-              Alert.alert(
-                tSafe('common.error', 'Error'),
-                tSafe('common.somethingWentWrong', 'Something went wrong')
-              );
-            }
-          },
-        },
-      ]
-    );
+    setLogoutOpen(true);
   };
 
-  const settingsItems = [
+  const supportItems = [
     {
-      key: 'language',
-      title: tOne(['language', 'settings.language', 'settingsLanguage'], 'Language'),
-      subtitle: currentLanguageLabel,
-      icon: 'language-outline' as const,
-      onPress: () => setShowLanguageModal(true),
+      id: 'email',
+      label: tOne(['settingsSupportEmail', 'support.email', 'supportEmail'], 'Email Support'),
+      icon: 'mail' as const,
+      url: SUPPORT_LINKS.email,
+      color: UI.blueSoft,
+      iconColor: UI.blue,
     },
     {
-      key: 'security',
-      title: tOne(['security', 'settings.security', 'security.title'], 'Security'),
-      icon: 'lock-closed-outline' as const,
-      onPress: () => router.push('/(app)/security' as any),
+      id: 'facebook',
+      label: tOne(['settingsSupportFacebook', 'support.facebook', 'supportFacebook'], 'Facebook'),
+      icon: 'logo-facebook' as const,
+      url: SUPPORT_LINKS.facebook,
+      color: UI.blueSoft,
+      iconColor: UI.blue,
     },
     {
-      key: 'privacy',
-      title: tOne(
-        ['privacyPolicy.title', 'privacyPolicy', 'privacyPolicyData.title'],
-        'Privacy Policy'
+      id: 'instagram',
+      label: tOne(
+        ['settingsSupportInstagram', 'support.instagram', 'supportInstagram'],
+        'Instagram'
       ),
-      icon: 'document-text-outline' as const,
-      onPress: () => router.push('/(app)/privacy-policy' as any),
+      icon: 'logo-instagram' as const,
+      url: SUPPORT_LINKS.instagram,
+      color: UI.blueSoft,
+      iconColor: UI.blue,
     },
     {
-      key: 'terms',
-      title: tOne(['terms.headerTitle', 'terms.mainTitle', 'termsConditions'], 'Terms & Conditions'),
-      icon: 'clipboard-outline' as const,
-      onPress: () => router.push('/(app)/terms-conditions' as any),
-    },
-    {
-      key: 'support',
-      title: tOne(['support', 'settings.support'], 'Support'),
-      icon: 'mail-outline' as const,
-      onPress: () => router.push('/(app)/contact' as any),
-    },
-    {
-      key: 'admin',
-      title: tOne(['adminPanel', 'settings.adminPanel'], 'Admin Panel'),
-      icon: 'shield-checkmark-outline' as const,
-      onPress: () => router.push('/(app)/admin' as any),
+      id: 'tiktok',
+      label: tOne(['settingsSupportTiktok', 'support.tiktok', 'supportTiktok'], 'TikTok'),
+      icon: 'logo-tiktok' as const,
+      url: SUPPORT_LINKS.tiktok,
+      color: UI.blueSoft,
+      iconColor: UI.blue,
     },
   ];
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <Stack.Screen options={{ headerShown: false }} />
+  const handleSupportItemPress = async (url: string) => {
+    try {
+      const canOpen = await Linking.canOpenURL(url);
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-          activeOpacity={0.9}
-        >
-          <Ionicons
-            name={isRTL ? 'arrow-forward' : 'arrow-back'}
-            size={22}
-            color={UI.blueDark}
-          />
-        </TouchableOpacity>
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert(
+          tSafe('common.error', 'Error'),
+          tOne(
+            ['settingsCannotOpenLink', 'settings.cannotOpenLink', 'cannotOpenLink'],
+            'Cannot open this link'
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error opening URL:', error);
+      Alert.alert(
+        tSafe('common.error', 'Error'),
+        tOne(
+          ['settingsOpenLinkFailed', 'settings.openLinkFailed', 'failedToOpenLink'],
+          'Failed to open link'
+        )
+      );
+    }
+  };
 
-        <Text style={styles.headerTitle}>
-          {tOne(['settings.title', 'settings'], 'Settings')}
-        </Text>
+  const settingsTitle = tOne(['settings.title', 'settings'], 'Settings');
+  const profileTitle = tOne(['profile.title', 'profile'], 'Profile');
+  const languageTitle = tOne(['language', 'settings.language'], 'Language');
+  const securityTitle = tOne(['security', 'settings.security', 'securityPage.title'], 'Security');
+  const privacyTitle = tOne(
+    ['privacyPolicy.title', 'privacyPolicyData.title', 'privacyPolicy'],
+    'Privacy Policy'
+  );
+  const termsTitle = tOne(
+    ['terms.headerTitle', 'terms.mainTitle', 'termsConditions'],
+    'Terms & Conditions'
+  );
+  const supportTitle = tOne(['support', 'settings.support'], 'Support');
+  const adminTitle = tOne(['adminPanel', 'settings.adminPanel'], 'Admin Panel');
+  const logoutTitle = tOne(['logout', 'settings.logout'], 'Logout');
 
-        <View style={styles.headerSpacer} />
-      </View>
+  if (showSupport) {
+    return (
+      <View style={[styles.container, { backgroundColor: UI.bg }]}>
+        <Stack.Screen options={{ headerShown: false }} />
 
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {settingsItems.map((item) => (
-          <TouchableOpacity
-            key={item.key}
-            style={[styles.menuCard, isRTL && styles.menuCardRTL]}
-            onPress={item.onPress}
-            activeOpacity={0.92}
-          >
-            <View style={[styles.menuLeft, isRTL && styles.menuLeftRTL]}>
-              <View style={styles.iconWrap}>
-                <Ionicons name={item.icon} size={24} color={UI.blue} />
-              </View>
-
-              <View style={styles.titleWrap}>
-                <Text style={[styles.menuTitle, isRTL && styles.textRTL]}>
-                  {item.title}
-                </Text>
-
-                {'subtitle' in item && item.subtitle ? (
-                  <Text style={[styles.menuSubtitle, isRTL && styles.textRTL]}>
-                    {item.subtitle}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-
+        <View style={[styles.subHeader, { borderBottomColor: UI.border, backgroundColor: UI.bg }]}>
+          <TouchableOpacity onPress={() => setShowSupport(false)} style={styles.backButton}>
             <Ionicons
-              name={isRTL ? 'chevron-back' : 'chevron-forward'}
-              size={24}
-              color={UI.text2}
+              name={isRTL ? 'arrow-forward' : 'arrow-back'}
+              size={22}
+              color={UI.text}
             />
           </TouchableOpacity>
-        ))}
+          <Text style={[styles.headerTitle, { color: UI.text }]}>{supportTitle}</Text>
+          <View style={{ width: 42 }} />
+        </View>
 
-        <View style={styles.divider} />
+        <ScrollView style={styles.supportList} contentContainerStyle={{ paddingBottom: 24 }}>
+          {supportItems.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[styles.supportItem, { backgroundColor: UI.card, borderColor: UI.border }]}
+              onPress={() => handleSupportItemPress(item.url)}
+              activeOpacity={0.9}
+            >
+              <View style={[styles.menuIconContainer, { backgroundColor: item.color }]}>
+                <Ionicons name={item.icon} size={22} color={item.iconColor} />
+              </View>
+              <Text style={[styles.supportItemText, { color: UI.text }]}>{item.label}</Text>
+              <Ionicons
+                name={isRTL ? 'chevron-back' : 'open-outline'}
+                size={20}
+                color={UI.text2}
+              />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
 
-        <TouchableOpacity
-          style={[styles.logoutCard, isRTL && styles.menuCardRTL]}
-          onPress={handleLogout}
-          activeOpacity={0.92}
-        >
-          <View style={[styles.menuLeft, isRTL && styles.menuLeftRTL]}>
-            <View style={[styles.iconWrap, styles.logoutIconWrap]}>
-              <Ionicons name="log-out-outline" size={22} color={UI.red} />
-            </View>
+  if (showLanguages) {
+    return (
+      <View style={[styles.container, { backgroundColor: UI.bg }]}>
+        <Stack.Screen options={{ headerShown: false }} />
 
-            <Text style={[styles.logoutText, isRTL && styles.textRTL]}>
-              {tOne(['logout', 'settings.logout'], 'Logout')}
-            </Text>
-          </View>
+        <View style={[styles.subHeader, { borderBottomColor: UI.border, backgroundColor: UI.bg }]}>
+          <TouchableOpacity onPress={() => setShowLanguages(false)} style={styles.backButton}>
+            <Ionicons
+              name={isRTL ? 'arrow-forward' : 'arrow-back'}
+              size={22}
+              color={UI.text}
+            />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: UI.text }]}>{languageTitle}</Text>
+          <View style={{ width: 42 }} />
+        </View>
 
-          <Ionicons
-            name={isRTL ? 'chevron-back' : 'chevron-forward'}
-            size={24}
-            color={UI.text2}
-          />
-        </TouchableOpacity>
-
-        <View style={{ height: 28 }} />
-      </ScrollView>
-
-      <Modal
-        visible={showLanguageModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowLanguageModal(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowLanguageModal(false)} />
-
-        <View style={styles.languageSheet}>
-          <View style={styles.sheetGrabber} />
-
-          <Text style={styles.languageSheetTitle}>
-            {tOne(['language', 'settings.language', 'settingsLanguage'], 'Language')}
-          </Text>
-
-          {[
-            {
-              key: 'en',
-              label: tSafe('common.languageEnglish', 'English'),
-            },
-            {
-              key: 'ar',
-              label: tSafe('common.languageArabic', 'العربية'),
-            },
-            {
-              key: 'cbk',
-              label: tSafe('common.languageSorani', 'کوردی سۆرانی'),
-            },
-            {
-              key: 'kmr',
-              label: tSafe('common.languageBadini', 'کوردی بادینی'),
-            },
-          ].map((lang) => {
-            const selected = String(i18n.language || '').toLowerCase() === lang.key;
+        <ScrollView style={styles.languageList} contentContainerStyle={{ paddingBottom: 24 }}>
+          {LANGUAGES.map((language) => {
+            const active = normalizeLang(selectedLanguage) === normalizeLang(language.code);
 
             return (
               <TouchableOpacity
-                key={lang.key}
-                style={[styles.languageRow, selected && styles.languageRowActive]}
-                activeOpacity={0.92}
-                onPress={() => changeLanguage(lang.key as 'en' | 'ar' | 'cbk' | 'kmr')}
+                key={language.code}
+                style={[
+                  styles.languageItem,
+                  { backgroundColor: UI.card, borderColor: UI.border },
+                  active && styles.languageItemActive,
+                ]}
+                onPress={() => handleLanguageSelect(language.code)}
+                activeOpacity={0.9}
               >
-                <View style={styles.languageRowLeft}>
-                  <View style={[styles.languageIconCircle, selected && styles.languageIconCircleActive]}>
-                    <Ionicons
-                      name="globe-outline"
-                      size={18}
-                      color={selected ? UI.blueDark : UI.blue}
-                    />
+                <View style={styles.languageInfo}>
+                  <View style={[styles.menuIconContainer, styles.languageGlobe]}>
+                    <Ionicons name="language" size={20} color={UI.blue} />
                   </View>
 
-                  <Text style={[styles.languageRowText, selected && styles.languageRowTextActive]}>
-                    {lang.label}
-                  </Text>
+                  <View>
+                    <Text style={[styles.languageName, { color: UI.text }]}>
+                      {language.name}
+                    </Text>
+                    {active ? (
+                      <Text style={styles.languageCurrentText}>{tSafe('common.confirm', 'Selected')}</Text>
+                    ) : null}
+                  </View>
                 </View>
 
-                {selected ? (
-                  <Ionicons name="checkmark-circle" size={22} color={UI.blue} />
+                {active ? (
+                  <Ionicons name="checkmark-circle" size={24} color={UI.blue} />
                 ) : (
-                  <View style={styles.languageRadio} />
+                  <Ionicons
+                    name={isRTL ? 'chevron-back' : 'chevron-forward'}
+                    size={20}
+                    color={UI.text2}
+                  />
                 )}
               </TouchableOpacity>
             );
           })}
+        </ScrollView>
+      </View>
+    );
+  }
 
+  return (
+    <View style={[styles.container, { backgroundColor: UI.bg }]}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <View style={[styles.mainHeader, { backgroundColor: UI.bg }]}>
+        <View style={{ width: 42 }} />
+        <Text style={[styles.headerTitle, { color: UI.text }]}>{settingsTitle}</Text>
+        <View style={{ width: 42 }} />
+      </View>
+
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 30 }}>
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: UI.card, borderColor: UI.border }]}
+          onPress={() => router.push('/(app)/profile' as any)}
+          activeOpacity={0.9}
+        >
+          <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
+            <Ionicons name="person" size={22} color={UI.blue} />
+          </View>
+          <View style={styles.menuTextWrap}>
+            <Text style={[styles.menuText, { color: UI.text }]}>{profileTitle}</Text>
+          </View>
+          <Ionicons
+            name={isRTL ? 'chevron-back' : 'chevron-forward'}
+            size={20}
+            color={UI.text2}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: UI.card, borderColor: UI.border }]}
+          onPress={() => setShowLanguages(true)}
+          activeOpacity={0.9}
+        >
+          <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
+            <Ionicons name="language" size={22} color={UI.blue} />
+          </View>
+          <View style={styles.menuTextWrap}>
+            <Text style={[styles.menuText, { color: UI.text }]}>{languageTitle}</Text>
+            <Text style={[styles.menuSubText, { color: UI.text2 }]}>{currentLanguageName}</Text>
+          </View>
+          <Ionicons
+            name={isRTL ? 'chevron-back' : 'chevron-forward'}
+            size={20}
+            color={UI.text2}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: UI.card, borderColor: UI.border }]}
+          onPress={() => router.push('/(app)/security' as any)}
+          activeOpacity={0.9}
+        >
+          <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
+            <Ionicons name="lock-closed" size={22} color={UI.blue} />
+          </View>
+          <View style={styles.menuTextWrap}>
+            <Text style={[styles.menuText, { color: UI.text }]}>{securityTitle}</Text>
+          </View>
+          <Ionicons
+            name={isRTL ? 'chevron-back' : 'chevron-forward'}
+            size={20}
+            color={UI.text2}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: UI.card, borderColor: UI.border }]}
+          onPress={() => router.push('/(app)/privacy-policy' as any)}
+          activeOpacity={0.9}
+        >
+          <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
+            <Ionicons name="document-text" size={22} color={UI.blue} />
+          </View>
+          <View style={styles.menuTextWrap}>
+            <Text style={[styles.menuText, { color: UI.text }]}>{privacyTitle}</Text>
+          </View>
+          <Ionicons
+            name={isRTL ? 'chevron-back' : 'chevron-forward'}
+            size={20}
+            color={UI.text2}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: UI.card, borderColor: UI.border }]}
+          onPress={() => router.push('/(app)/terms-conditions' as any)}
+          activeOpacity={0.9}
+        >
+          <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
+            <Ionicons name="clipboard" size={22} color={UI.blue} />
+          </View>
+          <View style={styles.menuTextWrap}>
+            <Text style={[styles.menuText, { color: UI.text }]}>{termsTitle}</Text>
+          </View>
+          <Ionicons
+            name={isRTL ? 'chevron-back' : 'chevron-forward'}
+            size={20}
+            color={UI.text2}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: UI.card, borderColor: UI.border }]}
+          onPress={() => setShowSupport(true)}
+          activeOpacity={0.9}
+        >
+          <View style={[styles.menuIconContainer, { backgroundColor: UI.blueSoft }]}>
+            <Ionicons name="mail" size={22} color={UI.blue} />
+          </View>
+          <View style={styles.menuTextWrap}>
+            <Text style={[styles.menuText, { color: UI.text }]}>{supportTitle}</Text>
+          </View>
+          <Ionicons
+            name={isRTL ? 'chevron-back' : 'chevron-forward'}
+            size={20}
+            color={UI.text2}
+          />
+        </TouchableOpacity>
+
+        {isAdmin && (
           <TouchableOpacity
-            style={styles.cancelBtn}
+            style={[styles.menuItem, { backgroundColor: UI.card, borderColor: UI.border }]}
+            onPress={() => router.push('/(app)/admin' as any)}
             activeOpacity={0.9}
-            onPress={() => setShowLanguageModal(false)}
           >
-            <Text style={styles.cancelText}>
-              {tSafe('common.cancel', 'Cancel')}
-            </Text>
+            <View style={[styles.menuIconContainer, styles.adminIcon]}>
+              <Ionicons name="shield-checkmark" size={22} color="#FFFFFF" />
+            </View>
+            <View style={styles.menuTextWrap}>
+              <Text style={[styles.menuText, { color: UI.text }]}>{adminTitle}</Text>
+            </View>
+            <Ionicons
+              name={isRTL ? 'chevron-back' : 'chevron-forward'}
+              size={20}
+              color={UI.text2}
+            />
           </TouchableOpacity>
-        </View>
+        )}
+
+        <View style={[styles.divider, { backgroundColor: UI.border }]} />
+
+        <TouchableOpacity
+          style={[
+            styles.menuItem,
+            styles.logoutItem,
+            { backgroundColor: UI.card, borderColor: UI.border },
+          ]}
+          onPress={handleLogout}
+          activeOpacity={0.9}
+        >
+          <View style={[styles.menuIconContainer, styles.logoutIcon]}>
+            <Ionicons name="log-out" size={22} color={theme.colors.error} />
+          </View>
+          <View style={styles.menuTextWrap}>
+            <Text style={[styles.menuText, { color: theme.colors.error }]}>{logoutTitle}</Text>
+          </View>
+        </TouchableOpacity>
+      </ScrollView>
+
+      <Modal
+        visible={logoutOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLogoutOpen(false)}
+      >
+        <Pressable style={stylesLogout.backdrop} onPress={() => setLogoutOpen(false)}>
+          <Pressable style={stylesLogout.card} onPress={() => {}}>
+            <Text style={stylesLogout.title}>{logoutTitle}</Text>
+            <Text style={stylesLogout.message}>
+              {tOne(
+                ['settingsLogoutConfirm', 'settings.logoutConfirm'],
+                'Are you sure you want to logout?'
+              )}
+            </Text>
+
+            <View style={stylesLogout.row}>
+              <TouchableOpacity
+                style={[stylesLogout.btn, stylesLogout.cancelBtn]}
+                onPress={() => setLogoutOpen(false)}
+                activeOpacity={0.9}
+              >
+                <Text style={[stylesLogout.btnText, stylesLogout.cancelText]}>
+                  {tSafe('common.cancel', 'Cancel')}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[stylesLogout.btn, stylesLogout.confirmBtn]}
+                onPress={() => {
+                  setLogoutOpen(false);
+                  signOut();
+                }}
+                activeOpacity={0.9}
+              >
+                <Text style={[stylesLogout.btnText, stylesLogout.confirmText]}>
+                  {logoutTitle}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: UI.bg,
-  },
+  container: { flex: 1 },
 
-  header: {
+  mainHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 8 : 14,
+    paddingTop: 54,
     paddingBottom: 14,
-    backgroundColor: UI.bg,
+  },
+  subHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
   },
   backButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: UI.card,
     borderWidth: 1,
     borderColor: UI.border,
@@ -407,210 +602,170 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...SHADOWS.soft,
   },
+
   headerTitle: {
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: '900',
-    color: UI.text,
-  },
-  headerSpacer: {
-    width: 46,
-    height: 46,
   },
 
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-  },
+  content: { flex: 1 },
 
-  menuCard: {
-    backgroundColor: UI.card,
-    borderRadius: 28,
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: UI.border,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    marginBottom: 16,
-    minHeight: 96,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    ...SHADOWS.card,
-  },
-  menuCardRTL: {
-    flexDirection: 'row-reverse',
+    ...SHADOWS.soft,
   },
 
-  menuLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    minWidth: 0,
-  },
-  menuLeftRTL: {
-    flexDirection: 'row-reverse',
-  },
-
-  iconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: UI.blueSoft,
-    alignItems: 'center',
+  menuIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 14,
   },
 
-  titleWrap: {
+  menuTextWrap: {
     flex: 1,
     minWidth: 0,
   },
 
-  menuTitle: {
-    fontSize: 17,
+  adminIcon: { backgroundColor: UI.blueDark },
+  logoutIcon: { backgroundColor: UI.dangerSoft },
+  languageGlobe: { marginRight: 14 },
+
+  menuText: {
+    fontSize: 15,
     fontWeight: '900',
-    color: UI.text,
   },
-  menuSubtitle: {
-    marginTop: 5,
-    fontSize: 13,
-    fontWeight: '800',
-    color: UI.text2,
+
+  menuSubText: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: '700',
   },
-  textRTL: {
-    textAlign: 'right',
+
+  logoutItem: {
+    marginTop: 20,
+    marginBottom: 30,
   },
 
   divider: {
     height: 1,
-    backgroundColor: UI.border,
-    marginTop: 6,
-    marginBottom: 16,
+    marginHorizontal: 16,
+    marginTop: 26,
   },
 
-  logoutCard: {
-    backgroundColor: UI.card,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: UI.border,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    minHeight: 96,
+  languageList: { flex: 1, padding: 16 },
+
+  languageItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    ...SHADOWS.card,
-  },
-  logoutIconWrap: {
-    backgroundColor: UI.redSoft,
-  },
-  logoutText: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#D85B5B',
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: UI.overlay,
-  },
-
-  languageSheet: {
-    position: 'absolute',
-    left: 14,
-    right: 14,
-    bottom: 14,
-    backgroundColor: UI.card,
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: UI.border,
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 14,
-    ...SHADOWS.card,
-  },
-  sheetGrabber: {
-    width: 48,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: '#D5DEEB',
-    alignSelf: 'center',
+    padding: 16,
+    borderRadius: 18,
     marginBottom: 12,
+    borderWidth: 1,
+    ...SHADOWS.soft,
   },
-  languageSheetTitle: {
-    textAlign: 'center',
+  languageItemActive: {
+    borderWidth: 1,
+    borderColor: UI.blue,
+    backgroundColor: UI.cardSoft,
+  },
+  languageInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  languageName: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  languageCurrentText: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: '700',
+    color: UI.blue,
+  },
+
+  supportList: { flex: 1, padding: 16 },
+
+  supportItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    ...SHADOWS.soft,
+  },
+  supportItemText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+});
+
+const stylesLogout = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 18,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+  },
+  title: {
     fontSize: 18,
     fontWeight: '900',
-    color: UI.text,
-    marginBottom: 10,
+    color: '#111827',
+    marginBottom: 6,
+    textAlign: 'left',
   },
-
-  languageRow: {
-    minHeight: 74,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: UI.border,
-    backgroundColor: UI.cardSoft,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginTop: 10,
+  message: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6B7280',
+    marginBottom: 14,
+    textAlign: 'left',
+  },
+  row: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 10,
   },
-  languageRowActive: {
-    backgroundColor: '#F4F8FF',
-    borderColor: '#BFD4FF',
-  },
-  languageRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  btn: {
     flex: 1,
-  },
-  languageIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F2F6FD',
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  languageIconCircleActive: {
-    backgroundColor: UI.blueSoft,
-  },
-  languageRowText: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: UI.text,
-  },
-  languageRowTextActive: {
-    color: UI.blueDark,
-  },
-  languageRadio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#CFD9E8',
-  },
-
   cancelBtn: {
-    height: 58,
-    borderRadius: 20,
-    marginTop: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F3F7FF',
-    borderWidth: 1,
-    borderColor: UI.border,
+    backgroundColor: '#111827',
+  },
+  confirmBtn: {
+    backgroundColor: '#2563EB',
+  },
+  btnText: {
+    fontSize: 15,
+    fontWeight: '900',
   },
   cancelText: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: UI.blueDark,
+    color: '#FFFFFF',
+  },
+  confirmText: {
+    color: '#FFFFFF',
   },
 });
