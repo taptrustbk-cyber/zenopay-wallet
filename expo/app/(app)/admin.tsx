@@ -1,8 +1,9 @@
 import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import {
   Home,
   LogOut,
@@ -19,6 +20,7 @@ import {
   ClipboardList,
   Gift,
   Landmark,
+  Bell,
 } from 'lucide-react-native';
 
 export const options = { headerShown: false };
@@ -54,13 +56,94 @@ type MenuItemProps = {
   onPress: () => void;
   icon: React.ReactNode;
   tone?: 'green' | 'blue' | 'gold';
+  badgeCount?: number;
+};
+
+type AdminNotificationRow = {
+  id: string;
+  type?: string | null;
+  entity_table?: string | null;
+  is_read?: boolean | null;
 };
 
 export default function AdminScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
 
+  const [loadingNotifications, setLoadingNotifications] = React.useState(false);
+  const [unreadNotifications, setUnreadNotifications] = React.useState(0);
+  const [notificationRows, setNotificationRows] = React.useState<AdminNotificationRow[]>([]);
+
   const isAdmin = !!user && ADMIN_EMAILS.includes(user.email || '');
+
+  const loadNotifications = React.useCallback(async () => {
+    try {
+      setLoadingNotifications(true);
+
+      const { data, error } = await supabase
+        .from('admin_notifications')
+        .select('id, type, entity_table, is_read')
+        .eq('is_read', false)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.log('admin_notifications load error:', error.message);
+        return;
+      }
+
+      const rows = (data || []) as AdminNotificationRow[];
+      setNotificationRows(rows);
+      setUnreadNotifications(rows.length);
+    } catch (e) {
+      console.log('loadNotifications error:', e);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (!isAdmin) return;
+
+    loadNotifications();
+
+    const channel = supabase
+      .channel('admin-notifications-admin-page')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'admin_notifications',
+        },
+        () => {
+          loadNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAdmin, loadNotifications]);
+
+  const countByTables = React.useMemo(() => {
+    const tableCounts: Record<string, number> = {};
+
+    for (const row of notificationRows) {
+      const key = String(row.entity_table || row.type || '').trim();
+      if (!key) continue;
+      tableCounts[key] = (tableCounts[key] || 0) + 1;
+    }
+
+    return tableCounts;
+  }, [notificationRows]);
+
+  const getBadgeCount = React.useCallback(
+    (keys: string[]) => {
+      return keys.reduce((sum, key) => sum + (countByTables[key] || 0), 0);
+    },
+    [countByTables]
+  );
 
   if (!isAdmin) {
     return (
@@ -77,7 +160,7 @@ export default function AdminScreen() {
     );
   }
 
-  const MenuItem = ({ label, subLabel, onPress, icon, tone = 'blue' }: MenuItemProps) => {
+  const MenuItem = ({ label, subLabel, onPress, icon, tone = 'blue', badgeCount = 0 }: MenuItemProps) => {
     const iconBg =
       tone === 'green' ? UI.greenSoft : tone === 'gold' ? UI.goldSoft : UI.blueSoft;
 
@@ -86,8 +169,16 @@ export default function AdminScreen() {
 
     return (
       <TouchableOpacity style={styles.menuCard} onPress={onPress} activeOpacity={0.9}>
-        <View style={[styles.menuIconWrap, { backgroundColor: iconBg }]}>
-          {icon}
+        <View style={styles.menuTopRow}>
+          <View style={[styles.menuIconWrap, { backgroundColor: iconBg }]}>
+            {icon}
+          </View>
+
+          {badgeCount > 0 ? (
+            <View style={styles.cardBadge}>
+              <Text style={styles.cardBadgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text>
+            </View>
+          ) : null}
         </View>
 
         <Text style={styles.menuTitle} numberOfLines={2}>
@@ -119,25 +210,59 @@ export default function AdminScreen() {
           <Text style={styles.headerSub}>Control center</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={() =>
-            Alert.alert('Logout', 'Are you sure you want to logout?', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Logout', style: 'destructive', onPress: signOut },
-            ])
-          }
-          activeOpacity={0.9}
-        >
-          <LogOut size={15} color="#fff" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.notificationBtn}
+            onPress={() => router.push('/admin-notifications' as any)}
+            activeOpacity={0.9}
+          >
+            <Bell size={18} color={UI.text} />
+            {unreadNotifications > 0 ? (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                </Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            onPress={() =>
+              Alert.alert('Logout', 'Are you sure you want to logout?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Logout', style: 'destructive', onPress: signOut },
+              ])
+            }
+            activeOpacity={0.9}
+          >
+            <LogOut size={15} color="#fff" />
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.heroCard}>
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>ADMIN</Text>
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroBadge}>
+              <Text style={styles.heroBadgeText}>ADMIN</Text>
+            </View>
+
+            {loadingNotifications ? (
+              <ActivityIndicator size="small" color={UI.blue} />
+            ) : unreadNotifications > 0 ? (
+              <View style={styles.heroNotificationPill}>
+                <Bell size={14} color={UI.blue} />
+                <Text style={styles.heroNotificationText}>
+                  {unreadNotifications} unread notification{unreadNotifications > 1 ? 's' : ''}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.heroNotificationPillSoft}>
+                <Text style={styles.heroNotificationTextSoft}>No new notifications</Text>
+              </View>
+            )}
           </View>
 
           <Text style={styles.heroTitle}>Welcome to your admin menu</Text>
@@ -157,10 +282,11 @@ export default function AdminScreen() {
 
           <MenuItem
             label="Mobile Products"
-            subLabel="Shop products"
+            subLabel="Shop products & mobile orders"
             onPress={() => router.push('/mobileproductsadmin' as any)}
             icon={<Smartphone size={18} color={UI.green} />}
             tone="green"
+            badgeCount={getBadgeCount(['shop_orders', 'shop_products'])}
           />
 
           <MenuItem
@@ -185,6 +311,7 @@ export default function AdminScreen() {
             onPress={() => router.push('/admin-gift-card-orders' as any)}
             icon={<ClipboardList size={18} color={UI.gold} />}
             tone="gold"
+            badgeCount={getBadgeCount(['gift_card_orders'])}
           />
 
           <MenuItem
@@ -201,6 +328,7 @@ export default function AdminScreen() {
             onPress={() => router.push('/admin-topup-cards' as any)}
             icon={<ClipboardList size={18} color={UI.gold} />}
             tone="gold"
+            badgeCount={getBadgeCount(['topup_orders'])}
           />
 
           <MenuItem
@@ -209,6 +337,7 @@ export default function AdminScreen() {
             onPress={() => router.push('/accountapprovaladmin' as any)}
             icon={<ShieldCheck size={18} color={UI.blue} />}
             tone="blue"
+            badgeCount={getBadgeCount(['profiles', 'kyc_requests'])}
           />
 
           <MenuItem
@@ -217,6 +346,7 @@ export default function AdminScreen() {
             onPress={() => router.push('/depositsadmin' as any)}
             icon={<ArrowDownToLine size={18} color={UI.green} />}
             tone="green"
+            badgeCount={getBadgeCount(['deposit_orders'])}
           />
 
           <MenuItem
@@ -225,6 +355,7 @@ export default function AdminScreen() {
             onPress={() => router.push('/withdrawalsadmin' as any)}
             icon={<ArrowUpFromLine size={18} color={UI.blue} />}
             tone="blue"
+            badgeCount={getBadgeCount(['withdraw_orders', 'withdrawals'])}
           />
 
           <MenuItem
@@ -249,6 +380,7 @@ export default function AdminScreen() {
             onPress={() => router.push('/kycdocumentsadmin' as any)}
             icon={<FileText size={18} color={UI.green} />}
             tone="green"
+            badgeCount={getBadgeCount(['kyc_documents', 'kyc_requests', 'profiles'])}
           />
 
           <MenuItem
@@ -306,6 +438,41 @@ const styles = StyleSheet.create({
     color: UI.text2,
     fontWeight: '700',
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  notificationBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: UI.cardSoft,
+    borderWidth: 1,
+    borderColor: UI.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: UI.red,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  notificationBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
+  },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -334,18 +501,49 @@ const styles = StyleSheet.create({
     borderColor: UI.border,
     marginBottom: 14,
   },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    gap: 10,
+  },
   heroBadge: {
     alignSelf: 'flex-start',
     backgroundColor: UI.greenSoft,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    marginBottom: 10,
   },
   heroBadgeText: {
     color: UI.green,
     fontSize: 11,
     fontWeight: '900',
+  },
+  heroNotificationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: UI.blueSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  heroNotificationText: {
+    color: UI.blue,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  heroNotificationPillSoft: {
+    backgroundColor: UI.cardSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  heroNotificationTextSoft: {
+    color: UI.text2,
+    fontSize: 11,
+    fontWeight: '800',
   },
   heroTitle: {
     fontSize: 20,
@@ -382,13 +580,32 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 3,
   },
+  menuTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   menuIconWrap: {
     width: 42,
     height: 42,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+  },
+  cardBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    backgroundColor: UI.red,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '900',
   },
   menuTitle: {
     fontSize: 14,
