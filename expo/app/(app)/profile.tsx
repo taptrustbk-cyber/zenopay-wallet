@@ -77,23 +77,21 @@ function safeText(v: any) {
 
 function tSafe(key: string, fallback: string) {
   try {
-    const value = i18n.t(key) as unknown as string;
-    if (!value) return fallback;
-
-    const text = String(value).trim();
-    const lower = text.toLowerCase();
+    const value = i18n.t(key as any);
 
     if (
-      !text ||
-      text === key ||
-      lower.includes('missing translation') ||
-      lower.includes('missing "') ||
-      text.includes(`"${key}"`)
+      value === null ||
+      value === undefined ||
+      typeof value === 'object' ||
+      String(value).trim() === '' ||
+      String(value) === key ||
+      String(value).toLowerCase().includes('missing translation') ||
+      String(value).includes('[missing')
     ) {
       return fallback;
     }
 
-    return text;
+    return String(value);
   } catch {
     return fallback;
   }
@@ -343,13 +341,13 @@ export default function ProfileScreen() {
 
       await refreshProfile?.();
       Alert.alert(
-        tSafe('success', 'Success'),
+        tSafe('common.success', 'Success'),
         tSafe('profile.profileUpdated', 'Profile updated successfully')
       );
     },
     onError: (error: any) => {
       Alert.alert(
-        tSafe('error', 'Error'),
+        tSafe('common.error', 'Error'),
         error?.message || tSafe('profile.updateFailed', 'Failed to update profile')
       );
     },
@@ -358,7 +356,7 @@ export default function ProfileScreen() {
   const uploadAvatarToSupabase = async (uri: string) => {
     if (!user?.id) {
       Alert.alert(
-        tSafe('error', 'Error'),
+        tSafe('common.error', 'Error'),
         tSafe('profile.notAuthenticated', 'Not authenticated')
       );
       return;
@@ -404,7 +402,7 @@ export default function ProfileScreen() {
       await refreshProfile?.();
 
       Alert.alert(
-        tSafe('success', 'Success'),
+        tSafe('common.success', 'Success'),
         tSafe('profile.photoUpdated', 'Profile photo updated successfully')
       );
     } catch (e: any) {
@@ -412,7 +410,7 @@ export default function ProfileScreen() {
       setLocalAvatarUri(null);
       setAvatarUrl(previousRemoteAvatar ?? null);
       Alert.alert(
-        tSafe('error', 'Error'),
+        tSafe('common.error', 'Error'),
         e?.message || tSafe('profile.uploadFailed', 'Photo upload failed')
       );
     } finally {
@@ -426,8 +424,8 @@ export default function ProfileScreen() {
       fn().catch((e) => {
         console.error('Picker/Camera error:', e);
         Alert.alert(
-          tSafe('error', 'Error'),
-          e?.message || tSafe('somethingWentWrong', 'Something went wrong')
+          tSafe('common.error', 'Error'),
+          e?.message || tSafe('common.somethingWentWrong', 'Something went wrong')
         );
       });
     }, 320);
@@ -439,7 +437,7 @@ export default function ProfileScreen() {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!perm.granted) {
           Alert.alert(
-            tSafe('error', 'Error'),
+            tSafe('common.error', 'Error'),
             tSafe('profile.photoPermissionRequired', 'Permission to access photos is required')
           );
           return;
@@ -500,7 +498,7 @@ export default function ProfileScreen() {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) {
         Alert.alert(
-          tSafe('error', 'Error'),
+          tSafe('common.error', 'Error'),
           tSafe('profile.cameraPermissionRequired', 'Permission to use camera is required')
         );
         return;
@@ -797,7 +795,7 @@ export default function ProfileScreen() {
 
           <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.9} onPress={() => setPickerOpen(false)}>
             <Text style={styles.cancelText}>
-              {tSafe('cancel', 'Cancel')}
+              {tSafe('common.cancel', 'Cancel')}
             </Text>
           </TouchableOpacity>
         </View>
