@@ -82,7 +82,7 @@ export default function AdminScreen() {
 
       const { data, error } = await supabase
         .from('admin_notifications')
-        .select('id, type, entity_table, is_read')
+        .select('id, type, entity_table, is_read, created_at')
         .eq('is_read', false)
         .order('created_at', { ascending: false });
 
@@ -130,7 +130,7 @@ export default function AdminScreen() {
     const tableCounts: Record<string, number> = {};
 
     for (const row of notificationRows) {
-      const key = String(row.entity_table || row.type || '').trim();
+      const key = String(row.entity_table || row.type || '').trim().toLowerCase();
       if (!key) continue;
       tableCounts[key] = (tableCounts[key] || 0) + 1;
     }
@@ -140,7 +140,7 @@ export default function AdminScreen() {
 
   const getBadgeCount = React.useCallback(
     (keys: string[]) => {
-      return keys.reduce((sum, key) => sum + (countByTables[key] || 0), 0);
+      return keys.reduce((sum, key) => sum + (countByTables[String(key).toLowerCase()] || 0), 0);
     },
     [countByTables]
   );
@@ -161,18 +161,14 @@ export default function AdminScreen() {
   }
 
   const MenuItem = ({ label, subLabel, onPress, icon, tone = 'blue', badgeCount = 0 }: MenuItemProps) => {
-    const iconBg =
-      tone === 'green' ? UI.greenSoft : tone === 'gold' ? UI.goldSoft : UI.blueSoft;
+    const iconBg = tone === 'green' ? UI.greenSoft : tone === 'gold' ? UI.goldSoft : UI.blueSoft;
 
-    const glowColor =
-      tone === 'green' ? UI.green : tone === 'gold' ? UI.gold : UI.blue;
+    const glowColor = tone === 'green' ? UI.green : tone === 'gold' ? UI.gold : UI.blue;
 
     return (
       <TouchableOpacity style={styles.menuCard} onPress={onPress} activeOpacity={0.9}>
         <View style={styles.menuTopRow}>
-          <View style={[styles.menuIconWrap, { backgroundColor: iconBg }]}>
-            {icon}
-          </View>
+          <View style={[styles.menuIconWrap, { backgroundColor: iconBg }]}>{icon}</View>
 
           {badgeCount > 0 ? (
             <View style={styles.cardBadge}>
@@ -273,6 +269,15 @@ export default function AdminScreen() {
 
         <View style={styles.grid}>
           <MenuItem
+            label="Notifications"
+            subLabel="All admin alerts and new requests"
+            onPress={() => router.push('/admin-notifications' as any)}
+            icon={<Bell size={18} color={UI.blue} />}
+            tone="blue"
+            badgeCount={unreadNotifications}
+          />
+
+          <MenuItem
             label="Dashboard"
             subLabel="Overview & stats"
             onPress={() => router.push('/dashboardadmin' as any)}
@@ -286,7 +291,7 @@ export default function AdminScreen() {
             onPress={() => router.push('/mobileproductsadmin' as any)}
             icon={<Smartphone size={18} color={UI.green} />}
             tone="green"
-            badgeCount={getBadgeCount(['shop_orders', 'shop_products'])}
+            badgeCount={getBadgeCount(['shop_orders', 'mobile_orders', 'shop_products'])}
           />
 
           <MenuItem
@@ -328,7 +333,7 @@ export default function AdminScreen() {
             onPress={() => router.push('/admin-topup-cards' as any)}
             icon={<ClipboardList size={18} color={UI.gold} />}
             tone="gold"
-            badgeCount={getBadgeCount(['topup_orders'])}
+            badgeCount={getBadgeCount(['topup_orders', 'top_up_orders'])}
           />
 
           <MenuItem
@@ -337,7 +342,7 @@ export default function AdminScreen() {
             onPress={() => router.push('/accountapprovaladmin' as any)}
             icon={<ShieldCheck size={18} color={UI.blue} />}
             tone="blue"
-            badgeCount={getBadgeCount(['profiles', 'kyc_requests'])}
+            badgeCount={getBadgeCount(['profiles', 'account_approval', 'account_requests'])}
           />
 
           <MenuItem
@@ -346,7 +351,7 @@ export default function AdminScreen() {
             onPress={() => router.push('/depositsadmin' as any)}
             icon={<ArrowDownToLine size={18} color={UI.green} />}
             tone="green"
-            badgeCount={getBadgeCount(['deposit_orders'])}
+            badgeCount={getBadgeCount(['deposit_orders', 'deposits'])}
           />
 
           <MenuItem
@@ -380,7 +385,7 @@ export default function AdminScreen() {
             onPress={() => router.push('/kycdocumentsadmin' as any)}
             icon={<FileText size={18} color={UI.green} />}
             tone="green"
-            badgeCount={getBadgeCount(['kyc_documents', 'kyc_requests', 'profiles'])}
+            badgeCount={getBadgeCount(['kyc_documents', 'kyc_requests', 'kyc'])}
           />
 
           <MenuItem
