@@ -135,7 +135,7 @@ function MainBottomNav() {
   const tabs = [
     {
       key: 'dashboard',
-      label: tSafe('home', 'Home'),
+      label: tSafe('dashboard.home', 'Home'),
       icon: 'home' as const,
       path: '/(app)/dashboard',
       active: pathname === '/(app)/dashboard' || pathname === '/dashboard',
@@ -156,7 +156,7 @@ function MainBottomNav() {
     },
     {
       key: 'settings',
-      label: tSafe('settings', 'Settings'),
+      label: tSafe('settings.title', 'Settings'),
       icon: 'settings' as const,
       path: '/(app)/settings',
       active: pathname === '/(app)/settings' || pathname === '/settings',
