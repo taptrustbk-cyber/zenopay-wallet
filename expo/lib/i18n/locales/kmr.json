@@ -80,7 +80,7 @@
     "forgotPassword": "ژمارا ڤەشارتی ژبیرکری؟",
     "login": "چوونەژوورەوە",
     "createNewAccount": "هژمارەکا نوی دروست بکە",
-    "needHelp": "پێویستیا پشتیوانی هەیە؟",
+    "needHelp": "تە پێدڤی ب پشتەڤانیێ هەیە؟",
     "contactUsAt": "پەیوەندیێ ب مە بکە ل سەر",
     "enterEmailAndPassword": "ئیمەیل و ژمارا ڤەشارتی بنڤیسە",
     "loginFailedMessage": "چوونەژوورەوە سەرنەکەفت",
@@ -670,7 +670,7 @@
     "passwordChangeError": "گۆڕینا ژمارا ڤەشارتی سەرنەکەفت"
   },
   "sendPage": {
-    "userIdNotFound": "ID ـا بەکارهێنەرێ نەهات دیتن",
+    "userIdNotFound": "ئایدیا  بەکارهێنەرێ نەهات دیتن",
     "failedToFetchWallet": "وەرگرتنا جزدانێ سەرنەکەفت",
     "userEmailNotFound": "ئیمەیلا بەکارهێنەرێ نەهات دیتن",
     "failedToSendMoney": "هنارتنا پارەی سەرنەکەفت"
@@ -903,7 +903,7 @@
   "addNoteOptional": "تێبینی زێدە بکە (ئیختیاری)",
   "settings": "ڕێکخستن",
   "language": "زمان",
-  "support": "پشتەڤانی",
+  "support": "پەیوەندی",
   "security": "پاراستن",
   "adminPanel": "پانێلا ئەدمین",
   "logout": "دەرکەفتن",
