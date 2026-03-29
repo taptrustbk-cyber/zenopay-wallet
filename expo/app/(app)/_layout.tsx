@@ -1,11 +1,13 @@
 import { Stack, usePathname, useRouter } from 'expo-router';
 import { ErrorBoundary } from 'react-error-boundary';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  I18nManager,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,7 +61,8 @@ function tSafe(key: string, fallback: string) {
       typeof value === 'object' ||
       String(value).trim() === '' ||
       String(value) === key ||
-      String(value).includes('[missing')
+      String(value).includes('[missing') ||
+      String(value).includes('missing translation')
     ) {
       return fallback;
     }
@@ -77,8 +80,8 @@ function ErrorFallback({ error, resetErrorBoundary }: any) {
       <Text style={styles.errorMessage}>
         {error?.message || tSafe('common.somethingWentWrong', 'Something went wrong')}
       </Text>
-      <TouchableOpacity style={styles.retryButton} onPress={resetErrorBoundary}>
-        <Text style={styles.retryText}>{tSafe('common.retry', 'Try again')}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={resetErrorBoundary} activeOpacity={0.88}>
+        <Text style={styles.retryText}>{tSafe('common.retry', 'Retry')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -86,6 +89,7 @@ function ErrorFallback({ error, resetErrorBoundary }: any) {
 
 function KycPendingScreen() {
   const { signOut } = useAuth();
+  const isRTL = I18nManager.isRTL;
 
   return (
     <View style={styles.kycContainer}>
@@ -94,32 +98,38 @@ function KycPendingScreen() {
           <Ionicons name="shield-checkmark-outline" size={64} color={UI.warning} />
         </View>
 
-        <Text style={styles.kycTitle}>
+        <Text style={[styles.kycTitle, isRTL && styles.textRTL]}>
           {tSafe('kycVerificationRequired', 'KYC Verification Required')}
         </Text>
-        <Text style={styles.kycSubtitle}>
+
+        <Text style={[styles.kycSubtitle, isRTL && styles.textRTL]}>
           {tSafe('kycPendingMessage', 'Your account is under review.')}
         </Text>
 
-        <View style={styles.kycInfoBox}>
-          <Ionicons name="time-outline" size={20} color={UI.text3} style={styles.kycInfoIcon} />
+        <View style={[styles.kycInfoBox, isRTL && styles.kycInfoBoxRTL]}>
+          <Ionicons
+            name="time-outline"
+            size={20}
+            color={UI.text3}
+            style={[styles.kycInfoIcon, isRTL && styles.kycInfoIconRTL]}
+          />
           <View style={styles.kycInfoContent}>
-            <Text style={styles.kycInfoTitle}>
+            <Text style={[styles.kycInfoTitle, isRTL && styles.textRTL]}>
               {tSafe('whatsNext', 'What is next?')}
             </Text>
-            <Text style={styles.kycInfoText}>
+            <Text style={[styles.kycInfoText, isRTL && styles.textRTL]}>
               {tSafe('kycNextSteps', 'Please wait while we review your submitted documents.')}
             </Text>
           </View>
         </View>
 
         <View style={styles.kycSecurityNote}>
-          <Text style={styles.kycSecurityText}>
+          <Text style={[styles.kycSecurityText, isRTL && styles.textRTL]}>
             {tSafe('documentsSecure', 'Your documents are stored securely.')}
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.kycSignOutButton} onPress={signOut}>
+        <TouchableOpacity style={styles.kycSignOutButton} onPress={signOut} activeOpacity={0.88}>
           <Text style={styles.kycSignOutText}>{tSafe('auth.signOut', 'Sign Out')}</Text>
         </TouchableOpacity>
       </View>
@@ -132,36 +142,39 @@ function MainBottomNav() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
 
-  const tabs = [
-    {
-      key: 'dashboard',
-      label: tSafe('dashboard.home', 'Home'),
-      icon: 'home' as const,
-      path: '/(app)/dashboard',
-      active: pathname === '/(app)/dashboard' || pathname === '/dashboard',
-    },
-    {
-      key: 'Cards',
-      label: tSafe('cards.title', 'Cards'),
-      icon: 'card' as const,
-      path: '/Cards',
-      active: pathname === '/Cards',
-    },
-    {
-      key: 'consulate',
-      label: tSafe('consulateInfo.title', 'Consulate Info'),
-      icon: 'chatbox' as const,
-      path: '/(app)/consulate',
-      active: pathname === '/(app)/consulate' || pathname === '/consulate',
-    },
-    {
-      key: 'settings',
-      label: tSafe('settings.title', 'Settings'),
-      icon: 'settings' as const,
-      path: '/(app)/settings',
-      active: pathname === '/(app)/settings' || pathname === '/settings',
-    },
-  ];
+  const tabs = useMemo(
+    () => [
+      {
+        key: 'dashboard',
+        label: tSafe('home', 'Home'),
+        icon: 'home' as const,
+        path: '/dashboard',
+        active: pathname === '/dashboard' || pathname === '/(app)/dashboard',
+      },
+      {
+        key: 'Cards',
+        label: tSafe('cards.title', 'Cards'),
+        icon: 'card' as const,
+        path: '/Cards',
+        active: pathname === '/Cards',
+      },
+      {
+        key: 'consulate',
+        label: tSafe('consulateInfo.title', 'Consulate Info'),
+        icon: 'chatbox' as const,
+        path: '/consulate',
+        active: pathname === '/consulate' || pathname === '/(app)/consulate',
+      },
+      {
+        key: 'settings',
+        label: tSafe('settings', 'Settings'),
+        icon: 'settings' as const,
+        path: '/settings',
+        active: pathname === '/settings' || pathname === '/(app)/settings',
+      },
+    ],
+    [pathname]
+  );
 
   return (
     <View
@@ -187,13 +200,40 @@ function MainBottomNav() {
                 color={tab.active ? UI.blue : '#9CA3AF'}
               />
             </View>
-            <Text style={[styles.navText, tab.active && styles.navTextActive]} numberOfLines={1}>
+
+            <Text
+              style={[styles.navText, tab.active && styles.navTextActive]}
+              numberOfLines={1}
+            >
               {tab.label}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
     </View>
+  );
+}
+
+function HeaderBackButton({
+  onPress,
+  label,
+}: {
+  onPress: () => void;
+  label: string;
+}) {
+  const isRTL = I18nManager.isRTL;
+
+  return (
+    <TouchableOpacity onPress={onPress} style={styles.headerBackBtn} activeOpacity={0.85}>
+      <Ionicons
+        name={isRTL ? 'arrow-forward' : 'arrow-back'}
+        size={22}
+        color={UI.text}
+      />
+      <Text style={[styles.headerBackText, isRTL && styles.headerBackTextRTL]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
   );
 }
 
@@ -206,6 +246,9 @@ export default function AppLayout() {
     '/Cards',
     '/consulate',
     '/settings',
+    '/(app)/dashboard',
+    '/(app)/consulate',
+    '/(app)/settings',
   ];
 
   const showMainBottomNav = mainNavPaths.includes(pathname);
@@ -253,34 +296,37 @@ export default function AppLayout() {
               options={({ navigation }) => ({
                 title: tSafe('consulateInfo.title', 'Consulate Info'),
                 headerLeft: () => (
-                  <TouchableOpacity
+                  <HeaderBackButton
                     onPress={() => navigation.navigate('dashboard')}
-                    style={styles.headerBackBtn}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
-                  </TouchableOpacity>
+                    label={tSafe('common.back', 'Back')}
+                  />
                 ),
               })}
             />
 
-            <Stack.Screen name="profile" options={{ title: tSafe('profile.title', 'Profile') }} />
-            <Stack.Screen name="kyc" options={{ title: 'KYC Verification' }} />
+            <Stack.Screen
+              name="profile"
+              options={{
+                title: tSafe('profile.title', 'Profile'),
+              }}
+            />
+
+            <Stack.Screen
+              name="kyc"
+              options={{
+                title: tSafe('kyc.kycDocuments', 'KYC Verification'),
+              }}
+            />
 
             <Stack.Screen
               name="send"
               options={({ navigation }) => ({
                 title: tSafe('sendMoney', 'Send Money'),
                 headerLeft: () => (
-                  <TouchableOpacity
+                  <HeaderBackButton
                     onPress={() => navigation.navigate('dashboard')}
-                    style={styles.headerBackBtn}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
-                  </TouchableOpacity>
+                    label={tSafe('common.back', 'Back')}
+                  />
                 ),
               })}
             />
@@ -290,21 +336,19 @@ export default function AppLayout() {
               options={({ navigation }) => ({
                 title: tSafe('deposit.depositMoney', 'Deposit'),
                 headerLeft: () => (
-                  <TouchableOpacity
+                  <HeaderBackButton
                     onPress={() => navigation.navigate('dashboard')}
-                    style={styles.headerBackBtn}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
-                  </TouchableOpacity>
+                    label={tSafe('common.back', 'Back')}
+                  />
                 ),
               })}
             />
 
             <Stack.Screen
               name="transactions"
-              options={{ title: tSafe('transactions.title', 'Transactions') }}
+              options={{
+                title: tSafe('transactions.title', 'Transactions'),
+              }}
             />
 
             <Stack.Screen
@@ -312,19 +356,21 @@ export default function AppLayout() {
               options={({ navigation }) => ({
                 title: tSafe('withdrawPage.withdrawRequest', 'Withdraw'),
                 headerLeft: () => (
-                  <TouchableOpacity
+                  <HeaderBackButton
                     onPress={() => navigation.navigate('dashboard')}
-                    style={styles.headerBackBtn}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
-                  </TouchableOpacity>
+                    label={tSafe('common.back', 'Back')}
+                  />
                 ),
               })}
             />
 
-            <Stack.Screen name="admin" options={{ title: 'Admin Panel' }} />
+            <Stack.Screen
+              name="admin"
+              options={{
+                title: tSafe('adminPanel', 'Admin Panel'),
+              }}
+            />
+
             <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
             <Stack.Screen name="terms-conditions" options={{ headerShown: false }} />
             <Stack.Screen name="security" options={{ headerShown: false }} />
@@ -335,14 +381,10 @@ export default function AppLayout() {
                 title: tSafe('simCards.pageTitle', 'Buy Mobile Cards'),
                 headerShown: true,
                 headerLeft: () => (
-                  <TouchableOpacity
+                  <HeaderBackButton
                     onPress={() => navigation.navigate('dashboard')}
-                    style={styles.headerBackBtn}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
-                  </TouchableOpacity>
+                    label={tSafe('common.back', 'Back')}
+                  />
                 ),
               })}
             />
@@ -353,14 +395,10 @@ export default function AppLayout() {
                 title: tSafe('giftCards.pageTitle', 'Online Gift Cards'),
                 headerShown: true,
                 headerLeft: () => (
-                  <TouchableOpacity
+                  <HeaderBackButton
                     onPress={() => navigation.navigate('dashboard')}
-                    style={styles.headerBackBtn}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
-                  </TouchableOpacity>
+                    label={tSafe('common.back', 'Back')}
+                  />
                 ),
               })}
             />
@@ -371,14 +409,10 @@ export default function AppLayout() {
                 title: tSafe('zenopayMobileShop', 'Zenopay Mobile Shop'),
                 headerShown: true,
                 headerLeft: () => (
-                  <TouchableOpacity
+                  <HeaderBackButton
                     onPress={() => navigation.navigate('dashboard')}
-                    style={styles.headerBackBtn}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
-                  </TouchableOpacity>
+                    label={tSafe('common.back', 'Back')}
+                  />
                 ),
               })}
             />
@@ -389,14 +423,10 @@ export default function AppLayout() {
                 title: tSafe('travelBooking', 'Travel Booking'),
                 headerShown: true,
                 headerLeft: () => (
-                  <TouchableOpacity
+                  <HeaderBackButton
                     onPress={() => navigation.navigate('dashboard')}
-                    style={styles.headerBackBtn}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="arrow-back" size={22} color={UI.text} />
-                    <Text style={styles.headerBackText}>{tSafe('common.back', 'Back')}</Text>
-                  </TouchableOpacity>
+                    label={tSafe('common.back', 'Back')}
+                  />
                 ),
               })}
             />
@@ -473,6 +503,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginLeft: 4,
   },
+  headerBackTextRTL: {
+    marginLeft: 0,
+    marginRight: 4,
+  },
 
   errorContainer: {
     flex: 1,
@@ -492,6 +526,7 @@ const styles = StyleSheet.create({
     color: UI.text2,
     textAlign: 'center',
     marginBottom: 24,
+    lineHeight: 24,
   },
   retryButton: {
     backgroundColor: UI.blue2,
@@ -555,9 +590,16 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'flex-start',
   },
+  kycInfoBoxRTL: {
+    flexDirection: 'row-reverse',
+  },
   kycInfoIcon: {
     marginRight: 12,
     marginTop: 2,
+  },
+  kycInfoIconRTL: {
+    marginRight: 0,
+    marginLeft: 12,
   },
   kycInfoContent: {
     flex: 1,
@@ -586,6 +628,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: UI.text2,
     textAlign: 'center',
+    lineHeight: 22,
   },
   kycSignOutButton: {
     paddingVertical: 12,
@@ -595,5 +638,8 @@ const styles = StyleSheet.create({
     color: UI.text2,
     fontSize: 15,
     fontWeight: '600',
+  },
+  textRTL: {
+    textAlign: 'right',
   },
 });
