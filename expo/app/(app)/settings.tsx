@@ -57,7 +57,7 @@ const LANGUAGES = [
   { code: 'ar', name: 'العربية' },
   { code: 'ckb', name: 'کوردی سۆرانی' },
   { code: 'kmr', name: 'کوردی بادینی' },
-] as const;
+];
 
 const SUPPORT_LINKS = {
   email: 'mailto:info@zenopay.bond',
@@ -164,6 +164,10 @@ export default function SettingsScreen() {
       setSelectedLanguage(normalized);
       forceUpdate({});
       setShowLanguages(false);
+
+      requestAnimationFrame(() => {
+        router.replace('/(app)/settings' as any);
+      });
     } catch (error) {
       console.error('Language change error:', error);
     }
@@ -269,7 +273,6 @@ export default function SettingsScreen() {
           </TouchableOpacity>
 
           <Text style={[styles.headerTitle, { color: UI.text }]}>{supportTitle}</Text>
-
           <View style={{ width: 42 }} />
         </View>
 
@@ -314,7 +317,6 @@ export default function SettingsScreen() {
           </TouchableOpacity>
 
           <Text style={[styles.headerTitle, { color: UI.text }]}>{languageTitle}</Text>
-
           <View style={{ width: 42 }} />
         </View>
 
