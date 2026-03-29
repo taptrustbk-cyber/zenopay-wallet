@@ -875,6 +875,8 @@
   "rejected": "Rejected",
   "processing": "Processing",
   "delivered": "Delivered",
+  "totalPrice": "Total Price",
+  "orderDate": "Order Date",
   "firstMonthPayment": "First Month Payment",
   "buyCashWithWallet": "Buy Cash with Wallet",
   "buyInstallmentWithWallet": "Pay First Month with Wallet",
