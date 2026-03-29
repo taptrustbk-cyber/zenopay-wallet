@@ -1,6 +1,6 @@
 import { Stack, usePathname, useRouter } from 'expo-router';
 import { ErrorBoundary } from 'react-error-boundary';
-import React, { useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import i18n from '@/lib/i18n';
+import i18n, { getCurrentLanguage } from '@/lib/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const UI = {
@@ -62,7 +62,8 @@ function tSafe(key: string, fallback: string) {
       String(value).trim() === '' ||
       String(value) === key ||
       String(value).includes('[missing') ||
-      String(value).includes('missing translation')
+      String(value).toLowerCase().includes('missing translation') ||
+      String(value).toLowerCase().includes('object object')
     ) {
       return fallback;
     }
@@ -80,7 +81,11 @@ function ErrorFallback({ error, resetErrorBoundary }: any) {
       <Text style={styles.errorMessage}>
         {error?.message || tSafe('common.somethingWentWrong', 'Something went wrong')}
       </Text>
-      <TouchableOpacity style={styles.retryButton} onPress={resetErrorBoundary} activeOpacity={0.88}>
+      <TouchableOpacity
+        style={styles.retryButton}
+        onPress={resetErrorBoundary}
+        activeOpacity={0.88}
+      >
         <Text style={styles.retryText}>{tSafe('common.retry', 'Retry')}</Text>
       </TouchableOpacity>
     </View>
@@ -129,7 +134,11 @@ function KycPendingScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.kycSignOutButton} onPress={signOut} activeOpacity={0.88}>
+        <TouchableOpacity
+          style={styles.kycSignOutButton}
+          onPress={signOut}
+          activeOpacity={0.88}
+        >
           <Text style={styles.kycSignOutText}>{tSafe('auth.signOut', 'Sign Out')}</Text>
         </TouchableOpacity>
       </View>
@@ -137,47 +146,45 @@ function KycPendingScreen() {
   );
 }
 
-function MainBottomNav() {
+function MainBottomNav({ localeKey }: { localeKey: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
 
-  const tabs = useMemo(
-    () => [
-      {
-        key: 'dashboard',
-        label: tSafe('home', 'Home'),
-        icon: 'home' as const,
-        path: '/dashboard',
-        active: pathname === '/dashboard' || pathname === '/(app)/dashboard',
-      },
-      {
-        key: 'Cards',
-        label: tSafe('cards.title', 'Cards'),
-        icon: 'card' as const,
-        path: '/Cards',
-        active: pathname === '/Cards',
-      },
-      {
-        key: 'consulate',
-        label: tSafe('consulateInfo.title', 'Consulate Info'),
-        icon: 'chatbox' as const,
-        path: '/consulate',
-        active: pathname === '/consulate' || pathname === '/(app)/consulate',
-      },
-      {
-        key: 'settings',
-        label: tSafe('settings', 'Settings'),
-        icon: 'settings' as const,
-        path: '/settings',
-        active: pathname === '/settings' || pathname === '/(app)/settings',
-      },
-    ],
-    [pathname]
-  );
+  const tabs = [
+    {
+      key: 'dashboard',
+      label: tSafe('home', 'Home'),
+      icon: 'home' as const,
+      path: '/dashboard',
+      active: pathname === '/dashboard' || pathname === '/(app)/dashboard',
+    },
+    {
+      key: 'Cards',
+      label: tSafe('cards.title', 'Cards'),
+      icon: 'card' as const,
+      path: '/Cards',
+      active: pathname === '/Cards',
+    },
+    {
+      key: 'consulate',
+      label: tSafe('consulateInfo.title', 'Consulate Info'),
+      icon: 'chatbox' as const,
+      path: '/consulate',
+      active: pathname === '/consulate' || pathname === '/(app)/consulate',
+    },
+    {
+      key: 'settings',
+      label: tSafe('settings.title', tSafe('settings', 'Settings')),
+      icon: 'settings' as const,
+      path: '/settings',
+      active: pathname === '/settings' || pathname === '/(app)/settings',
+    },
+  ];
 
   return (
     <View
+      key={localeKey}
       style={[
         styles.bottomNavWrap,
         {
@@ -188,7 +195,7 @@ function MainBottomNav() {
       <View style={styles.bottomNav}>
         {tabs.map((tab) => (
           <TouchableOpacity
-            key={tab.key}
+            key={`${localeKey}-${tab.key}`}
             style={styles.navItem}
             activeOpacity={0.88}
             onPress={() => router.replace(tab.path as any)}
@@ -240,6 +247,20 @@ function HeaderBackButton({
 export default function AppLayout() {
   const { profile, loading } = useAuth();
   const pathname = usePathname();
+
+  const [localeKey, setLocaleKey] = useState(getCurrentLanguage() || i18n.locale || 'en');
+
+  useEffect(() => {
+    const syncLocale = () => {
+      const current = getCurrentLanguage() || i18n.locale || 'en';
+      setLocaleKey((prev) => (prev === current ? prev : current));
+    };
+
+    syncLocale();
+
+    const interval = setInterval(syncLocale, 250);
+    return () => clearInterval(interval);
+  }, []);
 
   const mainNavPaths = [
     '/dashboard',
@@ -433,7 +454,7 @@ export default function AppLayout() {
           </Stack>
         </View>
 
-        {showMainBottomNav ? <MainBottomNav /> : null}
+        {showMainBottomNav ? <MainBottomNav localeKey={localeKey} /> : null}
       </View>
     </ErrorBoundary>
   );
