@@ -106,7 +106,6 @@ type PaymentMethod = {
   is_active?: boolean | null;
   sort_order?: number | null;
   method_type?: 'withdraw' | 'deposit' | null;
-
   exchange_rate_iqd?: number | null;
   min_amount_usd?: number | null;
   max_amount_usd?: number | null;
@@ -134,24 +133,39 @@ type DepositOrderItem = {
   } | null;
 };
 
-function tSafe(key: string, fallback: string) {
+function tSafe(keys: string | string[], fallback: string) {
+  const keyList = Array.isArray(keys) ? keys : [keys];
+
   try {
-    const value = i18n.t(key as any);
-    if (!value) return fallback;
+    for (const key of keyList) {
+      const value = i18n.t(key as any);
 
-    const text = String(value);
-    const lower = text.toLowerCase();
+      if (
+        value === null ||
+        value === undefined ||
+        typeof value === 'object'
+      ) {
+        continue;
+      }
 
-    if (
-      text === key ||
-      lower.includes('missing translation') ||
-      lower.includes('missing "') ||
-      text.includes(`"${key}"`)
-    ) {
-      return fallback;
+      const text = String(value).trim();
+      const lower = text.toLowerCase();
+
+      if (
+        !text ||
+        text === key ||
+        lower.includes('missing translation') ||
+        lower.includes('[missing') ||
+        lower.includes('missing "') ||
+        text.includes(`"${key}"`)
+      ) {
+        continue;
+      }
+
+      return text;
     }
 
-    return text;
+    return fallback;
   } catch {
     return fallback;
   }
@@ -190,9 +204,7 @@ function sanitizeUSDInput(value: string) {
   if (firstDot !== -1) {
     clean =
       clean.slice(0, firstDot + 1) +
-      clean
-        .slice(firstDot + 1)
-        .replace(/\./g, '');
+      clean.slice(firstDot + 1).replace(/\./g, '');
   }
 
   const parts = clean.split('.');
@@ -220,20 +232,20 @@ function getStatusMeta(status?: string) {
       return {
         bg: UI.successSoft,
         text: UI.success,
-        label: tSafe('deposit.approved', 'Approved'),
+        label: tSafe(['deposit.approved', 'approved'], 'Approved'),
       };
     case 'rejected':
     case 'cancelled':
       return {
         bg: UI.dangerSoft,
         text: UI.danger,
-        label: tSafe('deposit.rejected', 'Rejected'),
+        label: tSafe(['deposit.rejected', 'rejected'], 'Rejected'),
       };
     default:
       return {
         bg: UI.warningSoft,
         text: UI.warning,
-        label: tSafe('deposit.pending', 'Pending'),
+        label: tSafe(['deposit.pending', 'pending'], 'Pending'),
       };
   }
 }
@@ -258,7 +270,11 @@ export default function DepositScreen() {
   const walletQuery = useQuery({
     queryKey: ['wallet', user?.id],
     queryFn: async () => {
-      if (!user?.id) throw new Error(tSafe('deposit.userIdNotFound', 'User ID not found'));
+      if (!user?.id) {
+        throw new Error(
+          tSafe(['deposit.userIdNotFound', 'auth.userNotFound'], 'User ID not found')
+        );
+      }
 
       const { data, error } = await supabase
         .from('wallets')
@@ -266,7 +282,12 @@ export default function DepositScreen() {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) throw new Error(error.message || tSafe('deposit.failedToFetchWallet', 'Failed to fetch wallet'));
+      if (error) {
+        throw new Error(
+          error.message ||
+            tSafe(['deposit.failedToFetchWallet'], 'Failed to fetch wallet')
+        );
+      }
 
       if (!data) {
         return {
@@ -300,7 +321,16 @@ export default function DepositScreen() {
         .order('sort_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true });
 
-      if (error) throw new Error(error.message || tSafe('deposit.failedToFetchPaymentMethods', 'Failed to fetch payment methods'));
+      if (error) {
+        throw new Error(
+          error.message ||
+            tSafe(
+              ['deposit.failedToFetchPaymentMethods'],
+              'Failed to fetch payment methods'
+            )
+        );
+      }
+
       return (data || []) as PaymentMethod[];
     },
     staleTime: 0,
@@ -310,7 +340,11 @@ export default function DepositScreen() {
   const depositHistoryQuery = useQuery({
     queryKey: ['deposit_orders', user?.id],
     queryFn: async () => {
-      if (!user?.id) throw new Error(tSafe('deposit.userIdNotFound', 'User ID not found'));
+      if (!user?.id) {
+        throw new Error(
+          tSafe(['deposit.userIdNotFound', 'auth.userNotFound'], 'User ID not found')
+        );
+      }
 
       const { data, error } = await supabase
         .from('deposit_orders')
@@ -337,7 +371,16 @@ export default function DepositScreen() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw new Error(error.message || tSafe('deposit.failedToFetchDepositHistory', 'Failed to fetch deposit history'));
+      if (error) {
+        throw new Error(
+          error.message ||
+            tSafe(
+              ['deposit.failedToFetchDepositHistory'],
+              'Failed to fetch deposit history'
+            )
+        );
+      }
+
       return (data || []) as DepositOrderItem[];
     },
     enabled: !!user?.id,
@@ -365,26 +408,37 @@ export default function DepositScreen() {
 
   const displayedBalanceText = formatIQD(walletQuery.data?.balance || 0);
 
-  const amountSuffixLabel = isUSDT ? 'USD' : (tSafe('iqdShort', 'IQD'));
+  const iqdLabel = tSafe(['iqdShort', 'iqdArabic'], 'IQD');
+  const amountSuffixLabel = isUSDT ? 'USD' : iqdLabel;
+
   const amountLabel = isUSDT
-    ? `${tSafe('deposit.amount', 'Amount')} (USD)`
-    : tSafe('deposit.amount', 'Amount');
+    ? `${tSafe(['deposit.amount', 'amount'], 'Amount')} (USD)`
+    : tSafe(['deposit.amount', 'amount'], 'Amount');
 
   const accountNumberLabel = isUSDT
-    ? selectedMethod?.address_label || tSafe('deposit.usdtTrc20Address', 'USDT TRC20 Address')
-    : tSafe('deposit.bankNumber', 'Bank / Account Number');
+    ? selectedMethod?.address_label ||
+      tSafe(['deposit.usdtTrc20Address'], 'USDT TRC20 Address')
+    : tSafe(['deposit.bankNumber'], 'Bank / Account Number');
 
   const senderNumberLabel = isUSDT
-    ? tSafe('deposit.walletAddressOrTxHash', 'Your Wallet Address / Tx Hash')
-    : tSafe('deposit.senderNumber', 'Account Number / Mobile');
+    ? tSafe(['deposit.walletAddressOrTxHash'], 'Your Wallet Address / Tx Hash')
+    : tSafe(['deposit.senderNumber'], 'Account Number / Mobile');
 
   const senderNumberPlaceholder = isUSDT
-    ? tSafe('deposit.enterWalletAddressOrTxHash', 'Enter your wallet address or transaction hash')
-    : tSafe('deposit.enterSenderNumber', 'Please enter your account number');
+    ? tSafe(
+        ['deposit.enterWalletAddressOrTxHash'],
+        'Enter your wallet address or transaction hash'
+      )
+    : tSafe(['deposit.enterSenderNumber'], 'Please enter your account number');
 
-  const instructionsTitle = tSafe('deposit.instructions', 'Instructions');
+  const instructionsTitle = tSafe(['deposit.instructions'], 'Instructions');
+
   const selectedInstructions = isUSDT
-    ? selectedMethod?.instructions || tSafe('deposit.usdtInstructionsDefault', 'Send only USDT through TRC20 network to the address below.')
+    ? selectedMethod?.instructions ||
+      tSafe(
+        ['deposit.usdtInstructionsDefault'],
+        'Send only USDT through TRC20 network to the address below.'
+      )
     : selectedMethod?.instructions || '';
 
   const pickReceiptImage = async () => {
@@ -393,8 +447,8 @@ export default function DepositScreen() {
 
       if (!permission.granted) {
         Alert.alert(
-          tSafe('error', 'Error'),
-          tSafe('deposit.photoPermissionDenied', 'Photo permission denied')
+          tSafe(['common.error', 'error'], 'Error'),
+          tSafe(['deposit.photoPermissionDenied'], 'Photo permission denied')
         );
         return;
       }
@@ -410,8 +464,8 @@ export default function DepositScreen() {
       }
     } catch (error: any) {
       Alert.alert(
-        tSafe('error', 'Error'),
-        error?.message || tSafe('deposit.failedToPickImage', 'Failed to pick image')
+        tSafe(['common.error', 'error'], 'Error'),
+        error?.message || tSafe(['deposit.failedToPickImage'], 'Failed to pick image')
       );
     }
   };
@@ -420,13 +474,13 @@ export default function DepositScreen() {
     try {
       await Clipboard.setStringAsync(text);
       Alert.alert(
-        tSafe('success', 'Success'),
-        tSafe('deposit.copiedSuccessfully', 'Copied successfully')
+        tSafe(['common.success', 'success'], 'Success'),
+        tSafe(['deposit.copiedSuccessfully'], 'Copied successfully')
       );
     } catch {
       Alert.alert(
-        tSafe('error', 'Error'),
-        tSafe('deposit.copyFailed', 'Copy failed')
+        tSafe(['common.error', 'error'], 'Error'),
+        tSafe(['deposit.copyFailed'], 'Copy failed')
       );
     }
   };
@@ -453,11 +507,21 @@ export default function DepositScreen() {
     const { error: uploadError } = await supabase.storage
       .from(DEPOSIT_BUCKET)
       .upload(fileName, decode(base64), {
-        contentType: ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg',
+        contentType:
+          ext === 'png'
+            ? 'image/png'
+            : ext === 'webp'
+            ? 'image/webp'
+            : 'image/jpeg',
         upsert: false,
       });
 
-    if (uploadError) throw new Error(uploadError.message || tSafe('deposit.failedToUploadImage', 'Failed to upload image'));
+    if (uploadError) {
+      throw new Error(
+        uploadError.message ||
+          tSafe(['deposit.failedToUploadImage'], 'Failed to upload image')
+      );
+    }
 
     const { data } = supabase.storage.from(DEPOSIT_BUCKET).getPublicUrl(fileName);
     return data.publicUrl;
@@ -465,49 +529,74 @@ export default function DepositScreen() {
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      if (!user?.id) throw new Error(tSafe('deposit.userNotFound', 'User not found'));
+      if (!user?.id) {
+        throw new Error(tSafe(['deposit.userNotFound', 'auth.userNotFound'], 'User not found'));
+      }
+
       if (!selectedMethod) {
-        throw new Error(tSafe('deposit.selectPaymentMethod', 'Select payment method'));
+        throw new Error(
+          tSafe(['deposit.selectPaymentMethod'], 'Select payment method')
+        );
       }
+
       if (!amount.trim()) {
-        throw new Error(tSafe('deposit.enterAmount', 'Enter amount'));
+        throw new Error(tSafe(['deposit.enterAmount'], 'Enter amount'));
       }
+
       if (!senderName.trim()) {
-        throw new Error(tSafe('deposit.enterSenderName', 'Please enter your account holder name'));
+        throw new Error(
+          tSafe(
+            ['deposit.enterSenderName'],
+            'Please enter your account holder name'
+          )
+        );
       }
+
       if (!senderNumber.trim()) {
         throw new Error(senderNumberPlaceholder);
       }
+
       if (!receiptImage) {
         throw new Error(
-          tSafe('deposit.uploadTransactionImage', 'Upload your transaction screenshot')
+          tSafe(
+            ['deposit.uploadTransactionImage'],
+            'Upload your transaction screenshot'
+          )
         );
       }
 
       const rawAmount = isUSDT ? parseUSDInput(amount) : parseIQDInput(amount);
 
       if (Number.isNaN(rawAmount) || rawAmount <= 0) {
-        throw new Error(tSafe('deposit.invalidAmount', 'Invalid amount'));
+        throw new Error(tSafe(['deposit.invalidAmount'], 'Invalid amount'));
       }
 
       if (isUSDT) {
         if (rawAmount < minUsd) {
-          throw new Error(`${tSafe('deposit.minimumDepositAmountIs', 'Minimum deposit amount is')} $${formatUSD(minUsd)}`);
+          throw new Error(
+            `${tSafe(['deposit.minimumDepositAmountIs'], 'Minimum deposit amount is')} $${formatUSD(minUsd)}`
+          );
         }
 
         if (rawAmount > maxUsd) {
-          throw new Error(`${tSafe('deposit.maximumDepositAmountIs', 'Maximum deposit amount is')} $${formatUSD(maxUsd)}`);
+          throw new Error(
+            `${tSafe(['deposit.maximumDepositAmountIs'], 'Maximum deposit amount is')} $${formatUSD(maxUsd)}`
+          );
         }
       } else {
         if (rawAmount < MIN_DEPOSIT_IQD) {
           throw new Error(
-            `${tSafe('deposit.minimumDepositAmountIs', 'Minimum deposit amount is')}: ${formatIQD(MIN_DEPOSIT_IQD)} ${tSafe('iqdShort', 'IQD')}`
+            `${tSafe(['deposit.minimumDepositAmountIs'], 'Minimum deposit amount is')}: ${formatIQD(
+              MIN_DEPOSIT_IQD
+            )} ${iqdLabel}`
           );
         }
 
         if (rawAmount > MAX_DEPOSIT_IQD) {
           throw new Error(
-            `${tSafe('deposit.maximumDepositAmountIs', 'Maximum deposit amount is')}: ${formatIQD(MAX_DEPOSIT_IQD)} ${tSafe('iqdShort', 'IQD')}`
+            `${tSafe(['deposit.maximumDepositAmountIs'], 'Maximum deposit amount is')}: ${formatIQD(
+              MAX_DEPOSIT_IQD
+            )} ${iqdLabel}`
           );
         }
       }
@@ -516,7 +605,11 @@ export default function DepositScreen() {
       const receiptUrl = await uploadReceiptToStorage(receiptImage);
 
       const extraNote = isUSDT
-        ? `${tSafe('deposit.usdtDepositNotePrefix', 'USDT TRC20 Deposit')} | USD: ${formatUSD(rawAmount)} | ${tSafe('deposit.rateShort', 'Rate')}: ${formatIQD(usdtRate)} IQD/USD | IQD: ${formatIQD(finalAmountIQD)}`
+        ? `${tSafe(['deposit.usdtDepositNotePrefix'], 'USDT TRC20 Deposit')} | USD: ${formatUSD(
+            rawAmount
+          )} | ${tSafe(['deposit.rateShort'], 'Rate')}: ${formatIQD(
+            usdtRate
+          )} IQD/USD | IQD: ${formatIQD(finalAmountIQD)}`
         : null;
 
       const finalNote = [note.trim(), extraNote].filter(Boolean).join(' | ') || null;
@@ -533,7 +626,15 @@ export default function DepositScreen() {
         status: 'pending',
       });
 
-      if (error) throw new Error(error.message || tSafe('deposit.failedToCreateDepositRequest', 'Failed to create deposit request'));
+      if (error) {
+        throw new Error(
+          error.message ||
+            tSafe(
+              ['deposit.failedToCreateDepositRequest'],
+              'Failed to create deposit request'
+            )
+        );
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deposit_orders'] });
@@ -547,14 +648,18 @@ export default function DepositScreen() {
       setSelectedMethodId(null);
 
       Alert.alert(
-        tSafe('success', 'Success'),
-        tSafe('deposit.depositSuccessMessage', 'Your deposit request has been sent successfully.')
+        tSafe(['common.success', 'success'], 'Success'),
+        tSafe(
+          ['deposit.depositSuccessMessage'],
+          'Your deposit request has been sent successfully.'
+        )
       );
     },
     onError: (error: any) => {
       Alert.alert(
-        tSafe('error', 'Error'),
-        error?.message || tSafe('deposit.failedToSubmitDeposit', 'Failed to submit deposit')
+        tSafe(['common.error', 'error'], 'Error'),
+        error?.message ||
+          tSafe(['deposit.failedToSubmitDeposit'], 'Failed to submit deposit')
       );
     },
   });
@@ -638,7 +743,9 @@ export default function DepositScreen() {
               />
             </TouchableOpacity>
 
-            <Text style={styles.headerTitle}>{tSafe('deposit.depositMoney', 'Deposit Money')}</Text>
+            <Text style={styles.headerTitle}>
+              {tSafe(['deposit.depositMoney'], 'Deposit Money')}
+            </Text>
 
             <View style={styles.headerBtnGhost} />
           </View>
@@ -655,10 +762,13 @@ export default function DepositScreen() {
             <View style={styles.heroTopRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.heroEyebrow}>
-                  {tSafe('deposit.accountBalance', 'Account Balance')}
+                  {tSafe(['deposit.accountBalance', 'accountBalance'], 'Account Balance')}
                 </Text>
                 <Text style={styles.heroSubSmall}>
-                  {tSafe('deposit.depositPageSubtitle', 'Create a deposit request to add money')}
+                  {tSafe(
+                    ['deposit.depositPageSubtitle'],
+                    'Create a deposit request to add money'
+                  )}
                 </Text>
               </View>
 
@@ -674,21 +784,23 @@ export default function DepositScreen() {
             ) : (
               <View style={styles.heroBalanceRow}>
                 <Text style={styles.heroBalance}>{displayedBalanceText}</Text>
-                <Text style={styles.heroCurrency}>{tSafe('iqdShort', 'IQD')}</Text>
+                <Text style={styles.heroCurrency}>{iqdLabel}</Text>
               </View>
             )}
           </LinearGradient>
 
           <View style={styles.formCard}>
             <View style={styles.sectionHead}>
-              <Text style={styles.sectionTitle}>{tSafe('deposit.depositMoney', 'Deposit Money')}</Text>
+              <Text style={styles.sectionTitle}>
+                {tSafe(['deposit.depositMoney'], 'Deposit Money')}
+              </Text>
               <Text style={styles.sectionSub}>
-                {tSafe('deposit.chooseDepositMethod', 'Please choose payment method')}
+                {tSafe(['deposit.chooseDepositMethod'], 'Please choose payment method')}
               </Text>
             </View>
 
             <Text style={styles.label}>
-              {tSafe('deposit.selectPaymentMethod', 'Select Payment Method')}
+              {tSafe(['deposit.selectPaymentMethod'], 'Select Payment Method')}
             </Text>
 
             <TouchableOpacity
@@ -720,7 +832,7 @@ export default function DepositScreen() {
                 </View>
               ) : (
                 <Text style={[styles.selectorText, { color: UI.text3 }]}>
-                  {tSafe('deposit.choosePaymentMethod', 'Choose payment method')}
+                  {tSafe(['deposit.choosePaymentMethod'], 'Choose payment method')}
                 </Text>
               )}
 
@@ -728,16 +840,18 @@ export default function DepositScreen() {
             </TouchableOpacity>
 
             <Text style={styles.label}>{amountLabel}</Text>
+
             <View style={styles.amountWrap}>
               <TextInput
                 style={styles.amountInput}
-                placeholder={isUSDT ? '100' : tSafe('deposit.enterAmount', 'Enter amount')}
+                placeholder={isUSDT ? '100' : tSafe(['deposit.enterAmount'], 'Enter amount')}
                 placeholderTextColor={UI.text3}
                 value={amount}
                 onChangeText={(text) =>
                   setAmount(isUSDT ? sanitizeUSDInput(text) : formatIQDInput(text))
                 }
                 keyboardType="decimal-pad"
+                textAlign={isRTL ? 'right' : 'left'}
               />
               <View style={styles.amountSuffix}>
                 <Text style={styles.amountSuffixText}>{amountSuffixLabel}</Text>
@@ -763,7 +877,7 @@ export default function DepositScreen() {
 
                   <View style={styles.rateResultRow}>
                     <Text style={styles.rateResultLabel}>
-                      {tSafe('deposit.equivalentInIQD', 'Equivalent in IQD')}
+                      {tSafe(['deposit.equivalentInIQD'], 'Equivalent in IQD')}
                     </Text>
                     <Text style={styles.rateResultValue}>
                       {formatIQD(convertedIQD)} IQD
@@ -773,22 +887,22 @@ export default function DepositScreen() {
 
                 <View style={styles.limitBox}>
                   <Text style={styles.limitText}>
-                    {tSafe('deposit.minimumDepositAmountIs', 'Minimum deposit amount is')} ${formatUSD(minUsd)}
+                    {tSafe(['deposit.minimumDepositAmountIs'], 'Minimum deposit amount is')} ${formatUSD(minUsd)}
                   </Text>
                   <Text style={styles.limitText}>
-                    {tSafe('deposit.maximumDepositAmountIs', 'Maximum deposit amount is')} ${formatUSD(maxUsd)}
+                    {tSafe(['deposit.maximumDepositAmountIs'], 'Maximum deposit amount is')} ${formatUSD(maxUsd)}
                   </Text>
                 </View>
               </>
             ) : (
               <View style={styles.limitBox}>
                 <Text style={styles.limitText}>
-                  {tSafe('deposit.minimumDepositAmountIs', 'Minimum deposit amount is') +
-                    `: ${formatIQD(MIN_DEPOSIT_IQD)} ${tSafe('iqdShort', 'IQD')}`}
+                  {tSafe(['deposit.minimumDepositAmountIs'], 'Minimum deposit amount is') +
+                    `: ${formatIQD(MIN_DEPOSIT_IQD)} ${iqdLabel}`}
                 </Text>
                 <Text style={styles.limitText}>
-                  {tSafe('deposit.maximumDepositAmountIs', 'Maximum deposit amount is') +
-                    `: ${formatIQD(MAX_DEPOSIT_IQD)} ${tSafe('iqdShort', 'IQD')}`}
+                  {tSafe(['deposit.maximumDepositAmountIs'], 'Maximum deposit amount is') +
+                    `: ${formatIQD(MAX_DEPOSIT_IQD)} ${iqdLabel}`}
                 </Text>
               </View>
             )}
@@ -836,7 +950,9 @@ export default function DepositScreen() {
                   <View style={styles.qrSection}>
                     <View style={styles.qrTop}>
                       <QrCode size={18} color={UI.blue} />
-                      <Text style={styles.qrTitle}>{tSafe('deposit.qrCode', 'QR Code')}</Text>
+                      <Text style={styles.qrTitle}>
+                        {tSafe(['deposit.qrCode'], 'QR Code')}
+                      </Text>
                     </View>
 
                     <TouchableOpacity
@@ -861,16 +977,18 @@ export default function DepositScreen() {
             <View style={styles.grid2}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.label}>
-                  {tSafe('deposit.senderName', 'Account Holder Name')}
+                  {tSafe(['deposit.senderName'], 'Account Holder Name')}
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder={
-                    tSafe('deposit.enterSenderName', 'Please enter your account holder name')
-                  }
+                  placeholder={tSafe(
+                    ['deposit.enterSenderName'],
+                    'Please enter your account holder name'
+                  )}
                   placeholderTextColor={UI.text3}
                   value={senderName}
                   onChangeText={setSenderName}
+                  textAlign={isRTL ? 'right' : 'left'}
                 />
               </View>
 
@@ -883,23 +1001,27 @@ export default function DepositScreen() {
                   value={senderNumber}
                   onChangeText={setSenderNumber}
                   keyboardType="default"
+                  textAlign={isRTL ? 'right' : 'left'}
                 />
               </View>
             </View>
 
-            <Text style={styles.label}>{tSafe('deposit.transferNote', 'Note (optional)')}</Text>
+            <Text style={styles.label}>
+              {tSafe(['deposit.transferNote', 'note'], 'Note (optional)')}
+            </Text>
             <TextInput
               style={[styles.input, styles.noteInput]}
-              placeholder={tSafe('deposit.writeAnyNote', 'Write any note')}
+              placeholder={tSafe(['deposit.writeAnyNote', 'optionalNote'], 'Write any note')}
               placeholderTextColor={UI.text3}
               value={note}
               onChangeText={setNote}
               multiline
               textAlignVertical="top"
+              textAlign={isRTL ? 'right' : 'left'}
             />
 
             <Text style={styles.label}>
-              {tSafe('deposit.transactionImage', 'Transaction Image')}
+              {tSafe(['deposit.transactionImage'], 'Transaction Image')}
             </Text>
 
             <TouchableOpacity style={styles.uploadCard} activeOpacity={0.92} onPress={pickReceiptImage}>
@@ -908,7 +1030,7 @@ export default function DepositScreen() {
                   <Image source={{ uri: receiptImage }} style={styles.uploadPreview} resizeMode="contain" />
                   <View style={styles.uploadOverlay}>
                     <Text style={styles.uploadOverlayText}>
-                      {tSafe('deposit.changeImage', 'Change Image')}
+                      {tSafe(['deposit.changeImage', 'common.change'], 'Change Image')}
                     </Text>
                   </View>
                 </>
@@ -918,10 +1040,13 @@ export default function DepositScreen() {
                     <ImageIcon size={22} color={UI.blue} />
                   </View>
                   <Text style={styles.uploadTitle}>
-                    {tSafe('deposit.uploadTransactionImage', 'Upload transaction image')}
+                    {tSafe(['deposit.uploadTransactionImage'], 'Upload transaction image')}
                   </Text>
                   <Text style={styles.uploadSub}>
-                    {tSafe('deposit.uploadTransactionImageHelp', 'Upload your payment screenshot for admin review')}
+                    {tSafe(
+                      ['deposit.uploadTransactionImageHelp'],
+                      'Upload your payment screenshot for admin review'
+                    )}
                   </Text>
                 </View>
               )}
@@ -938,7 +1063,7 @@ export default function DepositScreen() {
               >
                 <Eye size={18} color={UI.blue} />
                 <Text style={styles.previewBigBtnText}>
-                  {tSafe('deposit.previewFullScreen', 'Preview Full Screen')}
+                  {tSafe(['deposit.previewFullScreen'], 'Preview Full Screen')}
                 </Text>
               </TouchableOpacity>
             ) : null}
@@ -964,7 +1089,7 @@ export default function DepositScreen() {
                   <>
                     <Ionicons name="paper-plane-outline" size={18} color="#fff" />
                     <Text style={styles.primaryButtonText}>
-                      {tSafe('deposit.createDepositRequest', 'Create Deposit Request')}
+                      {tSafe(['deposit.createDepositRequest'], 'Create Deposit Request')}
                     </Text>
                   </>
                 )}
@@ -975,10 +1100,13 @@ export default function DepositScreen() {
           <View style={styles.historyCardWrap}>
             <View style={styles.historyHeader}>
               <Text style={styles.historyTitle}>
-                {tSafe('deposit.depositHistory', 'Deposit History')}
+                {tSafe(['deposit.depositHistory'], 'Deposit History')}
               </Text>
               <Text style={styles.historySub}>
-                {tSafe('deposit.trackYourRequests', 'Track your pending, approved, or rejected requests')}
+                {tSafe(
+                  ['deposit.trackYourRequests'],
+                  'Track your pending, approved, or rejected requests'
+                )}
               </Text>
             </View>
 
@@ -992,10 +1120,13 @@ export default function DepositScreen() {
               <View style={styles.emptyBox}>
                 <Receipt size={28} color={UI.text3} />
                 <Text style={styles.emptyTitle}>
-                  {tSafe('deposit.noDepositsYet', 'No deposits yet')}
+                  {tSafe(['deposit.noDepositsYet'], 'No deposits yet')}
                 </Text>
                 <Text style={styles.emptySub}>
-                  {tSafe('deposit.depositHistoryEmptyDesc', 'Your deposit requests will appear here')}
+                  {tSafe(
+                    ['deposit.depositHistoryEmptyDesc'],
+                    'Your deposit requests will appear here'
+                  )}
                 </Text>
               </View>
             ) : (
@@ -1020,7 +1151,7 @@ export default function DepositScreen() {
                         <View>
                           <Text style={styles.historyMethodName}>
                             {d.payment_method?.name ||
-                              tSafe('deposit.paymentMethod', 'Payment Method')}
+                              tSafe(['deposit.paymentMethod'], 'Payment Method')}
                           </Text>
                           <Text style={styles.historyDate}>
                             {new Date(d.created_at).toLocaleDateString()}
@@ -1038,16 +1169,16 @@ export default function DepositScreen() {
                     <View style={styles.historyGrid}>
                       <View style={styles.historyMiniCard}>
                         <Text style={styles.historyMiniLabel}>
-                          {tSafe('deposit.amount', 'Amount')}
+                          {tSafe(['deposit.amount', 'amount'], 'Amount')}
                         </Text>
                         <Text style={styles.historyMiniValue}>
-                          {formatIQD(d.amount)} {d.currency || tSafe('iqdShort', 'IQD')}
+                          {formatIQD(d.amount)} {d.currency || iqdLabel}
                         </Text>
                       </View>
 
                       <View style={styles.historyMiniCard}>
                         <Text style={styles.historyMiniLabel}>
-                          {tSafe('deposit.senderNumber', 'Account Number')}
+                          {tSafe(['deposit.senderNumber'], 'Account Number')}
                         </Text>
                         <Text style={styles.historyMiniValue}>{d.sender_number || '-'}</Text>
                       </View>
@@ -1055,14 +1186,16 @@ export default function DepositScreen() {
 
                     <View style={styles.infoRow}>
                       <Text style={styles.infoLabel}>
-                        {tSafe('deposit.senderName', 'Account Holder Name')}
+                        {tSafe(['deposit.senderName'], 'Account Holder Name')}
                       </Text>
                       <Text style={styles.infoValue}>{d.sender_name || '-'}</Text>
                     </View>
 
                     {!!d.note ? (
                       <View style={styles.noteBoxHistory}>
-                        <Text style={styles.noteTitleHistory}>{tSafe('deposit.note', 'Note')}</Text>
+                        <Text style={styles.noteTitleHistory}>
+                          {tSafe(['deposit.note', 'note'], 'Note')}
+                        </Text>
                         <Text style={styles.noteTextHistory}>{d.note}</Text>
                       </View>
                     ) : null}
@@ -1084,7 +1217,7 @@ export default function DepositScreen() {
                         <View style={styles.historyReceiptOverlay}>
                           <Eye size={18} color="#fff" />
                           <Text style={styles.historyReceiptOverlayText}>
-                            {tSafe('deposit.viewReceipt', 'View Image')}
+                            {tSafe(['deposit.viewReceipt'], 'View Image')}
                           </Text>
                         </View>
                       </TouchableOpacity>
@@ -1092,7 +1225,9 @@ export default function DepositScreen() {
 
                     {String(d.status || '').toLowerCase() === 'rejected' && !!d.reject_reason ? (
                       <View style={styles.rejectBox}>
-                        <Text style={styles.rejectLabel}>{tSafe('deposit.reason', 'Reason')}:</Text>
+                        <Text style={styles.rejectLabel}>
+                          {tSafe(['deposit.reason'], 'Reason')}:
+                        </Text>
                         <Text style={styles.rejectText}>{d.reject_reason}</Text>
                       </View>
                     ) : null}
@@ -1115,7 +1250,7 @@ export default function DepositScreen() {
             <View style={styles.modalContent}>
               <View style={styles.modalHead}>
                 <Text style={styles.modalTitle}>
-                  {tSafe('deposit.selectPaymentMethod', 'Select Payment Method')}
+                  {tSafe(['deposit.selectPaymentMethod'], 'Select Payment Method')}
                 </Text>
                 <TouchableOpacity
                   style={styles.closeCircle}
@@ -1137,10 +1272,13 @@ export default function DepositScreen() {
                   <View style={styles.emptyBox}>
                     <Landmark size={28} color={UI.text3} />
                     <Text style={styles.emptyTitle}>
-                      {tSafe('deposit.noPaymentMethods', 'No payment methods')}
+                      {tSafe(['deposit.noPaymentMethods'], 'No payment methods')}
                     </Text>
                     <Text style={styles.emptySub}>
-                      {tSafe('deposit.noPaymentMethodsDesc', 'Admin has not added any payment methods yet')}
+                      {tSafe(
+                        ['deposit.noPaymentMethodsDesc'],
+                        'Admin has not added any payment methods yet'
+                      )}
                     </Text>
                   </View>
                 ) : (
