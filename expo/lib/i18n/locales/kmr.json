@@ -489,7 +489,11 @@
     "section16Title": "پەیوەندی و پشتیوانی",
     "supportLine": "ئیمەیلا پشتیوانیێ: info@zenopay.bond",
     "supportReply": "ئەم هەول ددەین ب زووترین دەم وەڵام بدەین."
-  },
+  }, 
+  "profileLabel": "پڕۆفایل",
+  "privacyPolicyLabel": "سیاسەتا نهێنیێ",
+  "home": "سەرەکی",
+  "setting": "رێکخستن",
   "profile": {
     "title": "پڕۆفایل",
     "fullName": "ناڤێ تەمام",
