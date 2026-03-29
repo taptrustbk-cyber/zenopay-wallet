@@ -30,8 +30,9 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 44) / 2;
 const isRTL = I18nManager.isRTL;
 
-type BrandKey = 'all' | 'apple' | 'samsung' | 'xiaomi' | 'infinix' | 'tecno';
+type BrandKey = 'all' | 'apple' | 'samsung' | 'xiaomi' | 'infinix' | 'tecno' | 'other';
 type PurchaseMode = 'cash' | 'installment';
+type QuickFilterKey = 'all' | 'discount' | 'new' | 'special';
 
 type MobileProduct = {
   id: string;
@@ -55,6 +56,7 @@ type MobileProduct = {
   is_active?: boolean | null;
   sort_order?: number | null;
   category?: string | null;
+  created_at?: string | null;
 };
 
 type OrderForm = {
@@ -67,7 +69,34 @@ type OrderForm = {
   quantity: number;
 };
 
-type QuickFilterKey = 'all' | 'discount' | 'new' | 'special';
+type ShopOrder = {
+  id: string;
+  user_id: string;
+  product_id?: string | null;
+  order_type?: string | null;
+  source_screen?: string | null;
+  purchase_mode?: string | null;
+  product_name?: string | null;
+  product_brand?: string | null;
+  product_image_url?: string | null;
+  unit_cash_price_iqd?: number | null;
+  unit_monthly_price_iqd?: number | null;
+  months_count?: number | null;
+  quantity?: number | null;
+  total_price_iqd?: number | null;
+  paid_amount_iqd?: number | null;
+  remaining_amount_iqd?: number | null;
+  customer_full_name?: string | null;
+  customer_phone?: string | null;
+  customer_email?: string | null;
+  customer_city?: string | null;
+  customer_street?: string | null;
+  note?: string | null;
+  status?: string | null;
+  payment_status?: string | null;
+  admin_status?: string | null;
+  created_at?: string | null;
+};
 
 const COLORS = {
   bg: '#EEF4FF',
@@ -107,7 +136,7 @@ const COLORS = {
 const SHADOWS = {
   card: {
     shadowColor: '#7DA8E6',
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
@@ -141,6 +170,25 @@ const formatIQD = (value?: number | null) => {
   return isRTL ? `${currency} ${formatted}` : `${formatted} ${currency}`;
 };
 
+const formatDateTime = (value?: string | null) => {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+
+  try {
+    return d.toLocaleString(undefined, {
+      timeZone: 'Asia/Baghdad',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return d.toLocaleString();
+  }
+};
+
 const getBrandLabel = (brand: BrandKey) => {
   switch (brand) {
     case 'apple':
@@ -153,6 +201,8 @@ const getBrandLabel = (brand: BrandKey) => {
       return t('brandInfinix', 'Infinix');
     case 'tecno':
       return t('brandTecno', 'Tecno');
+    case 'other':
+      return t('other', 'Other');
     default:
       return t('all', 'All');
   }
@@ -170,6 +220,8 @@ const getBrandIcon = (brand: BrandKey) => {
       return 'flash-outline';
     case 'tecno':
       return 'diamond-outline';
+    case 'other':
+      return 'cube-outline';
     default:
       return 'grid-outline';
   }
@@ -195,9 +247,8 @@ const deriveBalanceFromRow = (row: any) => {
   return 0;
 };
 
-const deriveCityLabel = (cityName?: string | null, regionName?: string | null) => {
-  return cityName || regionName || t('unknownCity', 'Unknown');
-};
+const deriveCityLabel = (cityName?: string | null, regionName?: string | null) =>
+  cityName || regionName || t('unknownCity', 'Unknown');
 
 const getCashPrice = (product?: MobileProduct | null) => {
   if (!product) return 0;
@@ -209,9 +260,7 @@ const getMonthlyPrice = (product?: MobileProduct | null) => {
   return Number(product.monthly_price_iqd ?? 0);
 };
 
-const getMonthsCount = (product?: MobileProduct | null) => {
-  return Number(product?.months_count ?? 1);
-};
+const getMonthsCount = (product?: MobileProduct | null) => Number(product?.months_count ?? 1);
 
 const getInstallmentContractPrice = (product?: MobileProduct | null) => {
   if (!product) return 0;
@@ -222,8 +271,38 @@ const getAllImageUrls = (products: MobileProduct[]) => {
   const urls = products
     .flatMap((item) => [item.image_url, item.logo_url])
     .filter((v): v is string => !!v && typeof v === 'string');
-
   return Array.from(new Set(urls));
+};
+
+const hasCashOption = (product?: MobileProduct | null) => getCashPrice(product) > 0;
+const hasInstallmentOption = (product?: MobileProduct | null) =>
+  getMonthlyPrice(product) > 0 && getMonthsCount(product) > 0;
+
+const getStatusColors = (status?: string | null) => {
+  const s = String(status || '').toLowerCase();
+
+  if (['approved', 'paid', 'completed', 'delivered', 'success'].includes(s)) {
+    return { bg: COLORS.successSoft, color: COLORS.success };
+  }
+
+  if (['rejected', 'failed', 'cancelled', 'refunded'].includes(s)) {
+    return { bg: COLORS.redSoft, color: COLORS.red };
+  }
+
+  if (['processing', 'pending', 'new', 'partially_paid'].includes(s)) {
+    return { bg: COLORS.orangeSoft, color: COLORS.orange };
+  }
+
+  return { bg: COLORS.blueSoft, color: COLORS.blueDark };
+};
+
+const getDisplayOrderStatus = (order: ShopOrder) => {
+  return (
+    order.admin_status ||
+    order.status ||
+    order.payment_status ||
+    'pending'
+  );
 };
 
 const ProductImage = ({
@@ -253,7 +332,7 @@ const ProductImage = ({
       style={style}
       contentFit={contentFit}
       cachePolicy="memory-disk"
-      transition={120}
+      transition={0}
       priority="high"
       recyclingKey={uri}
       allowDownscaling
@@ -339,6 +418,7 @@ export default function MobileShopScreen() {
   const [selectedProduct, setSelectedProduct] = React.useState<MobileProduct | null>(null);
   const [checkoutOpen, setCheckoutOpen] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const [historyOpen, setHistoryOpen] = React.useState(false);
   const [detectedCity, setDetectedCity] = React.useState('');
   const [locationLoading, setLocationLoading] = React.useState(false);
   const [purchaseMode, setPurchaseMode] = React.useState<PurchaseMode>('cash');
@@ -357,7 +437,12 @@ export default function MobileShopScreen() {
     queryKey: ['mobile-shop-profile', user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', user!.id).maybeSingle();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user!.id)
+        .maybeSingle();
+
       if (error) throw error;
       return data;
     },
@@ -370,14 +455,10 @@ export default function MobileShopScreen() {
       if (!user?.id) return 0;
 
       const walletRes = await supabase.from('wallets').select('*').eq('user_id', user.id).maybeSingle();
-      if (!walletRes.error && walletRes.data) {
-        return deriveBalanceFromRow(walletRes.data);
-      }
+      if (!walletRes.error && walletRes.data) return deriveBalanceFromRow(walletRes.data);
 
       const profileRes = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
-      if (!profileRes.error && profileRes.data) {
-        return deriveBalanceFromRow(profileRes.data);
-      }
+      if (!profileRes.error && profileRes.data) return deriveBalanceFromRow(profileRes.data);
 
       return 0;
     },
@@ -399,6 +480,22 @@ export default function MobileShopScreen() {
       }
 
       return data as MobileProduct[];
+    },
+  });
+
+  const ordersHistoryQuery = useQuery({
+    queryKey: ['mobile-shop-orders-history', user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('shop_orders')
+        .select('*')
+        .eq('user_id', user!.id)
+        .eq('order_type', 'mobile')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as ShopOrder[];
     },
   });
 
@@ -452,6 +549,7 @@ export default function MobileShopScreen() {
     };
 
     getCurrentCity();
+
     return () => {
       mounted = false;
     };
@@ -462,7 +560,20 @@ export default function MobileShopScreen() {
   }, [productsQuery.data]);
 
   const featuredProduct = React.useMemo(() => {
-    return allProducts[0] || null;
+    if (!allProducts.length) return null;
+
+    const byBadge = allProducts.find((p) =>
+      ['hero', 'featured', 'ad', 'special'].includes(String(p.badge || '').toLowerCase())
+    );
+    if (byBadge) return byBadge;
+
+    const sorted = [...allProducts].sort((a, b) => {
+      const aSort = Number(a.sort_order ?? 999999);
+      const bSort = Number(b.sort_order ?? 999999);
+      return aSort - bSort;
+    });
+
+    return sorted[0] || allProducts[0] || null;
   }, [allProducts]);
 
   React.useEffect(() => {
@@ -484,18 +595,18 @@ export default function MobileShopScreen() {
     return allProducts.filter((item) => {
       const brandOk = selectedBrand === 'all' ? true : item.brand === selectedBrand;
 
+      const badgeValue = String(item.badge || '').toLowerCase();
+
       const quickOk =
         quickFilter === 'all'
           ? true
           : quickFilter === 'new'
-            ? !!item.is_new
-            : quickFilter === 'discount'
-              ? String(item.badge || '').toLowerCase().includes('discount') ||
-                String(item.badge || '').toLowerCase().includes('offer')
-              : quickFilter === 'special'
-                ? String(item.badge || '').toLowerCase().includes('special') ||
-                  String(item.badge || '').toLowerCase().includes('preorder')
-                : true;
+          ? !!item.is_new || badgeValue.includes('new')
+          : quickFilter === 'discount'
+          ? badgeValue.includes('discount') || badgeValue.includes('offer')
+          : quickFilter === 'special'
+          ? badgeValue.includes('special') || badgeValue.includes('preorder') || badgeValue.includes('hero') || badgeValue.includes('featured') || badgeValue.includes('ad')
+          : true;
 
       const text = [
         item.name,
@@ -549,6 +660,7 @@ export default function MobileShopScreen() {
         queryClient.invalidateQueries({ queryKey: ['mobile-shop-products'] }),
         queryClient.invalidateQueries({ queryKey: ['mobile-shop-profile'] }),
         queryClient.invalidateQueries({ queryKey: ['mobile-shop-wallet-balance'] }),
+        queryClient.invalidateQueries({ queryKey: ['mobile-shop-orders-history'] }),
       ]);
     } finally {
       setRefreshing(false);
@@ -600,8 +712,18 @@ export default function MobileShopScreen() {
 
       const requiredFields = [form.fullName, form.phoneNumber, form.city, form.street, form.email];
       const hasMissing = requiredFields.some((v) => !String(v || '').trim());
-      if (hasMissing) {
-        throw new Error(t('fillAllRequiredFields', 'Please fill all required fields'));
+
+      if (hasMissing) throw new Error(t('fillAllRequiredFields', 'Please fill all required fields'));
+
+      const productHasCash = hasCashOption(selectedProduct);
+      const productHasInstallment = hasInstallmentOption(selectedProduct);
+
+      if (purchaseMode === 'cash' && !productHasCash) {
+        throw new Error(t('cashNotAvailableForThisProduct', 'Cash is not available for this product'));
+      }
+
+      if (purchaseMode === 'installment' && !productHasInstallment) {
+        throw new Error(t('installmentNotAvailableForThisProduct', 'Installment is not available for this product'));
       }
 
       const quantity = Math.max(1, Number(form.quantity || 1));
@@ -714,6 +836,7 @@ export default function MobileShopScreen() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['mobile-shop-wallet-balance'] }),
         queryClient.invalidateQueries({ queryKey: ['mobile-shop-products'] }),
+        queryClient.invalidateQueries({ queryKey: ['mobile-shop-orders-history'] }),
       ]);
 
       Alert.alert(
@@ -749,7 +872,13 @@ export default function MobileShopScreen() {
 
   const openCheckout = (product: MobileProduct) => {
     setSelectedProduct(product);
-    setPurchaseMode(getCashPrice(product) > 0 ? 'cash' : 'installment');
+
+    const cashAvailable = hasCashOption(product);
+    const installmentAvailable = hasInstallmentOption(product);
+
+    if (cashAvailable) setPurchaseMode('cash');
+    else if (installmentAvailable) setPurchaseMode('installment');
+
     setCheckoutOpen(true);
   };
 
@@ -761,6 +890,11 @@ export default function MobileShopScreen() {
   const openTerms = () => {
     setMenuOpen(false);
     router.push('/terms-conditions' as any);
+  };
+
+  const openOrderHistory = () => {
+    setMenuOpen(false);
+    setHistoryOpen(true);
   };
 
   const brandTabs: { key: BrandKey; label: string }[] = [
@@ -784,12 +918,15 @@ export default function MobileShopScreen() {
       item.badge === 'new'
         ? t('new', 'New')
         : item.badge === 'special'
-          ? t('specialOffer', 'Special Offer')
-          : item.badge === 'discount'
-            ? t('discount', 'Discount')
-            : item.badge === 'preorder'
-              ? t('preorder', 'Pre-order')
-              : item.badge || (item.is_new ? t('new', 'New') : t('available', 'Available'));
+        ? t('specialOffer', 'Special Offer')
+        : item.badge === 'discount'
+        ? t('discount', 'Discount')
+        : item.badge === 'preorder'
+        ? t('preorder', 'Pre-order')
+        : item.badge || (item.is_new ? t('new', 'New') : t('available', 'Available'));
+
+    const cashAvailable = hasCashOption(item);
+    const installmentAvailable = hasInstallmentOption(item);
 
     return (
       <TouchableOpacity activeOpacity={0.95} style={styles.productCard} onPress={() => openCheckout(item)}>
@@ -809,7 +946,6 @@ export default function MobileShopScreen() {
 
         <View style={styles.brandRow}>
           <Text style={styles.brandText}>{getBrandLabel(item.brand)}</Text>
-          
         </View>
 
         <Text numberOfLines={2} style={styles.productName}>
@@ -823,17 +959,33 @@ export default function MobileShopScreen() {
         <View style={styles.metaRow}>
           <View style={[styles.colorDot, { backgroundColor: item.color_hex || '#D1D5DB' }]} />
           <Text style={styles.stockText}>
-            {(item.stock || 0) > 0 || item.stock === null ? t('inStock', 'In stock') : t('outOfStock', 'Out of stock')}
+            {(item.stock || 0) > 0 || item.stock === null
+              ? t('inStock', 'In stock')
+              : t('outOfStock', 'Out of stock')}
           </Text>
         </View>
 
-        <Text style={styles.priceText}>{formatIQD(getCashPrice(item))}</Text>
+        {cashAvailable ? <Text style={styles.priceText}>{formatIQD(getCashPrice(item))}</Text> : null}
 
-        {getMonthlyPrice(item) > 0 ? (
+        {installmentAvailable ? (
           <Text style={styles.monthlyText}>
             {formatIQD(getMonthlyPrice(item))} / {t('monthly', 'monthly')}
           </Text>
         ) : null}
+
+        <View style={styles.optionPillsRow}>
+          {cashAvailable ? (
+            <View style={[styles.optionPill, styles.optionPillCash]}>
+              <Text style={[styles.optionPillText, { color: COLORS.blueDark }]}>{t('cash', 'Cash')}</Text>
+            </View>
+          ) : null}
+
+          {installmentAvailable ? (
+            <View style={[styles.optionPill, styles.optionPillInstallment]}>
+              <Text style={[styles.optionPillText, { color: COLORS.purple }]}>{t('installment', 'Installment')}</Text>
+            </View>
+          ) : null}
+        </View>
 
         <View style={styles.shopTagWrap}>
           <Text style={styles.shopTag}>{t('zenopayShop', 'zenopay shop')}</Text>
@@ -945,7 +1097,14 @@ export default function MobileShopScreen() {
               <Text style={styles.heroSmall}>{t('zenopayWallet', 'Zenopay Wallet')}</Text>
               <Text style={styles.heroTitle}>{t('latestMobileSeries', 'Latest Mobile Series')}</Text>
               <Text style={styles.heroSub}>
-                {t('startingFrom', 'Starting from')} {featuredProduct ? formatIQD(getCashPrice(featuredProduct)) : formatIQD(0)}
+                {t('startingFrom', 'Starting from')}{' '}
+                {featuredProduct
+                  ? formatIQD(
+                      hasCashOption(featuredProduct)
+                        ? getCashPrice(featuredProduct)
+                        : getInstallmentContractPrice(featuredProduct)
+                    )
+                  : formatIQD(0)}
               </Text>
 
               <TouchableOpacity
@@ -983,7 +1142,9 @@ export default function MobileShopScreen() {
               style={styles.walletCardInner}
             >
               <Text style={styles.walletLabelCenter}>{t('yourWalletBalance', 'Your Wallet Balance')}</Text>
-              <Text style={styles.walletValueCenter}>{walletQuery.isLoading ? '...' : formatIQD(walletBalance)}</Text>
+              <Text style={styles.walletValueCenter}>
+                {walletQuery.isLoading ? '...' : formatIQD(walletBalance)}
+              </Text>
             </LinearGradient>
           </View>
 
@@ -1008,10 +1169,10 @@ export default function MobileShopScreen() {
             scrollEnabled={false}
             columnWrapperStyle={styles.gridRow}
             removeClippedSubviews={Platform.OS !== 'web'}
-            initialNumToRender={6}
-            maxToRenderPerBatch={8}
-            windowSize={7}
-            updateCellsBatchingPeriod={40}
+            initialNumToRender={8}
+            maxToRenderPerBatch={12}
+            windowSize={10}
+            updateCellsBatchingPeriod={20}
             ListEmptyComponent={
               <View style={styles.emptyWrap}>
                 <Ionicons name="phone-portrait-outline" size={34} color={COLORS.textMuted} />
@@ -1028,6 +1189,11 @@ export default function MobileShopScreen() {
           <View style={styles.menuOverlay}>
             <TouchableOpacity style={styles.menuBackdrop} activeOpacity={1} onPress={() => setMenuOpen(false)} />
             <View style={styles.menuCard}>
+              <TouchableOpacity style={styles.menuItem} onPress={openOrderHistory}>
+                <Ionicons name="time-outline" size={20} color={COLORS.text} />
+                <Text style={styles.menuText}>{t('orderHistory', 'Order History')}</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity style={styles.menuItem} onPress={openPolicy}>
                 <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.text} />
                 <Text style={styles.menuText}>{t('privacyPolicy', 'Privacy Policy')}</Text>
@@ -1044,6 +1210,96 @@ export default function MobileShopScreen() {
                   {t('balance', 'Balance')}: {formatIQD(walletBalance)}
                 </Text>
               </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={historyOpen} transparent animationType="slide" onRequestClose={() => setHistoryOpen(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.historySheet}>
+              <View style={styles.modalHandle} />
+
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{t('orderHistory', 'Order History')}</Text>
+                <TouchableOpacity onPress={() => setHistoryOpen(false)} style={styles.modalCloseBtn}>
+                  <Ionicons name="close" size={20} color={COLORS.text} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {!user ? (
+                  <View style={styles.emptyWrap}>
+                    <Ionicons name="person-circle-outline" size={34} color={COLORS.textMuted} />
+                    <Text style={styles.emptyTitle}>{t('loginRequired', 'Please login first')}</Text>
+                  </View>
+                ) : ordersHistoryQuery.isLoading ? (
+                  <View style={styles.historyLoadingWrap}>
+                    <ActivityIndicator color={COLORS.blue} size="large" />
+                    <Text style={styles.historyLoadingText}>{t('loading', 'Loading...')}</Text>
+                  </View>
+                ) : (ordersHistoryQuery.data || []).length === 0 ? (
+                  <View style={styles.emptyWrap}>
+                    <Ionicons name="receipt-outline" size={34} color={COLORS.textMuted} />
+                    <Text style={styles.emptyTitle}>{t('noOrdersYet', 'No orders yet')}</Text>
+                    <Text style={styles.emptySub}>{t('yourPreviousOrdersWillAppearHere', 'Your previous orders will appear here')}</Text>
+                  </View>
+                ) : (
+                  (ordersHistoryQuery.data || []).map((order) => {
+                    const status = getDisplayOrderStatus(order);
+                    const statusStyle = getStatusColors(status);
+                    const purchaseModeText =
+                      String(order.purchase_mode || '').toLowerCase() === 'installment'
+                        ? t('installment', 'Installment')
+                        : t('cash', 'Cash');
+
+                    return (
+                      <View key={order.id} style={styles.historyCard}>
+                        <View style={styles.historyTopRow}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.historyProductName}>{order.product_name || 'Product'}</Text>
+                            <Text style={styles.historyMetaText}>
+                              {(order.product_brand || '—').toUpperCase()} • {purchaseModeText}
+                            </Text>
+                          </View>
+
+                          <View style={[styles.historyStatusBadge, { backgroundColor: statusStyle.bg }]}>
+                            <Text style={[styles.historyStatusText, { color: statusStyle.color }]}>
+                              {String(status).toUpperCase()}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.historyRow}>
+                          <Text style={styles.historyLabel}>{t('totalPrice', 'Total Price')}</Text>
+                          <Text style={styles.historyValue}>{formatIQD(order.total_price_iqd)}</Text>
+                        </View>
+
+                        <View style={styles.historyRow}>
+                          <Text style={styles.historyLabel}>{t('paidAmount', 'Paid Amount')}</Text>
+                          <Text style={styles.historyValue}>{formatIQD(order.paid_amount_iqd)}</Text>
+                        </View>
+
+                        <View style={styles.historyRow}>
+                          <Text style={styles.historyLabel}>{t('remainingInstallmentAmount', 'Remaining Installment Amount')}</Text>
+                          <Text style={styles.historyValue}>{formatIQD(order.remaining_amount_iqd)}</Text>
+                        </View>
+
+                        <View style={styles.historyRow}>
+                          <Text style={styles.historyLabel}>{t('quantity', 'Quantity')}</Text>
+                          <Text style={styles.historyValue}>{Number(order.quantity || 1)}</Text>
+                        </View>
+
+                        <View style={styles.historyRow}>
+                          <Text style={styles.historyLabel}>{t('orderDate', 'Order Date')}</Text>
+                          <Text style={styles.historyValue}>{formatDateTime(order.created_at)}</Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+
+                <View style={{ height: 16 }} />
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -1069,22 +1325,26 @@ export default function MobileShopScreen() {
                         style={styles.selectedImage}
                         contentFit="contain"
                       />
+
                       <View style={{ flex: 1 }}>
                         <Text style={styles.selectedName}>{selectedProduct.name}</Text>
                         <Text style={styles.selectedSub}>
-                          {[selectedProduct.storage, selectedProduct.ram, selectedProduct.color].filter(Boolean).join(' • ')}
+                          {[selectedProduct.storage, selectedProduct.ram, selectedProduct.color]
+                            .filter(Boolean)
+                            .join(' • ')}
                         </Text>
 
-                        <Text style={styles.selectedPrice}>
-                          {purchaseMode === 'cash'
-                            ? formatIQD(selectedCashPrice)
-                            : formatIQD(selectedInstallmentContractUnit)}
-                        </Text>
+                        {purchaseMode === 'cash' && hasCashOption(selectedProduct) ? (
+                          <Text style={styles.selectedPrice}>{formatIQD(selectedCashPrice)}</Text>
+                        ) : null}
 
-                        {purchaseMode === 'installment' ? (
-                          <Text style={styles.selectedInstallmentHint}>
-                            {formatIQD(selectedMonthlyPrice)} / {t('monthly', 'monthly')}
-                          </Text>
+                        {purchaseMode === 'installment' && hasInstallmentOption(selectedProduct) ? (
+                          <>
+                            <Text style={styles.selectedPrice}>{formatIQD(selectedInstallmentContractUnit)}</Text>
+                            <Text style={styles.selectedInstallmentHint}>
+                              {formatIQD(selectedMonthlyPrice)} / {t('monthly', 'monthly')}
+                            </Text>
+                          </>
                         ) : null}
                       </View>
                     </View>
@@ -1097,28 +1357,32 @@ export default function MobileShopScreen() {
                     )}
 
                     <View style={styles.modeSelectorWrap}>
-                      <TouchableOpacity
-                        style={[styles.modeBtn, purchaseMode === 'cash' && styles.modeBtnActive]}
-                        onPress={() => setPurchaseMode('cash')}
-                      >
-                        <Text style={[styles.modeBtnText, purchaseMode === 'cash' && styles.modeBtnTextActive]}>
-                          {t('cash', 'Cash')}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[styles.modeBtn, purchaseMode === 'installment' && styles.modeBtnActivePurple]}
-                        onPress={() => setPurchaseMode('installment')}
-                      >
-                        <Text
-                          style={[
-                            styles.modeBtnText,
-                            purchaseMode === 'installment' && styles.modeBtnTextActivePurple,
-                          ]}
+                      {hasCashOption(selectedProduct) ? (
+                        <TouchableOpacity
+                          style={[styles.modeBtn, purchaseMode === 'cash' && styles.modeBtnActive]}
+                          onPress={() => setPurchaseMode('cash')}
                         >
-                          {t('installment', 'Installment')}
-                        </Text>
-                      </TouchableOpacity>
+                          <Text style={[styles.modeBtnText, purchaseMode === 'cash' && styles.modeBtnTextActive]}>
+                            {t('cash', 'Cash')}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
+
+                      {hasInstallmentOption(selectedProduct) ? (
+                        <TouchableOpacity
+                          style={[styles.modeBtn, purchaseMode === 'installment' && styles.modeBtnActivePurple]}
+                          onPress={() => setPurchaseMode('installment')}
+                        >
+                          <Text
+                            style={[
+                              styles.modeBtnText,
+                              purchaseMode === 'installment' && styles.modeBtnTextActivePurple,
+                            ]}
+                          >
+                            {t('installment', 'Installment')}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
                     </View>
 
                     <View style={styles.priceModeInfo}>
@@ -1602,8 +1866,8 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   heroImageWrap: {
-    width: 138,
-    height: 138,
+    width: 148,
+    height: 148,
     borderRadius: 26,
     backgroundColor: 'rgba(255,255,255,0.44)',
     alignItems: 'center',
@@ -1721,7 +1985,7 @@ const styles = StyleSheet.create({
   },
   productImage: {
     width: '100%',
-    height: 140,
+    height: 165,
     marginBottom: 8,
     borderRadius: 16,
     backgroundColor: '#F7FAFF',
@@ -1789,6 +2053,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  optionPillsRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  optionPill: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+  },
+  optionPillCash: {
+    backgroundColor: COLORS.blueSoft,
+    borderColor: COLORS.blue2,
+  },
+  optionPillInstallment: {
+    backgroundColor: COLORS.purpleSoft,
+    borderColor: COLORS.purple,
+  },
+  optionPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
   shopTagWrap: {
     marginTop: 10,
     alignSelf: 'flex-start',
@@ -1820,6 +2108,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: 13,
     fontWeight: '600',
+    textAlign: 'center',
   },
 
   menuOverlay: {
@@ -1873,6 +2162,17 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: '#E3ECFA',
   },
+  historySheet: {
+    backgroundColor: '#F7FAFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 24,
+    maxHeight: '82%',
+    borderTopWidth: 1,
+    borderColor: '#E3ECFA',
+  },
   modalHandle: {
     width: 64,
     height: 5,
@@ -1892,6 +2192,8 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '900',
     letterSpacing: -0.2,
+    flex: 1,
+    paddingEnd: 8,
   },
   modalCloseBtn: {
     width: 34,
@@ -1917,8 +2219,8 @@ const styles = StyleSheet.create({
     ...SHADOWS.soft,
   },
   selectedImage: {
-    width: 62,
-    height: 62,
+    width: 72,
+    height: 72,
     borderRadius: 14,
     backgroundColor: '#F8FBFF',
   },
@@ -2148,5 +2450,75 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 17,
     fontWeight: '900',
+  },
+
+  historyLoadingWrap: {
+    paddingVertical: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyLoadingText: {
+    marginTop: 8,
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  historyCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 14,
+    marginBottom: 12,
+    ...SHADOWS.soft,
+  },
+  historyTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 12,
+  },
+  historyProductName: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  historyMetaText: {
+    marginTop: 4,
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  historyStatusBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  historyStatusText: {
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  historyRow: {
+    paddingTop: 10,
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#EEF3FA',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  historyLabel: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
+  },
+  historyValue: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '900',
+    textAlign: 'right',
+    flexShrink: 1,
   },
 });
