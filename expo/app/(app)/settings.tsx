@@ -6,17 +6,16 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Linking,
   I18nManager,
   Platform,
   Modal,
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, usePathname, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/contexts/AuthContext';
 import i18n from '@/lib/i18n';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const options = { headerShown: false };
 
@@ -25,6 +24,7 @@ const UI = {
   page: '#F7FAFF',
   card: '#FFFFFF',
   cardSoft: '#F8FBFF',
+  cardMuted: '#F3F7FD',
   text: '#0F172A',
   text2: '#64748B',
   text3: '#94A3B8',
@@ -33,9 +33,11 @@ const UI = {
   blue: '#2563EB',
   blueDark: '#1D4ED8',
   blueSoft: '#EAF2FF',
+  blueSoft2: '#DCEBFF',
 
   red: '#EF4444',
   redSoft: '#FEECEC',
+  overlay: 'rgba(15, 23, 42, 0.28)',
 };
 
 const SHADOWS = {
@@ -55,49 +57,55 @@ const SHADOWS = {
   },
 };
 
-/**
- * IMPORTANT:
- * Put your real links here.
- * If you already had old URLs in your previous settings file,
- * paste them here exactly.
- */
-const SUPPORT_LINKS = {
-  email: 'mailto:info@zenopay.bond',
-  facebook: 'https://facebook.com/',
-  instagram: 'https://instagram.com/',
-  tiktok: 'https://tiktok.com/',
-};
+function getText(value: any, fallback: string) {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === 'object') return fallback;
+
+  const text = String(value).trim();
+  const lower = text.toLowerCase();
+
+  if (
+    !text ||
+    lower === '[object object]' ||
+    lower.includes('missing translation') ||
+    lower.includes('missing "') ||
+    text.includes('[missing') ||
+    text.includes('"')
+  ) {
+    return fallback;
+  }
+
+  return text;
+}
 
 function tSafe(key: string, fallback: string) {
   try {
     const value = i18n.t(key as any);
-
-    if (
-      value === null ||
-      value === undefined ||
-      typeof value === 'object' ||
-      String(value).trim() === '' ||
-      String(value) === key ||
-      String(value).includes('[missing') ||
-      String(value).includes('missing translation') ||
-      String(value).includes(`"${key}"`)
-    ) {
-      return fallback;
-    }
-
-    return String(value);
+    if (value === key) return fallback;
+    return getText(value, fallback);
   } catch {
     return fallback;
   }
 }
 
+function tOne(keys: string[], fallback: string) {
+  for (const key of keys) {
+    try {
+      const value = i18n.t(key as any);
+      const text = getText(value, '__INVALID__');
+      if (text !== '__INVALID__' && text !== key) return text;
+    } catch {}
+  }
+  return fallback;
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
+  const pathname = usePathname();
   const { signOut } = useAuth();
   const isRTL = I18nManager.isRTL;
 
   const [showLanguageModal, setShowLanguageModal] = useState(false);
-  const [showSupportModal, setShowSupportModal] = useState(false);
 
   const currentLanguageLabel = useMemo(() => {
     const lang = String(i18n.language || '').toLowerCase();
@@ -109,7 +117,7 @@ export default function SettingsScreen() {
     if (lang === 'kmr') return tSafe('common.languageBadini', 'کوردی بادینی');
 
     return tSafe('common.languageEnglish', 'English');
-  }, []);
+  }, [showLanguageModal, pathname]);
 
   const changeLanguage = async (lang: 'en' | 'ar' | 'cbk' | 'kmr') => {
     try {
@@ -118,130 +126,33 @@ export default function SettingsScreen() {
 
       Alert.alert(
         tSafe('common.success', 'Success'),
-        tSafe('settingsLanguageChanged', 'Language changed successfully')
+        tOne(['settingsLanguageChanged', 'settings.languageChanged'], 'Language changed successfully')
       );
     } catch {
       Alert.alert(
         tSafe('common.error', 'Error'),
-        tSafe('settingsLanguageChangeFailed', 'Failed to change language')
+        tOne(
+          ['settingsLanguageChangeFailed', 'settings.languageChangeFailed'],
+          'Failed to change language'
+        )
       );
     }
   };
-
-  const openSupportLink = async (url: string) => {
-    try {
-      const supported = await Linking.canOpenURL(url);
-
-      if (!supported) {
-        Alert.alert(
-          tSafe('common.error', 'Error'),
-          tSafe('settingsCannotOpenLink', 'Cannot open this link')
-        );
-        return;
-      }
-
-      await Linking.openURL(url);
-      setShowSupportModal(false);
-    } catch {
-      Alert.alert(
-        tSafe('common.error', 'Error'),
-        tSafe('settingsOpenLinkFailed', 'Failed to open link')
-      );
-    }
-  };
-
-  const settingsItems = [
-    {
-      key: 'profile',
-      title: tSafe('profile.title', 'Profile'),
-      icon: 'person-outline' as const,
-      onPress: () => router.push('/(app)/profile' as any),
-    },
-    {
-      key: 'language',
-      title: tSafe('language', 'Language'),
-      subtitle: currentLanguageLabel,
-      icon: 'language-outline' as const,
-      onPress: () => setShowLanguageModal(true),
-    },
-    {
-      key: 'security',
-      title: tSafe('security', 'Security'),
-      icon: 'lock-closed-outline' as const,
-      onPress: () => router.push('/(app)/security' as any),
-    },
-    {
-      key: 'privacy',
-      title: tSafe('privacyPolicy.title', 'Privacy Policy'),
-      icon: 'document-text-outline' as const,
-      onPress: () => router.push('/(app)/privacy-policy' as any),
-    },
-    {
-      key: 'terms',
-      title: tSafe('terms.headerTitle', 'Terms & Conditions'),
-      icon: 'clipboard-outline' as const,
-      onPress: () => router.push('/(app)/terms-conditions' as any),
-    },
-    {
-      key: 'support',
-      title: tSafe('support', 'Support'),
-      icon: 'mail-outline' as const,
-      onPress: () => setShowSupportModal(true),
-    },
-    {
-      key: 'admin',
-      title: tSafe('adminPanel', 'Admin Panel'),
-      icon: 'shield-checkmark-outline' as const,
-      onPress: () => router.push('/(app)/admin' as any),
-    },
-  ];
-
-  const supportItems = [
-    {
-      key: 'email',
-      title: tSafe('settingsSupportEmail', 'Email Support'),
-      subtitle: 'info@zenopay.bond',
-      icon: 'mail-outline' as const,
-      color: UI.blue,
-      onPress: () => openSupportLink(SUPPORT_LINKS.email),
-    },
-    {
-      key: 'facebook',
-      title: tSafe('settingsSupportFacebook', 'Facebook'),
-      subtitle: SUPPORT_LINKS.facebook,
-      icon: 'logo-facebook' as const,
-      color: '#1877F2',
-      onPress: () => openSupportLink(SUPPORT_LINKS.facebook),
-    },
-    {
-      key: 'instagram',
-      title: tSafe('settingsSupportInstagram', 'Instagram'),
-      subtitle: SUPPORT_LINKS.instagram,
-      icon: 'logo-instagram' as const,
-      color: '#E1306C',
-      onPress: () => openSupportLink(SUPPORT_LINKS.instagram),
-    },
-    {
-      key: 'tiktok',
-      title: tSafe('settingsSupportTiktok', 'TikTok'),
-      subtitle: SUPPORT_LINKS.tiktok,
-      icon: 'logo-tiktok' as const,
-      color: '#111111',
-      onPress: () => openSupportLink(SUPPORT_LINKS.tiktok),
-    },
-  ];
 
   const handleLogout = () => {
     Alert.alert(
-      tSafe('logout', 'Logout'),
-      tSafe('settingsLogoutConfirm', 'Are you sure you want to logout?'),
+      tOne(['logout', 'settings.logout'], 'Logout'),
+      tOne(
+        ['settingsLogoutConfirm', 'settings.logoutConfirm'],
+        'Are you sure you want to logout?'
+      ),
       [
         {
           text: tSafe('common.cancel', 'Cancel'),
           style: 'cancel',
         },
         {
-          text: tSafe('logout', 'Logout'),
+          text: tOne(['logout', 'settings.logout'], 'Logout'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -258,6 +169,49 @@ export default function SettingsScreen() {
     );
   };
 
+  const settingsItems = [
+    {
+      key: 'language',
+      title: tOne(['language', 'settings.language', 'settingsLanguage'], 'Language'),
+      subtitle: currentLanguageLabel,
+      icon: 'language-outline' as const,
+      onPress: () => setShowLanguageModal(true),
+    },
+    {
+      key: 'security',
+      title: tOne(['security', 'settings.security', 'security.title'], 'Security'),
+      icon: 'lock-closed-outline' as const,
+      onPress: () => router.push('/(app)/security' as any),
+    },
+    {
+      key: 'privacy',
+      title: tOne(
+        ['privacyPolicy.title', 'privacyPolicy', 'privacyPolicyData.title'],
+        'Privacy Policy'
+      ),
+      icon: 'document-text-outline' as const,
+      onPress: () => router.push('/(app)/privacy-policy' as any),
+    },
+    {
+      key: 'terms',
+      title: tOne(['terms.headerTitle', 'terms.mainTitle', 'termsConditions'], 'Terms & Conditions'),
+      icon: 'clipboard-outline' as const,
+      onPress: () => router.push('/(app)/terms-conditions' as any),
+    },
+    {
+      key: 'support',
+      title: tOne(['support', 'settings.support'], 'Support'),
+      icon: 'mail-outline' as const,
+      onPress: () => router.push('/(app)/contact' as any),
+    },
+    {
+      key: 'admin',
+      title: tOne(['adminPanel', 'settings.adminPanel'], 'Admin Panel'),
+      icon: 'shield-checkmark-outline' as const,
+      onPress: () => router.push('/(app)/admin' as any),
+    },
+  ];
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -266,7 +220,7 @@ export default function SettingsScreen() {
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
-          activeOpacity={0.88}
+          activeOpacity={0.9}
         >
           <Ionicons
             name={isRTL ? 'arrow-forward' : 'arrow-back'}
@@ -276,7 +230,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>
-          {tSafe('settings.title', tSafe('settings', 'Settings'))}
+          {tOne(['settings.title', 'settings'], 'Settings')}
         </Text>
 
         <View style={styles.headerSpacer} />
@@ -292,7 +246,7 @@ export default function SettingsScreen() {
             key={item.key}
             style={[styles.menuCard, isRTL && styles.menuCardRTL]}
             onPress={item.onPress}
-            activeOpacity={0.9}
+            activeOpacity={0.92}
           >
             <View style={[styles.menuLeft, isRTL && styles.menuLeftRTL]}>
               <View style={styles.iconWrap}>
@@ -325,7 +279,7 @@ export default function SettingsScreen() {
         <TouchableOpacity
           style={[styles.logoutCard, isRTL && styles.menuCardRTL]}
           onPress={handleLogout}
-          activeOpacity={0.9}
+          activeOpacity={0.92}
         >
           <View style={[styles.menuLeft, isRTL && styles.menuLeftRTL]}>
             <View style={[styles.iconWrap, styles.logoutIconWrap]}>
@@ -333,7 +287,7 @@ export default function SettingsScreen() {
             </View>
 
             <Text style={[styles.logoutText, isRTL && styles.textRTL]}>
-              {tSafe('logout', 'Logout')}
+              {tOne(['logout', 'settings.logout'], 'Logout')}
             </Text>
           </View>
 
@@ -354,109 +308,68 @@ export default function SettingsScreen() {
         onRequestClose={() => setShowLanguageModal(false)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setShowLanguageModal(false)} />
-        <View style={styles.modalSheet}>
-          <Text style={styles.modalTitle}>
-            {tSafe('language', 'Language')}
+
+        <View style={styles.languageSheet}>
+          <View style={styles.sheetGrabber} />
+
+          <Text style={styles.languageSheetTitle}>
+            {tOne(['language', 'settings.language', 'settingsLanguage'], 'Language')}
           </Text>
 
-          <TouchableOpacity
-            style={styles.sheetButton}
-            activeOpacity={0.9}
-            onPress={() => changeLanguage('en')}
-          >
-            <Ionicons name="globe-outline" size={18} color={UI.blueDark} />
-            <Text style={styles.sheetButtonText}>
-              {tSafe('common.languageEnglish', 'English')}
-            </Text>
-          </TouchableOpacity>
+          {[
+            {
+              key: 'en',
+              label: tSafe('common.languageEnglish', 'English'),
+            },
+            {
+              key: 'ar',
+              label: tSafe('common.languageArabic', 'العربية'),
+            },
+            {
+              key: 'cbk',
+              label: tSafe('common.languageSorani', 'کوردی سۆرانی'),
+            },
+            {
+              key: 'kmr',
+              label: tSafe('common.languageBadini', 'کوردی بادینی'),
+            },
+          ].map((lang) => {
+            const selected = String(i18n.language || '').toLowerCase() === lang.key;
 
-          <TouchableOpacity
-            style={styles.sheetButton}
-            activeOpacity={0.9}
-            onPress={() => changeLanguage('ar')}
-          >
-            <Ionicons name="globe-outline" size={18} color={UI.blueDark} />
-            <Text style={styles.sheetButtonText}>
-              {tSafe('common.languageArabic', 'العربية')}
-            </Text>
-          </TouchableOpacity>
+            return (
+              <TouchableOpacity
+                key={lang.key}
+                style={[styles.languageRow, selected && styles.languageRowActive]}
+                activeOpacity={0.92}
+                onPress={() => changeLanguage(lang.key as 'en' | 'ar' | 'cbk' | 'kmr')}
+              >
+                <View style={styles.languageRowLeft}>
+                  <View style={[styles.languageIconCircle, selected && styles.languageIconCircleActive]}>
+                    <Ionicons
+                      name="globe-outline"
+                      size={18}
+                      color={selected ? UI.blueDark : UI.blue}
+                    />
+                  </View>
 
-          <TouchableOpacity
-            style={styles.sheetButton}
-            activeOpacity={0.9}
-            onPress={() => changeLanguage('cbk')}
-          >
-            <Ionicons name="globe-outline" size={18} color={UI.blueDark} />
-            <Text style={styles.sheetButtonText}>
-              {tSafe('common.languageSorani', 'کوردی سۆرانی')}
-            </Text>
-          </TouchableOpacity>
+                  <Text style={[styles.languageRowText, selected && styles.languageRowTextActive]}>
+                    {lang.label}
+                  </Text>
+                </View>
 
-          <TouchableOpacity
-            style={styles.sheetButton}
-            activeOpacity={0.9}
-            onPress={() => changeLanguage('kmr')}
-          >
-            <Ionicons name="globe-outline" size={18} color={UI.blueDark} />
-            <Text style={styles.sheetButtonText}>
-              {tSafe('common.languageBadini', 'کوردی بادینی')}
-            </Text>
-          </TouchableOpacity>
+                {selected ? (
+                  <Ionicons name="checkmark-circle" size={22} color={UI.blue} />
+                ) : (
+                  <View style={styles.languageRadio} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
 
           <TouchableOpacity
             style={styles.cancelBtn}
             activeOpacity={0.9}
             onPress={() => setShowLanguageModal(false)}
-          >
-            <Text style={styles.cancelText}>
-              {tSafe('common.cancel', 'Cancel')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showSupportModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowSupportModal(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowSupportModal(false)} />
-        <View style={styles.modalSheet}>
-          <Text style={styles.modalTitle}>
-            {tSafe('support', 'Support')}
-          </Text>
-
-          {supportItems.map((item) => (
-            <TouchableOpacity
-              key={item.key}
-              style={styles.sheetButtonLarge}
-              activeOpacity={0.9}
-              onPress={item.onPress}
-            >
-              <View style={[styles.supportIconCircle, { backgroundColor: '#F3F7FF' }]}>
-                <Ionicons name={item.icon} size={19} color={item.color} />
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text style={styles.sheetButtonText}>{item.title}</Text>
-                <Text style={styles.supportSubText} numberOfLines={1}>
-                  {item.subtitle}
-                </Text>
-              </View>
-
-              <Ionicons
-                name={isRTL ? 'chevron-back' : 'chevron-forward'}
-                size={20}
-                color={UI.text2}
-              />
-            </TouchableOpacity>
-          ))}
-
-          <TouchableOpacity
-            style={styles.cancelBtn}
-            activeOpacity={0.9}
-            onPress={() => setShowSupportModal(false)}
           >
             <Text style={styles.cancelText}>
               {tSafe('common.cancel', 'Cancel')}
@@ -484,9 +397,9 @@ const styles = StyleSheet.create({
     backgroundColor: UI.bg,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: UI.card,
     borderWidth: 1,
     borderColor: UI.border,
@@ -495,13 +408,13 @@ const styles = StyleSheet.create({
     ...SHADOWS.soft,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 21,
     fontWeight: '900',
     color: UI.text,
   },
   headerSpacer: {
-    width: 40,
-    height: 40,
+    width: 46,
+    height: 46,
   },
 
   content: {
@@ -514,13 +427,13 @@ const styles = StyleSheet.create({
 
   menuCard: {
     backgroundColor: UI.card,
-    borderRadius: 24,
+    borderRadius: 28,
     borderWidth: 1,
     borderColor: UI.border,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     marginBottom: 16,
-    minHeight: 92,
+    minHeight: 96,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -541,9 +454,9 @@ const styles = StyleSheet.create({
   },
 
   iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: UI.blueSoft,
     alignItems: 'center',
     justifyContent: 'center',
@@ -561,9 +474,9 @@ const styles = StyleSheet.create({
     color: UI.text,
   },
   menuSubtitle: {
-    marginTop: 4,
+    marginTop: 5,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     color: UI.text2,
   },
   textRTL: {
@@ -579,12 +492,12 @@ const styles = StyleSheet.create({
 
   logoutCard: {
     backgroundColor: UI.card,
-    borderRadius: 24,
+    borderRadius: 28,
     borderWidth: 1,
     borderColor: UI.border,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    minHeight: 92,
+    paddingVertical: 16,
+    minHeight: 96,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -602,82 +515,93 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.28)',
+    backgroundColor: UI.overlay,
   },
-  modalSheet: {
+
+  languageSheet: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 16,
+    left: 14,
+    right: 14,
+    bottom: 14,
     backgroundColor: UI.card,
-    borderRadius: 22,
+    borderRadius: 30,
     borderWidth: 1,
     borderColor: UI.border,
-    padding: 14,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 14,
     ...SHADOWS.card,
   },
-  modalTitle: {
-    fontSize: 16,
+  sheetGrabber: {
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: '#D5DEEB',
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  languageSheetTitle: {
+    textAlign: 'center',
+    fontSize: 18,
     fontWeight: '900',
     color: UI.text,
-    textAlign: 'center',
     marginBottom: 10,
   },
 
-  sheetButton: {
-    height: 54,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: UI.border,
-    backgroundColor: UI.cardSoft,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    columnGap: 10,
-    marginTop: 10,
-    ...SHADOWS.soft,
-  },
-
-  sheetButtonLarge: {
-    minHeight: 64,
-    borderRadius: 16,
+  languageRow: {
+    minHeight: 74,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: UI.border,
     backgroundColor: UI.cardSoft,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    marginTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    columnGap: 12,
-    marginTop: 10,
-    ...SHADOWS.soft,
+    justifyContent: 'space-between',
   },
-
-  supportIconCircle: {
+  languageRowActive: {
+    backgroundColor: '#F4F8FF',
+    borderColor: '#BFD4FF',
+  },
+  languageRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  languageIconCircle: {
     width: 38,
     height: 38,
     borderRadius: 19,
+    backgroundColor: '#F2F6FD',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
-
-  sheetButtonText: {
-    fontSize: 15,
+  languageIconCircleActive: {
+    backgroundColor: UI.blueSoft,
+  },
+  languageRowText: {
+    fontSize: 16,
     fontWeight: '900',
     color: UI.text,
   },
-
-  supportSubText: {
-    marginTop: 3,
-    fontSize: 12,
-    fontWeight: '700',
-    color: UI.text2,
+  languageRowTextActive: {
+    color: UI.blueDark,
+  },
+  languageRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#CFD9E8',
   },
 
   cancelBtn: {
-    height: 52,
-    borderRadius: 16,
-    marginTop: 12,
+    height: 58,
+    borderRadius: 20,
+    marginTop: 14,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F3F7FF',
@@ -685,7 +609,7 @@ const styles = StyleSheet.create({
     borderColor: UI.border,
   },
   cancelText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '900',
     color: UI.blueDark,
   },
