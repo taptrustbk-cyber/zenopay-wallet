@@ -151,8 +151,6 @@ function KycPendingScreen() {
 function MainBottomNav({ localeKey }: { localeKey: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const notificationListener = useRef<any>();
-  const responseListener = useRef<any>();
   const insets = useSafeAreaInsets();
 
   const tabs = [
@@ -251,45 +249,15 @@ function HeaderBackButton({
 export default function AppLayout() {
   const { profile, loading } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
+
+  const notificationListener = useRef<any>(null);
+  const responseListener = useRef<any>(null);
 
   const [localeKey, setLocaleKey] = useState(getCurrentLanguage() || i18n.locale || 'en');
 
   useEffect(() => {
     const syncLocale = () => {
-    const notificationListener = useRef<any>();
-const responseListener = useRef<any>();
-
-useEffect(() => {
-  // when notification received (app open)
-  notificationListener.current =
-    Notifications.addNotificationReceivedListener((notification) => {
-      console.log('🔔 Notification received:', notification);
-    });
-
-  // when user clicks notification
-  responseListener.current =
-    Notifications.addNotificationResponseReceivedListener((response) => {
-      console.log('👉 Notification clicked:', response);
-
-      const data = response.notification.request.content.data;
-
-      // مثال navigation
-      if (data?.screen) {
-        try {
-          router.push(data.screen);
-        } catch {}
-      }
-    });
-
-  return () => {
-    if (notificationListener.current) {
-      Notifications.removeNotificationSubscription(notificationListener.current);
-    }
-    if (responseListener.current) {
-      Notifications.removeNotificationSubscription(responseListener.current);
-    }
-  };
-}, []);
       const current = getCurrentLanguage() || i18n.locale || 'en';
       setLocaleKey((prev) => (prev === current ? prev : current));
     };
@@ -299,6 +267,35 @@ useEffect(() => {
     const interval = setInterval(syncLocale, 250);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
+        console.log('🔔 Notification received:', notification);
+      });
+
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log('👉 Notification clicked:', response);
+
+        const data = response.notification.request.content.data as any;
+
+        if (data?.screen) {
+          try {
+            router.push(data.screen);
+          } catch {}
+        }
+      });
+
+    return () => {
+      if (notificationListener.current) {
+        Notifications.removeNotificationSubscription(notificationListener.current);
+      }
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
+    };
+  }, [router]);
 
   const mainNavPaths = [
     '/dashboard',
