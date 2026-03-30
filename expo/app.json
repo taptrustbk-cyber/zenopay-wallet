@@ -41,7 +41,9 @@
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "INTERNET"
+        "INTERNET",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ]
     },
 
@@ -68,7 +70,14 @@
           "cameraPermission": "The app accesses your camera to let you take profile photos."
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-notifications",
+        {
+          "color": "#2563EB",
+          "defaultChannel": "default"
+        }
+      ]
     ],
 
     "experiments": {
