@@ -33,6 +33,7 @@ export const options = { headerShown: false };
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 const KYC_BUCKET = 'kyc-documents';
 const AVATAR_BUCKET = 'avatars';
+const NOTIFICATION_FUNCTION = 'send-notification';
 
 const UI = {
   bg: '#F8FAFC',
@@ -383,6 +384,75 @@ export default function KycDocumentsAdminScreen() {
     await Linking.openURL(url);
   };
 
+  const sendKycDecisionNotification = async ({
+    targetUserId,
+    fullName,
+    email,
+    decision,
+  }: {
+    targetUserId: string;
+    fullName?: string | null;
+    email?: string | null;
+    decision: 'approved' | 'pending';
+  }) => {
+    const cleanName = (fullName || '').trim() || 'User';
+    const cleanEmail = (email || '').trim() || '';
+    const isApproved = decision === 'approved';
+
+    const title = isApproved ? 'KYC Approved' : 'KYC Update Required';
+    const body = isApproved
+      ? 'Your KYC verification has been approved. You can now continue using your Zenopay account.'
+      : 'Your KYC verification was not approved. Please review your documents and upload them again.';
+
+    const payload = {
+      user_id: targetUserId,
+      target_user_id: targetUserId,
+      recipient_user_id: targetUserId,
+      profile_id: targetUserId,
+
+      email: cleanEmail || undefined,
+      recipient_email: cleanEmail || undefined,
+
+      title,
+      body,
+      message: body,
+
+      type: 'kyc_status',
+      notification_type: 'kyc_status',
+      category: 'kyc',
+      action: isApproved ? 'approved' : 'rejected',
+      status: decision,
+      kyc_status: decision,
+
+      full_name: cleanName,
+      screen: 'kyc-documents-admin',
+      source: 'admin',
+      created_by: user?.id || null,
+
+      data: {
+        user_id: targetUserId,
+        full_name: cleanName,
+        email: cleanEmail || null,
+        status: decision,
+        kyc_status: decision,
+        action: isApproved ? 'approved' : 'rejected',
+        title,
+        body,
+        screen: 'kyc-documents-admin',
+      },
+    };
+
+    const { data, error } = await supabase.functions.invoke(NOTIFICATION_FUNCTION, {
+      body: payload,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  };
+
   useEffect(() => {
     if (!isAdmin) return;
 
@@ -515,15 +585,52 @@ export default function KycDocumentsAdminScreen() {
   };
 
   const approveAccountMutation = useMutation({
-    mutationFn: async ({ userId }: { userId: string }) => {
+    mutationFn: async ({
+      userId,
+      fullName,
+      email,
+    }: {
+      userId: string;
+      fullName?: string | null;
+      email?: string | null;
+    }) => {
       setAccountActionBusy((prev) => ({ ...prev, [userId]: 'approve' }));
+
       await setProfileStatusBoth(userId, 'approved');
+
+      let notificationSent = false;
+      let notificationError = '';
+
+      try {
+        await sendKycDecisionNotification({
+          targetUserId: userId,
+          fullName,
+          email,
+          decision: 'approved',
+        });
+        notificationSent = true;
+      } catch (err: any) {
+        notificationError = err?.message || 'Notification function failed';
+        console.warn('Approve notification error:', notificationError);
+      }
+
+      return { notificationSent, notificationError };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['admin-kyc-documents'] });
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
       queryClient.invalidateQueries({ queryKey: ['admin-all-users'] });
-      Alert.alert('Success', 'Approved: status + kyc_status updated.');
+
+      if (result?.notificationSent) {
+        Alert.alert('Success', 'Approved: status + kyc_status updated and notification sent.');
+      } else if (result?.notificationError) {
+        Alert.alert(
+          'Approved',
+          `Status + kyc_status updated, but notification failed.\n\n${result.notificationError}`
+        );
+      } else {
+        Alert.alert('Success', 'Approved: status + kyc_status updated.');
+      }
     },
     onError: (error: any) => {
       Alert.alert('Error', error?.message || 'Failed to approve KYC');
@@ -536,15 +643,52 @@ export default function KycDocumentsAdminScreen() {
   });
 
   const rejectAccountMutation = useMutation({
-    mutationFn: async ({ userId }: { userId: string }) => {
+    mutationFn: async ({
+      userId,
+      fullName,
+      email,
+    }: {
+      userId: string;
+      fullName?: string | null;
+      email?: string | null;
+    }) => {
       setAccountActionBusy((prev) => ({ ...prev, [userId]: 'reject' }));
+
       await setProfileStatusBoth(userId, 'pending');
+
+      let notificationSent = false;
+      let notificationError = '';
+
+      try {
+        await sendKycDecisionNotification({
+          targetUserId: userId,
+          fullName,
+          email,
+          decision: 'pending',
+        });
+        notificationSent = true;
+      } catch (err: any) {
+        notificationError = err?.message || 'Notification function failed';
+        console.warn('Reject notification error:', notificationError);
+      }
+
+      return { notificationSent, notificationError };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['admin-kyc-documents'] });
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
       queryClient.invalidateQueries({ queryKey: ['admin-all-users'] });
-      Alert.alert('Success', 'Set back to pending: status + kyc_status updated.');
+
+      if (result?.notificationSent) {
+        Alert.alert('Success', 'Set back to pending: status + kyc_status updated and notification sent.');
+      } else if (result?.notificationError) {
+        Alert.alert(
+          'Updated',
+          `Status + kyc_status updated, but notification failed.\n\n${result.notificationError}`
+        );
+      } else {
+        Alert.alert('Success', 'Set back to pending: status + kyc_status updated.');
+      }
     },
     onError: (error: any) => {
       Alert.alert('Error', error?.message || 'Failed to reject KYC');
@@ -759,7 +903,15 @@ export default function KycDocumentsAdminScreen() {
                     onPress={() =>
                       Alert.alert('Approve KYC', `Approve KYC for ${userKYC.full_name || showEmail}?`, [
                         { text: 'Cancel', style: 'cancel' },
-                        { text: 'Approve', onPress: () => approveAccountMutation.mutate({ userId: userKYC.id }) },
+                        {
+                          text: 'Approve',
+                          onPress: () =>
+                            approveAccountMutation.mutate({
+                              userId: userKYC.id,
+                              fullName: displayName,
+                              email: showEmail !== 'N/A' ? showEmail : '',
+                            }),
+                        },
                       ])
                     }
                     disabled={disableBtns}
@@ -782,7 +934,16 @@ export default function KycDocumentsAdminScreen() {
                     onPress={() =>
                       Alert.alert('Reject KYC', `Set back to pending for ${userKYC.full_name || showEmail}?`, [
                         { text: 'Cancel', style: 'cancel' },
-                        { text: 'Reject', style: 'destructive', onPress: () => rejectAccountMutation.mutate({ userId: userKYC.id }) },
+                        {
+                          text: 'Reject',
+                          style: 'destructive',
+                          onPress: () =>
+                            rejectAccountMutation.mutate({
+                              userId: userKYC.id,
+                              fullName: displayName,
+                              email: showEmail !== 'N/A' ? showEmail : '',
+                            }),
+                        },
                       ])
                     }
                     disabled={disableBtns}
