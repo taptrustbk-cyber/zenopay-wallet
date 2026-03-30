@@ -6,6 +6,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import * as WebBrowser from "expo-web-browser";
+import * as Notifications from "expo-notifications";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ErrorBoundary } from "react-error-boundary";
@@ -22,6 +23,16 @@ if (Platform.OS !== "web") {
 
 // keep native splash visible until app is actually ready
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// notification behavior
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -94,6 +105,59 @@ function RootLayoutNav() {
 
 function AppShell() {
   const { scheme } = useTheme();
+
+  useEffect(() => {
+    let receivedSubscription: Notifications.EventSubscription | null = null;
+    let responseSubscription: Notifications.EventSubscription | null = null;
+
+    const setupNotifications = async () => {
+      try {
+        if (Platform.OS === "android") {
+          await Notifications.setNotificationChannelAsync("default", {
+            name: "default",
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: "#2563EB",
+            sound: "default",
+            enableVibrate: true,
+            enableLights: true,
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+            bypassDnd: false,
+            showBadge: true,
+          });
+        }
+
+        receivedSubscription = Notifications.addNotificationReceivedListener((notification) => {
+          console.log("Notification received:", notification);
+        });
+
+        responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+          console.log("Notification response:", response);
+
+          const data = response?.notification?.request?.content?.data as any;
+
+          // دواتر دەتوانی لێرە route زیاد بکەیت
+          // بۆ نموونە:
+          // if (data?.screen === "admin-notifications") {
+          //   router.push("/admin-notifications" as any);
+          // }
+        });
+      } catch (error) {
+        console.log("Notification setup error:", error);
+      }
+    };
+
+    setupNotifications();
+
+    return () => {
+      if (receivedSubscription) {
+        receivedSubscription.remove();
+      }
+      if (responseSubscription) {
+        responseSubscription.remove();
+      }
+    };
+  }, []);
 
   return (
     <>
