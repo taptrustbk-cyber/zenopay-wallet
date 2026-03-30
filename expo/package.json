@@ -28,8 +28,8 @@
     "base64-arraybuffer": "^1.0.2",
 
     "expo": "~54.0.33",
-    "expo-notifications": "~0.28.0",
-    "expo-device": "~6.0.2",
+    "expo-notifications": "~0.31.2",
+    "expo-device": "~7.0.2",
     
     "expo-auth-session": "~7.0.10",
     "expo-blur": "~15.0.8",
