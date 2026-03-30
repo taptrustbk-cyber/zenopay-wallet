@@ -1,4 +1,6 @@
 import { Stack, usePathname, useRouter } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+import { useRef } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import React, { useEffect, useState } from 'react';
 import {
@@ -149,6 +151,8 @@ function KycPendingScreen() {
 function MainBottomNav({ localeKey }: { localeKey: string }) {
   const router = useRouter();
   const pathname = usePathname();
+  const notificationListener = useRef<any>();
+  const responseListener = useRef<any>();
   const insets = useSafeAreaInsets();
 
   const tabs = [
@@ -252,6 +256,40 @@ export default function AppLayout() {
 
   useEffect(() => {
     const syncLocale = () => {
+    const notificationListener = useRef<any>();
+const responseListener = useRef<any>();
+
+useEffect(() => {
+  // when notification received (app open)
+  notificationListener.current =
+    Notifications.addNotificationReceivedListener((notification) => {
+      console.log('🔔 Notification received:', notification);
+    });
+
+  // when user clicks notification
+  responseListener.current =
+    Notifications.addNotificationResponseReceivedListener((response) => {
+      console.log('👉 Notification clicked:', response);
+
+      const data = response.notification.request.content.data;
+
+      // مثال navigation
+      if (data?.screen) {
+        try {
+          router.push(data.screen);
+        } catch {}
+      }
+    });
+
+  return () => {
+    if (notificationListener.current) {
+      Notifications.removeNotificationSubscription(notificationListener.current);
+    }
+    if (responseListener.current) {
+      Notifications.removeNotificationSubscription(responseListener.current);
+    }
+  };
+}, []);
       const current = getCurrentLanguage() || i18n.locale || 'en';
       setLocaleKey((prev) => (prev === current ? prev : current));
     };
