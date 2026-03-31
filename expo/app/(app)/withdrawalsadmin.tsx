@@ -43,6 +43,7 @@ export const options = { headerShown: false };
 
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 const AVATAR_BUCKET = 'avatars';
+const NOTIFICATION_FUNCTION = 'send-notification';
 
 const UI = {
   bg: '#F8FAFC',
@@ -115,7 +116,7 @@ const initialsFromName = (name?: string | null) => {
   const n = (name || '').trim();
   if (!n) return '?';
   const parts = n.split(' ').filter(Boolean);
-  return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
+  return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || '?';
 };
 
 const formatIraqTime = (value?: string | null) => {
@@ -302,6 +303,96 @@ export default function WithdrawalsAdminScreen() {
     }
   };
 
+  const sendWithdrawStatusNotification = async (
+    order: WithdrawAdminItem,
+    status: 'approved' | 'rejected' | 'pending',
+    reason?: string
+  ) => {
+    const fullName = order.profiles?.full_name || 'User';
+    const email = order.profiles?.email || '';
+    const amountText = `${formatIQD(order.amount)} ${order.currency || 'IQD'}`;
+    const paymentMethod = order.payment_method?.name || 'Withdrawal Method';
+
+    let title = 'Withdrawal Update';
+    let body = `Your withdrawal request of ${amountText} has been updated.`;
+
+    if (status === 'approved') {
+      title = 'Withdrawal Approved';
+      body = `Your withdrawal request of ${amountText} via ${paymentMethod} has been approved.`;
+    } else if (status === 'rejected') {
+      title = 'Withdrawal Rejected';
+      body = reason?.trim()
+        ? `Your withdrawal request of ${amountText} was rejected. Reason: ${reason.trim()}`
+        : `Your withdrawal request of ${amountText} was rejected.`;
+    } else if (status === 'pending') {
+      title = 'Withdrawal Pending';
+      body = `Your withdrawal request of ${amountText} is now pending review.`;
+    }
+
+    const payload = {
+      user_id: order.user_id,
+      target_user_id: order.user_id,
+      recipient_user_id: order.user_id,
+      profile_id: order.user_id,
+
+      email: email || undefined,
+      recipient_email: email || undefined,
+
+      title,
+      body,
+      message: body,
+
+      type: 'withdraw_order',
+      notification_type: 'withdraw_order',
+      category: 'withdraw',
+      action: status,
+      status,
+      order_status: status,
+
+      order_id: order.id,
+      amount: Number(order.amount || 0),
+      currency: order.currency || 'IQD',
+      payment_method: paymentMethod,
+      reject_reason: reason?.trim() || null,
+      sender_name: order.sender_name || null,
+      sender_number: order.sender_number || null,
+      note: order.note || null,
+      receipt_image: order.receipt_image || null,
+
+      full_name: fullName,
+      screen: 'admin-withdrawals',
+      source: 'admin',
+      created_by: user?.id || null,
+
+      data: {
+        user_id: order.user_id,
+        email: email || null,
+        full_name: fullName,
+        order_id: order.id,
+        status,
+        order_status: status,
+        title,
+        body,
+        amount: Number(order.amount || 0),
+        currency: order.currency || 'IQD',
+        payment_method: paymentMethod,
+        reject_reason: reason?.trim() || null,
+        sender_name: order.sender_name || null,
+        sender_number: order.sender_number || null,
+        note: order.note || null,
+        receipt_image: order.receipt_image || null,
+        screen: 'admin-withdrawals',
+      },
+    };
+
+    const { data, error } = await supabase.functions.invoke(NOTIFICATION_FUNCTION, {
+      body: payload,
+    });
+
+    if (error) throw error;
+    return data;
+  };
+
   const updateWithdrawMutation = useMutation({
     mutationFn: async ({
       order,
@@ -316,6 +407,10 @@ export default function WithdrawalsAdminScreen() {
         | { ok: boolean; message?: string; data?: any }
         | undefined;
 
+      let notificationResult:
+        | { ok: boolean; message?: string; data?: any }
+        | undefined;
+
       if (status === 'approved') {
         const { error } = await supabase.rpc('admin_approve_withdraw', {
           p_withdraw_id: order.id,
@@ -324,7 +419,18 @@ export default function WithdrawalsAdminScreen() {
         if (error) throw error;
 
         emailResult = await sendWithdrawStatusEmail(order, 'approved');
-        return { status, emailResult };
+
+        try {
+          const notificationData = await sendWithdrawStatusNotification(order, 'approved');
+          notificationResult = { ok: true, data: notificationData };
+        } catch (err: any) {
+          notificationResult = {
+            ok: false,
+            message: err?.message || 'Notification function failed',
+          };
+        }
+
+        return { status, emailResult, notificationResult };
       }
 
       if (status === 'rejected') {
@@ -338,7 +444,18 @@ export default function WithdrawalsAdminScreen() {
         if (error) throw error;
 
         emailResult = await sendWithdrawStatusEmail(order, 'rejected', reason);
-        return { status, emailResult };
+
+        try {
+          const notificationData = await sendWithdrawStatusNotification(order, 'rejected', reason);
+          notificationResult = { ok: true, data: notificationData };
+        } catch (err: any) {
+          notificationResult = {
+            ok: false,
+            message: err?.message || 'Notification function failed',
+          };
+        }
+
+        return { status, emailResult, notificationResult };
       }
 
       const { error } = await supabase
@@ -351,7 +468,17 @@ export default function WithdrawalsAdminScreen() {
 
       if (error) throw error;
 
-      return { status, emailResult };
+      try {
+        const notificationData = await sendWithdrawStatusNotification(order, 'pending');
+        notificationResult = { ok: true, data: notificationData };
+      } catch (err: any) {
+        notificationResult = {
+          ok: false,
+          message: err?.message || 'Notification function failed',
+        };
+      }
+
+      return { status, emailResult, notificationResult };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['admin-withdrawals'] });
@@ -363,25 +490,62 @@ export default function WithdrawalsAdminScreen() {
       setSelectedRejectId(null);
       setRejectReason('');
 
-      if (result?.emailResult && !result.emailResult.ok) {
+      const emailFailed = result?.emailResult && !result.emailResult.ok;
+      const notificationFailed = result?.notificationResult && !result.notificationResult.ok;
+
+      if (emailFailed && notificationFailed) {
+        Alert.alert(
+          'Updated, but email and notification failed',
+          `${result.emailResult?.message || 'Email was not sent.'}\n\n${
+            result.notificationResult?.message || 'Notification was not sent.'
+          }`
+        );
+        return;
+      }
+
+      if (emailFailed) {
         Alert.alert(
           'Updated, but email failed',
-          result.emailResult.message || 'Withdrawal updated, but email was not sent.'
+          result.emailResult?.message || 'Withdrawal updated, but email was not sent.'
+        );
+        return;
+      }
+
+      if (notificationFailed) {
+        if (result?.status === 'approved') {
+          Alert.alert(
+            'Approved, but notification failed',
+            result.notificationResult?.message || 'Withdrawal approved, but notification was not sent.'
+          );
+          return;
+        }
+
+        if (result?.status === 'rejected') {
+          Alert.alert(
+            'Rejected, but notification failed',
+            result.notificationResult?.message || 'Withdrawal rejected, but notification was not sent.'
+          );
+          return;
+        }
+
+        Alert.alert(
+          'Updated, but notification failed',
+          result.notificationResult?.message || 'Withdrawal updated, but notification was not sent.'
         );
         return;
       }
 
       if (result?.status === 'approved') {
-        Alert.alert('Success', 'Withdrawal approved and wallet balance updated');
+        Alert.alert('Success', 'Withdrawal approved, wallet updated, and notification sent');
         return;
       }
 
       if (result?.status === 'rejected') {
-        Alert.alert('Success', 'Withdrawal rejected successfully');
+        Alert.alert('Success', 'Withdrawal rejected and notification sent successfully');
         return;
       }
 
-      Alert.alert('Success', `Withdrawal ${result?.status || ''} successfully`);
+      Alert.alert('Success', `Withdrawal ${result?.status || ''} updated and notification sent`);
     },
     onError: (error: any) => {
       Alert.alert('Error', error?.message || 'Something went wrong');
