@@ -49,6 +49,29 @@ interface CardLookupRow {
   category?: string | null;
 }
 
+interface AppNotificationRow {
+  id: string;
+  user_id: string;
+  title: string | null;
+  body: string | null;
+  message: string | null;
+  type: string | null;
+  notification_type: string | null;
+  category: string | null;
+  action: string | null;
+  status: string | null;
+  order_status: string | null;
+  order_id: string | null;
+  product_name: string | null;
+  purchase_mode: string | null;
+  note: string | null;
+  admin_note: string | null;
+  data: any;
+  is_read: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 const UI = {
   bg: '#EEF4FF',
   page: '#F7FAFF',
@@ -391,6 +414,91 @@ function buildDisplaySubtitle(order: NotificationOrderRow) {
   return providerStyle.label;
 }
 
+function mapNotificationRow(row: any): AppNotificationRow {
+  return {
+    id: String(row?.id || ''),
+    user_id: String(row?.user_id || ''),
+    title: row?.title ?? null,
+    body: row?.body ?? null,
+    message: row?.message ?? null,
+    type: row?.type ?? null,
+    notification_type: row?.notification_type ?? null,
+    category: row?.category ?? null,
+    action: row?.action ?? null,
+    status: row?.status ?? null,
+    order_status: row?.order_status ?? null,
+    order_id: row?.order_id ? String(row.order_id) : null,
+    product_name: row?.product_name ?? null,
+    purchase_mode: row?.purchase_mode ?? null,
+    note: row?.note ?? null,
+    admin_note: row?.admin_note ?? null,
+    data: row?.data ?? {},
+    is_read: !!row?.is_read,
+    created_at: row?.created_at ?? null,
+    updated_at: row?.updated_at ?? null,
+  };
+}
+
+function isRelevantCardNotification(notification: AppNotificationRow) {
+  const category = String(notification.category || '').toLowerCase();
+  const type = String(notification.type || '').toLowerCase();
+  const notificationType = String(notification.notification_type || '').toLowerCase();
+  const screen = String(notification?.data?.screen || '').toLowerCase();
+  const source = String(notification?.data?.source || '').toLowerCase();
+  const productName = String(notification.product_name || notification?.data?.product_name || '').toLowerCase();
+  const title = String(notification.title || '').toLowerCase();
+  const body = String(notification.body || notification.message || '').toLowerCase();
+
+  if (source === 'gift' || source === 'sim') return true;
+  if (screen.includes('gift') || screen.includes('topup')) return true;
+  if (category.includes('gift') || category.includes('topup')) return true;
+  if (type.includes('gift') || type.includes('topup')) return true;
+  if (notificationType.includes('gift') || notificationType.includes('topup')) return true;
+  if (productName.includes('gift') || productName.includes('topup')) return true;
+  if (title.includes('gift') || title.includes('top-up') || title.includes('topup')) return true;
+  if (body.includes('gift') || body.includes('top-up') || body.includes('topup')) return true;
+
+  return false;
+}
+
+function mergeOrderWithNotification(
+  order: NotificationOrderRow,
+  notification?: AppNotificationRow | null
+): NotificationOrderRow {
+  if (!notification) return order;
+
+  const data = notification.data || {};
+  const notificationStatus =
+    notification.order_status ||
+    notification.status ||
+    data?.order_status ||
+    data?.status ||
+    null;
+
+  const notificationNote =
+    notification.admin_note ||
+    notification.note ||
+    data?.admin_note ||
+    data?.note ||
+    notification.body ||
+    notification.message ||
+    null;
+
+  const notificationPin =
+    data?.pin_code ||
+    data?.delivery_pin ||
+    data?.code ||
+    null;
+
+  return {
+    ...order,
+    status: notificationStatus || order.status,
+    notes: notificationNote || order.notes,
+    pin_code: notificationPin || order.pin_code,
+    updated_at: notification.updated_at || order.updated_at,
+  };
+}
+
 async function syncSuccessfulOrdersToTransactions(orders: NotificationOrderRow[]) {
   const successOrders = orders.filter((order) => normalizeStatus(order.status) === 'success');
 
@@ -478,18 +586,21 @@ export default function NotificationsScreen() {
   const { user } = useAuth();
 
   const [orders, setOrders] = useState<NotificationOrderRow[]>([]);
+  const [appNotifications, setAppNotifications] = useState<AppNotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<OrderStatus>('all');
+  const [markingAllRead, setMarkingAllRead] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     try {
       if (!user?.id) {
         setOrders([]);
+        setAppNotifications([]);
         return;
       }
 
-      const [topupRes, giftRes] = await Promise.all([
+      const [topupRes, giftRes, notificationRes] = await Promise.all([
         supabase
           .from('topup_orders')
           .select('*')
@@ -498,6 +609,12 @@ export default function NotificationsScreen() {
 
         supabase
           .from('gift_card_orders')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+
+        supabase
+          .from('notifications')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false }),
@@ -513,6 +630,12 @@ export default function NotificationsScreen() {
       } else {
         console.log('gift_card_orders not loaded:', giftRes.error?.message);
       }
+
+      const rawNotifications: AppNotificationRow[] = notificationRes.error
+        ? []
+        : (notificationRes.data || []).map(mapNotificationRow).filter(isRelevantCardNotification);
+
+      setAppNotifications(rawNotifications);
 
       const topupCardIds = uniqueIds(rawTopupOrders.map((o) => o.item_id));
       const giftCardIds = uniqueIds(rawGiftOrders.map((o) => o.item_id));
@@ -539,6 +662,9 @@ export default function NotificationsScreen() {
       if (giftCardsRes.error) {
         console.log('gift_cards load error:', giftCardsRes.error.message);
       }
+      if (notificationRes.error) {
+        console.log('notifications load error:', notificationRes.error.message);
+      }
 
       const topupCardMap = new Map<string, CardLookupRow>();
       const giftCardMap = new Map<string, CardLookupRow>();
@@ -551,10 +677,24 @@ export default function NotificationsScreen() {
         if (item?.id) giftCardMap.set(String(item.id), item);
       });
 
+      const notificationByOrderId = new Map<string, AppNotificationRow>();
+      rawNotifications.forEach((notification) => {
+        const orderId =
+          notification.order_id ||
+          notification?.data?.order_id ||
+          notification?.data?.source_order_id ||
+          null;
+
+        if (!orderId) return;
+
+        if (!notificationByOrderId.has(String(orderId))) {
+          notificationByOrderId.set(String(orderId), notification);
+        }
+      });
+
       const topupOrders = rawTopupOrders.map((order) => {
         const card = order.item_id ? topupCardMap.get(String(order.item_id)) : null;
-
-        return {
+        const enrichedOrder = {
           ...order,
           card_title: order.card_title || card?.card_title || null,
           provider: order.provider || card?.provider || null,
@@ -572,12 +712,16 @@ export default function NotificationsScreen() {
               : null,
           image_url: order.image_url || card?.image_url || null,
         };
+
+        return mergeOrderWithNotification(
+          enrichedOrder,
+          notificationByOrderId.get(String(order.id)) || null
+        );
       });
 
       const giftOrders = rawGiftOrders.map((order) => {
         const card = order.item_id ? giftCardMap.get(String(order.item_id)) : null;
-
-        return {
+        const enrichedOrder = {
           ...order,
           card_title: order.card_title || card?.card_title || card?.title || null,
           provider: order.provider || card?.provider || card?.brand || card?.category || null,
@@ -597,11 +741,16 @@ export default function NotificationsScreen() {
               : null,
           image_url: order.image_url || card?.image_url || null,
         };
+
+        return mergeOrderWithNotification(
+          enrichedOrder,
+          notificationByOrderId.get(String(order.id)) || null
+        );
       });
 
       const merged = [...topupOrders, ...giftOrders].sort((a, b) => {
-        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+        const aTime = a.updated_at || a.created_at ? new Date(a.updated_at || a.created_at || '').getTime() : 0;
+        const bTime = b.updated_at || b.created_at ? new Date(b.updated_at || b.created_at || '').getTime() : 0;
         return bTime - aTime;
       });
 
@@ -623,10 +772,67 @@ export default function NotificationsScreen() {
     fetchOrders();
   }, [fetchOrders]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`user-notifications-cards-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          fetchOrders();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'topup_orders',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          fetchOrders();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'gift_card_orders',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, fetchOrders]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchOrders();
   };
+
+  const unreadRelevantNotificationsCount = useMemo(() => {
+    return appNotifications.filter((item) => !item.is_read).length;
+  }, [appNotifications]);
+
+  const latestUnreadNotificationTime = useMemo(() => {
+    const firstUnread = appNotifications.find((item) => !item.is_read);
+    return firstUnread?.created_at || null;
+  }, [appNotifications]);
 
   const counts = useMemo(() => {
     const result = {
@@ -699,6 +905,26 @@ export default function NotificationsScreen() {
     );
   };
 
+  const handleMarkAllAsRead = async () => {
+    try {
+      if (!appNotifications.some((item) => !item.is_read)) return;
+
+      setMarkingAllRead(true);
+      const { error } = await supabase.rpc('mark_all_notifications_read');
+
+      if (error) throw error;
+
+      await fetchOrders();
+    } catch (error: any) {
+      Alert.alert(
+        tSafe('common.error', 'Error'),
+        error?.message || tSafe('notifications.markReadFailed', 'Could not mark notifications as read.')
+      );
+    } finally {
+      setMarkingAllRead(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -750,6 +976,53 @@ export default function NotificationsScreen() {
           </Text>
         </View>
 
+        <View style={styles.notificationSummaryCard}>
+          <View style={styles.notificationSummaryTop}>
+            <View style={styles.notificationSummaryLeft}>
+              <View style={styles.notificationSummaryIcon}>
+                <Ionicons name="notifications-outline" size={18} color={UI.blueDark} />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notificationSummaryTitle}>
+                  {tSafe('notifications.liveUpdates', 'Live updates')}
+                </Text>
+                <Text style={styles.notificationSummaryText}>
+                  {unreadRelevantNotificationsCount > 0
+                    ? `${unreadRelevantNotificationsCount} ${tSafe('notifications.unreadUpdates', 'unread updates')}`
+                    : tSafe('notifications.noUnreadUpdates', 'No unread updates')}
+                </Text>
+                {!!latestUnreadNotificationTime && unreadRelevantNotificationsCount > 0 && (
+                  <Text style={styles.notificationSummaryTime}>
+                    {formatDate(latestUnreadNotificationTime)}
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.markReadBtn,
+                (markingAllRead || unreadRelevantNotificationsCount === 0) && { opacity: 0.6 },
+              ]}
+              activeOpacity={0.9}
+              disabled={markingAllRead || unreadRelevantNotificationsCount === 0}
+              onPress={handleMarkAllAsRead}
+            >
+              {markingAllRead ? (
+                <ActivityIndicator size="small" color={UI.blueDark} />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-done-outline" size={15} color={UI.blueDark} />
+                  <Text style={styles.markReadBtnText}>
+                    {tSafe('notifications.markAllRead', 'Mark all read')}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -786,6 +1059,23 @@ export default function NotificationsScreen() {
               const parsedInfo = parseOrderExtraInfo(order.notes);
               const adminOnlyNote = removeSubmittedInfoFromNotes(order.notes);
 
+              const relatedNotification = appNotifications.find((item) => {
+                const orderId =
+                  item.order_id ||
+                  item?.data?.order_id ||
+                  item?.data?.source_order_id ||
+                  null;
+
+                return String(orderId || '') === String(order.id);
+              });
+
+              const relatedNotificationText =
+                relatedNotification?.body ||
+                relatedNotification?.message ||
+                relatedNotification?.admin_note ||
+                relatedNotification?.note ||
+                '';
+
               return (
                 <View key={`${order.source}-${order.id}`} style={styles.orderCard}>
                   <View style={styles.orderTopRow}>
@@ -806,6 +1096,15 @@ export default function NotificationsScreen() {
                           {provider.label}
                         </Text>
                       </View>
+
+                      {!!relatedNotification && !relatedNotification.is_read && (
+                        <View style={styles.unreadPill}>
+                          <Ionicons name="ellipse" size={8} color={UI.blueDark} />
+                          <Text style={styles.unreadPillText}>
+                            {tSafe('notifications.newUpdate', 'New update')}
+                          </Text>
+                        </View>
+                      )}
                     </View>
 
                     <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
@@ -846,6 +1145,25 @@ export default function NotificationsScreen() {
                       <Text style={styles.infoValueSmall}>{formatDate(order.created_at)}</Text>
                     </View>
                   </View>
+
+                  {!!relatedNotification && !!relatedNotificationText && (
+                    <View style={styles.updateCard}>
+                      <View style={styles.updateCardTop}>
+                        <Text style={styles.updateCardTitle}>
+                          {relatedNotification.title ||
+                            tSafe('notifications.latestUpdate', 'Latest update')}
+                        </Text>
+
+                        {!!relatedNotification.created_at && (
+                          <Text style={styles.updateCardTime}>
+                            {formatDate(relatedNotification.created_at)}
+                          </Text>
+                        )}
+                      </View>
+
+                      <Text style={styles.updateCardText}>{relatedNotificationText}</Text>
+                    </View>
+                  )}
 
                   <View style={styles.deliveryCard}>
                     <View style={styles.deliveryTop}>
@@ -1060,6 +1378,71 @@ const styles = StyleSheet.create({
     color: UI.text2,
   },
 
+  notificationSummaryCard: {
+    borderRadius: 20,
+    backgroundColor: UI.white,
+    borderWidth: 1,
+    borderColor: UI.border,
+    padding: 14,
+    marginBottom: 14,
+    ...SHADOWS.soft,
+  },
+  notificationSummaryTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  notificationSummaryLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  notificationSummaryIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: UI.blueSoft,
+    borderWidth: 1,
+    borderColor: UI.blueSoft2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationSummaryTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: UI.text,
+  },
+  notificationSummaryText: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '800',
+    color: UI.text2,
+  },
+  notificationSummaryTime: {
+    marginTop: 3,
+    fontSize: 11,
+    fontWeight: '700',
+    color: UI.text3,
+  },
+  markReadBtn: {
+    minHeight: 40,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: UI.blueSoft,
+    borderWidth: 1,
+    borderColor: UI.blueSoft2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  markReadBtnText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: UI.blueDark,
+  },
+
   tabsRow: {
     paddingBottom: 4,
     paddingRight: 8,
@@ -1180,6 +1563,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
+  unreadPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: UI.blueSoft,
+    borderWidth: 1,
+    borderColor: UI.blueSoft2,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  unreadPillText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: UI.blueDark,
+  },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1239,6 +1638,38 @@ const styles = StyleSheet.create({
   },
   infoValueSmall: {
     fontSize: 12,
+    color: UI.text,
+    fontWeight: '800',
+  },
+
+  updateCard: {
+    marginBottom: 12,
+    borderRadius: 16,
+    backgroundColor: UI.blueSoft,
+    borderWidth: 1,
+    borderColor: UI.blueSoft2,
+    padding: 12,
+  },
+  updateCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 6,
+  },
+  updateCardTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '900',
+    color: UI.blueDark,
+  },
+  updateCardTime: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: UI.text2,
+  },
+  updateCardText: {
+    fontSize: 13,
+    lineHeight: 20,
     color: UI.text,
     fontWeight: '800',
   },
