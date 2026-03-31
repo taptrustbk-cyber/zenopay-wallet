@@ -48,6 +48,8 @@ type GiftCardOrder = {
 
 type FilterStatus = 'all' | 'pending' | 'success' | 'cancelled';
 
+const NOTIFICATION_FUNCTION = 'send-notification';
+
 function formatIQD(value?: number | null) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
@@ -231,6 +233,17 @@ export default function AdminGiftCardOrdersScreen() {
 
   useEffect(() => {
     fetchOrders();
+
+    const channel = supabase
+      .channel('admin-gift-card-orders-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'gift_card_orders' }, () => {
+        fetchOrders();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const onRefresh = async () => {
@@ -319,6 +332,99 @@ export default function AdminGiftCardOrdersScreen() {
     }
   };
 
+  const sendStatusNotification = async (
+    order: GiftCardOrder,
+    status: 'pending' | 'success' | 'cancelled',
+    pinCode: string,
+    note: string
+  ) => {
+    const giftTitle = buildGiftDisplayTitle(order);
+
+    let title = 'Gift Card Order Update';
+    let body =
+      `Your gift card order for ${giftTitle} has been updated.`;
+
+    if (status === 'success') {
+      title = 'Gift Card Order Approved';
+      body = pinCode
+        ? `Your gift card order for ${giftTitle} has been approved. Your PIN code is ready.`
+        : `Your gift card order for ${giftTitle} has been approved.`;
+    } else if (status === 'cancelled') {
+      title = 'Gift Card Order Cancelled';
+      body = `Your gift card order for ${giftTitle} has been cancelled. If applicable, your wallet refund has been processed.`;
+    } else if (status === 'pending') {
+      title = 'Gift Card Order Pending';
+      body = `Your gift card order for ${giftTitle} is currently pending review.`;
+    }
+
+    const payload = {
+      user_id: order.user_id,
+      target_user_id: order.user_id,
+      recipient_user_id: order.user_id,
+      profile_id: order.user_id,
+
+      email: order.user_email || undefined,
+      recipient_email: order.user_email || undefined,
+
+      title,
+      body,
+      message: body,
+
+      type: 'gift_card_order',
+      notification_type: 'gift_card_order',
+      category: 'gift_card',
+      action: status,
+      status,
+      order_status: status,
+
+      order_id: order.id,
+      card_title: order.card_title || null,
+      provider: order.provider || null,
+      amount: order.amount ?? null,
+      amount_iqd: order.amount_iqd ?? null,
+      price_usd: order.price_usd ?? null,
+      price_iqd: order.price_iqd ?? null,
+      pin_code: pinCode || null,
+      note: note || null,
+      image_url: order.image_url || null,
+
+      full_name: order.user_name || 'Customer',
+      screen: 'admin-gift-card-orders',
+      source: 'admin',
+
+      data: {
+        user_id: order.user_id,
+        email: order.user_email || null,
+        order_id: order.id,
+        status,
+        order_status: status,
+        title,
+        body,
+        card_title: order.card_title || null,
+        provider: order.provider || null,
+        amount: order.amount ?? null,
+        amount_iqd: order.amount_iqd ?? null,
+        price_usd: order.price_usd ?? null,
+        price_iqd: order.price_iqd ?? null,
+        pin_code: pinCode || null,
+        note: note || null,
+        image_url: order.image_url || null,
+        full_name: order.user_name || 'Customer',
+        screen: 'admin-gift-card-orders',
+      },
+    };
+
+    const { data, error } = await supabase.functions.invoke(NOTIFICATION_FUNCTION, {
+      body: payload,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  };
+
   const handleSave = async (order: GiftCardOrder) => {
     try {
       const draft = editState[order.id];
@@ -326,8 +432,10 @@ export default function AdminGiftCardOrdersScreen() {
 
       const nextStatus = normalizeStatus(draft.status);
       const oldStatus = normalizeStatus(order.status);
+      const trimmedPinCode = draft.pin_code.trim();
+      const trimmedNotes = draft.notes.trim();
 
-      if (nextStatus === 'success' && !draft.pin_code.trim()) {
+      if (nextStatus === 'success' && !trimmedPinCode) {
         Alert.alert('Error', 'PIN code is required when status is success.');
         return;
       }
@@ -337,22 +445,60 @@ export default function AdminGiftCardOrdersScreen() {
       const { error } = await supabase.rpc('admin_process_gift_card_order', {
         p_order_id: order.id,
         p_status: nextStatus,
-        p_pin_code: draft.pin_code.trim() || null,
-        p_notes: draft.notes.trim() || null,
+        p_pin_code: trimmedPinCode || null,
+        p_notes: trimmedNotes || null,
       });
 
       if (error) throw error;
 
-      await sendStatusEmail(order, nextStatus, draft.pin_code.trim(), draft.notes.trim());
+      await sendStatusEmail(order, nextStatus, trimmedPinCode, trimmedNotes);
+
+      let notificationSent = false;
+      let notificationError = '';
+
+      try {
+        await sendStatusNotification(order, nextStatus, trimmedPinCode, trimmedNotes);
+        notificationSent = true;
+      } catch (notifyError: any) {
+        notificationError = notifyError?.message || 'Notification function failed';
+        console.log('send-notification invoke error:', notificationError);
+      }
 
       await fetchOrders();
 
       if (oldStatus !== nextStatus && nextStatus === 'cancelled') {
-        Alert.alert('Success', 'Order cancelled and wallet refunded successfully.');
+        if (notificationSent) {
+          Alert.alert('Success', 'Order cancelled, wallet refunded successfully, and notification sent.');
+        } else if (notificationError) {
+          Alert.alert(
+            'Updated',
+            `Order cancelled and wallet refunded successfully, but notification failed.\n\n${notificationError}`
+          );
+        } else {
+          Alert.alert('Success', 'Order cancelled and wallet refunded successfully.');
+        }
       } else if (oldStatus !== nextStatus && nextStatus === 'success') {
-        Alert.alert('Success', 'Order approved, transaction created, and email sent.');
+        if (notificationSent) {
+          Alert.alert('Success', 'Order approved, transaction created, email sent, and notification sent.');
+        } else if (notificationError) {
+          Alert.alert(
+            'Updated',
+            `Order approved, transaction created, and email sent, but notification failed.\n\n${notificationError}`
+          );
+        } else {
+          Alert.alert('Success', 'Order approved, transaction created, and email sent.');
+        }
       } else {
-        Alert.alert('Success', 'Gift card order updated successfully.');
+        if (notificationSent) {
+          Alert.alert('Success', 'Gift card order updated successfully and notification sent.');
+        } else if (notificationError) {
+          Alert.alert(
+            'Updated',
+            `Gift card order updated successfully, but notification failed.\n\n${notificationError}`
+          );
+        } else {
+          Alert.alert('Success', 'Gift card order updated successfully.');
+        }
       }
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Could not update gift card order.');
