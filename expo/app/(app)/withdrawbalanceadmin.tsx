@@ -43,6 +43,7 @@ export const options = { headerShown: false };
 
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 const AVATAR_BUCKET = 'avatars';
+const NOTIFICATION_FUNCTION = 'send-notification';
 
 const UI = {
   bg: '#F4F7FB',
@@ -206,15 +207,102 @@ export default function WithdrawBalanceAdminScreen() {
     enabled: isAdmin,
   });
 
+  const sendWithdrawBalanceNotification = async ({
+    targetUserId,
+    email,
+    fullName,
+    amount,
+    oldBalance,
+    newBalance,
+    note,
+  }: {
+    targetUserId: string;
+    email?: string;
+    fullName?: string;
+    amount: number;
+    oldBalance: number;
+    newBalance: number;
+    note?: string;
+  }) => {
+    const cleanName = (fullName || '').trim() || 'User';
+    const cleanEmail = (email || '').trim();
+
+    const title = 'Balance Withdrawn';
+    const body = `An amount of ${formatIQD(amount)} IQD was withdrawn from your wallet. Your new balance is ${formatIQD(newBalance)} IQD.`;
+
+    const payload = {
+      user_id: targetUserId,
+      target_user_id: targetUserId,
+      recipient_user_id: targetUserId,
+      profile_id: targetUserId,
+
+      email: cleanEmail || undefined,
+      recipient_email: cleanEmail || undefined,
+
+      title,
+      body,
+      message: body,
+
+      type: 'admin_balance_withdraw',
+      notification_type: 'admin_balance_withdraw',
+      category: 'admin_balance',
+      action: 'withdraw',
+      status: 'completed',
+
+      amount_iqd: Number(amount),
+      old_balance_iqd: Number(oldBalance),
+      new_balance_iqd: Number(newBalance),
+      note: note || null,
+      admin_note: note || null,
+
+      full_name: cleanName,
+      source: 'withdrawbalanceadmin',
+      screen: 'withdrawbalanceadmin',
+      created_by: user?.id || null,
+
+      data: {
+        user_id: targetUserId,
+        email: cleanEmail || null,
+        full_name: cleanName,
+        title,
+        body,
+        type: 'admin_balance_withdraw',
+        category: 'admin_balance',
+        action: 'withdraw',
+        status: 'completed',
+        amount_iqd: Number(amount),
+        old_balance_iqd: Number(oldBalance),
+        new_balance_iqd: Number(newBalance),
+        note: note || null,
+        admin_note: note || null,
+        admin_email: user?.email || '',
+        admin_user_id: user?.id || '',
+        source: 'withdrawbalanceadmin',
+        screen: 'withdrawbalanceadmin',
+      },
+    };
+
+    const { data, error } = await supabase.functions.invoke(NOTIFICATION_FUNCTION, {
+      body: payload,
+    });
+
+    if (error) throw error;
+    return data;
+  };
+
   const withdrawBalanceMutation = useMutation({
     mutationFn: async ({
       userId,
       amount,
       note,
+      selectedUserEmail,
+      selectedUserName,
     }: {
       userId: string;
       amount: number;
       note: string;
+      selectedUserEmail: string;
+      selectedUserName: string;
     }) => {
       const trimmedNote = String(note || '').trim();
 
@@ -288,16 +376,48 @@ export default function WithdrawBalanceAdminScreen() {
         throw new Error(txError.message || 'Wallet updated, but transaction insert failed');
       }
 
-      return { success: true };
+      let notificationSent = false;
+      let notificationError = '';
+
+      try {
+        await sendWithdrawBalanceNotification({
+          targetUserId: userId,
+          email: selectedUserEmail !== 'N/A' ? selectedUserEmail : '',
+          fullName: selectedUserName,
+          amount: Number(amount),
+          oldBalance: currentBalance,
+          newBalance,
+          note: trimmedNote,
+        });
+        notificationSent = true;
+      } catch (err: any) {
+        notificationError = err?.message || 'Notification function failed';
+        console.log('send-notification invoke error:', notificationError);
+      }
+
+      return {
+        success: true,
+        notificationSent,
+        notificationError,
+      };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['admin-users-withdraw-balance-v2'] });
       queryClient.invalidateQueries({ queryKey: ['transactions-rich-final-v5'] });
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
 
       resetModalState();
 
-      Alert.alert('Success', 'Balance withdrawn successfully and transaction created.');
+      if (result?.notificationSent) {
+        Alert.alert('Success', 'Balance withdrawn successfully, transaction created, and notification sent.');
+      } else if (result?.notificationError) {
+        Alert.alert(
+          'Updated',
+          `Balance withdrawn successfully and transaction created, but notification failed.\n\n${result.notificationError}`
+        );
+      } else {
+        Alert.alert('Success', 'Balance withdrawn successfully and transaction created.');
+      }
     },
     onError: (error: any) => {
       Alert.alert('Error', error.message || 'Failed to withdraw balance');
@@ -689,6 +809,8 @@ export default function WithdrawBalanceAdminScreen() {
                           userId: selectedUserId,
                           amount,
                           note: noteToWithdraw,
+                          selectedUserEmail,
+                          selectedUserName,
                         });
                       }}
                       disabled={withdrawBalanceMutation.isPending}
