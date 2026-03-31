@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -40,15 +40,13 @@ import {
   Ban,
   Mail,
   Boxes,
-  Tag,
-  BadgeDollarSign,
-  Layers3,
 } from 'lucide-react-native';
 
 export const options = { headerShown: false };
 
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 const PRODUCT_IMAGES_BUCKET = 'product-images';
+const NOTIFICATION_FUNCTION = 'send-notification';
 
 const UI = {
   bg: '#F6F8FB',
@@ -617,6 +615,226 @@ export default function MobileProductsAdminScreen() {
     setReviewAction('approved');
   };
 
+  const fetchSingleShopOrder = async (orderId: string) => {
+    const { data, error } = await supabase
+      .from('shop_orders')
+      .select('*')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
+  };
+
+  const sendOrderStatusNotification = async ({
+    order,
+    action,
+    message,
+  }: {
+    order: any;
+    action: ReviewAction;
+    message: string;
+  }) => {
+    const targetUserId = orderUserId(order);
+    if (!targetUserId) return;
+
+    const profile = order?.profile || null;
+    const email = order?.customer_email || profile?.email || '';
+    const fullName = order?.customer_full_name || profile?.full_name || 'Customer';
+    const productName = order?.product_name || orderProductName(order);
+    const purchaseMode = orderPurchaseMode(order);
+    const paidNow = Number(orderPaidNow(order) || 0);
+    const remainingAmount = action === 'rejected' ? 0 : Number(orderRemaining(order) || 0);
+
+    const title = action === 'approved' ? 'Order Approved' : 'Order Rejected';
+    const body =
+      action === 'approved'
+        ? `Your order for ${productName} has been approved.`
+        : `Your order for ${productName} has been rejected and your paid amount has been refunded to your wallet.`;
+
+    const payload = {
+      user_id: targetUserId,
+      target_user_id: targetUserId,
+      recipient_user_id: targetUserId,
+      profile_id: targetUserId,
+
+      email: email || undefined,
+      recipient_email: email || undefined,
+
+      title,
+      body,
+      message: body,
+
+      type: 'shop_order_review',
+      notification_type: 'shop_order_review',
+      category: 'shop_order',
+      action,
+      status: action,
+      order_status: action,
+
+      order_id: order?.id || null,
+      product_id: orderProductId(order),
+      product_name: productName,
+      purchase_mode: purchaseMode,
+      paid_now_iqd: paidNow,
+      remaining_amount_iqd: remainingAmount,
+      admin_note: message.trim() || null,
+      note: message.trim() || null,
+
+      full_name: fullName,
+      source: 'admin',
+      screen: 'mobileproductsadmin',
+      created_by: user?.id || null,
+
+      data: {
+        user_id: targetUserId,
+        email: email || null,
+        full_name: fullName,
+        order_id: order?.id || null,
+        product_id: orderProductId(order),
+        product_name: productName,
+        purchase_mode: purchaseMode,
+        paid_now_iqd: paidNow,
+        remaining_amount_iqd: remainingAmount,
+        admin_note: message.trim() || null,
+        note: message.trim() || null,
+        action,
+        status: action,
+        order_status: action,
+        title,
+        body,
+        screen: 'mobileproductsadmin',
+      },
+    };
+
+    const { data, error } = await supabase.functions.invoke(NOTIFICATION_FUNCTION, {
+      body: payload,
+    });
+
+    if (error) throw error;
+    return data;
+  };
+
+  const sendAdminNewOrderNotification = async (order: any) => {
+    if (!user?.id) return;
+
+    const targetUserId = user.id;
+    const profile = profilesMap[orderUserId(order)] || null;
+    const fullName = order?.customer_full_name || profile?.full_name || 'Customer';
+    const productName = order?.product_name || orderProductName(order);
+    const purchaseMode = orderPurchaseMode(order);
+    const totalPrice = Number(orderTotal(order) || 0);
+    const paidNow = Number(orderPaidNow(order) || 0);
+
+    const title = 'New Shop Order';
+    const body = `${fullName} placed a new ${purchaseMode} order for ${productName}.`;
+
+    const payload = {
+      user_id: targetUserId,
+      target_user_id: targetUserId,
+      recipient_user_id: targetUserId,
+      profile_id: targetUserId,
+
+      email: user.email || undefined,
+      recipient_email: user.email || undefined,
+
+      title,
+      body,
+      message: body,
+
+      type: 'admin_shop_order_new',
+      notification_type: 'admin_shop_order_new',
+      category: 'admin_shop_order',
+      action: 'created',
+      status: orderAdminStatus(order) || orderStatus(order) || 'pending',
+      order_status: orderAdminStatus(order) || orderStatus(order) || 'pending',
+
+      order_id: order?.id || null,
+      product_id: orderProductId(order),
+      product_name: productName,
+      purchase_mode: purchaseMode,
+      total_price_iqd: totalPrice,
+      paid_now_iqd: paidNow,
+
+      full_name: fullName,
+      source: 'admin',
+      screen: 'mobileproductsadmin',
+      created_by: orderUserId(order) || null,
+
+      data: {
+        order_id: order?.id || null,
+        product_id: orderProductId(order),
+        user_id: orderUserId(order),
+        full_name: fullName,
+        product_name: productName,
+        purchase_mode: purchaseMode,
+        total_price_iqd: totalPrice,
+        paid_now_iqd: paidNow,
+        status: orderAdminStatus(order) || orderStatus(order) || 'pending',
+        order_status: orderAdminStatus(order) || orderStatus(order) || 'pending',
+        title,
+        body,
+        screen: 'mobileproductsadmin',
+      },
+    };
+
+    const { error } = await supabase.functions.invoke(NOTIFICATION_FUNCTION, {
+      body: payload,
+    });
+
+    if (error) throw error;
+  };
+
+  useEffect(() => {
+    if (!isAdmin || !user?.id) return;
+
+    const channel = supabase
+      .channel('admin-shop-orders-realtime-page')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'shop_orders' },
+        async (payload) => {
+          try {
+            const orderId = String(payload.new?.id || '');
+            if (!orderId) {
+              await queryClient.invalidateQueries({ queryKey: ['admin-shop-orders-all'] });
+              return;
+            }
+
+            const freshOrder = await fetchSingleShopOrder(orderId);
+
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: ['admin-shop-orders-all'] }),
+              queryClient.invalidateQueries({ queryKey: ['admin-shop-order-profiles'] }),
+            ]);
+
+            if (freshOrder) {
+              try {
+                await sendAdminNewOrderNotification(freshOrder);
+              } catch (notifyError: any) {
+                console.log('admin new shop order notification error:', notifyError?.message || notifyError);
+              }
+
+              Alert.alert(
+                'New Shop Order',
+                `${freshOrder?.customer_full_name || 'Customer'} ordered ${freshOrder?.product_name || orderProductName(freshOrder)}.`
+              );
+            } else {
+              Alert.alert('New Shop Order', 'A new shop order has been submitted.');
+            }
+          } catch (err: any) {
+            console.log('shop order realtime handler error:', err?.message || err);
+            await queryClient.invalidateQueries({ queryKey: ['admin-shop-orders-all'] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAdmin, user?.id, user?.email, queryClient, profilesMap]);
+
   const pickAndUploadImage = async () => {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -847,9 +1065,25 @@ export default function MobileProductsAdminScreen() {
         }
       }
 
+      let notificationSent = false;
+      let notificationError = '';
+
+      try {
+        await sendOrderStatusNotification({
+          order,
+          action,
+          message,
+        });
+        notificationSent = true;
+      } catch (notifyError: any) {
+        notificationError = notifyError?.message || 'Notification function failed';
+      }
+
       return {
         action,
         reviewData,
+        notificationSent,
+        notificationError,
       };
     },
     onSuccess: async (result) => {
@@ -870,12 +1104,30 @@ export default function MobileProductsAdminScreen() {
         }, 1500);
       }
 
-      Alert.alert(
-        'Success',
-        result.action === 'approved'
-          ? 'Order approved successfully'
-          : 'Order rejected and refunded successfully'
-      );
+      if (result?.notificationSent) {
+        Alert.alert(
+          'Success',
+          result.action === 'approved'
+            ? 'Order approved successfully and notification sent'
+            : 'Order rejected, refunded successfully, and notification sent'
+        );
+      } else if (result?.notificationError) {
+        Alert.alert(
+          'Updated',
+          `${
+            result.action === 'approved'
+              ? 'Order approved successfully'
+              : 'Order rejected and refunded successfully'
+          }, but notification failed.\n\n${result.notificationError}`
+        );
+      } else {
+        Alert.alert(
+          'Success',
+          result.action === 'approved'
+            ? 'Order approved successfully'
+            : 'Order rejected and refunded successfully'
+        );
+      }
     },
     onError: (error: any) => {
       Alert.alert('Error', error?.message || 'Failed to review order');
