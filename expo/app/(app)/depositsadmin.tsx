@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -39,6 +39,7 @@ export const options = { headerShown: false };
 
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 const AVATAR_BUCKET = 'avatars';
+const NOTIFICATION_FUNCTION = 'send-notification';
 
 const UI = {
   bg: '#F8FAFC',
@@ -111,7 +112,7 @@ const initialsFromName = (name?: string | null) => {
   const n = (name || '').trim();
   if (!n) return '?';
   const parts = n.split(' ').filter(Boolean);
-  return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
+  return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || '?';
 };
 
 const formatIraqTime = (value?: string | null) => {
@@ -227,6 +228,47 @@ export default function DepositsAdminScreen() {
     };
   }, [depositsQuery.data]);
 
+  const fetchSingleDepositOrder = async (depositId: string) => {
+    const { data, error } = await supabase
+      .from('deposit_orders')
+      .select(`
+        id,
+        user_id,
+        amount,
+        currency,
+        status,
+        reject_reason,
+        created_at,
+        sender_name,
+        sender_number,
+        note,
+        receipt_image,
+        payment_method_id,
+        profiles!user_id(
+          id,
+          email,
+          full_name,
+          avatar_url,
+          city,
+          country
+        ),
+        payment_method:payment_methods(
+          id,
+          name,
+          account_name,
+          account_number,
+          logo_url,
+          qr_image,
+          instructions
+        )
+      `)
+      .eq('id', depositId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return (data || null) as DepositAdminItem | null;
+  };
+
   const sendDepositStatusEmail = async (
     order: DepositAdminItem,
     status: 'approved' | 'rejected' | 'pending',
@@ -298,6 +340,219 @@ export default function DepositsAdminScreen() {
     }
   };
 
+  const sendDepositStatusNotification = async (
+    order: DepositAdminItem,
+    status: 'approved' | 'rejected' | 'pending',
+    reason?: string
+  ) => {
+    const userEmail = order?.profiles?.email || '';
+    const userName = order?.profiles?.full_name || 'User';
+    const paymentMethod = order?.payment_method?.name || 'Deposit Method';
+    const amountText = `${formatIQD(order.amount)} ${order.currency || 'IQD'}`;
+
+    let title = 'Deposit Update';
+    let body = `Your deposit request of ${amountText} has been updated.`;
+
+    if (status === 'approved') {
+      title = 'Deposit Approved';
+      body = `Your deposit request of ${amountText} via ${paymentMethod} has been approved and added to your wallet.`;
+    } else if (status === 'rejected') {
+      title = 'Deposit Rejected';
+      body = reason?.trim()
+        ? `Your deposit request of ${amountText} was rejected. Reason: ${reason.trim()}`
+        : `Your deposit request of ${amountText} was rejected.`;
+    } else if (status === 'pending') {
+      title = 'Deposit Pending';
+      body = `Your deposit request of ${amountText} is now pending review.`;
+    }
+
+    const payload = {
+      user_id: order.user_id,
+      target_user_id: order.user_id,
+      recipient_user_id: order.user_id,
+      profile_id: order.user_id,
+
+      email: userEmail || undefined,
+      recipient_email: userEmail || undefined,
+
+      title,
+      body,
+      message: body,
+
+      type: 'deposit_order',
+      notification_type: 'deposit_order',
+      category: 'deposit',
+      action: status,
+      status,
+      order_status: status,
+
+      order_id: order.id,
+      amount: Number(order.amount || 0),
+      currency: order.currency || 'IQD',
+      payment_method: paymentMethod,
+      reject_reason: reason?.trim() || null,
+      sender_name: order.sender_name || null,
+      sender_number: order.sender_number || null,
+      note: order.note || null,
+      receipt_image: order.receipt_image || null,
+
+      full_name: userName,
+      source: 'admin',
+      screen: 'admin-deposits',
+      created_by: user?.id || null,
+
+      data: {
+        user_id: order.user_id,
+        email: userEmail || null,
+        full_name: userName,
+        order_id: order.id,
+        status,
+        order_status: status,
+        title,
+        body,
+        amount: Number(order.amount || 0),
+        currency: order.currency || 'IQD',
+        payment_method: paymentMethod,
+        reject_reason: reason?.trim() || null,
+        sender_name: order.sender_name || null,
+        sender_number: order.sender_number || null,
+        note: order.note || null,
+        receipt_image: order.receipt_image || null,
+        screen: 'admin-deposits',
+      },
+    };
+
+    const { data, error } = await supabase.functions.invoke(NOTIFICATION_FUNCTION, {
+      body: payload,
+    });
+
+    if (error) throw error;
+    return data;
+  };
+
+  const sendAdminNewDepositNotification = async (order: DepositAdminItem) => {
+    if (!user?.id) return;
+
+    const userName = order?.profiles?.full_name || order?.sender_name || 'User';
+    const paymentMethod = order?.payment_method?.name || 'Deposit Method';
+    const amountText = `${formatIQD(order.amount)} ${order.currency || 'IQD'}`;
+
+    const title = 'New Deposit Request';
+    const body = `${userName} submitted a new deposit request for ${amountText} via ${paymentMethod}.`;
+
+    const payload = {
+      user_id: user.id,
+      target_user_id: user.id,
+      recipient_user_id: user.id,
+      profile_id: user.id,
+
+      email: user.email || undefined,
+      recipient_email: user.email || undefined,
+
+      title,
+      body,
+      message: body,
+
+      type: 'admin_deposit_new',
+      notification_type: 'admin_deposit_new',
+      category: 'admin_deposit',
+      action: 'created',
+      status: order.status || 'pending',
+      order_status: order.status || 'pending',
+
+      order_id: order.id,
+      amount: Number(order.amount || 0),
+      currency: order.currency || 'IQD',
+      payment_method: paymentMethod,
+      sender_name: order.sender_name || null,
+      sender_number: order.sender_number || null,
+      note: order.note || null,
+      receipt_image: order.receipt_image || null,
+
+      full_name: userName,
+      source: 'admin',
+      screen: 'admin-deposits',
+      created_by: order.user_id || null,
+
+      data: {
+        deposit_id: order.id,
+        order_id: order.id,
+        user_id: order.user_id,
+        full_name: userName,
+        sender_name: order.sender_name || null,
+        sender_number: order.sender_number || null,
+        amount: Number(order.amount || 0),
+        currency: order.currency || 'IQD',
+        payment_method: paymentMethod,
+        note: order.note || null,
+        receipt_image: order.receipt_image || null,
+        status: order.status || 'pending',
+        title,
+        body,
+        screen: 'admin-deposits',
+      },
+    };
+
+    const { error } = await supabase.functions.invoke(NOTIFICATION_FUNCTION, {
+      body: payload,
+    });
+
+    if (error) throw error;
+  };
+
+  useEffect(() => {
+    if (!isAdmin || !user?.id) return;
+
+    const channel = supabase
+      .channel('admin-deposits-realtime-page')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'deposit_orders' },
+        async (payload) => {
+          try {
+            const depositId = String(payload.new?.id || '');
+            if (!depositId) {
+              queryClient.invalidateQueries({ queryKey: ['admin-deposits'] });
+              return;
+            }
+
+            const fullOrder = await fetchSingleDepositOrder(depositId);
+
+            queryClient.invalidateQueries({ queryKey: ['admin-deposits'] });
+            queryClient.invalidateQueries({ queryKey: ['deposit_orders'] });
+
+            if (fullOrder) {
+              try {
+                await sendAdminNewDepositNotification(fullOrder);
+              } catch (notifyError: any) {
+                console.log(
+                  'admin new deposit notification error:',
+                  notifyError?.message || notifyError
+                );
+              }
+
+              Alert.alert(
+                'New Deposit Request',
+                `${fullOrder.profiles?.full_name || fullOrder.sender_name || 'User'} submitted ${formatIQD(
+                  fullOrder.amount
+                )} ${fullOrder.currency || 'IQD'}.`
+              );
+            } else {
+              Alert.alert('New Deposit Request', 'A new deposit request has been submitted.');
+            }
+          } catch (err: any) {
+            console.log('deposit realtime handler error:', err?.message || err);
+            queryClient.invalidateQueries({ queryKey: ['admin-deposits'] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAdmin, user?.id, user?.email, queryClient]);
+
   const updateDepositMutation = useMutation({
     mutationFn: async ({
       order,
@@ -312,6 +567,10 @@ export default function DepositsAdminScreen() {
         | { ok: boolean; message?: string; data?: any }
         | undefined;
 
+      let notificationResult:
+        | { ok: boolean; message?: string; data?: any }
+        | undefined;
+
       if (status === 'approved') {
         const { error } = await supabase.rpc('admin_approve_deposit', {
           p_deposit_id: order.id,
@@ -320,7 +579,18 @@ export default function DepositsAdminScreen() {
         if (error) throw error;
 
         emailResult = await sendDepositStatusEmail(order, 'approved');
-        return { status, emailResult };
+
+        try {
+          const notificationData = await sendDepositStatusNotification(order, 'approved');
+          notificationResult = { ok: true, data: notificationData };
+        } catch (err: any) {
+          notificationResult = {
+            ok: false,
+            message: err?.message || 'Notification function failed',
+          };
+        }
+
+        return { status, emailResult, notificationResult };
       }
 
       if (status === 'rejected') {
@@ -334,7 +604,18 @@ export default function DepositsAdminScreen() {
         if (error) throw error;
 
         emailResult = await sendDepositStatusEmail(order, 'rejected', reason);
-        return { status, emailResult };
+
+        try {
+          const notificationData = await sendDepositStatusNotification(order, 'rejected', reason);
+          notificationResult = { ok: true, data: notificationData };
+        } catch (err: any) {
+          notificationResult = {
+            ok: false,
+            message: err?.message || 'Notification function failed',
+          };
+        }
+
+        return { status, emailResult, notificationResult };
       }
 
       const { error } = await supabase
@@ -347,7 +628,17 @@ export default function DepositsAdminScreen() {
 
       if (error) throw error;
 
-      return { status, emailResult };
+      try {
+        const notificationData = await sendDepositStatusNotification(order, 'pending');
+        notificationResult = { ok: true, data: notificationData };
+      } catch (err: any) {
+        notificationResult = {
+          ok: false,
+          message: err?.message || 'Notification function failed',
+        };
+      }
+
+      return { status, emailResult, notificationResult };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['admin-deposits'] });
@@ -359,25 +650,62 @@ export default function DepositsAdminScreen() {
       setSelectedRejectId(null);
       setRejectReason('');
 
-      if (result?.emailResult && !result.emailResult.ok) {
+      const emailFailed = result?.emailResult && !result.emailResult.ok;
+      const notificationFailed = result?.notificationResult && !result.notificationResult.ok;
+
+      if (emailFailed && notificationFailed) {
+        Alert.alert(
+          'Updated, but email and notification failed',
+          `${result.emailResult?.message || 'Email was not sent.'}\n\n${
+            result.notificationResult?.message || 'Notification was not sent.'
+          }`
+        );
+        return;
+      }
+
+      if (emailFailed) {
         Alert.alert(
           'Updated, but email failed',
-          result.emailResult.message || 'Deposit updated, but email was not sent.'
+          result.emailResult?.message || 'Deposit updated, but email was not sent.'
+        );
+        return;
+      }
+
+      if (notificationFailed) {
+        if (result?.status === 'approved') {
+          Alert.alert(
+            'Approved, but notification failed',
+            result.notificationResult?.message || 'Deposit approved, but notification was not sent.'
+          );
+          return;
+        }
+
+        if (result?.status === 'rejected') {
+          Alert.alert(
+            'Rejected, but notification failed',
+            result.notificationResult?.message || 'Deposit rejected, but notification was not sent.'
+          );
+          return;
+        }
+
+        Alert.alert(
+          'Updated, but notification failed',
+          result.notificationResult?.message || 'Deposit updated, but notification was not sent.'
         );
         return;
       }
 
       if (result?.status === 'approved') {
-        Alert.alert('Success', 'Deposit approved and wallet balance updated');
+        Alert.alert('Success', 'Deposit approved, wallet updated, and notification sent');
         return;
       }
 
       if (result?.status === 'rejected') {
-        Alert.alert('Success', 'Deposit rejected successfully');
+        Alert.alert('Success', 'Deposit rejected and notification sent successfully');
         return;
       }
 
-      Alert.alert('Success', `Deposit ${result?.status || ''} successfully`);
+      Alert.alert('Success', `Deposit ${result?.status || ''} updated and notification sent`);
     },
     onError: (error: any) => {
       Alert.alert('Error', error?.message || 'Something went wrong');
