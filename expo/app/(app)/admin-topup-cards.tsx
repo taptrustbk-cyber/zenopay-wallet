@@ -37,6 +37,8 @@ type TopupOrder = {
 
 type FilterStatus = 'all' | 'pending' | 'success' | 'cancelled';
 
+const NOTIFICATION_FUNCTION = 'send-notification';
+
 function formatIQD(value?: number | null) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
@@ -153,6 +155,17 @@ export default function AdminTopupOrdersScreen() {
 
   useEffect(() => {
     fetchOrders();
+
+    const channel = supabase
+      .channel('admin-topup-orders-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'topup_orders' }, () => {
+        fetchOrders();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const onRefresh = async () => {
@@ -210,12 +223,104 @@ export default function AdminTopupOrdersScreen() {
     }));
   };
 
+  const sendStatusNotification = async (
+    order: TopupOrder,
+    status: 'pending' | 'success' | 'cancelled',
+    pinCode: string,
+    note: string
+  ) => {
+    const cardTitle = order.card_title || 'Top-Up Card';
+
+    let title = 'Top-Up Order Update';
+    let body = `Your top-up order for ${cardTitle} has been updated.`;
+
+    if (status === 'success') {
+      title = 'Top-Up Order Approved';
+      body = pinCode
+        ? `Your top-up order for ${cardTitle} has been approved. Your PIN code is ready.`
+        : `Your top-up order for ${cardTitle} has been approved.`;
+    } else if (status === 'cancelled') {
+      title = 'Top-Up Order Cancelled';
+      body = `Your top-up order for ${cardTitle} has been cancelled.`;
+    } else if (status === 'pending') {
+      title = 'Top-Up Order Pending';
+      body = `Your top-up order for ${cardTitle} is currently pending review.`;
+    }
+
+    const payload = {
+      user_id: order.user_id,
+      target_user_id: order.user_id,
+      recipient_user_id: order.user_id,
+      profile_id: order.user_id,
+
+      email: order.user_email || undefined,
+      recipient_email: order.user_email || undefined,
+
+      title,
+      body,
+      message: body,
+
+      type: 'topup_order',
+      notification_type: 'topup_order',
+      category: 'topup',
+      action: status,
+      status,
+      order_status: status,
+
+      order_id: order.id,
+      topup_card_id: order.topup_card_id || null,
+      card_title: order.card_title || null,
+      provider: order.provider || null,
+      amount_iqd: order.amount_iqd ?? null,
+      price_usd: order.price_usd ?? null,
+      price_iqd: order.price_iqd ?? null,
+      pin_code: pinCode || null,
+      note: note || null,
+
+      full_name: order.user_name || 'Customer',
+      screen: 'admin-topup-orders',
+      source: 'admin',
+
+      data: {
+        user_id: order.user_id,
+        email: order.user_email || null,
+        order_id: order.id,
+        topup_card_id: order.topup_card_id || null,
+        status,
+        order_status: status,
+        title,
+        body,
+        card_title: order.card_title || null,
+        provider: order.provider || null,
+        amount_iqd: order.amount_iqd ?? null,
+        price_usd: order.price_usd ?? null,
+        price_iqd: order.price_iqd ?? null,
+        pin_code: pinCode || null,
+        note: note || null,
+        full_name: order.user_name || 'Customer',
+        screen: 'admin-topup-orders',
+      },
+    };
+
+    const { data, error } = await supabase.functions.invoke(NOTIFICATION_FUNCTION, {
+      body: payload,
+    });
+
+    if (error) throw error;
+    return data;
+  };
+
   const handleSave = async (order: TopupOrder) => {
     try {
       const draft = editState[order.id];
       if (!draft) return;
 
-      if (draft.status === 'success' && !draft.pin_code.trim()) {
+      const nextStatus = normalizeStatus(draft.status);
+      const oldStatus = normalizeStatus(order.status);
+      const trimmedPinCode = draft.pin_code.trim();
+      const trimmedNotes = draft.notes.trim();
+
+      if (nextStatus === 'success' && !trimmedPinCode) {
         Alert.alert('Error', 'PIN code is required when status is success.');
         return;
       }
@@ -223,9 +328,9 @@ export default function AdminTopupOrdersScreen() {
       setSavingId(order.id);
 
       const payload = {
-        status: draft.status,
-        pin_code: draft.pin_code.trim() || null,
-        notes: draft.notes.trim() || null,
+        status: nextStatus,
+        pin_code: trimmedPinCode || null,
+        notes: trimmedNotes || null,
       };
 
       const { error } = await supabase
@@ -235,8 +340,53 @@ export default function AdminTopupOrdersScreen() {
 
       if (error) throw error;
 
+      let notificationSent = false;
+      let notificationError = '';
+
+      try {
+        await sendStatusNotification(order, nextStatus, trimmedPinCode, trimmedNotes);
+        notificationSent = true;
+      } catch (notifyError: any) {
+        notificationError = notifyError?.message || 'Notification function failed';
+        console.log('send-notification invoke error:', notificationError);
+      }
+
       await fetchOrders();
-      Alert.alert('Success', 'Order updated successfully.');
+
+      if (oldStatus !== nextStatus && nextStatus === 'success') {
+        if (notificationSent) {
+          Alert.alert('Success', 'Order approved and notification sent successfully.');
+        } else if (notificationError) {
+          Alert.alert(
+            'Updated',
+            `Order approved successfully, but notification failed.\n\n${notificationError}`
+          );
+        } else {
+          Alert.alert('Success', 'Order approved successfully.');
+        }
+      } else if (oldStatus !== nextStatus && nextStatus === 'cancelled') {
+        if (notificationSent) {
+          Alert.alert('Success', 'Order cancelled and notification sent successfully.');
+        } else if (notificationError) {
+          Alert.alert(
+            'Updated',
+            `Order cancelled successfully, but notification failed.\n\n${notificationError}`
+          );
+        } else {
+          Alert.alert('Success', 'Order cancelled successfully.');
+        }
+      } else {
+        if (notificationSent) {
+          Alert.alert('Success', 'Order updated successfully and notification sent.');
+        } else if (notificationError) {
+          Alert.alert(
+            'Updated',
+            `Order updated successfully, but notification failed.\n\n${notificationError}`
+          );
+        } else {
+          Alert.alert('Success', 'Order updated successfully.');
+        }
+      }
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Could not update order.');
     } finally {
