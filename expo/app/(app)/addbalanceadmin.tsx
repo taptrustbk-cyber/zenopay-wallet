@@ -44,6 +44,7 @@ export const options = { headerShown: false };
 
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 const AVATAR_BUCKET = 'avatars';
+const NOTIFICATION_FUNCTION = 'send-notification';
 
 const UI = {
   bg: '#EEF4FF',
@@ -269,15 +270,102 @@ export default function AddBalanceAdminScreen() {
     setSelectedCurrentBalance(0);
   };
 
+  const sendAddBalanceNotification = async ({
+    targetUserId,
+    email,
+    fullName,
+    amount,
+    oldBalance,
+    newBalance,
+    note,
+  }: {
+    targetUserId: string;
+    email?: string;
+    fullName?: string;
+    amount: number;
+    oldBalance: number;
+    newBalance: number;
+    note?: string;
+  }) => {
+    const cleanName = (fullName || '').trim() || 'User';
+    const cleanEmail = (email || '').trim();
+
+    const title = 'Balance Added';
+    const body = `An amount of ${formatIQD(amount)} IQD was added to your wallet. Your new balance is ${formatIQD(newBalance)} IQD.`;
+
+    const payload = {
+      user_id: targetUserId,
+      target_user_id: targetUserId,
+      recipient_user_id: targetUserId,
+      profile_id: targetUserId,
+
+      email: cleanEmail || undefined,
+      recipient_email: cleanEmail || undefined,
+
+      title,
+      body,
+      message: body,
+
+      type: 'admin_balance_add',
+      notification_type: 'admin_balance_add',
+      category: 'admin_balance',
+      action: 'deposit',
+      status: 'completed',
+
+      amount_iqd: Number(amount),
+      old_balance_iqd: Number(oldBalance),
+      new_balance_iqd: Number(newBalance),
+      note: note || null,
+      admin_note: note || null,
+
+      full_name: cleanName,
+      source: 'addbalanceadmin',
+      screen: 'addbalanceadmin',
+      created_by: user?.id || null,
+
+      data: {
+        user_id: targetUserId,
+        email: cleanEmail || null,
+        full_name: cleanName,
+        title,
+        body,
+        type: 'admin_balance_add',
+        category: 'admin_balance',
+        action: 'deposit',
+        status: 'completed',
+        amount_iqd: Number(amount),
+        old_balance_iqd: Number(oldBalance),
+        new_balance_iqd: Number(newBalance),
+        note: note || null,
+        admin_note: note || null,
+        admin_email: user?.email || '',
+        admin_user_id: user?.id || '',
+        source: 'addbalanceadmin',
+        screen: 'addbalanceadmin',
+      },
+    };
+
+    const { data, error } = await supabase.functions.invoke(NOTIFICATION_FUNCTION, {
+      body: payload,
+    });
+
+    if (error) throw error;
+    return data;
+  };
+
   const addBalanceMutation = useMutation({
     mutationFn: async ({
       userId,
       amount,
       note,
+      selectedUserEmail,
+      selectedUserName,
     }: {
       userId: string;
       amount: number;
       note: string;
+      selectedUserEmail: string;
+      selectedUserName: string;
     }) => {
       const trimmedNote = String(note || '').trim();
 
@@ -347,15 +435,48 @@ export default function AddBalanceAdminScreen() {
         throw new Error(txError.message || 'Wallet updated, but transaction insert failed');
       }
 
-      return { success: true };
+      let notificationSent = false;
+      let notificationError = '';
+
+      try {
+        await sendAddBalanceNotification({
+          targetUserId: userId,
+          email: selectedUserEmail !== 'N/A' ? selectedUserEmail : '',
+          fullName: selectedUserName,
+          amount: finalAmount,
+          oldBalance,
+          newBalance,
+          note: trimmedNote,
+        });
+        notificationSent = true;
+      } catch (err: any) {
+        notificationError = err?.message || 'Notification function failed';
+        console.log('send-notification invoke error:', notificationError);
+      }
+
+      return {
+        success: true,
+        notificationSent,
+        notificationError,
+      };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['admin-users-add-balance-v3'] });
       queryClient.invalidateQueries({ queryKey: ['transactions-rich-final-v5'] });
       queryClient.invalidateQueries({ queryKey: ['wallet'] });
 
       resetModalState();
-      Alert.alert('Success', 'Balance added successfully and transaction created.');
+
+      if (result?.notificationSent) {
+        Alert.alert('Success', 'Balance added successfully, transaction created, and notification sent.');
+      } else if (result?.notificationError) {
+        Alert.alert(
+          'Updated',
+          `Balance added successfully and transaction created, but notification failed.\n\n${result.notificationError}`
+        );
+      } else {
+        Alert.alert('Success', 'Balance added successfully and transaction created.');
+      }
     },
     onError: (error: any) => {
       Alert.alert('Error', error?.message || 'Failed to add balance');
@@ -767,7 +888,7 @@ export default function AddBalanceAdminScreen() {
 
                         <View style={styles.summaryMiniRow}>
                           <Mail size={15} color={UI.text2} />
-                          <Text style={styles.summaryMiniText2}>{selectedUserEmail || 'N/A'}</Text>
+                          <Text style={styles.summaryMiniText2}>{selectedUserEmail}</Text>
                         </View>
 
                         <View style={styles.summaryMiniRow}>
@@ -835,6 +956,8 @@ export default function AddBalanceAdminScreen() {
                             userId: selectedUserId,
                             amount: rawAmount,
                             note: noteToAdd,
+                            selectedUserEmail,
+                            selectedUserName,
                           });
                         }}
                         disabled={addBalanceMutation.isPending}
