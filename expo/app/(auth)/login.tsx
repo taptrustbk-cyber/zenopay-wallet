@@ -91,7 +91,7 @@ export default function LoginScreen() {
   useEffect(() => {
     let mounted = true;
 
-    (async () => {
+    void (async () => {
       try {
         const savedRemember = await AsyncStorage.getItem(REMEMBER_ME_KEY);
         const savedEmail = await AsyncStorage.getItem(REMEMBER_EMAIL_KEY);
@@ -180,7 +180,9 @@ export default function LoginScreen() {
       return null;
     }
 
-    return (data?.kyc_status || null)?.toString().trim().toLowerCase();
+    const kycStatus = data?.kyc_status;
+    if (!kycStatus) return null;
+    return String(kycStatus).trim().toLowerCase();
   }
 
   function redirectByKycStatus(kycStatus: string | null) {

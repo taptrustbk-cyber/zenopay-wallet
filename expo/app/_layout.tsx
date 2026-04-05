@@ -1,7 +1,7 @@
 import "@/lib/console-override";
 import "@/lib/error-handler";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -21,8 +21,16 @@ if (Platform.OS !== "web") {
   WebBrowser.maybeCompleteAuthSession();
 }
 
-// keep native splash visible until app is actually ready
-SplashScreen.preventAutoHideAsync().catch(() => {});
+// Keep native splash visible until app is ready, then hide for seamless transition
+void SplashScreen.preventAutoHideAsync();
+
+// Hide native splash immediately for seamless transition to custom splash
+void (async () => {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  try {
+    await SplashScreen.hideAsync();
+  } catch {}
+})();
 
 // notification behavior
 Notifications.setNotificationHandler({
@@ -134,12 +142,12 @@ function AppShell() {
         responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
           console.log("Notification response:", response);
 
-          const data = response?.notification?.request?.content?.data as any;
+          const _data = response?.notification?.request?.content?.data as any;
 
           // دواتر دەتوانی لێرە route زیاد بکەیت
           // بۆ نموونە:
-          // if (data?.screen === "admin-notifications") {
-          //   router.push("/admin-notifications" as any);
+          // if (_data?.screen === "admin-notifications") {
+          //   router.push("/admin-notifications");
           // }
         });
       } catch (error) {
@@ -147,7 +155,7 @@ function AppShell() {
       }
     };
 
-    setupNotifications();
+    void setupNotifications();
 
     return () => {
       if (receivedSubscription) {
@@ -189,27 +197,24 @@ export default function RootLayout() {
       }
     }
 
-    prepare();
+    void prepare();
 
     return () => {
       mounted = false;
     };
   }, []);
 
-  const onLayoutRootView = useCallback(async () => {
-    if (appReady) {
-      try {
-        await SplashScreen.hideAsync();
-      } catch {}
-    }
-  }, [appReady]);
-
+  // Immediate render without waiting for onLayout - ensures faster splash transition
   if (!appReady) {
-    return null;
+    return (
+      <View style={{ flex: 1, backgroundColor: "#0A1F44" }}>
+        <View style={{ flex: 1, backgroundColor: "#0A1F44" }} />
+      </View>
+    );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#0A1F44" }} onLayout={onLayoutRootView}>
+    <View style={{ flex: 1, backgroundColor: "#0A1F44" }}>
       <ErrorBoundary FallbackComponent={ErrorFallback}>
         <trpc.Provider client={trpcClient} queryClient={queryClient}>
           <QueryClientProvider client={queryClient}>

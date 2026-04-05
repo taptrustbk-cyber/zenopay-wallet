@@ -18,6 +18,7 @@ const COLORS = {
   textSecondary: '#64748B',
   textLight: '#94A3B8',
   border: '#D9E5F6',
+  headerBg: '#FFFFFF',
 
   blue: '#2563EB',
   blueDark: '#1D4ED8',
@@ -227,13 +228,13 @@ export default function ConfirmScreen() {
 
   useEffect(() => {
     // Run once for cold start
-    runConfirmFlow(null);
+    void runConfirmFlow(null);
 
     // ✅ FIX: also handle links when app is already open
     const sub = ExpoLinking.addEventListener('url', (event) => {
       // If confirmation already finished, ignore
       if (doneRef.current) return;
-      runConfirmFlow(event?.url ?? null);
+      void runConfirmFlow(event?.url ?? null);
     });
 
     return () => {

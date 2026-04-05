@@ -28,21 +28,25 @@ export default function TermsConditionsScreen() {
   };
 
   const t = (key: string, fallback: string) => {
-    const val = i18n.t(key) as unknown as string;
-    if (!val) return fallback;
+    try {
+      const val = i18n.t(key) as unknown;
+      if (!val || typeof val !== 'string') return fallback;
 
-    const str = String(val).trim();
-    const lower = str.toLowerCase();
+      const str = val.trim();
+      const lower = str.toLowerCase();
 
-    const looksMissing =
-      !str ||
-      lower.includes('missing "') ||
-      lower.includes('missing translation') ||
-      lower.includes('" translation') ||
-      str === key ||
-      str.includes(`"${key}"`);
+      const looksMissing =
+        !str ||
+        lower.includes('missing "') ||
+        lower.includes('missing translation') ||
+        lower.includes('" translation') ||
+        str === key ||
+        str.includes(`"${key}"`);
 
-    return looksMissing ? fallback : str;
+      return looksMissing ? fallback : str;
+    } catch {
+      return fallback;
+    }
   };
 
   const UI_TEXT = useMemo(
@@ -367,10 +371,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 54 : 42,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#D9E5F6',
+    paddingTop: Platform.OS === 'ios' ? 55 : 40,
+    paddingBottom: 12,
     backgroundColor: 'transparent',
   },
   backButton: {
@@ -393,6 +395,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#0F172A',
     textAlign: 'center',
+    marginHorizontal: 10,
   },
   headerSpacer: {
     width: 42,
@@ -466,7 +469,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 18,
+    padding: 20,
     borderWidth: 1,
     borderColor: '#D9E5F6',
     shadowColor: '#7DA8E6',
@@ -477,7 +480,7 @@ const styles = StyleSheet.create({
   },
 
   section: {
-    marginBottom: 22,
+    marginBottom: 20,
   },
   introText: {
     fontSize: 14.5,
@@ -489,6 +492,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '900',
     marginBottom: 10,
+    marginTop: 4,
     color: '#0F172A',
   },
   sectionText: {
@@ -496,30 +500,34 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     color: '#334155',
     fontWeight: '700',
+    marginBottom: 6,
   },
 
   bulletRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 7,
+    marginTop: 8,
+    marginBottom: 4,
   },
   bulletRowRTL: {
     flexDirection: 'row-reverse',
   },
   bulletDot: {
-    fontSize: 14,
-    lineHeight: 24,
-    color: '#0F172A',
-    marginRight: 8,
+    fontSize: 16,
+    lineHeight: 22,
+    color: '#2563EB',
+    marginRight: 10,
+    marginTop: 1,
+    fontWeight: '900',
   },
   bulletDotRTL: {
     marginRight: 0,
-    marginLeft: 8,
+    marginLeft: 10,
   },
   bulletItem: {
     flex: 1,
     fontSize: 14,
-    lineHeight: 24,
+    lineHeight: 22,
     color: '#0F172A',
     fontWeight: '700',
   },
@@ -530,19 +538,20 @@ const styles = StyleSheet.create({
   supportBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    padding: 16,
     borderRadius: 16,
     backgroundColor: '#EAF2FF',
     borderWidth: 1,
     borderColor: '#D9E5F6',
+    marginTop: 8,
   },
   supportBoxRTL: {
     flexDirection: 'row-reverse',
   },
   supportIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
@@ -558,13 +567,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   supportText: {
-    fontSize: 14,
+    fontSize: 14.5,
     fontWeight: '900',
     color: '#0F172A',
   },
   supportSubText: {
     marginTop: 4,
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '700',
     color: '#64748B',
   },

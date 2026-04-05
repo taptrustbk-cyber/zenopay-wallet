@@ -215,7 +215,7 @@ function getProviderStyle(provider?: string | null) {
 }
 
 function isArabicMoneyLang() {
-  const lang = String(i18n.language || '').toLowerCase();
+  const lang = String((i18n as any).locale || '').toLowerCase();
   return ['ar', 'cbk', 'ckb', 'kmr'].includes(lang);
 }
 

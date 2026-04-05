@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -327,8 +327,8 @@ const decodeBase64ToUint8Array = (base64: string) => {
   for (
     let bc = 0, bs: number | undefined, buffer: number | string, idx = 0;
     (buffer = str.charAt(idx++));
-    ~((buffer as any) = chars.indexOf(buffer as string)) &&
-    ((bs = bc % 4 ? (bs as number) * 64 + (buffer as number) : (buffer as number)),
+    ~((buffer as unknown as number) = chars.indexOf(buffer as string)) &&
+    ((bs = bc % 4 ? (bs as number) * 64 + (buffer as unknown as number) : (buffer as unknown as number)),
     bc++ % 4)
       ? (output += String.fromCharCode(255 & ((bs as number) >> ((-2 * bc) & 6))))
       : 0
@@ -372,7 +372,7 @@ export default function MobileProductsAdminScreen() {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [selectedOrderForReview, setSelectedOrderForReview] = useState<any | null>(null);
+  const [selectedOrderForReview, setSelectedOrderForReview] = useState<any>(null);
   const [reviewAction, setReviewAction] = useState<ReviewAction>('approved');
   const [reviewMessage, setReviewMessage] = useState('');
 
@@ -715,7 +715,7 @@ export default function MobileProductsAdminScreen() {
     return data;
   };
 
-  const sendAdminNewOrderNotification = async (order: any) => {
+  const sendAdminNewOrderNotification = useCallback(async (order: any) => {
     if (!user?.id) return;
 
     const targetUserId = user.id;
@@ -783,7 +783,7 @@ export default function MobileProductsAdminScreen() {
     });
 
     if (error) throw error;
-  };
+  }, [user?.id, user?.email, profilesMap]);
 
   useEffect(() => {
     if (!isAdmin || !user?.id) return;
@@ -810,7 +810,7 @@ export default function MobileProductsAdminScreen() {
 
             if (freshOrder) {
               try {
-                await sendAdminNewOrderNotification(freshOrder);
+                void sendAdminNewOrderNotification(freshOrder);
               } catch (notifyError: any) {
                 console.log('admin new shop order notification error:', notifyError?.message || notifyError);
               }
@@ -831,9 +831,9 @@ export default function MobileProductsAdminScreen() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
-  }, [isAdmin, user?.id, user?.email, queryClient, profilesMap]);
+  }, [isAdmin, user?.id, user?.email, queryClient, profilesMap, sendAdminNewOrderNotification]);
 
   const pickAndUploadImage = async () => {
     try {
@@ -1545,7 +1545,7 @@ export default function MobileProductsAdminScreen() {
                     const monthly = Number(order?.unit_monthly_price_iqd ?? productMonthlyFromRow(product) ?? 0);
                     const months = Number(order?.months_count ?? productMonthsFromRow(product) ?? 1);
                     const installmentTotal = Number(
-                      order?.installment_total_contract_iqd ?? monthly * months ?? 0
+                      order?.installment_total_contract_iqd ?? (monthly * months || 0)
                     );
                     const category = orderCategory(order);
 

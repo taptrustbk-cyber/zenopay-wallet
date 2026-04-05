@@ -159,7 +159,7 @@ function formatAmountPlain(value?: number | null) {
 }
 
 function getCurrencyLabel() {
-  const lang = String(i18n.language || '').toLowerCase();
+  const lang = String((i18n as any).locale || '').toLowerCase();
   return ['ar', 'ckb', 'cbk', 'kmr', 'ku'].includes(lang)
     ? tSafe('iqdShort', 'د.غ')
     : tSafe('iqdShort', 'IQD');
@@ -282,7 +282,7 @@ export default function SimCardsScreen() {
   }, []);
 
   useEffect(() => {
-    fetchSimCards();
+    void fetchSimCards();
   }, [fetchSimCards]);
 
   const onRefresh = async () => {

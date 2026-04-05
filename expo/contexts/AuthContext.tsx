@@ -1,10 +1,10 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { Session, User } from '@supabase/supabase-js';
 import { useRouter, useSegments } from 'expo-router';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/lib/types';
-import * as Linking from 'expo-linking';
+
 import { useQueryClient } from '@tanstack/react-query';
 
 // ✅ notifications
@@ -13,18 +13,16 @@ import {
   deactivateCurrentUserTokens,
 } from '@/lib/notifications';
 
-export const [AuthProvider, useAuth] = createContextHook(() => {
-  const router = useRouter();
-  const segments = useSegments();
+export const [AuthProvider, useAuth] = createContextHook(function useAuthContext() {
+  const _router = useRouter();
+  const _segments = useSegments();
   const queryClient = useQueryClient();
 
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isReady, setIsReady] = useState(false);
   const isLoadingProfileRef = useRef(false);
-  const isMountedRef = useRef(true);
   const pendingNavigationRef = useRef<string | null>(null);
 
   const ensureWalletExists = useCallback(async (userId: string) => {
@@ -50,6 +48,11 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const loadProfile = useCallback(
     async (userId: string, bypassCache = false) => {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+      
       if (isLoadingProfileRef.current) {
         console.log('[AuthContext] Profile already loading, skipping');
         return;
@@ -82,6 +85,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           .maybeSingle();
 
         if (error) {
+          console.log('[AuthContext] Profile load error:', error.message);
           setProfile(null);
           setLoading(false);
           isLoadingProfileRef.current = false;
@@ -89,17 +93,26 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         }
 
         if (!data) {
-          const { data: authData } = await supabase.auth.getUser();
+          // Create new profile for user
+          let userEmail = '';
+          try {
+            const { data: authData } = await supabase.auth.getUser();
+            userEmail = authData?.user?.email || '';
+          } catch {}
 
-          await supabase.from('profiles').insert({
-            id: userId,
-            email: authData.user.email,
-            kyc_status: 'not_started',
-          });
+          if (userEmail) {
+            try {
+              await supabase.from('profiles').insert({
+                id: userId,
+                email: userEmail,
+                kyc_status: 'not_started',
+              });
+            } catch {}
+          }
 
           setProfile({
             id: userId,
-            email: authData.user.email || '',
+            email: userEmail,
             created_at: new Date().toISOString(),
             approved_at: null,
             force_active: null,
@@ -125,12 +138,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           return;
         }
 
+        const dataAny = data as any;
         const normalized: any = {
-          ...(data as any),
-          phone: data.phone ?? data.phone_number ?? null,
-          phone_number: data.phone_number ?? data.phone ?? null,
-          date_of_brith: data.date_of_brith ?? data.date_of_birth ?? null,
-          date_of_birth: data.date_of_birth ?? data.date_of_brith ?? null,
+          ...dataAny,
+          phone: dataAny?.phone ?? dataAny?.phone_number ?? null,
+          phone_number: dataAny?.phone_number ?? dataAny?.phone ?? null,
+          date_of_brith: dataAny?.date_of_brith ?? dataAny?.date_of_birth ?? null,
+          date_of_birth: dataAny?.date_of_birth ?? dataAny?.date_of_brith ?? null,
         };
 
         setProfile(normalized);
@@ -138,13 +152,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         await ensureWalletExists(userId);
 
         if (bypassCache) {
-          queryClient.invalidateQueries({ queryKey: ['wallet', userId] });
-          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+          void queryClient.invalidateQueries({ queryKey: ['wallet', userId] });
+          void queryClient.invalidateQueries({ queryKey: ['transactions'] });
         }
 
         setLoading(false);
         isLoadingProfileRef.current = false;
-      } catch {
+      } catch (err) {
+        console.log('[AuthContext] Profile load exception:', err);
         setProfile(null);
         setLoading(false);
         isLoadingProfileRef.current = false;
@@ -156,12 +171,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   useEffect(() => {
     let mounted = true;
 
-    setTimeout(() => {
-      if (!mounted) return;
-      setIsReady(true);
-    }, 50);
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    void supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return;
 
       setSession(session);
@@ -169,9 +179,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
       if (session?.user) {
         // ✅ notifications
-        registerAndSavePushToken(session.user.id);
+        void registerAndSavePushToken(session.user.id);
 
-        loadProfile(session.user.id);
+        void loadProfile(session.user.id);
       } else {
         setLoading(false);
       }
@@ -195,9 +205,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
       if (session?.user) {
         // ✅ notifications
-        registerAndSavePushToken(session.user.id);
+        void registerAndSavePushToken(session.user.id);
 
-        loadProfile(session.user.id).catch(() => setLoading(false));
+        void loadProfile(session.user.id).catch(() => setLoading(false));
       } else {
         setProfile(null);
         setLoading(false);
@@ -210,17 +220,30 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     };
   }, [loadProfile]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       if (user?.id) {
-        await deactivateCurrentUserTokens(user.id); // ✅ notifications
+        await deactivateCurrentUserTokens(user.id).catch(() => {}); // ✅ notifications - safe
       }
 
-      await supabase.auth.signOut();
+      // Clear local state first for immediate UI feedback
       setProfile(null);
+      setSession(null);
+      setUser(null);
+      
+      // Clear query cache
       queryClient.clear();
-    } catch {}
-  };
+      
+      // Then sign out from Supabase
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.log('Sign out error:', error);
+      // Still clear local state even if server fails
+      setProfile(null);
+      setSession(null);
+      setUser(null);
+    }
+  }, [user?.id, queryClient]);
 
   const hardRefresh = useCallback(async () => {
     if (!user) return;
@@ -234,7 +257,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     }
   }, [user, queryClient, loadProfile]);
 
-  return {
+  const authValue = useMemo(() => ({
     session,
     user,
     profile,
@@ -242,9 +265,11 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     signOut,
     refreshProfile: () => {
       if (user) {
-        loadProfile(user.id, true).catch(() => {});
+        void loadProfile(user.id, true);
       }
     },
     hardRefresh,
-  };
+  }), [session, user, profile, loading, signOut, hardRefresh, loadProfile]);
+
+  return authValue;
 });

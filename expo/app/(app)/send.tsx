@@ -103,7 +103,7 @@ const formatWithDots = (value: number | string) => {
 };
 
 const usesArabicIQD = () => {
-  const lang = String(i18n.language || '').toLowerCase();
+  const lang = String((i18n as any).locale || '').toLowerCase();
   return ['ar', 'ku', 'cbk', 'kmr', 'ckb'].includes(lang);
 };
 
@@ -222,9 +222,9 @@ export default function SendMoneyScreen() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['wallet'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions-rich-final'] });
+      void queryClient.invalidateQueries({ queryKey: ['wallet'] });
+      void queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      void queryClient.invalidateQueries({ queryKey: ['transactions-rich-final'] });
 
       Alert.alert(
         tSafe('success', 'Success'),
