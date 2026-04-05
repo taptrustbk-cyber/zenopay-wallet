@@ -36,6 +36,10 @@ type PendingProfile = {
   pending_profile_created_at?: string;
 };
 
+type ProfileKycRow = {
+  kyc_status?: string | null;
+};
+
 const UI = {
   bg: '#EEF4FF',
   page: '#F7FAFF',
@@ -164,6 +168,40 @@ export default function LoginScreen() {
     }
   }
 
+  async function getUserKycStatus(userId: string): Promise<string | null> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('kyc_status')
+      .eq('id', userId)
+      .maybeSingle<ProfileKycRow>();
+
+    if (error) {
+      console.log('getUserKycStatus error:', error.message);
+      return null;
+    }
+
+    return (data?.kyc_status || null)?.toString().trim().toLowerCase();
+  }
+
+  function redirectByKycStatus(kycStatus: string | null) {
+    if (kycStatus === 'approved') {
+      router.replace('/dashboard' as any);
+      return;
+    }
+
+    if (
+      kycStatus === 'pending' ||
+      kycStatus === 'under_review' ||
+      kycStatus === 'in_review' ||
+      kycStatus === 'reviewing'
+    ) {
+      router.replace('/(auth)/waiting-review' as any);
+      return;
+    }
+
+    router.replace('/(auth)/kyc-wait' as any);
+  }
+
   const loginMutation = useMutation({
     mutationFn: async () => {
       const cleanEmail = email.trim().toLowerCase();
@@ -193,6 +231,7 @@ export default function LoginScreen() {
           }, 100);
           return { redirectHandled: true };
         }
+
         throw error;
       }
 
@@ -205,10 +244,19 @@ export default function LoginScreen() {
       await applyPendingProfileIfExists(data.user.id);
       await persistRememberState(rememberMe, cleanEmail);
 
-      return { success: true };
+      const kycStatus = await getUserKycStatus(data.user.id);
+
+      return {
+        success: true,
+        userId: data.user.id,
+        kycStatus,
+      };
     },
     onSuccess: (data) => {
       if ((data as any)?.redirectHandled) return;
+
+      const kycStatus = (data as any)?.kycStatus ?? null;
+      redirectByKycStatus(kycStatus);
     },
     onError: (error: any) => {
       console.error('Login error:', error);
