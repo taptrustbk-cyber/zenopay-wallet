@@ -9,6 +9,7 @@ import {
   Modal,
   Pressable,
   I18nManager,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -142,6 +143,7 @@ export default function SettingsScreen() {
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [, forceUpdate] = useState({});
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   const isAdmin = !!(user && ADMIN_EMAILS.includes(user.email || ''));
 
@@ -175,6 +177,32 @@ export default function SettingsScreen() {
 
   const handleLogout = () => {
     setLogoutOpen(true);
+  };
+
+  const handleConfirmLogout = async () => {
+    if (logoutLoading) return;
+
+    try {
+      setLogoutLoading(true);
+      setLogoutOpen(false);
+
+      await Promise.resolve(signOut());
+
+      router.replace('/(auth)/login' as any);
+    } catch (error: any) {
+      console.error('Logout error:', error);
+
+      Alert.alert(
+        tSafe('common.error', 'Error'),
+        error?.message ||
+          tOne(
+            ['settingsLogoutFailed', 'settings.logoutFailed'],
+            'Failed to logout. Please try again.'
+          )
+      );
+    } finally {
+      setLogoutLoading(false);
+    }
   };
 
   const supportItems = [
@@ -528,6 +556,7 @@ export default function SettingsScreen() {
           ]}
           onPress={handleLogout}
           activeOpacity={0.9}
+          disabled={logoutLoading}
         >
           <View style={[styles.menuIconContainer, styles.logoutIcon]}>
             <Ionicons name="log-out" size={22} color={theme.colors.error} />
@@ -536,6 +565,10 @@ export default function SettingsScreen() {
           <View style={styles.menuTextWrap}>
             <Text style={[styles.menuText, { color: theme.colors.error }]}>{logoutTitle}</Text>
           </View>
+
+          {logoutLoading ? (
+            <ActivityIndicator size="small" color={theme.colors.error} />
+          ) : null}
         </TouchableOpacity>
       </ScrollView>
 
@@ -560,6 +593,7 @@ export default function SettingsScreen() {
                 style={[stylesLogout.btn, stylesLogout.cancelBtn]}
                 onPress={() => setLogoutOpen(false)}
                 activeOpacity={0.9}
+                disabled={logoutLoading}
               >
                 <Text style={[stylesLogout.btnText, stylesLogout.cancelText]}>
                   {tSafe('common.cancel', 'Cancel')}
@@ -568,15 +602,17 @@ export default function SettingsScreen() {
 
               <TouchableOpacity
                 style={[stylesLogout.btn, stylesLogout.confirmBtn]}
-                onPress={() => {
-                  setLogoutOpen(false);
-                  signOut();
-                }}
+                onPress={handleConfirmLogout}
                 activeOpacity={0.9}
+                disabled={logoutLoading}
               >
-                <Text style={[stylesLogout.btnText, stylesLogout.confirmText]}>
-                  {logoutTitle}
-                </Text>
+                {logoutLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={[stylesLogout.btnText, stylesLogout.confirmText]}>
+                    {logoutTitle}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           </Pressable>
