@@ -26,6 +26,7 @@ import {
 export const options = { headerShown: false };
 
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
+const ADMIN_NOTIFICATIONS_CHANNEL = 'admin-notifications-admin-page-main';
 
 const UI = {
   bg: '#F8FAFC',
@@ -106,8 +107,15 @@ export default function AdminScreen() {
 
     loadNotifications();
 
+    const existingChannels = supabase.getChannels();
+    existingChannels.forEach((channel) => {
+      if (channel.topic === `realtime:${ADMIN_NOTIFICATIONS_CHANNEL}` || channel.topic === ADMIN_NOTIFICATIONS_CHANNEL) {
+        supabase.removeChannel(channel);
+      }
+    });
+
     const channel = supabase
-      .channel('admin-notifications-admin-page')
+      .channel(ADMIN_NOTIFICATIONS_CHANNEL)
       .on(
         'postgres_changes',
         {
@@ -119,7 +127,9 @@ export default function AdminScreen() {
           loadNotifications();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Admin notifications channel status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -162,7 +172,6 @@ export default function AdminScreen() {
 
   const MenuItem = ({ label, subLabel, onPress, icon, tone = 'blue', badgeCount = 0 }: MenuItemProps) => {
     const iconBg = tone === 'green' ? UI.greenSoft : tone === 'gold' ? UI.goldSoft : UI.blueSoft;
-
     const glowColor = tone === 'green' ? UI.green : tone === 'gold' ? UI.gold : UI.blue;
 
     return (
