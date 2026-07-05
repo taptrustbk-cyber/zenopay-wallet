@@ -21,20 +21,20 @@ import i18n from '@/lib/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const UI = {
-  bg: '#EEF4FF',
-  bgSoft: '#F7FAFF',
+  bg: '#F4F7FB',
+  bgSoft: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
+  border: '#E3E8F0',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blue2: '#3B82F6',
   blue3: '#60A5FA',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
 
   purple: '#7C3AED',
   purpleDark: '#5B21B6',
@@ -42,14 +42,14 @@ const UI = {
 
   danger: '#DC2626',
   dangerSoft: '#FEECEC',
-  success: '#2563EB',
-  successSoft: '#EAF2FF',
+  success: '#0F2A5C',
+  successSoft: '#E8EEF6',
   white: '#FFFFFF',
 };
 
 const SHADOWS = {
   card: {
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
@@ -108,7 +108,7 @@ type PurchaseCardResponse = {
   new_balance?: number;
 };
 
-const CARD_PRICE_IQD = 25000;
+const CARD_PRICE_SEK = 25000;
 
 const t = (key: string, fallback: string) => {
   try {
@@ -139,8 +139,8 @@ function formatNumberWithDots(value?: number | null) {
   return String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-function formatIQDLocal(value?: number | null) {
-  return `${formatNumberWithDots(value)} IQD`;
+function formatSEKLocal(value?: number | null) {
+  return `${formatNumberWithDots(value)} SEK`;
 }
 
 function formatPan12ForDisplay(panMasked: string) {
@@ -175,7 +175,7 @@ async function insertCardTransaction(params: {
       type: 'card_purchase',
       direction: 'out',
       amount: params.amount,
-      currency: 'IQD',
+      currency: 'SEK',
       status: 'completed',
       title: 'Virtual Card Purchase',
       description,
@@ -188,7 +188,7 @@ async function insertCardTransaction(params: {
       type: 'purchase_card',
       direction: 'out',
       amount: params.amount,
-      currency: 'IQD',
+      currency: 'SEK',
       status: 'completed',
       description,
       reference_id: params.cardId || null,
@@ -197,7 +197,7 @@ async function insertCardTransaction(params: {
     {
       user_id: params.userId,
       amount: params.amount,
-      currency: 'IQD',
+      currency: 'SEK',
       status: 'completed',
       description,
       created_at: new Date().toISOString(),
@@ -262,13 +262,13 @@ export default function CardsScreen() {
   });
 
   const balance = walletQuery.data?.balance ?? 0;
-  const currency = 'IQD';
+  const currency = 'SEK';
 
   const hasCard = (cardsQuery.data?.length || 0) > 0;
   const firstCard = hasCard ? cardsQuery.data![0] : null;
 
   const canBuy =
-    !hasCard && balance >= CARD_PRICE_IQD && !walletQuery.isLoading && !walletQuery.isError;
+    !hasCard && balance >= CARD_PRICE_SEK && !walletQuery.isLoading && !walletQuery.isError;
 
   const isFormValid = useMemo(() => {
     if (!fullName.trim()) return false;
@@ -308,7 +308,7 @@ export default function CardsScreen() {
     if (!canBuy) {
       Alert.alert(
         t('cards.insufficient_title', 'Insufficient balance'),
-        t('cards.insufficient_desc', `You need at least ${formatIQDLocal(CARD_PRICE_IQD)}.`)
+        t('cards.insufficient_desc', `You need at least ${formatSEKLocal(CARD_PRICE_SEK)}.`)
       );
       return;
     }
@@ -322,7 +322,7 @@ export default function CardsScreen() {
         p_country: country.trim(),
         p_city: city.trim(),
         p_address: address.trim(),
-        p_price: CARD_PRICE_IQD,
+        p_price: CARD_PRICE_SEK,
       });
 
       if (error) throw error;
@@ -338,7 +338,7 @@ export default function CardsScreen() {
 
       await insertCardTransaction({
         userId: user.id,
-        amount: CARD_PRICE_IQD,
+        amount: CARD_PRICE_SEK,
         cardId: res?.card?.id,
         last4: res?.card?.last4,
         newBalance: res?.new_balance ?? null,
@@ -351,7 +351,7 @@ export default function CardsScreen() {
         t('common.success', 'Success'),
         t(
           'cards.created_success_iqd',
-          `Card created successfully. ${formatIQDLocal(CARD_PRICE_IQD)} was deducted from your balance.`
+          `Card created successfully. ${formatSEKLocal(CARD_PRICE_SEK)} was deducted from your balance.`
         )
       );
     } catch (e: any) {
@@ -382,7 +382,7 @@ export default function CardsScreen() {
           <View style={styles.itemTopRow}>
             <View style={styles.logoPill}>
               <Ionicons name="wallet-outline" size={14} color="#FFFFFF" />
-              <Text style={styles.logoText}>ZENOPAY</Text>
+              <Text style={styles.logoText}>SWEDBANK</Text>
             </View>
 
             <View style={[styles.statusPill, card.status !== 'active' && { opacity: 0.7 }]}>
@@ -392,7 +392,7 @@ export default function CardsScreen() {
 
           <View style={styles.brandMarksRow}>
             <Text style={styles.virtualBrandText}>
-              {t('cards.virtual_brand', 'ZENOPAY VIRTUAL')}
+              {t('cards.virtual_brand', 'SWEDBANK VIRTUAL')}
             </Text>
           </View>
 
@@ -486,7 +486,7 @@ export default function CardsScreen() {
                 <View style={styles.pricePill}>
                   <Ionicons name="pricetag" size={16} color={UI.blue} />
                   <Text style={styles.priceText} numberOfLines={1}>
-                    {t('cards.create_price', 'Create')}: {formatIQDLocal(CARD_PRICE_IQD)}
+                    {t('cards.create_price', 'Create')}: {formatSEKLocal(CARD_PRICE_SEK)}
                   </Text>
                 </View>
               ) : null}
@@ -631,7 +631,7 @@ export default function CardsScreen() {
                 ]}
               >
                 <LinearGradient
-                  colors={['#79B7FF', '#4C92F7', '#2563EB']}
+                  colors={['#79B7FF', '#4C92F7', '#0F2A5C']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.createBtn}
@@ -652,14 +652,14 @@ export default function CardsScreen() {
               <Text style={styles.virtualInfo}>
                 {t(
                   'cards.virtual_info',
-                  'This is a virtual internal card for Zenopay wallet use only.'
+                  'This is a virtual internal card for SwedBank wallet use only.'
                 )}
               </Text>
 
               <Text style={styles.note}>
                 {t(
                   'cards.note_iqd',
-                  `By creating a card, ${formatIQDLocal(CARD_PRICE_IQD)} will be deducted automatically from your wallet balance.`
+                  `By creating a card, ${formatSEKLocal(CARD_PRICE_SEK)} will be deducted automatically from your wallet balance.`
                 )}
               </Text>
             </View>

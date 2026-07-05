@@ -22,19 +22,19 @@ export const options = {
 const ADMIN_EMAILS = ['taptrust.bk@gmail.com'];
 
 const UI = {
-  bg: '#EEF4FF',
-  bgSoft: '#F7FAFF',
+  bg: '#F4F7FB',
+  bgSoft: '#FFFFFF',
   card: '#FFFFFF',
   cardSoft: '#F3F7FF',
-  border: '#D9E5F6',
+  border: '#E3E8F0',
   borderStrong: '#BFD4F3',
 
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
 
-  blue: '#2563EB',
-  blueDark: '#1D4ED8',
+  blue: '#0F2A5C',
+  blueDark: '#0A1F45',
   blueSoft: '#DBEAFE',
 
   green: '#16A34A',
@@ -62,7 +62,7 @@ type AdminNotificationRow = {
 };
 
 const SHADOW = {
-  shadowColor: '#7DA8E6',
+  shadowColor: '#A8B8CC',
   shadowOpacity: 0.08,
   shadowRadius: 14,
   shadowOffset: { width: 0, height: 8 },

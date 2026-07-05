@@ -6,7 +6,7 @@
       "framework": "react-native"
     },
     {
-      "name": "ZenoPay Wallet",
+      "name": "SwedBank",
       "path": "ios",
       "framework": "swift"
     }

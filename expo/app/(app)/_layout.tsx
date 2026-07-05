@@ -17,19 +17,19 @@ import i18n, { getCurrentLanguage } from '@/lib/i18n';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const UI = {
-  bg: '#EEF4FF',
-  bgSoft: '#F7FAFF',
+  bg: '#F4F7FB',
+  bgSoft: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
+  border: '#E3E8F0',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blue2: '#3B82F6',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
 
   danger: '#EF4444',
   warning: '#F59E0B',
@@ -38,7 +38,7 @@ const UI = {
 
 const SHADOWS = {
   card: {
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
@@ -462,7 +462,7 @@ export default function AppLayout() {
             <Stack.Screen
               name="mobile-shop"
               options={({ navigation }) => ({
-                title: tSafe('zenopayMobileShop', 'Zenopay Mobile Shop'),
+                title: tSafe('swedbankMobileShop', 'SwedBank Mobile Shop'),
                 headerShown: true,
                 headerLeft: () => (
                   <HeaderBackButton

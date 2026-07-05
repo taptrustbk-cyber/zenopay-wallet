@@ -214,7 +214,7 @@ export default function SplashScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0F4CFF', '#2563EB', '#0EA5E9']}
+        colors={['#0F2A5C', '#16356E', '#1E4280']}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -315,12 +315,12 @@ export default function SplashScreen() {
             end={{ x: 1, y: 1 }}
           >
             <LinearGradient
-              colors={['#FFFFFF', '#EAF2FF']}
+              colors={['#FFFFFF', '#E8EEF6']}
               style={styles.innerBadge}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Text style={styles.logoText}>Z</Text>
+              <Text style={styles.logoText}>S</Text>
             </LinearGradient>
           </LinearGradient>
         </View>
@@ -333,8 +333,8 @@ export default function SplashScreen() {
             marginTop: 34,
           }}
         >
-          <Text style={styles.appName}>ZenoPay</Text>
-          <Text style={styles.tagline}>Safe • Fast • Trusted Wallet</Text>
+          <Text style={styles.appName}>SwedBank</Text>
+          <Text style={styles.tagline}>Modern Swedish Banking</Text>
         </Animated.View>
       </Animated.View>
     </View>
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 58,
     fontWeight: '900' as const,
-    color: '#2563EB',
+    color: '#0F2A5C',
     letterSpacing: 1.2,
   },
 

@@ -52,11 +52,11 @@ const UI = {
   bg: '#F6F8FB',
   card: '#FFFFFF',
   card2: '#F8FAFC',
-  text: '#0F172A',
+  text: '#0F1B33',
   text2: '#475569',
-  text3: '#64748B',
+  text3: '#5B6B82',
   border: '#E2E8F0',
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blueSoft: '#DBEAFE',
   green: '#16A34A',
   greenSoft: '#DCFCE7',
@@ -66,7 +66,7 @@ const UI = {
   amberSoft: '#FEF3C7',
   purple: '#7C3AED',
   purpleSoft: '#EDE9FE',
-  black: '#0F172A',
+  black: '#0F1B33',
   shadow: 'rgba(15, 23, 42, 0.08)',
 };
 
@@ -196,7 +196,7 @@ const emptyForm = (): ProductForm => ({
   service_type: '',
 });
 
-const formatIQD = (value: any) => {
+const formatSEK = (value: any) => {
   const n = Number(value || 0);
   return `${String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} د.ع`;
 };
@@ -1294,7 +1294,7 @@ export default function MobileProductsAdminScreen() {
 
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>Stock Value</Text>
-                <Text style={[styles.statValue, { fontSize: 18 }]}>{formatIQD(productStats.totalProductsValue)}</Text>
+                <Text style={[styles.statValue, { fontSize: 18 }]}>{formatSEK(productStats.totalProductsValue)}</Text>
               </View>
             </View>
 
@@ -1318,7 +1318,7 @@ export default function MobileProductsAdminScreen() {
 
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>Collected Amount</Text>
-                <Text style={[styles.statValue, { fontSize: 18, color: UI.purple }]}>{formatIQD(orderStats.totalSales)}</Text>
+                <Text style={[styles.statValue, { fontSize: 18, color: UI.purple }]}>{formatSEK(orderStats.totalSales)}</Text>
               </View>
             </View>
 
@@ -1395,20 +1395,20 @@ export default function MobileProductsAdminScreen() {
 
                         <View style={styles.row}>
                           <Text style={styles.rowLabel}>Base Price</Text>
-                          <Text style={styles.rowValue}>{formatIQD(basePrice)}</Text>
+                          <Text style={styles.rowValue}>{formatSEK(basePrice)}</Text>
                         </View>
 
                         <View style={styles.row}>
                           <Text style={styles.rowLabel}>Cash Price</Text>
                           <Text style={[styles.rowValue, { color: UI.blue }]}>
-                            {canCash ? formatIQD(cashPrice) : 'Disabled'}
+                            {canCash ? formatSEK(cashPrice) : 'Disabled'}
                           </Text>
                         </View>
 
                         <View style={styles.row}>
                           <Text style={styles.rowLabel}>Monthly Price</Text>
                           <Text style={[styles.rowValue, { color: UI.purple }]}>
-                            {canInstallment ? formatIQD(monthly) : 'Disabled'}
+                            {canInstallment ? formatSEK(monthly) : 'Disabled'}
                           </Text>
                         </View>
 
@@ -1420,7 +1420,7 @@ export default function MobileProductsAdminScreen() {
                         <View style={styles.row}>
                           <Text style={styles.rowLabel}>Installment Contract Total</Text>
                           <Text style={[styles.rowValue, { color: UI.purple }]}>
-                            {canInstallment ? formatIQD(installmentTotal) : 'Disabled'}
+                            {canInstallment ? formatSEK(installmentTotal) : 'Disabled'}
                           </Text>
                         </View>
 
@@ -1625,19 +1625,19 @@ export default function MobileProductsAdminScreen() {
 
                         <View style={styles.row}>
                           <Text style={styles.rowLabel}>Contract / Total Price</Text>
-                          <Text style={[styles.rowValue, { color: UI.purple }]}>{formatIQD(total)}</Text>
+                          <Text style={[styles.rowValue, { color: UI.purple }]}>{formatSEK(total)}</Text>
                         </View>
 
                         <View style={styles.row}>
                           <Text style={styles.rowLabel}>Paid Now</Text>
-                          <Text style={[styles.rowValue, { color: UI.green }]}>{formatIQD(paidNow)}</Text>
+                          <Text style={[styles.rowValue, { color: UI.green }]}>{formatSEK(paidNow)}</Text>
                         </View>
 
                         {purchaseMode === 'installment' ? (
                           <>
                             <View style={styles.row}>
                               <Text style={styles.rowLabel}>Monthly Installment</Text>
-                              <Text style={[styles.rowValue, { color: UI.purple }]}>{formatIQD(monthly)}</Text>
+                              <Text style={[styles.rowValue, { color: UI.purple }]}>{formatSEK(monthly)}</Text>
                             </View>
 
                             <View style={styles.row}>
@@ -1647,14 +1647,14 @@ export default function MobileProductsAdminScreen() {
 
                             <View style={styles.row}>
                               <Text style={styles.rowLabel}>Installment Total</Text>
-                              <Text style={[styles.rowValue, { color: UI.purple }]}>{formatIQD(installmentTotal)}</Text>
+                              <Text style={[styles.rowValue, { color: UI.purple }]}>{formatSEK(installmentTotal)}</Text>
                             </View>
                           </>
                         ) : null}
 
                         <View style={styles.row}>
                           <Text style={styles.rowLabel}>Remaining Amount</Text>
-                          <Text style={[styles.rowValue, { color: UI.amber }]}>{formatIQD(remaining)}</Text>
+                          <Text style={[styles.rowValue, { color: UI.amber }]}>{formatSEK(remaining)}</Text>
                         </View>
 
                         <View style={styles.row}>
@@ -1778,7 +1778,7 @@ export default function MobileProductsAdminScreen() {
                   value={form.name}
                   onChangeText={(v) => setForm((p) => ({ ...p, name: v }))}
                   placeholder="iPhone 16 Pro Max / Samsung Powerbank / Cable..."
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#9FB0C7"
                 />
 
                 <Text style={styles.inputLabel}>Category</Text>
@@ -1825,7 +1825,7 @@ export default function MobileProductsAdminScreen() {
                       value={form.service_type}
                       onChangeText={(v) => setForm((p) => ({ ...p, service_type: v }))}
                       placeholder="Repair / Pickup Service / Delivery Service"
-                      placeholderTextColor="#94A3B8"
+                      placeholderTextColor="#9FB0C7"
                     />
                   </>
                 ) : null}
@@ -1856,7 +1856,7 @@ export default function MobileProductsAdminScreen() {
                       value={form.custom_brand}
                       onChangeText={(v) => setForm((p) => ({ ...p, custom_brand: v }))}
                       placeholder="Type new brand name"
-                      placeholderTextColor="#94A3B8"
+                      placeholderTextColor="#9FB0C7"
                     />
                   </>
                 ) : null}
@@ -1885,7 +1885,7 @@ export default function MobileProductsAdminScreen() {
                   value={form.image_url}
                   onChangeText={(v) => setForm((p) => ({ ...p, image_url: v }))}
                   placeholder="https://... or upload image below"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#9FB0C7"
                   autoCapitalize="none"
                 />
 
@@ -1910,25 +1910,25 @@ export default function MobileProductsAdminScreen() {
                   </View>
                 )}
 
-                <Text style={styles.inputLabel}>Base Price IQD</Text>
+                <Text style={styles.inputLabel}>Base Price SEK</Text>
                 <TextInput
                   style={styles.input}
                   value={form.price_iqd}
                   onChangeText={(v) => setForm((p) => ({ ...p, price_iqd: v }))}
                   placeholder="1071000"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#9FB0C7"
                   keyboardType="number-pad"
                 />
 
                 {form.is_cash_available ? (
                   <>
-                    <Text style={styles.inputLabel}>Cash Price IQD</Text>
+                    <Text style={styles.inputLabel}>Cash Price SEK</Text>
                     <TextInput
                       style={styles.input}
                       value={form.cash_price_iqd}
                       onChangeText={(v) => setForm((p) => ({ ...p, cash_price_iqd: v }))}
                       placeholder="1071000"
-                      placeholderTextColor="#94A3B8"
+                      placeholderTextColor="#9FB0C7"
                       keyboardType="number-pad"
                     />
                   </>
@@ -1936,13 +1936,13 @@ export default function MobileProductsAdminScreen() {
 
                 {form.is_installment_available ? (
                   <>
-                    <Text style={styles.inputLabel}>Monthly Price IQD</Text>
+                    <Text style={styles.inputLabel}>Monthly Price SEK</Text>
                     <TextInput
                       style={styles.input}
                       value={form.monthly_price_iqd}
                       onChangeText={(v) => setForm((p) => ({ ...p, monthly_price_iqd: v }))}
                       placeholder="260000"
-                      placeholderTextColor="#94A3B8"
+                      placeholderTextColor="#9FB0C7"
                       keyboardType="number-pad"
                     />
 
@@ -1952,7 +1952,7 @@ export default function MobileProductsAdminScreen() {
                       value={form.months_count}
                       onChangeText={(v) => setForm((p) => ({ ...p, months_count: v }))}
                       placeholder="10"
-                      placeholderTextColor="#94A3B8"
+                      placeholderTextColor="#9FB0C7"
                       keyboardType="number-pad"
                     />
                   </>
@@ -1963,20 +1963,20 @@ export default function MobileProductsAdminScreen() {
 
                   <View style={styles.rowNoBorder}>
                     <Text style={styles.rowLabel}>Base Price</Text>
-                    <Text style={styles.rowValue}>{formatIQD(liveBasePrice)}</Text>
+                    <Text style={styles.rowValue}>{formatSEK(liveBasePrice)}</Text>
                   </View>
 
                   <View style={styles.rowNoBorder}>
                     <Text style={styles.rowLabel}>Cash Price</Text>
                     <Text style={[styles.rowValue, { color: UI.blue }]}>
-                      {form.is_cash_available ? formatIQD(liveCashPrice) : 'Disabled'}
+                      {form.is_cash_available ? formatSEK(liveCashPrice) : 'Disabled'}
                     </Text>
                   </View>
 
                   <View style={styles.rowNoBorder}>
                     <Text style={styles.rowLabel}>Monthly Price</Text>
                     <Text style={[styles.rowValue, { color: UI.purple }]}>
-                      {form.is_installment_available ? formatIQD(liveMonthlyPrice) : 'Disabled'}
+                      {form.is_installment_available ? formatSEK(liveMonthlyPrice) : 'Disabled'}
                     </Text>
                   </View>
 
@@ -1988,7 +1988,7 @@ export default function MobileProductsAdminScreen() {
                   <View style={styles.rowNoBorder}>
                     <Text style={styles.rowLabel}>Installment Contract Total</Text>
                     <Text style={[styles.rowValue, { color: UI.green }]}>
-                      {form.is_installment_available ? formatIQD(liveInstallmentContractTotal) : 'Disabled'}
+                      {form.is_installment_available ? formatSEK(liveInstallmentContractTotal) : 'Disabled'}
                     </Text>
                   </View>
                 </View>
@@ -1999,7 +1999,7 @@ export default function MobileProductsAdminScreen() {
                   value={form.storage}
                   onChangeText={(v) => setForm((p) => ({ ...p, storage: v }))}
                   placeholder="256GB"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#9FB0C7"
                 />
 
                 <Text style={styles.inputLabel}>RAM</Text>
@@ -2008,7 +2008,7 @@ export default function MobileProductsAdminScreen() {
                   value={form.ram}
                   onChangeText={(v) => setForm((p) => ({ ...p, ram: v }))}
                   placeholder="8GB"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#9FB0C7"
                 />
 
                 <Text style={styles.inputLabel}>Color Name</Text>
@@ -2017,7 +2017,7 @@ export default function MobileProductsAdminScreen() {
                   value={form.color}
                   onChangeText={(v) => setForm((p) => ({ ...p, color: v }))}
                   placeholder="Desert Titanium"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#9FB0C7"
                 />
 
                 <Text style={styles.inputLabel}>Color Hex</Text>
@@ -2026,7 +2026,7 @@ export default function MobileProductsAdminScreen() {
                   value={form.color_hex}
                   onChangeText={(v) => setForm((p) => ({ ...p, color_hex: v }))}
                   placeholder="#B88E5A"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#9FB0C7"
                   autoCapitalize="none"
                 />
 
@@ -2036,7 +2036,7 @@ export default function MobileProductsAdminScreen() {
                   value={form.stock}
                   onChangeText={(v) => setForm((p) => ({ ...p, stock: v }))}
                   placeholder="10"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#9FB0C7"
                   keyboardType="number-pad"
                 />
 
@@ -2046,7 +2046,7 @@ export default function MobileProductsAdminScreen() {
                   value={form.badge}
                   onChangeText={(v) => setForm((p) => ({ ...p, badge: v }))}
                   placeholder="new / special / discount / preorder"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#9FB0C7"
                 />
 
                 <Text style={styles.inputLabel}>Sort Order</Text>
@@ -2055,7 +2055,7 @@ export default function MobileProductsAdminScreen() {
                   value={form.sort_order}
                   onChangeText={(v) => setForm((p) => ({ ...p, sort_order: v }))}
                   placeholder="0"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#9FB0C7"
                   keyboardType="number-pad"
                 />
 
@@ -2065,7 +2065,7 @@ export default function MobileProductsAdminScreen() {
                   value={form.description}
                   onChangeText={(v) => setForm((p) => ({ ...p, description: v }))}
                   placeholder="Write product details here..."
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#9FB0C7"
                   multiline
                 />
 
@@ -2136,7 +2136,7 @@ export default function MobileProductsAdminScreen() {
                   Email: {selectedOrderForReview?.customer_email || selectedOrderForReview?.profile?.email || 'N/A'}
                 </Text>
                 <Text style={styles.reviewInfoSub}>
-                  Paid Now: {formatIQD(orderPaidNow(selectedOrderForReview))}
+                  Paid Now: {formatSEK(orderPaidNow(selectedOrderForReview))}
                 </Text>
               </View>
 
@@ -2172,7 +2172,7 @@ export default function MobileProductsAdminScreen() {
                 value={reviewMessage}
                 onChangeText={setReviewMessage}
                 placeholder="Write your message here..."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#9FB0C7"
                 multiline
               />
 

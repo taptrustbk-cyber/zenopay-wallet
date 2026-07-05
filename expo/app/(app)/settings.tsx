@@ -19,24 +19,24 @@ import i18n, { setLanguage, getCurrentLanguage } from '@/lib/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const UI = {
-  bg: '#EEF4FF',
+  bg: '#F4F7FB',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  border: '#E3E8F0',
 
-  blue: '#2563EB',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blue: '#0F2A5C',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
 
-  danger: '#DC2626',
-  dangerSoft: '#FEECEC',
+  danger: '#D4302A',
+  dangerSoft: '#FBE9E7',
 };
 
 const SHADOWS = {
   card: {
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
@@ -61,10 +61,10 @@ const LANGUAGES = [
 ];
 
 const SUPPORT_LINKS = {
-  email: 'mailto:info@zenopay.bond',
-  facebook: 'https://www.facebook.com/share/16feV1MMSC/?mibextid=wwXIfr',
-  instagram: 'https://www.instagram.com/zenopaywallet?igsh=czRlM2FsZXVxMmkw',
-  tiktok: 'https://www.tiktok.com/@zenopaywallet?_r=1&_t=ZS-955lFybRHAg',
+  email: 'mailto:support@swedbank.se',
+  facebook: 'https://www.facebook.com/swedbank',
+  instagram: 'https://www.instagram.com/swedbank',
+  tiktok: 'https://www.tiktok.com/@swedbank',
 };
 
 function normalizeLang(code?: string | null) {
@@ -801,7 +801,7 @@ const stylesLogout = StyleSheet.create({
     backgroundColor: '#111827',
   },
   confirmBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F2A5C',
   },
   btnText: {
     fontSize: 15,

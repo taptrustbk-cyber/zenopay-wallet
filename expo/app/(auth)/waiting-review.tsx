@@ -242,15 +242,15 @@ export default function WaitingReviewScreen() {
 }
 
 const UI = {
-  bg: '#EEF4FF',
+  bg: '#F4F7FB',
   card: '#FFFFFF',
-  soft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  border: '#D9E5F6',
-  primary: '#2563EB',
-  primaryDark: '#1D4ED8',
-  primarySoft: '#EAF2FF',
+  soft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  border: '#E3E8F0',
+  primary: '#0F2A5C',
+  primaryDark: '#0A1F45',
+  primarySoft: '#E8EEF6',
   greenSoft: '#EAF8EF',
   shadow: 'rgba(15, 23, 42, 0.08)',
 };

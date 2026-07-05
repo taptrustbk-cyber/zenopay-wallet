@@ -29,19 +29,19 @@ import { supabase } from '@/lib/supabase';
 import i18n from '@/lib/i18n';
 
 const COLORS = {
-  bg: '#EEF4FF',
-  bgSoft: '#F7FAFF',
+  bg: '#F4F7FB',
+  bgSoft: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  textMuted: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  textSecondary: '#5B6B82',
+  textMuted: '#9FB0C7',
+  border: '#E3E8F0',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blue2: '#3B82F6',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
   blueSoft2: '#DCEBFF',
 
   success: '#16A34A',
@@ -55,7 +55,7 @@ const COLORS = {
 
 const SHADOWS = {
   card: {
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
@@ -747,7 +747,7 @@ export default function ProfileScreen() {
               activeOpacity={0.92}
             >
               <LinearGradient
-                colors={['#79B7FF', '#4C92F7', '#2563EB']}
+                colors={['#79B7FF', '#4C92F7', '#0F2A5C']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryButton}

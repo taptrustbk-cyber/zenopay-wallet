@@ -73,19 +73,19 @@ interface AppNotificationRow {
 }
 
 const UI = {
-  bg: '#EEF4FF',
-  page: '#F7FAFF',
+  bg: '#F4F7FB',
+  page: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
+  border: '#E3E8F0',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blue2: '#3B82F6',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
   blueSoft2: '#DCEBFF',
 
   success: '#16A34A',
@@ -99,7 +99,7 @@ const UI = {
   purpleSoft: '#F5F3FF',
 
   white: '#FFFFFF',
-  shadow: '#7DA8E6',
+  shadow: '#A8B8CC',
 };
 
 const SHADOWS = {
@@ -186,7 +186,7 @@ function getProviderConfig(): Record<
     },
     ftth: {
       label: tSafe('notifications.providers.ftth', 'FTTH'),
-      color: '#2563EB',
+      color: '#0F2A5C',
       soft: '#EFF6FF',
       border: '#BFDBFE',
       icon: 'wifi-outline',
@@ -233,8 +233,8 @@ function formatNumber(value?: number | null) {
   }).format(Number(value || 0));
 }
 
-function formatIQD(value?: number | null) {
-  return `${formatNumber(value)} ${tSafe('iqdShort', 'IQD')}`;
+function formatSEK(value?: number | null) {
+  return `${formatNumber(value)} ${tSafe('sekShort', 'SEK')}`;
 }
 
 function formatDate(value?: string | null) {
@@ -402,9 +402,9 @@ function buildDisplaySubtitle(order: NotificationOrderRow) {
     order.source === 'gift'
       ? String(order.amount_iqd ? buildGiftAmount(order, providerStyle.label) : '')
       : order.amount_iqd
-      ? formatIQD(order.amount_iqd)
+      ? formatSEK(order.amount_iqd)
       : '';
-  const priceText = order.price_iqd ? formatIQD(order.price_iqd) : '';
+  const priceText = order.price_iqd ? formatSEK(order.price_iqd) : '';
 
   if (amountText && priceText) {
     return `${providerStyle.label} • ${amountText} • ${priceText}`;
@@ -1127,15 +1127,15 @@ export default function NotificationsScreen() {
                       <Text style={styles.infoValue}>
                         {order.source === 'gift'
                           ? buildGiftAmount(order, provider.label)
-                          : formatIQD(order.amount_iqd)}
+                          : formatSEK(order.amount_iqd)}
                       </Text>
                     </View>
 
                     <View style={styles.infoBox}>
                       <Text style={styles.infoLabel}>
-                        {tSafe('notifications.priceIqd', 'Price (IQD)')}
+                        {tSafe('notifications.priceIqd', 'Price (SEK)')}
                       </Text>
-                      <Text style={styles.infoValue}>{formatIQD(order.price_iqd)}</Text>
+                      <Text style={styles.infoValue}>{formatSEK(order.price_iqd)}</Text>
                     </View>
 
                     <View style={styles.infoBoxWide}>

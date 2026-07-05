@@ -14,7 +14,7 @@ import {
 import { Asset } from 'expo-asset';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery } from '@tanstack/react-query';
-import { formatIQD } from '@/lib/format';
+import { formatSEK } from '@/lib/format';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -26,25 +26,25 @@ const PHONE_IPHONE = require('@/assets/images/iphone17-promax-orange.png');
 const PHONE_SAMSUNG = require('@/assets/images/samsung-s25-ultra.png');
 
 const UI = {
-  bg: '#EEF4FF',
-  bgSoft: '#F7FAFF',
+  bg: '#F4F7FB',
+  bgSoft: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
+  border: '#E3E8F0',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blue2: '#3B82F6',
   blue3: '#60A5FA',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
   blueSoft2: '#DCEBFF',
 
-  iconGray: '#64748B',
+  iconGray: '#5B6B82',
   white: '#FFFFFF',
-  black: '#0F172A',
+  black: '#0F1B33',
   orange: '#F97316',
   orangeSoft: '#FFF1E8',
   success: '#23864A',
@@ -58,7 +58,7 @@ const UI = {
 
 const SHADOWS = {
   card: {
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
@@ -182,7 +182,7 @@ export default function DashboardScreen() {
           .insert({
             user_id: user.id,
             balance: 0,
-            currency: 'IQD',
+            currency: 'SEK',
             is_locked: false,
           })
           .select()
@@ -249,12 +249,12 @@ export default function DashboardScreen() {
     return `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}v=${v}`;
   }, [avatarUrl, user?.id]);
 
-  const balanceText = formatIQD(walletQuery.data?.balance);
-  const rawCurrency = String(walletQuery.data?.currency || 'IQD').toUpperCase();
+  const balanceText = formatSEK(walletQuery.data?.balance);
+  const rawCurrency = String(walletQuery.data?.currency || 'SEK').toUpperCase();
 
 const currencyText =
-  rawCurrency === 'IQD'
-    ? String(i18n.t('iqdShort') || 'IQD')
+  rawCurrency === 'SEK'
+    ? String(i18n.t('sekShort') || 'SEK')
     : rawCurrency;
 
   if (!profile) {
@@ -310,7 +310,7 @@ const currencyText =
         </View>
 
         <LinearGradient
-          colors={['#5DA8FF', '#3B82F6', '#2563EB']}
+          colors={['#5DA8FF', '#3B82F6', '#0F2A5C']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.balanceCard}
@@ -485,7 +485,7 @@ const currencyText =
 
           <View style={[styles.mobileAdBottomRow, isRTL && styles.mobileAdBottomRowRTL]}>
             <LinearGradient
-              colors={['#79B7FF', '#4C92F7', '#2563EB']}
+              colors={['#79B7FF', '#4C92F7', '#0F2A5C']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[
@@ -507,7 +507,7 @@ const currencyText =
             </LinearGradient>
 
             <LinearGradient
-              colors={['#79B7FF', '#4C92F7', '#2563EB']}
+              colors={['#79B7FF', '#4C92F7', '#0F2A5C']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.mobileAdButton}

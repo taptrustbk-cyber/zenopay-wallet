@@ -19,20 +19,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 
 const COLORS = {
-  bg: '#EEF4FF',
-  page: '#F7FAFF',
+  bg: '#F4F7FB',
+  page: '#FFFFFF',
   card: '#FFFFFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  border: '#D9E5F6',
-  inputBg: '#F8FBFF',
-  blue: '#2563EB',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  text: '#0F1B33',
+  textSecondary: '#5B6B82',
+  border: '#E3E8F0',
+  inputBg: '#F4F7FB',
+  blue: '#0F2A5C',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
   success: '#16A34A',
   danger: '#DC2626',
   white: '#FFFFFF',
-  shadow: '#7DA8E6',
+  shadow: '#A8B8CC',
 };
 
 const SHADOWS = {
@@ -52,7 +52,7 @@ const SHADOWS = {
   },
 };
 
-const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v3';
+const PENDING_PROFILE_KEY = 'swedbank_pending_profile_v3';
 const CODE_LENGTH = 6;
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -548,7 +548,7 @@ export default function EmailVerificationScreen() {
                     'Need help with the verification code? Contact support.'
                   )}
                 </Text>
-                <Text style={styles.supportEmail}>info@zenopay.bond</Text>
+                <Text style={styles.supportEmail}>info@swedbank.se</Text>
               </View>
             </View>
 

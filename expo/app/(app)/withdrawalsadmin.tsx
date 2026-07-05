@@ -49,15 +49,15 @@ const UI = {
   bg: '#F8FAFC',
   card: '#FFFFFF',
   cardSoft: '#F1F5F9',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
   border: '#E2E8F0',
 
   green: '#16A34A',
   greenSoft: '#DCFCE7',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blueSoft: '#DBEAFE',
 
   red: '#DC2626',
@@ -134,7 +134,7 @@ const formatIraqTime = (value?: string | null) => {
   });
 };
 
-const formatIQD = (value?: number | string | null) => {
+const formatSEK = (value?: number | string | null) => {
   const n = Number(value || 0);
   if (Number.isNaN(n)) return '0';
   return n.toLocaleString('de-DE');
@@ -310,7 +310,7 @@ export default function WithdrawalsAdminScreen() {
   ) => {
     const fullName = order.profiles?.full_name || 'User';
     const email = order.profiles?.email || '';
-    const amountText = `${formatIQD(order.amount)} ${order.currency || 'IQD'}`;
+    const amountText = `${formatSEK(order.amount)} ${order.currency || 'SEK'}`;
     const paymentMethod = order.payment_method?.name || 'Withdrawal Method';
 
     let title = 'Withdrawal Update';
@@ -351,7 +351,7 @@ export default function WithdrawalsAdminScreen() {
 
       order_id: order.id,
       amount: Number(order.amount || 0),
-      currency: order.currency || 'IQD',
+      currency: order.currency || 'SEK',
       payment_method: paymentMethod,
       reject_reason: reason?.trim() || null,
       sender_name: order.sender_name || null,
@@ -374,7 +374,7 @@ export default function WithdrawalsAdminScreen() {
         title,
         body,
         amount: Number(order.amount || 0),
-        currency: order.currency || 'IQD',
+        currency: order.currency || 'SEK',
         payment_method: paymentMethod,
         reject_reason: reason?.trim() || null,
         sender_name: order.sender_name || null,
@@ -686,7 +686,7 @@ export default function WithdrawalsAdminScreen() {
                   <View style={styles.infoMiniCard}>
                     <Text style={styles.infoMiniLabel}>Amount</Text>
                     <Text style={styles.infoMiniValue}>
-                      {formatIQD(order.amount)} {order.currency || 'IQD'}
+                      {formatSEK(order.amount)} {order.currency || 'SEK'}
                     </Text>
                   </View>
 

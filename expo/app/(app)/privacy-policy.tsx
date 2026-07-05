@@ -52,7 +52,7 @@ export default function PrivacyPolicyScreen() {
     ),
     intro: tSafe(
       ['privacyPolicy.intro', 'privacyPolicyData.intro'],
-      'This Privacy Policy explains how ZenoPay collects, uses, stores, and protects your information when you use the app and related services.'
+      'This Privacy Policy explains how SwedBank collects, uses, stores, and protects your information when you use the app and related services.'
     ),
 
     section1Title: tSafe(
@@ -82,7 +82,7 @@ export default function PrivacyPolicyScreen() {
       ),
       tSafe(
         ['privacyPolicy.section1Item5', 'privacyPolicyData.section1Item5'],
-        'Card information related to internal virtual card creation, including one-card-per-user setup and creation fee records such as 25,000 IQD where applicable.'
+        'Card information related to internal virtual card creation, including one-card-per-user setup and creation fee records such as 25,000 SEK where applicable.'
       ),
       tSafe(
         ['privacyPolicy.section1Item6', 'privacyPolicyData.section1Item6'],
@@ -147,7 +147,7 @@ export default function PrivacyPolicyScreen() {
     ),
     section3Desc: tSafe(
       ['privacyPolicy.section3Desc', 'privacyPolicyData.section3Desc'],
-      'If you allow location access, ZenoPay may use it only to suggest or show your city in the mobile shop page. Location is not required for general app use, and users may manually enter their city instead.'
+      'If you allow location access, SwedBank may use it only to suggest or show your city in the mobile shop page. Location is not required for general app use, and users may manually enter their city instead.'
     ),
 
     section4Title: tSafe(
@@ -201,7 +201,7 @@ export default function PrivacyPolicyScreen() {
     ),
     section9Desc: tSafe(
       ['privacyPolicy.section9Desc', 'privacyPolicyData.section9Desc'],
-      'ZenoPay is intended for users aged 18 and above.'
+      'SwedBank is intended for users aged 18 and above.'
     ),
 
     section10Title: tSafe(
@@ -240,7 +240,7 @@ export default function PrivacyPolicyScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#EEF4FF', '#F7FAFF']} style={styles.gradient}>
+      <LinearGradient colors={['#F4F7FB', '#FFFFFF']} style={styles.gradient}>
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -250,7 +250,7 @@ export default function PrivacyPolicyScreen() {
             <Ionicons
               name={isRTL ? 'arrow-forward' : 'arrow-back'}
               size={22}
-              color="#1D4ED8"
+              color="#0A1F45"
             />
           </TouchableOpacity>
 
@@ -265,7 +265,7 @@ export default function PrivacyPolicyScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <LinearGradient colors={['#4B8DFF', '#2563EB']} style={styles.hero}>
+          <LinearGradient colors={['#1E4280', '#0F2A5C']} style={styles.hero}>
             <Ionicons name="shield-outline" size={30} color="#fff" />
             <Text style={styles.heroTitle}>{UI.title}</Text>
             <Text style={styles.heroSub}>{UI.lastUpdated}</Text>
@@ -332,9 +332,9 @@ export default function PrivacyPolicyScreen() {
             <Text style={[styles.text, isRTL && styles.textRTL]}>{UI.section11Desc}</Text>
 
             <View style={[styles.contactBox, isRTL && styles.contactBoxRTL]}>
-              <Ionicons name="mail-outline" size={18} color="#2563EB" />
+              <Ionicons name="mail-outline" size={18} color="#0F2A5C" />
               <Text style={styles.contactLabel}>{UI.contactLabel}:</Text>
-              <Text style={styles.contactText}>info@zenopay.bond</Text>
+              <Text style={styles.contactText}>info@swedbank.se</Text>
             </View>
           </View>
 
@@ -364,10 +364,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D9E5F6',
+    borderColor: '#E3E8F0',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: '900',
-    color: '#0F172A',
+    color: '#0F1B33',
     textAlign: 'center',
     marginHorizontal: 10,
   },
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
     overflow: 'hidden',
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
@@ -422,8 +422,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#D9E5F6',
-    shadowColor: '#7DA8E6',
+    borderColor: '#E3E8F0',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginTop: 20,
     marginBottom: 8,
-    color: '#0F172A',
+    color: '#0F1B33',
   },
   text: {
     fontSize: 14.5,
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
   },
   bulletDot: {
     fontSize: 16,
-    color: '#2563EB',
+    color: '#0F2A5C',
     marginRight: 10,
     marginTop: 2,
     fontWeight: '900',
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 22,
-    color: '#0F172A',
+    color: '#0F1B33',
     fontWeight: '700',
   },
 
@@ -480,12 +480,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     padding: 16,
     borderRadius: 16,
-    backgroundColor: '#EAF2FF',
+    backgroundColor: '#E8EEF6',
     alignItems: 'center',
     gap: 10,
     flexWrap: 'wrap',
     borderWidth: 1,
-    borderColor: '#D9E5F6',
+    borderColor: '#E3E8F0',
   },
   contactBoxRTL: {
     flexDirection: 'row-reverse',
@@ -493,11 +493,11 @@ const styles = StyleSheet.create({
   contactLabel: {
     fontSize: 14.5,
     fontWeight: '900',
-    color: '#0F172A',
+    color: '#0F1B33',
   },
   contactText: {
     fontSize: 14.5,
     fontWeight: '900',
-    color: '#2563EB',
+    color: '#0F2A5C',
   },
 });

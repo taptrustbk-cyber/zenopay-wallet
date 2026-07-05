@@ -27,18 +27,18 @@ import * as Sharing from 'expo-sharing';
 import * as Clipboard from 'expo-clipboard';
 
 const UI = {
-  bg: '#EEF4FF',
-  page: '#F7FAFF',
+  bg: '#F4F7FB',
+  page: '#FFFFFF',
   card: '#FFFFFF',
-  soft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
-  border: '#D9E5F6',
+  soft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
+  border: '#E3E8F0',
 
-  primary: '#2563EB',
-  primaryDark: '#1D4ED8',
-  primarySoft: '#EAF2FF',
+  primary: '#0F2A5C',
+  primaryDark: '#0A1F45',
+  primarySoft: '#E8EEF6',
 
   green: '#16A34A',
   greenSoft: '#EAF8EF',
@@ -49,8 +49,8 @@ const UI = {
   amber: '#F59E0B',
   amberSoft: '#FEF3C7',
 
-  blue: '#2563EB',
-  blueSoft: '#EAF2FF',
+  blue: '#0F2A5C',
+  blueSoft: '#E8EEF6',
 
   purple: '#7C3AED',
   purpleSoft: '#F3E8FF',
@@ -166,7 +166,7 @@ type TxUi = {
     | 'other';
 };
 
-const APP_SYSTEM_NAME = 'Zenopay';
+const APP_SYSTEM_NAME = 'SwedBank';
 const APP_SYSTEM_ICON: keyof typeof Ionicons.glyphMap = 'shield-checkmark-outline';
 
 const safe = (v?: string | null) => (v && String(v).trim().length ? String(v).trim() : null);
@@ -198,10 +198,10 @@ const isArabicMoneyLang = () => {
 };
 
 const currencyLabel = () => {
-  return isArabicMoneyLang() ? tSafe('iqdShort', 'د.غ') : tSafe('iqdShort', 'IQD');
+  return isArabicMoneyLang() ? tSafe('sekShort', 'د.غ') : tSafe('sekShort', 'SEK');
 };
 
-const formatIQD = (value: number | null | undefined) => {
+const formatSEK = (value: number | null | undefined) => {
   const num = Number(value || 0);
   const abs = Math.abs(num);
   const formatted = abs.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -378,11 +378,11 @@ const isAdminAddTransaction = (tx: TransactionData) => {
   return (
     text.includes('admin_add_money') ||
     text.includes('admin add money') ||
-    text.includes('zenopay add money') ||
+    text.includes('swedbank add money') ||
     text.includes('admin_adjustment_add') ||
     text.includes('balance added by admin') ||
     text.includes('add balance via admin') ||
-    text.includes('add balance via zenopay')
+    text.includes('add balance via swedbank')
   );
 };
 
@@ -409,15 +409,15 @@ const isAdminWithdrawTransaction = (tx: TransactionData) => {
   return (
     text.includes('admin_withdraw_money') ||
     text.includes('admin withdraw money') ||
-    text.includes('zenopay withdraw money') ||
+    text.includes('swedbank withdraw money') ||
     text.includes('admin_adjustment_withdraw') ||
     text.includes('balance withdrawn by admin') ||
     text.includes('withdraw balance via admin') ||
-    text.includes('withdraw balance via zenopay')
+    text.includes('withdraw balance via swedbank')
   );
 };
 
-function ZenopayZIcon({ size = 26 }: { size?: number }) {
+function SwedBankZIcon({ size = 26 }: { size?: number }) {
   return (
     <View
       style={{
@@ -490,7 +490,7 @@ function CachedSquareImage({
       }}
     >
       {fallbackZ ? (
-        <ZenopayZIcon size={Math.max(18, size * 0.34)} />
+        <SwedBankZIcon size={Math.max(18, size * 0.34)} />
       ) : (
         <Ionicons
           name={fallbackIcon || 'image-outline'}
@@ -754,33 +754,33 @@ export default function TransactionsScreen() {
 
       if (isAdminAddTransaction(tx)) {
         return {
-          title: tSafe('transactions.addBalanceViaAdmin', 'Add Balance via Zenopay'),
+          title: tSafe('transactions.addBalanceViaAdmin', 'Add Balance via SwedBank'),
           subtitleLine1: APP_SYSTEM_NAME,
           subtitleLine2: tSafe(
-            'transactions.balanceReceivedFromZenopay',
-            'Balance received from Zenopay'
+            'transactions.balanceReceivedFromSwedBank',
+            'Balance received from SwedBank'
           ),
           iconName: APP_SYSTEM_ICON,
           isOutgoing: false,
           verified: true,
-          displayName: tSafe('transactions.addBalanceViaAdmin', 'Add Balance via Zenopay'),
+          displayName: tSafe('transactions.addBalanceViaAdmin', 'Add Balance via SwedBank'),
           displaySecondary: tSafe(
-            'transactions.balanceReceivedFromZenopay',
-            'Balance received from Zenopay'
+            'transactions.balanceReceivedFromSwedBank',
+            'Balance received from SwedBank'
           ),
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
           displayImage: null,
           transactionTypeLabel: tSafe(
-            'transactions.balanceReceivedFromZenopay',
-            'Balance received from Zenopay'
+            'transactions.balanceReceivedFromSwedBank',
+            'Balance received from SwedBank'
           ),
           note:
             desc ||
             tSafe(
-              'transactions.zenopayAddedMoneyToWallet',
-              'Zenopay added money to your wallet'
+              'transactions.swedbankAddedMoneyToWallet',
+              'SwedBank added money to your wallet'
             ),
           adminNote: metaAdminNote || undefined,
           kind: 'admin_add',
@@ -789,33 +789,33 @@ export default function TransactionsScreen() {
 
       if (isAdminWithdrawTransaction(tx)) {
         return {
-          title: tSafe('transactions.withdrawBalanceViaAdmin', 'Withdraw Balance via Zenopay'),
+          title: tSafe('transactions.withdrawBalanceViaAdmin', 'Withdraw Balance via SwedBank'),
           subtitleLine1: APP_SYSTEM_NAME,
           subtitleLine2: tSafe(
-            'transactions.balanceWithdrawnByZenopay',
-            'Balance withdrawn by Zenopay'
+            'transactions.balanceWithdrawnBySwedBank',
+            'Balance withdrawn by SwedBank'
           ),
           iconName: APP_SYSTEM_ICON,
           isOutgoing: true,
           verified: true,
-          displayName: tSafe('transactions.withdrawBalanceViaAdmin', 'Withdraw Balance via Zenopay'),
+          displayName: tSafe('transactions.withdrawBalanceViaAdmin', 'Withdraw Balance via SwedBank'),
           displaySecondary: tSafe(
-            'transactions.balanceWithdrawnByZenopay',
-            'Balance withdrawn by Zenopay'
+            'transactions.balanceWithdrawnBySwedBank',
+            'Balance withdrawn by SwedBank'
           ),
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
           displayImage: null,
           transactionTypeLabel: tSafe(
-            'transactions.balanceWithdrawnByZenopay',
-            'Balance withdrawn by Zenopay'
+            'transactions.balanceWithdrawnBySwedBank',
+            'Balance withdrawn by SwedBank'
           ),
           note:
             desc ||
             tSafe(
-              'transactions.zenopayWithdrewMoneyFromWallet',
-              'Zenopay withdrew money from your wallet'
+              'transactions.swedbankWithdrewMoneyFromWallet',
+              'SwedBank withdrew money from your wallet'
             ),
           adminNote: metaAdminNote || undefined,
           kind: 'admin_withdraw',
@@ -825,7 +825,7 @@ export default function TransactionsScreen() {
       if (type === 'deposit' || type === 'admin_add' || type === 'agent_add') {
         const titleText = metaPaymentMethod
           ? `${tSafe('transactions.depositFrom', 'Deposit from')} ${metaPaymentMethod}`
-          : tSafe('transactions.depositFromZenopay', 'Deposit from Zenopay');
+          : tSafe('transactions.depositFromSwedBank', 'Deposit from SwedBank');
 
         return {
           title: titleText,
@@ -851,7 +851,7 @@ export default function TransactionsScreen() {
       if (type === 'withdraw' || type === 'admin_withdraw' || type === 'agent_withdraw') {
         const titleText = metaPaymentMethod
           ? `${tSafe('transactions.withdrawTo', 'Withdraw to')} ${metaPaymentMethod}`
-          : tSafe('transactions.withdrawToZenopay', 'Withdraw to Zenopay');
+          : tSafe('transactions.withdrawToSwedBank', 'Withdraw to SwedBank');
 
         return {
           title: titleText,
@@ -980,12 +980,12 @@ export default function TransactionsScreen() {
         return {
           title: tSafe('transactions.purchasedVirtualCard', 'Purchased Virtual Card'),
           subtitleLine1: APP_SYSTEM_NAME,
-          subtitleLine2: formatIQD(metaCashTotal || Math.abs(Number(tx.amount || 0))),
+          subtitleLine2: formatSEK(metaCashTotal || Math.abs(Number(tx.amount || 0))),
           iconName: 'card-outline',
           isOutgoing: true,
           verified: false,
           displayName: tSafe('transactions.purchasedVirtualCard', 'Purchased Virtual Card'),
-          displaySecondary: formatIQD(metaCashTotal || Math.abs(Number(tx.amount || 0))),
+          displaySecondary: formatSEK(metaCashTotal || Math.abs(Number(tx.amount || 0))),
           displayEmail: undefined,
           displayCity: undefined,
           displayAvatar: null,
@@ -1256,7 +1256,7 @@ export default function TransactionsScreen() {
             .amount { color: #1E2A4A; font-size: 22px; font-weight: 800; }
             .badge {
               display: inline-block; padding: 10px 18px; border-radius: 999px; color: white;
-              background: #2563EB; font-size: 15px; font-weight: 700;
+              background: #0F2A5C; font-size: 15px; font-weight: 700;
             }
             .note {
               margin-top: 18px; border-radius: 16px; background: #f8fbff; border: 1px solid #e5edf7;
@@ -1303,14 +1303,14 @@ export default function TransactionsScreen() {
             <div class="row">
               <div>
                 <div class="label">${tSafe('transactions.transactionAmount', 'Transaction Amount')}</div>
-                <div class="amount">${formatIQD(amount)}</div>
+                <div class="amount">${formatSEK(amount)}</div>
               </div>
             </div>
 
             <div class="row">
               <div>
                 <div class="label">${tSafe('transactions.transactionFee', 'Transaction Fee')}</div>
-                <div class="value">${formatIQD(fee)}</div>
+                <div class="value">${formatSEK(fee)}</div>
               </div>
             </div>
 
@@ -1439,7 +1439,7 @@ export default function TransactionsScreen() {
     return (
       <View style={[styles.txIconBox, { backgroundColor: bg }]}>
         {useZFallback ? (
-          <ZenopayZIcon size={22} />
+          <SwedBankZIcon size={22} />
         ) : (
           <Ionicons name={icon} size={22} color={iconColor} />
         )}
@@ -1489,7 +1489,7 @@ export default function TransactionsScreen() {
               ]}
               numberOfLines={1}
             >
-              {`${ui.isOutgoing ? '-' : '+'} ${formatIQD(rawAmount)}`}
+              {`${ui.isOutgoing ? '-' : '+'} ${formatSEK(rawAmount)}`}
             </Text>
 
             <Text style={[styles.txId, isRTL && styles.textRTL]} numberOfLines={1}>
@@ -1635,7 +1635,7 @@ export default function TransactionsScreen() {
           : null}
 
         {ui.kind === 'mobile' && ui.detailPurchaseMode === 'cash' && ui.detailCashTotal
-          ? renderDetailRow(tSafe('transactions.cashPrice', 'Cash Price'), formatIQD(ui.detailCashTotal), false, UI.blue)
+          ? renderDetailRow(tSafe('transactions.cashPrice', 'Cash Price'), formatSEK(ui.detailCashTotal), false, UI.blue)
           : null}
 
         {ui.kind === 'mobile' && ui.detailPurchaseMode === 'installment' && ui.detailMonthsCount
@@ -1645,7 +1645,7 @@ export default function TransactionsScreen() {
         {ui.kind === 'mobile' && ui.detailPurchaseMode === 'installment' && ui.detailMonthlyPrice
           ? renderDetailRow(
               tSafe('transactions.monthlyInstallment', 'Monthly Installment'),
-              formatIQD(ui.detailMonthlyPrice),
+              formatSEK(ui.detailMonthlyPrice),
               false,
               UI.purple
             )
@@ -1654,7 +1654,7 @@ export default function TransactionsScreen() {
         {ui.kind === 'mobile' && ui.detailPurchaseMode === 'installment' && ui.detailContractTotal
           ? renderDetailRow(
               tSafe('transactions.installmentContractTotal', 'Installment Contract Total'),
-              formatIQD(ui.detailContractTotal),
+              formatSEK(ui.detailContractTotal),
               false,
               UI.purple
             )
@@ -1665,7 +1665,7 @@ export default function TransactionsScreen() {
               ui.kind === 'mobile_refund'
                 ? tSafe('transactions.refundAmount', 'Refund Amount')
                 : tSafe('transactions.transactionAmount', 'Transaction Amount'),
-              formatIQD(ui.detailPaidNow),
+              formatSEK(ui.detailPaidNow),
               false,
               ui.isOutgoing ? UI.red : UI.green
             )
@@ -1677,7 +1677,7 @@ export default function TransactionsScreen() {
         ui.detailRemaining !== undefined
           ? renderDetailRow(
               tSafe('transactions.remainingAmount', 'Remaining Amount'),
-              formatIQD(ui.detailRemaining),
+              formatSEK(ui.detailRemaining),
               false,
               UI.amber
             )
@@ -1910,7 +1910,7 @@ export default function TransactionsScreen() {
                         selectedUi.kind === 'withdraw' ||
                         selectedUi.kind === 'admin_add' ||
                         selectedUi.kind === 'admin_withdraw' ? (
-                          <ZenopayZIcon size={26} />
+                          <SwedBankZIcon size={26} />
                         ) : (
                           <Ionicons
                             name={
@@ -1968,7 +1968,7 @@ export default function TransactionsScreen() {
                   selectedUi.kind !== 'admin_withdraw' &&
                   renderDetailRow(
                     tSafe('transactions.transactionAmount', 'Transaction Amount'),
-                    formatIQD(Math.abs(Number(selectedTx.amount || 0))),
+                    formatSEK(Math.abs(Number(selectedTx.amount || 0))),
                     false,
                     selectedUi.isOutgoing ? UI.red : UI.green
                   )}
@@ -1982,7 +1982,7 @@ export default function TransactionsScreen() {
                   selectedUi.kind !== 'admin_withdraw' &&
                   renderDetailRow(
                     tSafe('transactions.transactionFee', 'Transaction Fee'),
-                    formatIQD(Number(selectedTx.fee_amount || 0)),
+                    formatSEK(Number(selectedTx.fee_amount || 0)),
                     false,
                     UI.green
                   )}
@@ -2259,7 +2259,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 10,
     paddingHorizontal: 18,
-    backgroundColor: '#F8FBFF',
+    backgroundColor: '#F4F7FB',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: UI.border,
@@ -2426,7 +2426,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 10,
     borderRadius: 18,
-    backgroundColor: '#F8FBFF',
+    backgroundColor: '#F4F7FB',
     borderWidth: 1,
     borderColor: UI.border,
     padding: 16,

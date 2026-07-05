@@ -21,9 +21,9 @@ import i18n, { setLanguage, getCurrentLanguage } from '@/lib/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 
-const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v1';
-const REMEMBER_ME_KEY = 'zenopay_remember_me_v1';
-const REMEMBER_EMAIL_KEY = 'zenopay_remember_email_v1';
+const PENDING_PROFILE_KEY = 'swedbank_pending_profile_v1';
+const REMEMBER_ME_KEY = 'swedbank_remember_me_v1';
+const REMEMBER_EMAIL_KEY = 'swedbank_remember_email_v1';
 
 type PendingProfile = {
   email?: string;
@@ -41,23 +41,26 @@ type ProfileKycRow = {
 };
 
 const UI = {
-  bg: '#EEF4FF',
-  page: '#F7FAFF',
+  bg: '#F4F7FB',
+  page: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
+  border: '#E3E8F0',
 
-  blue: '#2563EB',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
-  blueSoft2: '#DCEBFF',
+  blue: '#0F2A5C',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
+  blueSoft2: '#D6E0EE',
+
+  gold: '#C9A961',
+  goldSoft: '#F5EFDE',
 
   white: '#FFFFFF',
-  black: '#0F172A',
-  shadow: '#7DA8E6',
+  black: '#0F1B33',
+  shadow: '#A8B8CC',
 };
 
 const SHADOWS = {
@@ -397,12 +400,12 @@ export default function LoginScreen() {
                   end={{ x: 1, y: 1 }}
                   style={styles.logoGradient}
                 >
-                  <Text style={styles.logoText}>Z</Text>
+                  <Text style={styles.logoText}>S</Text>
                 </LinearGradient>
               </View>
             </View>
 
-            <Text style={styles.appName}>ZenoPay</Text>
+            <Text style={styles.appName}>SwedBank</Text>
             <Text style={styles.welcomeBack}>
               {(i18n.t('auth.welcomeBack') as string) || 'Welcome Back!'}
             </Text>
@@ -524,7 +527,7 @@ export default function LoginScreen() {
               </Text>
               <Text style={styles.helpText}>
                 {(i18n.t('auth.contactUsAt') as string) || 'Contact us at'}{' '}
-                <Text style={styles.helpEmail}>info@zenopay.bond</Text>
+                <Text style={styles.helpEmail}>support@swedbank.se</Text>
               </Text>
             </View>
           </View>

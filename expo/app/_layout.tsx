@@ -125,7 +125,7 @@ function AppShell() {
             name: "default",
             importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 250, 250, 250],
-            lightColor: "#2563EB",
+            lightColor: "#0F2A5C",
             sound: "default",
             enableVibrate: true,
             enableLights: true,

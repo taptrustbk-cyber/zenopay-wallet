@@ -10,19 +10,19 @@ import i18n from '@/lib/i18n';
 export const options = { headerShown: false };
 
 const COLORS = {
-  bg: '#EEF4FF',
-  page: '#F7FAFF',
+  bg: '#F4F7FB',
+  page: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  textLight: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  textSecondary: '#5B6B82',
+  textLight: '#9FB0C7',
+  border: '#E3E8F0',
   headerBg: '#FFFFFF',
 
-  blue: '#2563EB',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blue: '#0F2A5C',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
   blueSoft2: '#DCEBFF',
 
   green: '#16A34A',
@@ -34,14 +34,14 @@ const COLORS = {
 
 const SHADOWS = {
   card: {
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
   soft: {
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -49,7 +49,7 @@ const SHADOWS = {
   },
 };
 
-const PENDING_PROFILE_KEY = 'zenopay_pending_profile_v1';
+const PENDING_PROFILE_KEY = 'swedbank_pending_profile_v1';
 
 function safeStr(v: unknown): string {
   if (typeof v === 'string') return v;
@@ -312,7 +312,7 @@ export default function ConfirmScreen() {
           <Text style={styles.hintText}>
             {Platform.OS === 'web'
               ? (i18n.t('webConfirmHint') || 'If you confirmed on web, return to the app.')
-              : (i18n.t('mobileConfirmHint') || 'After confirming, Zenopay verifies automatically.')}
+              : (i18n.t('mobileConfirmHint') || 'After confirming, SwedBank verifies automatically.')}
           </Text>
         </View>
       </View>

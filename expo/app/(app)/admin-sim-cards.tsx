@@ -108,13 +108,13 @@ const PROVIDER_PRESETS = [
     logo: FALLBACK_IMAGE,
   },
   {
-    key: 'zenopay',
-    label: 'Zenopay',
+    key: 'swedbank',
+    label: 'SwedBank',
     logo: FALLBACK_IMAGE,
   },
 ];
 
-function formatIQD(value?: number | null) {
+function formatSEK(value?: number | null) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
@@ -463,11 +463,11 @@ export default function AdminSimCardScreen() {
       return false;
     }
     if (!amountIqd.trim()) {
-      Alert.alert('Missing amount', 'Please enter amount IQD.');
+      Alert.alert('Missing amount', 'Please enter amount SEK.');
       return false;
     }
     if (!priceIqd.trim()) {
-      Alert.alert('Missing price', 'Please enter price IQD.');
+      Alert.alert('Missing price', 'Please enter price SEK.');
       return false;
     }
     return true;
@@ -1183,7 +1183,7 @@ export default function AdminSimCardScreen() {
 
                 <TextInput
                   style={styles.input}
-                  placeholder="Card title (e.g. Korek Telecom 1000 IQD)"
+                  placeholder="Card title (e.g. Korek Telecom 1000 SEK)"
                   placeholderTextColor="rgba(255,255,255,0.42)"
                   value={cardTitle}
                   onChangeText={setCardTitle}
@@ -1192,7 +1192,7 @@ export default function AdminSimCardScreen() {
                 <View style={styles.doubleRow}>
                   <TextInput
                     style={[styles.input, styles.halfInput]}
-                    placeholder="Amount IQD"
+                    placeholder="Amount SEK"
                     placeholderTextColor="rgba(255,255,255,0.42)"
                     keyboardType="numeric"
                     value={amountIqd}
@@ -1200,7 +1200,7 @@ export default function AdminSimCardScreen() {
                   />
                   <TextInput
                     style={[styles.input, styles.halfInput]}
-                    placeholder="Price IQD"
+                    placeholder="Price SEK"
                     placeholderTextColor="rgba(255,255,255,0.42)"
                     keyboardType="numeric"
                     value={priceIqd}
@@ -1372,14 +1372,14 @@ export default function AdminSimCardScreen() {
                         <Text style={styles.cardItemTitle}>{card.title || '-'}</Text>
 
                         <Text style={styles.cardItemPrice}>
-                          Price {formatIQD(card.price_iqd)} IQD
+                          Price {formatSEK(card.price_iqd)} SEK
                         </Text>
 
                         <Text numberOfLines={2} style={styles.cardItemNotes}>
                           {(providerRow?.title || card.provider_title || providerPreset.label || 'Provider') +
                             ' • Amount ' +
-                            formatIQD(card.amount_iqd) +
-                            ' IQD'}
+                            formatSEK(card.amount_iqd) +
+                            ' SEK'}
                         </Text>
 
                         {!!card.notes && (

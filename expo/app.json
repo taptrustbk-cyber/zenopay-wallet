@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "ZenoPay Wallet",
-    "slug": "zenopay-wallet",
+    "name": "SwedBank",
+    "slug": "swedbank",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "zenopay",
+    "scheme": "swedbank",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
 
     "splash": {
-      "backgroundColor": "#0B2458"
+      "backgroundColor": "#0F2A5C"
     },
 
     "web": {
@@ -19,7 +19,7 @@
 
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.rork.zenopay-wallet",
+      "bundleIdentifier": "app.rork.swedbank",
       "infoPlist": {
         "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to access your Face ID biometric data.",
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
@@ -34,9 +34,9 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0B2458"
+        "backgroundColor": "#0F2A5C"
       },
-      "package": "app.rork.zenopay_wallet",
+      "package": "app.rork.swedbank",
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
@@ -74,7 +74,7 @@
       [
         "expo-notifications",
         {
-          "color": "#2563EB",
+          "color": "#0F2A5C",
           "defaultChannel": "default"
         }
       ]

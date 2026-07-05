@@ -49,15 +49,15 @@ const UI = {
   bg: '#F4F7FB',
   card: '#FFFFFF',
   cardSoft: '#F8FAFC',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
   border: '#E2E8F0',
 
   green: '#16A34A',
   greenSoft: '#DCFCE7',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blueSoft: '#DBEAFE',
 
   red: '#DC2626',
@@ -66,7 +66,7 @@ const UI = {
   orange: '#EA580C',
   orangeSoft: '#FFEDD5',
 
-  shadow: '#0F172A',
+  shadow: '#0F1B33',
 };
 
 const isLikelyUrl = (v?: string | null) =>
@@ -113,13 +113,13 @@ const formatIraqTime = (value?: string | null) => {
   }
 };
 
-const formatIQD = (value?: number | string | null) => {
+const formatSEK = (value?: number | string | null) => {
   const num = Number(value || 0);
   const rounded = Math.round(num);
   return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
-const formatIQDLabel = (value?: number | string | null) => `${formatIQD(value)} IQD`;
+const formatSEKLabel = (value?: number | string | null) => `${formatSEK(value)} SEK`;
 
 const normalizeDigits = (text: string) => text.replace(/[^\d]/g, '');
 
@@ -228,7 +228,7 @@ export default function WithdrawBalanceAdminScreen() {
     const cleanEmail = (email || '').trim();
 
     const title = 'Balance Withdrawn';
-    const body = `An amount of ${formatIQD(amount)} IQD was withdrawn from your wallet. Your new balance is ${formatIQD(newBalance)} IQD.`;
+    const body = `An amount of ${formatSEK(amount)} SEK was withdrawn from your wallet. Your new balance is ${formatSEK(newBalance)} SEK.`;
 
     const payload = {
       user_id: targetUserId,
@@ -347,11 +347,11 @@ export default function WithdrawBalanceAdminScreen() {
         source_table: 'admin_withdrawbalance',
         source_order_id: null,
         source_product_id: null,
-        display_title: 'Withdraw Balance via Zenopay',
-        display_subtitle: 'Balance withdrawn by Zenopay',
+        display_title: 'Withdraw Balance via SwedBank',
+        display_subtitle: 'Balance withdrawn by SwedBank',
         display_image_url: null,
         pin_code: null,
-        provider_name: 'Zenopay',
+        provider_name: 'SwedBank',
         payment_method_name: 'Admin Withdraw Balance',
         metadata: {
           type: 'admin_withdraw_money',
@@ -365,8 +365,8 @@ export default function WithdrawBalanceAdminScreen() {
           admin_email: user?.email || '',
           admin_user_id: user?.id || '',
           source: 'withdrawbalanceadmin',
-          title: 'Withdraw Balance via Zenopay',
-          subtitle: 'Balance withdrawn by Zenopay',
+          title: 'Withdraw Balance via SwedBank',
+          subtitle: 'Balance withdrawn by SwedBank',
         },
       };
 
@@ -525,7 +525,7 @@ export default function WithdrawBalanceAdminScreen() {
             <View style={[styles.statIconWrap, { backgroundColor: UI.blueSoft }]}>
               <Users size={18} color={UI.blue} />
             </View>
-            <Text style={styles.statValue}>{formatIQD(totalUsers)}</Text>
+            <Text style={styles.statValue}>{formatSEK(totalUsers)}</Text>
             <Text style={styles.statLabel}>Users</Text>
           </View>
 
@@ -533,7 +533,7 @@ export default function WithdrawBalanceAdminScreen() {
             <View style={[styles.statIconWrap, { backgroundColor: UI.redSoft }]}>
               <Wallet size={18} color={UI.red} />
             </View>
-            <Text style={styles.statValue}>{formatIQD(totalBalance)}</Text>
+            <Text style={styles.statValue}>{formatSEK(totalBalance)}</Text>
             <Text style={styles.statLabel}>Total Balance</Text>
           </View>
         </View>
@@ -609,7 +609,7 @@ export default function WithdrawBalanceAdminScreen() {
                     <Wallet size={16} color={UI.red} />
                     <Text style={styles.balanceLabel}>Current Balance</Text>
                   </View>
-                  <Text style={styles.balanceValue}>{formatIQDLabel(userProfile.balance)}</Text>
+                  <Text style={styles.balanceValue}>{formatSEKLabel(userProfile.balance)}</Text>
                 </View>
 
                 <View style={styles.detailsGrid}>
@@ -729,7 +729,7 @@ export default function WithdrawBalanceAdminScreen() {
                       <Text style={styles.modalInfoTitle}>{selectedUserName || 'Selected User'}</Text>
                       <Text style={styles.modalInfoText}>{selectedUserEmail}</Text>
                       <Text style={styles.modalInfoBalance}>
-                        Balance: {formatIQDLabel(selectedUserBalance)}
+                        Balance: {formatSEKLabel(selectedUserBalance)}
                       </Text>
                     </View>
 
@@ -743,21 +743,21 @@ export default function WithdrawBalanceAdminScreen() {
 
                     <TextInput
                       style={styles.modalInput}
-                      placeholder="Amount (IQD)"
+                      placeholder="Amount (SEK)"
                       placeholderTextColor={UI.text2}
                       keyboardType="numeric"
                       returnKeyType="done"
                       value={amountToWithdraw}
                       onChangeText={(text) => {
                         const cleaned = normalizeDigits(text);
-                        setAmountToWithdraw(cleaned ? formatIQD(cleaned) : '');
+                        setAmountToWithdraw(cleaned ? formatSEK(cleaned) : '');
                       }}
                       onSubmitEditing={Keyboard.dismiss}
                     />
 
                     {!!amountToWithdraw && (
                       <Text style={styles.previewAmount}>
-                        Amount: {formatIQDLabel(normalizeDigits(amountToWithdraw))}
+                        Amount: {formatSEKLabel(normalizeDigits(amountToWithdraw))}
                       </Text>
                     )}
 
@@ -1281,7 +1281,7 @@ const styles = StyleSheet.create({
   },
   modalCancelBtn: {
     flex: 1,
-    backgroundColor: '#64748B',
+    backgroundColor: '#5B6B82',
     paddingVertical: 13,
     borderRadius: 14,
     alignItems: 'center',

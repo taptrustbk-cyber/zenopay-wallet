@@ -166,12 +166,12 @@ export default function AiChatScreen() {
           created_at: new Date().toISOString(),
           text:
             lang === 'kmr'
-              ? 'سلاڤ 👋 من AI پشتگیریێ ZenoPay ـم. بپرسە هەر شتێک لسەر دانانا پارە، راکێشان، KYC، کارت…'
+              ? 'سلاڤ 👋 من AI پشتگیریێ SwedBank ـم. بپرسە هەر شتێک لسەر دانانا پارە، راکێشان، KYC، کارت…'
               : lang === 'ckb'
-              ? 'سڵاو 👋 من پشتگیری AI ی ZenoPay ـم. پرسیار بکە لەسەر دانان، راکێشان، KYC، کارت…'
+              ? 'سڵاو 👋 من پشتگیری AI ی SwedBank ـم. پرسیار بکە لەسەر دانان، راکێشان، KYC، کارت…'
               : lang === 'ar'
-              ? 'مرحباً 👋 أنا دعم ZenoPay الذكي. اسألني عن الإيداع، السحب، KYC، البطاقات…'
-              : 'Hi 👋 I’m ZenoPay Support AI. Ask me about deposit, withdraw, KYC, cards…',
+              ? 'مرحباً 👋 أنا دعم SwedBank الذكي. اسألني عن الإيداع، السحب، KYC، البطاقات…'
+              : 'Hi 👋 I’m SwedBank Support AI. Ask me about deposit, withdraw, KYC, cards…',
         };
         setMessages([hello]);
       } catch (e) {
@@ -252,12 +252,12 @@ export default function AiChatScreen() {
         text:
           answerText ||
           (lang === 'kmr'
-            ? 'ببورە، من نەتوانی جواب بدەم. تکایە دوبارە هەول بدە یان info@zenopay.bond پەیوەندی بکە.'
+            ? 'ببورە، من نەتوانی جواب بدەم. تکایە دوبارە هەول بدە یان info@swedbank.se پەیوەندی بکە.'
             : lang === 'ckb'
-            ? 'ببورە، ناتوانم وەڵام بدەم. دووبارە هەوڵ بدە یان پەیوەندی بکە: info@zenopay.bond'
+            ? 'ببورە، ناتوانم وەڵام بدەم. دووبارە هەوڵ بدە یان پەیوەندی بکە: info@swedbank.se'
             : lang === 'ar'
-            ? 'عذراً، لم أستطع الرد. جرّب مرة أخرى أو تواصل: info@zenopay.bond'
-            : 'Sorry, I could not answer. Please try again or contact info@zenopay.bond'),
+            ? 'عذراً، لم أستطع الرد. جرّب مرة أخرى أو تواصل: info@swedbank.se'
+            : 'Sorry, I could not answer. Please try again or contact info@swedbank.se'),
       };
 
       setMessages((prev) => [...prev, botMsg]);
@@ -290,12 +290,12 @@ export default function AiChatScreen() {
         created_at: new Date().toISOString(),
         text:
           lang === 'kmr'
-            ? `هەڵە: ${details}\nپەیوەندی: info@zenopay.bond`
+            ? `هەڵە: ${details}\nپەیوەندی: info@swedbank.se`
             : lang === 'ckb'
-            ? `هەڵە: ${details}\nپەیوەندی: info@zenopay.bond`
+            ? `هەڵە: ${details}\nپەیوەندی: info@swedbank.se`
             : lang === 'ar'
-            ? `خطأ: ${details}\nتواصل: info@zenopay.bond`
-            : `Error: ${details}\nContact: info@zenopay.bond`,
+            ? `خطأ: ${details}\nتواصل: info@swedbank.se`
+            : `Error: ${details}\nContact: info@swedbank.se`,
       };
 
       setMessages((prev) => [...prev, errMsg]);
@@ -387,7 +387,7 @@ export default function AiChatScreen() {
             <View style={styles.helpRow}>
               <Ionicons name="mail" size={14} color={UI.green} />
               <Text style={styles.helpText}>
-                {i18n.t('needHelp') || 'Need Help?'} <Text style={styles.helpEmail}>info@zenopay.bond</Text>
+                {i18n.t('needHelp') || 'Need Help?'} <Text style={styles.helpEmail}>info@swedbank.se</Text>
               </Text>
             </View>
           </View>

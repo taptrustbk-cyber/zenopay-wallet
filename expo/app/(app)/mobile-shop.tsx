@@ -99,26 +99,26 @@ type ShopOrder = {
 };
 
 const COLORS = {
-  bg: '#EEF4FF',
-  bg2: '#F7FAFF',
+  bg: '#F4F7FB',
+  bg2: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  border: '#E3E8F0',
   borderStrong: '#C9D9F1',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  textMuted: '#94A3B8',
+  text: '#0F1B33',
+  textSecondary: '#5B6B82',
+  textMuted: '#9FB0C7',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blue2: '#3B82F6',
   blue3: '#60A5FA',
-  blueSoft: '#EAF2FF',
+  blueSoft: '#E8EEF6',
   blueSoft2: '#DCEBFF',
-  blueDark: '#1D4ED8',
+  blueDark: '#0A1F45',
 
   sky: '#8EC5FF',
   white: '#FFFFFF',
-  black: '#0F172A',
+  black: '#0F1B33',
 
   success: '#16A34A',
   successSoft: '#EAF8EF',
@@ -135,7 +135,7 @@ const COLORS = {
 
 const SHADOWS = {
   card: {
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
@@ -164,9 +164,9 @@ const formatNumberWithDots = (value?: number | null) => {
   return String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
-const formatIQD = (value?: number | null) => {
+const formatSEK = (value?: number | null) => {
   const formatted = formatNumberWithDots(value);
-  const currency = t('iqdShort', 'IQD');
+  const currency = t('sekShort', 'SEK');
   return isRTL ? `${currency} ${formatted}` : `${formatted} ${currency}`;
 };
 
@@ -843,9 +843,9 @@ export default function MobileShopScreen() {
         t('purchaseSuccess', 'Purchase successful'),
         `${t('mobilePurchasedSuccess', 'Your mobile purchase was completed successfully and sent to admin.')}\n\n${t('purchaseType', 'Purchase type')}: ${
           result.purchaseMode === 'cash' ? t('cash', 'Cash') : t('installment', 'Installment')
-        }\n${t('paidAmount', 'Paid amount')}: ${formatIQD(result.paidNow)}\n${t('walletBalanceAfterPayment', 'Wallet Balance After Payment')}: ${formatIQD(result.nextBalance)}${
+        }\n${t('paidAmount', 'Paid amount')}: ${formatSEK(result.paidNow)}\n${t('walletBalanceAfterPayment', 'Wallet Balance After Payment')}: ${formatSEK(result.nextBalance)}${
           result.purchaseMode === 'installment'
-            ? `\n${t('remainingInstallmentAmount', 'Remaining Installment Amount')}: ${formatIQD(result.remainingAmount)}`
+            ? `\n${t('remainingInstallmentAmount', 'Remaining Installment Amount')}: ${formatSEK(result.remainingAmount)}`
             : ''
         }`,
         [
@@ -965,11 +965,11 @@ export default function MobileShopScreen() {
           </Text>
         </View>
 
-        {cashAvailable ? <Text style={styles.priceText}>{formatIQD(getCashPrice(item))}</Text> : null}
+        {cashAvailable ? <Text style={styles.priceText}>{formatSEK(getCashPrice(item))}</Text> : null}
 
         {installmentAvailable ? (
           <Text style={styles.monthlyText}>
-            {formatIQD(getMonthlyPrice(item))} / {t('monthly', 'monthly')}
+            {formatSEK(getMonthlyPrice(item))} / {t('monthly', 'monthly')}
           </Text>
         ) : null}
 
@@ -988,7 +988,7 @@ export default function MobileShopScreen() {
         </View>
 
         <View style={styles.shopTagWrap}>
-          <Text style={styles.shopTag}>{t('zenopayShop', 'zenopay shop')}</Text>
+          <Text style={styles.shopTag}>{t('swedbankShop', 'swedbank shop')}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -1008,7 +1008,7 @@ export default function MobileShopScreen() {
             <Ionicons name={isRTL ? 'arrow-forward' : 'arrow-back'} size={22} color={COLORS.blueDark} />
           </TouchableOpacity>
 
-          <Text style={styles.topTitle}>{t('zenopayMobileShop', 'Zenopay Mobile Shop')}</Text>
+          <Text style={styles.topTitle}>{t('swedbankMobileShop', 'SwedBank Mobile Shop')}</Text>
 
           <TouchableOpacity onPress={() => setMenuOpen(true)} style={styles.topMenuBtn}>
             <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.blueDark} />
@@ -1094,17 +1094,17 @@ export default function MobileShopScreen() {
             <View style={styles.heroBlurCircleTwo} />
 
             <View style={styles.heroLeft}>
-              <Text style={styles.heroSmall}>{t('zenopayWallet', 'Zenopay Wallet')}</Text>
+              <Text style={styles.heroSmall}>{t('swedbankWallet', 'SwedBank Wallet')}</Text>
               <Text style={styles.heroTitle}>{t('latestMobileSeries', 'Latest Mobile Series')}</Text>
               <Text style={styles.heroSub}>
                 {t('startingFrom', 'Starting from')}{' '}
                 {featuredProduct
-                  ? formatIQD(
+                  ? formatSEK(
                       hasCashOption(featuredProduct)
                         ? getCashPrice(featuredProduct)
                         : getInstallmentContractPrice(featuredProduct)
                     )
-                  : formatIQD(0)}
+                  : formatSEK(0)}
               </Text>
 
               <TouchableOpacity
@@ -1114,7 +1114,7 @@ export default function MobileShopScreen() {
                 }}
               >
                 <LinearGradient
-                  colors={['#7AB9FF', '#4A8DF5', '#2563EB']}
+                  colors={['#7AB9FF', '#4A8DF5', '#0F2A5C']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.heroButtonGradient}
@@ -1143,7 +1143,7 @@ export default function MobileShopScreen() {
             >
               <Text style={styles.walletLabelCenter}>{t('yourWalletBalance', 'Your Wallet Balance')}</Text>
               <Text style={styles.walletValueCenter}>
-                {walletQuery.isLoading ? '...' : formatIQD(walletBalance)}
+                {walletQuery.isLoading ? '...' : formatSEK(walletBalance)}
               </Text>
             </LinearGradient>
           </View>
@@ -1207,7 +1207,7 @@ export default function MobileShopScreen() {
               <View style={styles.menuItem}>
                 <Ionicons name="wallet-outline" size={20} color={COLORS.text} />
                 <Text style={styles.menuText}>
-                  {t('balance', 'Balance')}: {formatIQD(walletBalance)}
+                  {t('balance', 'Balance')}: {formatSEK(walletBalance)}
                 </Text>
               </View>
             </View>
@@ -1271,17 +1271,17 @@ export default function MobileShopScreen() {
 
                         <View style={styles.historyRow}>
                           <Text style={styles.historyLabel}>{t('totalPrice', 'Total Price')}</Text>
-                          <Text style={styles.historyValue}>{formatIQD(order.total_price_iqd)}</Text>
+                          <Text style={styles.historyValue}>{formatSEK(order.total_price_iqd)}</Text>
                         </View>
 
                         <View style={styles.historyRow}>
                           <Text style={styles.historyLabel}>{t('paidAmount', 'Paid Amount')}</Text>
-                          <Text style={styles.historyValue}>{formatIQD(order.paid_amount_iqd)}</Text>
+                          <Text style={styles.historyValue}>{formatSEK(order.paid_amount_iqd)}</Text>
                         </View>
 
                         <View style={styles.historyRow}>
                           <Text style={styles.historyLabel}>{t('remainingInstallmentAmount', 'Remaining Installment Amount')}</Text>
-                          <Text style={styles.historyValue}>{formatIQD(order.remaining_amount_iqd)}</Text>
+                          <Text style={styles.historyValue}>{formatSEK(order.remaining_amount_iqd)}</Text>
                         </View>
 
                         <View style={styles.historyRow}>
@@ -1335,14 +1335,14 @@ export default function MobileShopScreen() {
                         </Text>
 
                         {purchaseMode === 'cash' && hasCashOption(selectedProduct) ? (
-                          <Text style={styles.selectedPrice}>{formatIQD(selectedCashPrice)}</Text>
+                          <Text style={styles.selectedPrice}>{formatSEK(selectedCashPrice)}</Text>
                         ) : null}
 
                         {purchaseMode === 'installment' && hasInstallmentOption(selectedProduct) ? (
                           <>
-                            <Text style={styles.selectedPrice}>{formatIQD(selectedInstallmentContractUnit)}</Text>
+                            <Text style={styles.selectedPrice}>{formatSEK(selectedInstallmentContractUnit)}</Text>
                             <Text style={styles.selectedInstallmentHint}>
-                              {formatIQD(selectedMonthlyPrice)} / {t('monthly', 'monthly')}
+                              {formatSEK(selectedMonthlyPrice)} / {t('monthly', 'monthly')}
                             </Text>
                           </>
                         ) : null}
@@ -1390,24 +1390,24 @@ export default function MobileShopScreen() {
                         <>
                           <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>{t('cashPrice', 'Cash Price')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(selectedCashPrice)}</Text>
+                            <Text style={styles.summaryValue}>{formatSEK(selectedCashPrice)}</Text>
                           </View>
 
                           <View style={styles.summaryRowLast}>
                             <Text style={styles.summaryLabel}>{t('payNow', 'Pay Now')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(selectedCashTotal)}</Text>
+                            <Text style={styles.summaryValue}>{formatSEK(selectedCashTotal)}</Text>
                           </View>
                         </>
                       ) : (
                         <>
                           <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>{t('installmentTotalPrice', 'Installment Total Price')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(selectedInstallmentContractTotal)}</Text>
+                            <Text style={styles.summaryValue}>{formatSEK(selectedInstallmentContractTotal)}</Text>
                           </View>
 
                           <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>{t('monthlyInstallment', 'Monthly Installment')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(selectedFirstInstallment)}</Text>
+                            <Text style={styles.summaryValue}>{formatSEK(selectedFirstInstallment)}</Text>
                           </View>
 
                           <View style={styles.summaryRowLast}>
@@ -1420,7 +1420,7 @@ export default function MobileShopScreen() {
 
                     <View style={styles.balanceBox}>
                       <Text style={styles.balanceBoxLabel}>{t('walletBalance', 'Wallet Balance')}</Text>
-                      <Text style={styles.balanceBoxValue}>{formatIQD(walletBalance)}</Text>
+                      <Text style={styles.balanceBoxValue}>{formatSEK(walletBalance)}</Text>
                     </View>
 
                     <View style={styles.fieldWrap}>
@@ -1542,29 +1542,29 @@ export default function MobileShopScreen() {
                         <>
                           <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>{t('cashPrice', 'Cash Price')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(selectedCashTotal)}</Text>
+                            <Text style={styles.summaryValue}>{formatSEK(selectedCashTotal)}</Text>
                           </View>
 
                           <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>{t('payNow', 'Pay Now')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(selectedCashTotal)}</Text>
+                            <Text style={styles.summaryValue}>{formatSEK(selectedCashTotal)}</Text>
                           </View>
 
                           <View style={styles.summaryRowLast}>
                             <Text style={styles.summaryLabel}>{t('walletBalanceAfterPayment', 'Wallet Balance After Payment')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(walletBalanceAfterPayment)}</Text>
+                            <Text style={styles.summaryValue}>{formatSEK(walletBalanceAfterPayment)}</Text>
                           </View>
                         </>
                       ) : (
                         <>
                           <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>{t('installmentTotalPrice', 'Installment Total Price')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(selectedInstallmentContractTotal)}</Text>
+                            <Text style={styles.summaryValue}>{formatSEK(selectedInstallmentContractTotal)}</Text>
                           </View>
 
                           <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>{t('firstMonthPayment', 'First Month Payment')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(selectedFirstInstallment)}</Text>
+                            <Text style={styles.summaryValue}>{formatSEK(selectedFirstInstallment)}</Text>
                           </View>
 
                           <View style={styles.summaryRow}>
@@ -1574,12 +1574,12 @@ export default function MobileShopScreen() {
 
                           <View style={styles.summaryRow}>
                             <Text style={styles.summaryLabel}>{t('walletBalanceAfterPayment', 'Wallet Balance After Payment')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(walletBalanceAfterPayment)}</Text>
+                            <Text style={styles.summaryValue}>{formatSEK(walletBalanceAfterPayment)}</Text>
                           </View>
 
                           <View style={styles.summaryRowLast}>
                             <Text style={styles.summaryLabel}>{t('remainingInstallmentAmount', 'Remaining Installment Amount')}</Text>
-                            <Text style={styles.summaryValue}>{formatIQD(remainingPurchaseAmount)}</Text>
+                            <Text style={styles.summaryValue}>{formatSEK(remainingPurchaseAmount)}</Text>
                           </View>
                         </>
                       )}
@@ -1591,7 +1591,7 @@ export default function MobileShopScreen() {
                       disabled={createOrderMutation.isPending}
                     >
                       <LinearGradient
-                        colors={['#79B7FF', '#4C92F7', '#2563EB']}
+                        colors={['#79B7FF', '#4C92F7', '#0F2A5C']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={styles.buyButtonGradient}
@@ -1988,12 +1988,12 @@ const styles = StyleSheet.create({
     height: 165,
     marginBottom: 8,
     borderRadius: 16,
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#FFFFFF',
   },
   imagePlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#FFFFFF',
   },
   brandRow: {
     flexDirection: 'row',
@@ -2152,7 +2152,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 16,
@@ -2163,7 +2163,7 @@ const styles = StyleSheet.create({
     borderColor: '#E3ECFA',
   },
   historySheet: {
-    backgroundColor: '#F7FAFF',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 16,
@@ -2222,7 +2222,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 14,
-    backgroundColor: '#F8FBFF',
+    backgroundColor: '#F4F7FB',
   },
   selectedName: {
     color: COLORS.text,
@@ -2287,7 +2287,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.soft,
   },
   modeBtnActive: {
-    backgroundColor: '#EAF2FF',
+    backgroundColor: '#E8EEF6',
     borderColor: COLORS.blue,
   },
   modeBtnActivePurple: {

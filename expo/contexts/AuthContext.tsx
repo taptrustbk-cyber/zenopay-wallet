@@ -39,7 +39,7 @@ export const [AuthProvider, useAuth] = createContextHook(function useAuthContext
       const { error: createError } = await supabase.from('wallets').insert({
         user_id: userId,
         balance: 0,
-        currency: 'IQD', // ✅ changed
+        currency: 'SEK', // ✅ changed
       });
 
       if (createError) throw createError;

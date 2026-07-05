@@ -64,22 +64,22 @@ interface GiftCategory {
 }
 
 const UI = {
-  bg: '#EEF4FF',
-  page: '#F7FAFF',
-  headerBg: '#F7FAFF',
+  bg: '#F4F7FB',
+  page: '#FFFFFF',
+  headerBg: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
+  border: '#E3E8F0',
   border2: '#DCEBFF',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blue2: '#3B82F6',
   blue3: '#60A5FA',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
   blueSoft2: '#DCEBFF',
 
   purple: '#7C3AED',
@@ -102,14 +102,14 @@ const UI = {
 
 const SHADOWS = {
   card: {
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
   soft: {
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -117,7 +117,7 @@ const SHADOWS = {
   },
 };
 
-function formatIQD(value?: number | null) {
+function formatSEK(value?: number | null) {
   const num = Number(value || 0);
   const rounded = Math.round(num);
   return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -170,7 +170,7 @@ function pickThemeFromSlug(slug?: string | null) {
     return { color: '#111827', soft: '#F3F4F6', border: '#E5E7EB' };
   }
   if (key.includes('google') || key.includes('play') || key.includes('steam') || key.includes('playstation')) {
-    return { color: '#2563EB', soft: '#EFF6FF', border: '#BFDBFE' };
+    return { color: '#0F2A5C', soft: '#EFF6FF', border: '#BFDBFE' };
   }
   if (key.includes('xbox') || key.includes('spotify')) {
     return { color: '#16A34A', soft: '#F0FDF4', border: '#BBF7D0' };
@@ -221,9 +221,9 @@ function getItemTitle(
   const key = normalizeKey(categoryRow?.slug || row.category || row.brand);
 
   if (amount > 0) {
-    if (key.includes('pubg')) return `${formatIQD(amount)} UC`;
-    if (key.includes('free_fire')) return `${formatIQD(amount)} Diamond`;
-    return `${formatIQD(amount)} ${categoryName}`;
+    if (key.includes('pubg')) return `${formatSEK(amount)} UC`;
+    if (key.includes('free_fire')) return `${formatSEK(amount)} Diamond`;
+    return `${formatSEK(amount)} ${categoryName}`;
   }
 
   return categoryName;
@@ -713,10 +713,10 @@ export default function GiftCardsScreen() {
                       <Text style={styles.cardAmountText}>
                         {(i18n.t('giftCards.amount') || 'Amount')}: {' '}
                         {normalizeKey(categoryRow?.slug || item.category || item.brand).includes('pubg')
-                          ? `${formatIQD(Number(item.amount || 0))} UC`
+                          ? `${formatSEK(Number(item.amount || 0))} UC`
                           : normalizeKey(categoryRow?.slug || item.category || item.brand).includes('free_fire')
-                          ? `${formatIQD(Number(item.amount || 0))}`
-                          : `${formatIQD(Number(item.amount || 0))}`}
+                          ? `${formatSEK(Number(item.amount || 0))}`
+                          : `${formatSEK(Number(item.amount || 0))}`}
                       </Text>
 
                       {!!item.description && (
@@ -728,7 +728,7 @@ export default function GiftCardsScreen() {
 
                     <View style={styles.cardRight}>
                       <Text style={styles.cardPriceValue}>
-                        {formatIQD(item.price_iqd)} IQD
+                        {formatSEK(item.price_iqd)} SEK
                       </Text>
 
                       <View style={styles.buyMiniButton}>

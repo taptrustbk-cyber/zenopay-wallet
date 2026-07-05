@@ -65,23 +65,23 @@ interface ProviderCard {
 }
 
 const UI = {
-  bg: '#EEF4FF',
-  page: '#F7FAFF',
+  bg: '#F4F7FB',
+  page: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
+  border: '#E3E8F0',
   border2: '#CFE0F5',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blue2: '#3B82F6',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
   blueSoft2: '#DCEBFF',
 
-  shadow: '#7DA8E6',
+  shadow: '#A8B8CC',
 };
 
 const SHADOWS = {
@@ -146,7 +146,7 @@ function prettyProviderName(value?: string | null) {
     .replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
-function formatIQD(value?: number | null) {
+function formatSEK(value?: number | null) {
   const num = Number(value || 0);
   const rounded = Math.round(num);
   return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -161,8 +161,8 @@ function formatAmountPlain(value?: number | null) {
 function getCurrencyLabel() {
   const lang = String((i18n as any).locale || '').toLowerCase();
   return ['ar', 'ckb', 'cbk', 'kmr', 'ku'].includes(lang)
-    ? tSafe('iqdShort', 'د.غ')
-    : tSafe('iqdShort', 'IQD');
+    ? tSafe('sekShort', 'د.غ')
+    : tSafe('sekShort', 'SEK');
 }
 
 function pickProviderTheme(key?: string | null) {
@@ -178,7 +178,7 @@ function pickProviderTheme(key?: string | null) {
     return { color: '#0F766E', soft: '#ECFEFF', border: '#BEEEF1' };
   }
   if (normalized.includes('ftth')) {
-    return { color: '#2563EB', soft: '#EFF6FF', border: '#BFDBFE' };
+    return { color: '#0F2A5C', soft: '#EFF6FF', border: '#BFDBFE' };
   }
   if (normalized.includes('reber')) {
     return { color: '#7C3AED', soft: '#F5F3FF', border: '#DDD6FE' };
@@ -186,7 +186,7 @@ function pickProviderTheme(key?: string | null) {
   if (normalized.includes('kurdtel')) {
     return { color: '#CA8A04', soft: '#FEFCE8', border: '#FDE68A' };
   }
-  if (normalized.includes('zenopay')) {
+  if (normalized.includes('swedbank')) {
     return { color: '#0EA5B7', soft: '#ECFEFF', border: '#BDEFF5' };
   }
 
@@ -203,7 +203,7 @@ function getItemTitle(row: SimCardRow, providerMeta?: ProviderCard | null) {
   const amount = getRawAmount(row);
 
   if (amount > 0) {
-    return `${formatIQD(amount)}`;
+    return `${formatSEK(amount)}`;
   }
 
   return providerMeta?.title || tSafe('simCards.mobileCardFallback', 'Mobile Card');
@@ -739,7 +739,7 @@ export default function SimCardsScreen() {
 
                     <View style={styles.cardRight}>
                       <Text style={styles.cardPriceValue}>
-                        {formatIQD(item.price_iqd)} {getCurrencyLabel()}
+                        {formatSEK(item.price_iqd)} {getCurrencyLabel()}
                       </Text>
 
                       <View style={styles.buyMiniButton}>

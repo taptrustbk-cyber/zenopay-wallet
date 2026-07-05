@@ -47,19 +47,19 @@ const AVATAR_BUCKET = 'avatars';
 const NOTIFICATION_FUNCTION = 'send-notification';
 
 const UI = {
-  bg: '#EEF4FF',
-  page: '#F7FAFF',
+  bg: '#F4F7FB',
+  page: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
+  border: '#E3E8F0',
   border2: '#DCEBFF',
 
-  blue: '#2563EB',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blue: '#0F2A5C',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
   blueSoft2: '#DCEBFF',
 
   green: '#16A34A',
@@ -72,7 +72,7 @@ const UI = {
   amberSoft: '#FEF3C7',
 
   white: '#FFFFFF',
-  shadow: '#7DA8E6',
+  shadow: '#A8B8CC',
 };
 
 const SHADOWS = {
@@ -128,12 +128,12 @@ const initialsFromName = (name?: string | null) => {
   return (a + b).toUpperCase() || '?';
 };
 
-const formatIQD = (value?: number | null) => {
+const formatSEK = (value?: number | null) => {
   const num = Number(value || 0);
   return num.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
-const formatIQDLabel = (value?: number | null) => `${formatIQD(value)} IQD`;
+const formatSEKLabel = (value?: number | null) => `${formatSEK(value)} SEK`;
 
 const formatIraqTime = (value?: string | null) => {
   if (!value) return 'N/A';
@@ -291,7 +291,7 @@ export default function AddBalanceAdminScreen() {
     const cleanEmail = (email || '').trim();
 
     const title = 'Balance Added';
-    const body = `An amount of ${formatIQD(amount)} IQD was added to your wallet. Your new balance is ${formatIQD(newBalance)} IQD.`;
+    const body = `An amount of ${formatSEK(amount)} SEK was added to your wallet. Your new balance is ${formatSEK(newBalance)} SEK.`;
 
     const payload = {
       user_id: targetUserId,
@@ -401,16 +401,16 @@ export default function AddBalanceAdminScreen() {
         fee_amount: 0,
         balance_before: oldBalance,
         balance_after: newBalance,
-        description: trimmedNote || 'Add balance via Zenopay',
+        description: trimmedNote || 'Add balance via SwedBank',
         reference_id: null,
         source_table: 'admin_addbalance',
         source_order_id: null,
         source_product_id: null,
-        display_title: 'Add Balance via Zenopay',
-        display_subtitle: 'Balance received from Zenopay',
+        display_title: 'Add Balance via SwedBank',
+        display_subtitle: 'Balance received from SwedBank',
         display_image_url: null,
         pin_code: null,
-        provider_name: 'Zenopay',
+        provider_name: 'SwedBank',
         payment_method_name: 'Admin Add Balance',
         metadata: {
           type: 'admin_add_money',
@@ -424,8 +424,8 @@ export default function AddBalanceAdminScreen() {
           admin_email: user?.email || '',
           admin_user_id: user?.id || '',
           source: 'addbalanceadmin',
-          title: 'Add Balance via Zenopay',
-          subtitle: 'Balance received from Zenopay',
+          title: 'Add Balance via SwedBank',
+          subtitle: 'Balance received from SwedBank',
         },
       };
 
@@ -592,7 +592,7 @@ export default function AddBalanceAdminScreen() {
 
         <View style={styles.pinBody}>
           <View style={styles.zLogoWrap}>
-            <Text style={styles.zLogoText}>Z</Text>
+            <Text style={styles.zLogoText}>S</Text>
           </View>
 
           <Text style={styles.pinMainTitle}>Enter PIN code</Text>
@@ -690,7 +690,7 @@ export default function AddBalanceAdminScreen() {
 
           <View style={{ flex: 1, alignItems: 'center' }}>
             <Text style={styles.headerTitle}>Add Balance Admin</Text>
-            <Text style={styles.headerSub}>Increase user wallet balance in IQD</Text>
+            <Text style={styles.headerSub}>Increase user wallet balance in SEK</Text>
           </View>
 
           <TouchableOpacity
@@ -721,7 +721,7 @@ export default function AddBalanceAdminScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.sectionTitle}>Add Balance To User</Text>
               <Text style={styles.sectionSub}>
-                Search by full name, email, phone, or city — all amounts are in IQD
+                Search by full name, email, phone, or city — all amounts are in SEK
               </Text>
             </View>
           </View>
@@ -794,7 +794,7 @@ export default function AddBalanceAdminScreen() {
                         <Text style={styles.infoLabel}>Current Balance</Text>
                       </View>
                       <Text style={[styles.infoValue, { color: UI.green }]}>
-                        {formatIQDLabel(userProfile.balance)}
+                        {formatSEKLabel(userProfile.balance)}
                       </Text>
                     </View>
 
@@ -860,7 +860,7 @@ export default function AddBalanceAdminScreen() {
                       <View>
                         <Text style={styles.modalTitle}>Add Balance</Text>
                         <Text style={styles.modalSubtitle}>
-                          Add IQD balance and optional note
+                          Add SEK balance and optional note
                         </Text>
                       </View>
 
@@ -894,21 +894,21 @@ export default function AddBalanceAdminScreen() {
                         <View style={styles.summaryMiniRow}>
                           <Wallet size={15} color={UI.green} />
                           <Text style={[styles.summaryMiniText2, { color: UI.green }]}>
-                            Current: {formatIQDLabel(selectedCurrentBalance)}
+                            Current: {formatSEKLabel(selectedCurrentBalance)}
                           </Text>
                         </View>
                       </View>
 
                       <TextInput
                         style={styles.modalInput}
-                        placeholder="Amount (IQD)"
+                        placeholder="Amount (SEK)"
                         placeholderTextColor={UI.text2}
                         keyboardType="numeric"
                         returnKeyType="done"
                         value={amountToAdd}
                         onChangeText={(v) => {
                           const digits = normalizeDigits(v);
-                          setAmountToAdd(digits ? formatIQD(Number(digits)) : '');
+                          setAmountToAdd(digits ? formatSEK(Number(digits)) : '');
                         }}
                         onSubmitEditing={Keyboard.dismiss}
                       />
@@ -948,7 +948,7 @@ export default function AddBalanceAdminScreen() {
                           }
 
                           if (!rawAmount || rawAmount <= 0) {
-                            Alert.alert('Error', 'Please enter a valid IQD amount');
+                            Alert.alert('Error', 'Please enter a valid SEK amount');
                             return;
                           }
 
@@ -1456,7 +1456,7 @@ const styles = StyleSheet.create({
   },
   modalCancelBtn: {
     flex: 1,
-    backgroundColor: '#64748B',
+    backgroundColor: '#5B6B82',
     paddingVertical: 13,
     borderRadius: 14,
     alignItems: 'center',

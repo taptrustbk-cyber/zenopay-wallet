@@ -95,7 +95,7 @@ serve(async (req) => {
         ? `${hours} hour${hours > 1 ? 's' : ''}${minutes > 0 ? ` and ${minutes} minute${minutes > 1 ? 's' : ''}` : ''}`
         : `${minutes} minute${minutes > 1 ? 's' : ''}`
 
-      subject = "Your ZenoPay Account Has Been Approved ✅"
+      subject = "Your SwedBank Account Has Been Approved ✅"
       htmlContent = `
 <!DOCTYPE html>
 <html>
@@ -125,7 +125,7 @@ serve(async (req) => {
               </p>
               
               <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 24px;">
-                Great news! Your ZenoPay account verification has been completed successfully. 🎉
+                Great news! Your SwedBank account verification has been completed successfully. 🎉
               </p>
               
               <div style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 20px; margin: 30px 0; border-radius: 8px;">
@@ -138,7 +138,7 @@ serve(async (req) => {
               </div>
               
               <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 24px;">
-                Once activated, you'll be able to access all ZenoPay features including:
+                Once activated, you'll be able to access all SwedBank features including:
               </p>
               
               <ul style="margin: 0 0 30px; padding-left: 20px; color: #374151; font-size: 15px; line-height: 28px;">
@@ -153,11 +153,11 @@ serve(async (req) => {
               </p>
               
               <p style="margin: 0 0 10px; color: #111827; font-size: 16px; line-height: 24px;">
-                Thank you for choosing ZenoPay!
+                Thank you for choosing SwedBank!
               </p>
               
               <p style="margin: 0; color: #6B7280; font-size: 14px; line-height: 22px;">
-                The ZenoPay Team
+                The SwedBank Team
               </p>
             </td>
           </tr>
@@ -169,7 +169,7 @@ serve(async (req) => {
                 This is an automated message. Please do not reply to this email.
               </p>
               <p style="margin: 0; color: #9CA3AF; font-size: 11px; line-height: 16px;">
-                © ${new Date().getFullYear()} ZenoPay. All rights reserved.
+                © ${new Date().getFullYear()} SwedBank. All rights reserved.
               </p>
             </td>
           </tr>
@@ -182,7 +182,7 @@ serve(async (req) => {
 </html>
       `
     } else {
-      subject = "Your ZenoPay Account is Now Active 🎉"
+      subject = "Your SwedBank Account is Now Active 🎉"
       htmlContent = `
 <!DOCTYPE html>
 <html>
@@ -212,7 +212,7 @@ serve(async (req) => {
               </p>
               
               <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 24px;">
-                Excellent news! Your ZenoPay account is now <strong>fully activated</strong> and ready to use. 🎉
+                Excellent news! Your SwedBank account is now <strong>fully activated</strong> and ready to use. 🎉
               </p>
               
               <div style="background-color: #D1FAE5; border-left: 4px solid #10B981; padding: 20px; margin: 30px 0; border-radius: 8px;">
@@ -225,7 +225,7 @@ serve(async (req) => {
               </div>
               
               <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 24px;">
-                You can now access all ZenoPay features immediately:
+                You can now access all SwedBank features immediately:
               </p>
               
               <ul style="margin: 0 0 30px; padding-left: 20px; color: #374151; font-size: 15px; line-height: 28px;">
@@ -236,17 +236,17 @@ serve(async (req) => {
               </ul>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://zenopay.app" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);">
-                  Open ZenoPay
+                <a href="https://swedbank.se" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);">
+                  Open SwedBank
                 </a>
               </div>
               
               <p style="margin: 0 0 10px; color: #111827; font-size: 16px; line-height: 24px;">
-                Welcome to ZenoPay!
+                Welcome to SwedBank!
               </p>
               
               <p style="margin: 0; color: #6B7280; font-size: 14px; line-height: 22px;">
-                The ZenoPay Team
+                The SwedBank Team
               </p>
             </td>
           </tr>
@@ -258,7 +258,7 @@ serve(async (req) => {
                 This is an automated message. Please do not reply to this email.
               </p>
               <p style="margin: 0; color: #9CA3AF; font-size: 11px; line-height: 16px;">
-                © ${new Date().getFullYear()} ZenoPay. All rights reserved.
+                © ${new Date().getFullYear()} SwedBank. All rights reserved.
               </p>
             </td>
           </tr>
@@ -273,7 +273,7 @@ serve(async (req) => {
     }
 
     const emailData = {
-      from: 'ZenoPay <noreply@zenopay.app>',
+      from: 'SwedBank <noreply@swedbank.se>',
       to: [email],
       subject,
       html: htmlContent,

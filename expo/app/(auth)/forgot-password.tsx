@@ -20,27 +20,27 @@ import i18n from '@/lib/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const RESET_CODE_SENT_AT_KEY = 'zenopay_reset_code_sent_at';
-const RESET_CODE_EMAIL_KEY = 'zenopay_reset_code_email';
+const RESET_CODE_SENT_AT_KEY = 'swedbank_reset_code_sent_at';
+const RESET_CODE_EMAIL_KEY = 'swedbank_reset_code_email';
 
 const COLORS = {
-  bg: '#EEF4FF',
-  page: '#F7FAFF',
+  bg: '#F4F7FB',
+  page: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
-  textMuted: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  textSecondary: '#5B6B82',
+  textMuted: '#9FB0C7',
+  border: '#E3E8F0',
 
-  blue: '#2563EB',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blue: '#0F2A5C',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
   blueSoft2: '#DCEBFF',
 
   white: '#FFFFFF',
   success: '#16A34A',
-  shadow: '#7DA8E6',
+  shadow: '#A8B8CC',
 };
 
 const SHADOWS = {
@@ -177,7 +177,7 @@ export default function ForgotPasswordScreen() {
 
           <View style={styles.centerWrap}>
             <LinearGradient
-              colors={['#4B8DFF', '#2563EB', '#1D4ED8']}
+              colors={['#1E4280', '#0F2A5C', '#0A1F45']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.heroCard}
@@ -286,7 +286,7 @@ export default function ForgotPasswordScreen() {
                         { textAlign: isRTL ? 'right' : 'left' },
                       ]}
                     >
-                      info@zenopay.bond
+                      info@swedbank.se
                     </Text>
                   </View>
                 </View>

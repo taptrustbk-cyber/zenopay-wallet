@@ -45,15 +45,15 @@ const UI = {
   bg: '#F8FAFC',
   card: '#FFFFFF',
   cardSoft: '#F1F5F9',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
   border: '#E2E8F0',
 
   green: '#16A34A',
   greenSoft: '#DCFCE7',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blueSoft: '#DBEAFE',
 
   red: '#DC2626',
@@ -130,7 +130,7 @@ const formatIraqTime = (value?: string | null) => {
   });
 };
 
-const formatIQD = (value?: number | string | null) => {
+const formatSEK = (value?: number | string | null) => {
   const n = Number(value || 0);
   if (Number.isNaN(n)) return '0';
   return n.toLocaleString('de-DE');
@@ -348,7 +348,7 @@ export default function DepositsAdminScreen() {
     const userEmail = order?.profiles?.email || '';
     const userName = order?.profiles?.full_name || 'User';
     const paymentMethod = order?.payment_method?.name || 'Deposit Method';
-    const amountText = `${formatIQD(order.amount)} ${order.currency || 'IQD'}`;
+    const amountText = `${formatSEK(order.amount)} ${order.currency || 'SEK'}`;
 
     let title = 'Deposit Update';
     let body = `Your deposit request of ${amountText} has been updated.`;
@@ -388,7 +388,7 @@ export default function DepositsAdminScreen() {
 
       order_id: order.id,
       amount: Number(order.amount || 0),
-      currency: order.currency || 'IQD',
+      currency: order.currency || 'SEK',
       payment_method: paymentMethod,
       reject_reason: reason?.trim() || null,
       sender_name: order.sender_name || null,
@@ -411,7 +411,7 @@ export default function DepositsAdminScreen() {
         title,
         body,
         amount: Number(order.amount || 0),
-        currency: order.currency || 'IQD',
+        currency: order.currency || 'SEK',
         payment_method: paymentMethod,
         reject_reason: reason?.trim() || null,
         sender_name: order.sender_name || null,
@@ -435,7 +435,7 @@ export default function DepositsAdminScreen() {
 
     const userName = order?.profiles?.full_name || order?.sender_name || 'User';
     const paymentMethod = order?.payment_method?.name || 'Deposit Method';
-    const amountText = `${formatIQD(order.amount)} ${order.currency || 'IQD'}`;
+    const amountText = `${formatSEK(order.amount)} ${order.currency || 'SEK'}`;
 
     const title = 'New Deposit Request';
     const body = `${userName} submitted a new deposit request for ${amountText} via ${paymentMethod}.`;
@@ -462,7 +462,7 @@ export default function DepositsAdminScreen() {
 
       order_id: order.id,
       amount: Number(order.amount || 0),
-      currency: order.currency || 'IQD',
+      currency: order.currency || 'SEK',
       payment_method: paymentMethod,
       sender_name: order.sender_name || null,
       sender_number: order.sender_number || null,
@@ -482,7 +482,7 @@ export default function DepositsAdminScreen() {
         sender_name: order.sender_name || null,
         sender_number: order.sender_number || null,
         amount: Number(order.amount || 0),
-        currency: order.currency || 'IQD',
+        currency: order.currency || 'SEK',
         payment_method: paymentMethod,
         note: order.note || null,
         receipt_image: order.receipt_image || null,
@@ -533,9 +533,9 @@ export default function DepositsAdminScreen() {
 
               Alert.alert(
                 'New Deposit Request',
-                `${fullOrder.profiles?.full_name || fullOrder.sender_name || 'User'} submitted ${formatIQD(
+                `${fullOrder.profiles?.full_name || fullOrder.sender_name || 'User'} submitted ${formatSEK(
                   fullOrder.amount
-                )} ${fullOrder.currency || 'IQD'}.`
+                )} ${fullOrder.currency || 'SEK'}.`
               );
             } else {
               Alert.alert('New Deposit Request', 'A new deposit request has been submitted.');
@@ -837,7 +837,7 @@ export default function DepositsAdminScreen() {
                   <View style={styles.infoMiniCard}>
                     <Text style={styles.infoMiniLabel}>Amount</Text>
                     <Text style={styles.infoMiniValue}>
-                      {formatIQD(order.amount)} {order.currency || 'IQD'}
+                      {formatSEK(order.amount)} {order.currency || 'SEK'}
                     </Text>
                   </View>
 

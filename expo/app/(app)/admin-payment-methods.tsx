@@ -53,15 +53,15 @@ const UI = {
   bg: '#F8FAFC',
   card: '#FFFFFF',
   cardSoft: '#F1F5F9',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
   border: '#E2E8F0',
 
   green: '#16A34A',
   greenSoft: '#DCFCE7',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blueSoft: '#DBEAFE',
 
   red: '#DC2626',
@@ -100,7 +100,7 @@ type PaymentMethodItem = {
 const isLikelyUrl = (v?: string | null) =>
   !!v && (v.startsWith('http://') || v.startsWith('https://'));
 
-const formatIQD = (value?: number | null) => {
+const formatSEK = (value?: number | null) => {
   const num = Number(value || 0);
   if (Number.isNaN(num)) return '0';
   return num.toLocaleString('de-DE');
@@ -350,7 +350,7 @@ export default function AdminPaymentMethodsScreen() {
 
       if (isUSDTForm) {
         if (!rateNum || Number.isNaN(rateNum) || rateNum <= 0) {
-          throw new Error('Exchange rate IQD is required for USDT');
+          throw new Error('Exchange rate SEK is required for USDT');
         }
         if (!minUsdNum || Number.isNaN(minUsdNum) || minUsdNum <= 0) {
           throw new Error('Minimum USD amount is required for USDT');
@@ -693,7 +693,7 @@ export default function AdminPaymentMethodsScreen() {
                         <View style={styles.usdtChip}>
                           <ArrowRightLeft size={14} color={UI.blue} />
                           <Text style={styles.usdtChipText}>
-                            1 USD = {formatIQD(item.exchange_rate_iqd || 1550)} IQD
+                            1 USD = {formatSEK(item.exchange_rate_iqd || 1550)} SEK
                           </Text>
                         </View>
                       </View>
@@ -929,7 +929,7 @@ export default function AdminPaymentMethodsScreen() {
                   <Text style={styles.label}>Account Name</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="USDT / ZenoPay"
+                    placeholder="USDT / SwedBank"
                     placeholderTextColor={UI.text3}
                     value={accountName}
                     onChangeText={setAccountName}
@@ -984,7 +984,7 @@ export default function AdminPaymentMethodsScreen() {
                   </View>
 
                   <Text style={styles.helperText}>
-                    Example: if 100 USD = 155,000 IQD, enter rate as 1550
+                    Example: if 100 USD = 155,000 SEK, enter rate as 1550
                   </Text>
 
                   <Text style={styles.label}>Address Label</Text>
@@ -996,7 +996,7 @@ export default function AdminPaymentMethodsScreen() {
                     onChangeText={setAddressLabel}
                   />
 
-                  <Text style={styles.label}>Exchange Rate (IQD per 1 USD)</Text>
+                  <Text style={styles.label}>Exchange Rate (SEK per 1 USD)</Text>
                   <TextInput
                     style={styles.input}
                     placeholder="1550"
@@ -1010,14 +1010,14 @@ export default function AdminPaymentMethodsScreen() {
                     <View style={styles.infoMiniCard}>
                       <Text style={styles.infoMiniLabel}>Preview</Text>
                       <Text style={styles.infoMiniValue}>
-                        100 USD = {formatIQD(Number(exchangeRateIqd || 0) * 100)} IQD
+                        100 USD = {formatSEK(Number(exchangeRateIqd || 0) * 100)} SEK
                       </Text>
                     </View>
 
                     <View style={styles.infoMiniCard}>
                       <Text style={styles.infoMiniLabel}>1 USD</Text>
                       <Text style={styles.infoMiniValue}>
-                        {formatIQD(Number(exchangeRateIqd || 0))} IQD
+                        {formatSEK(Number(exchangeRateIqd || 0))} SEK
                       </Text>
                     </View>
                   </View>

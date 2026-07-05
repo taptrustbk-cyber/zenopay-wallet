@@ -1,14 +1,14 @@
 //
-//  ZenoPayWalletTests.swift
-//  ZenoPayWalletTests
+//  SwedBankTests.swift
+//  SwedBankTests
 //
 //  Created by Rork on July 5, 2026.
 //
 
 import Testing
-@testable import ZenoPayWallet
+@testable import SwedBank
 
-struct ZenoPayWalletTests {
+struct SwedBankTests {
 
     @Test func example() async throws {
         // Write your test here and use APIs like `#expect(...)` to check expected conditions.

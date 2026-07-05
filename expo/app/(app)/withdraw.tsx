@@ -38,28 +38,28 @@ import i18n from '@/lib/i18n';
 import { Wallet } from '@/lib/types';
 
 const RECEIPT_BUCKET = 'withdraw-receipts';
-const MIN_WITHDRAW_IQD = 1000;
-const MAX_WITHDRAW_IQD = 1000000;
+const MIN_WITHDRAW_SEK = 1000;
+const MAX_WITHDRAW_SEK = 1000000;
 
-const DEFAULT_USDT_RATE_IQD = 1550;
+const DEFAULT_USDT_RATE_SEK = 1550;
 const DEFAULT_MIN_USDT = 1;
 const DEFAULT_MAX_USDT = 10000;
 
 const UI = {
-  bg: '#EEF4FF',
-  page: '#F7FAFF',
+  bg: '#F4F7FB',
+  page: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
+  border: '#E3E8F0',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blue2: '#3B82F6',
   blue3: '#60A5FA',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
   blueSoft2: '#DCEBFF',
 
   success: '#16A34A',
@@ -70,7 +70,7 @@ const UI = {
   dangerSoft: '#FFF1F4',
 
   white: '#FFFFFF',
-  shadow: '#7DA8E6',
+  shadow: '#A8B8CC',
 };
 
 const SHADOWS = {
@@ -149,7 +149,7 @@ function tSafe(key: string, fallback: string) {
   }
 }
 
-function formatIQD(value: number | string | null | undefined) {
+function formatSEK(value: number | string | null | undefined) {
   const num = Number(value || 0);
   if (Number.isNaN(num)) return '0';
   return num.toLocaleString('de-DE');
@@ -169,7 +169,7 @@ function parseIQDInput(value: string) {
   return onlyDigits ? Number(onlyDigits) : 0;
 }
 
-function formatIQDInput(value: string) {
+function formatSEKInput(value: string) {
   const onlyDigits = String(value || '').replace(/[^\d]/g, '');
   if (!onlyDigits) return '';
   return Number(onlyDigits).toLocaleString('de-DE');
@@ -240,14 +240,14 @@ export default function WithdrawScreen() {
         return {
           user_id: user.id,
           balance: 0,
-          currency: 'IQD',
+          currency: 'SEK',
           is_locked: false,
         } as Wallet;
       }
 
       return {
         ...data,
-        currency: 'IQD',
+        currency: 'SEK',
       } as Wallet;
     },
     enabled: !!user?.id,
@@ -316,7 +316,7 @@ export default function WithdrawScreen() {
   }, [paymentMethodsQuery.data, selectedMethodId]);
 
   const isUSDT = isUsdtTrc20Method(selectedMethod);
-  const usdtRate = Number(selectedMethod?.exchange_rate_iqd || DEFAULT_USDT_RATE_IQD);
+  const usdtRate = Number(selectedMethod?.exchange_rate_iqd || DEFAULT_USDT_RATE_SEK);
   const minUsd = Number(selectedMethod?.min_amount_usd || DEFAULT_MIN_USDT);
   const maxUsd = Number(selectedMethod?.max_amount_usd || DEFAULT_MAX_USDT);
 
@@ -327,7 +327,7 @@ export default function WithdrawScreen() {
     return amountNumber / usdtRate;
   }, [amountNumber, isUSDT, usdtRate]);
 
-  const balanceText = formatIQD(walletQuery.data?.balance || 0);
+  const balanceText = formatSEK(walletQuery.data?.balance || 0);
 
   const pickReceiptImage = async () => {
     try {
@@ -423,15 +423,15 @@ export default function WithdrawScreen() {
           throw new Error(`${tSafe('withdrawPage.maximumWithdrawAmountIs', 'Maximum withdraw amount is')} $${formatUSD(maxUsd)}`);
         }
       } else {
-        if (amountNum < MIN_WITHDRAW_IQD) {
+        if (amountNum < MIN_WITHDRAW_SEK) {
           throw new Error(
-            `${tSafe('withdrawPage.minimumWithdrawAmount', 'Minimum withdraw amount')}: ${formatIQD(MIN_WITHDRAW_IQD)} ${tSafe('iqdShort', 'IQD')}`
+            `${tSafe('withdrawPage.minimumWithdrawAmount', 'Minimum withdraw amount')}: ${formatSEK(MIN_WITHDRAW_SEK)} ${tSafe('sekShort', 'SEK')}`
           );
         }
 
-        if (amountNum > MAX_WITHDRAW_IQD) {
+        if (amountNum > MAX_WITHDRAW_SEK) {
           throw new Error(
-            `${tSafe('withdrawPage.maximumWithdrawAmount', 'Maximum withdraw amount')}: ${formatIQD(MAX_WITHDRAW_IQD)} ${tSafe('iqdShort', 'IQD')}`
+            `${tSafe('withdrawPage.maximumWithdrawAmount', 'Maximum withdraw amount')}: ${formatSEK(MAX_WITHDRAW_SEK)} ${tSafe('sekShort', 'SEK')}`
           );
         }
       }
@@ -448,14 +448,14 @@ export default function WithdrawScreen() {
 
       if (amountNum > Number(walletQuery.data.balance || 0)) {
         throw new Error(
-          `${tSafe('withdrawPage.insufficientBalance', 'Insufficient balance')}\n${formatIQD(walletQuery.data.balance || 0)} ${tSafe('iqdShort', 'IQD')}`
+          `${tSafe('withdrawPage.insufficientBalance', 'Insufficient balance')}\n${formatSEK(walletQuery.data.balance || 0)} ${tSafe('sekShort', 'SEK')}`
         );
       }
 
       const receiptUrl = receiptImage ? await uploadReceiptToStorage(receiptImage) : null;
 
       const extraNote = isUSDT
-        ? `${tSafe('withdrawPage.usdtWithdrawNotePrefix', 'USDT TRC20 Withdraw')} | IQD: ${formatIQD(amountNum)} | ${tSafe('withdrawPage.rateShort', 'Rate')}: ${formatIQD(usdtRate)} IQD/USD | USD: ${formatUSD(usdReceiveValue)}`
+        ? `${tSafe('withdrawPage.usdtWithdrawNotePrefix', 'USDT TRC20 Withdraw')} | SEK: ${formatSEK(amountNum)} | ${tSafe('withdrawPage.rateShort', 'Rate')}: ${formatSEK(usdtRate)} SEK/USD | USD: ${formatUSD(usdReceiveValue)}`
         : null;
 
       const finalNote = [note.trim(), extraNote].filter(Boolean).join(' | ') || null;
@@ -463,7 +463,7 @@ export default function WithdrawScreen() {
       const { error } = await supabase.from('withdraw_orders').insert({
         user_id: user.id,
         amount: amountNum,
-        currency: 'IQD',
+        currency: 'SEK',
         payment_method_id: selectedMethod.id,
         destination: senderNumber.trim(),
         sender_name: senderName.trim(),
@@ -526,7 +526,7 @@ export default function WithdrawScreen() {
             <Text style={styles.methodName}>{method.name}</Text>
             {methodIsUsdt ? (
               <Text style={styles.methodSubLine}>
-                1 USD = {formatIQD(method.exchange_rate_iqd || DEFAULT_USDT_RATE_IQD)} IQD
+                1 USD = {formatSEK(method.exchange_rate_iqd || DEFAULT_USDT_RATE_SEK)} SEK
               </Text>
             ) : null}
           </View>
@@ -587,7 +587,7 @@ export default function WithdrawScreen() {
           </View>
 
           <LinearGradient
-            colors={['#5DA8FF', '#3B82F6', '#2563EB']}
+            colors={['#5DA8FF', '#3B82F6', '#0F2A5C']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.heroCard}
@@ -611,7 +611,7 @@ export default function WithdrawScreen() {
                   </View>
                 ) : (
                   <Text style={styles.heroBalance} numberOfLines={1}>
-                    {balanceText} {tSafe('iqdShort', 'IQD')}
+                    {balanceText} {tSafe('sekShort', 'SEK')}
                   </Text>
                 )}
               </View>
@@ -664,7 +664,7 @@ export default function WithdrawScreen() {
                     <Text style={styles.selectorText}>{selectedMethod.name}</Text>
                     {isUSDT ? (
                       <Text style={styles.selectorSubText}>
-                        1 USD = {formatIQD(usdtRate)} IQD
+                        1 USD = {formatSEK(usdtRate)} SEK
                       </Text>
                     ) : null}
                   </View>
@@ -688,12 +688,12 @@ export default function WithdrawScreen() {
                 placeholderTextColor={UI.text3}
                 value={amount}
                 onChangeText={(text) => {
-                  setAmount(formatIQDInput(text));
+                  setAmount(formatSEKInput(text));
                 }}
                 keyboardType="number-pad"
               />
               <View style={styles.amountSuffix}>
-                <Text style={styles.amountSuffixText}>{tSafe('iqdShort', 'IQD')}</Text>
+                <Text style={styles.amountSuffixText}>{tSafe('sekShort', 'SEK')}</Text>
               </View>
             </View>
 
@@ -709,7 +709,7 @@ export default function WithdrawScreen() {
                     <View style={styles.rateChip}>
                       <ArrowRightLeft size={14} color={UI.blueDark} />
                       <Text style={styles.rateChipText}>
-                        1 USD = {formatIQD(usdtRate)} IQD
+                        1 USD = {formatSEK(usdtRate)} SEK
                       </Text>
                     </View>
                   </View>
@@ -737,11 +737,11 @@ export default function WithdrawScreen() {
               <View style={styles.limitBox}>
                 <Text style={styles.limitText}>
                   {tSafe('withdrawPage.minimumWithdrawAmount', 'Minimum withdraw amount') +
-                    `: ${formatIQD(MIN_WITHDRAW_IQD)} ${tSafe('iqdShort', 'IQD')}`}
+                    `: ${formatSEK(MIN_WITHDRAW_SEK)} ${tSafe('sekShort', 'SEK')}`}
                 </Text>
                 <Text style={styles.limitText}>
                   {tSafe('withdrawPage.maximumWithdrawAmount', 'Maximum withdraw amount') +
-                    `: ${formatIQD(MAX_WITHDRAW_IQD)} ${tSafe('iqdShort', 'IQD')}`}
+                    `: ${formatSEK(MAX_WITHDRAW_SEK)} ${tSafe('sekShort', 'SEK')}`}
                 </Text>
               </View>
             )}
@@ -848,7 +848,7 @@ export default function WithdrawScreen() {
               activeOpacity={0.92}
             >
               <LinearGradient
-                colors={['#79B7FF', '#4C92F7', '#2563EB']}
+                colors={['#79B7FF', '#4C92F7', '#0F2A5C']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryButton}
@@ -938,7 +938,7 @@ export default function WithdrawScreen() {
                           {tSafe('withdrawPage.amount', 'Amount')}
                         </Text>
                         <Text style={styles.historyMiniValue}>
-                          {formatIQD(w.amount)} {tSafe('iqdShort', 'IQD')}
+                          {formatSEK(w.amount)} {tSafe('sekShort', 'SEK')}
                         </Text>
                       </View>
 

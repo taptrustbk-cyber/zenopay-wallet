@@ -1,6 +1,6 @@
 //
-//  ZenoPayWalletApp.swift
-//  ZenoPayWallet
+//  SwedBankApp.swift
+//  SwedBank
 //
 //  Created by Rork on July 5, 2026.
 //
@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct ZenoPayWalletApp: App {
+struct SwedBankApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

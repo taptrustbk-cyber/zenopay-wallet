@@ -57,12 +57,12 @@ export default function TermsConditionsScreen() {
       lastUpdated: t('terms.lastUpdated', 'Last updated: March 28, 2026'),
       intro: t(
         'terms.intro',
-        'Welcome to ZenoPay. By creating an account or using the app, you agree to these Terms and Conditions. Please read them carefully.'
+        'Welcome to SwedBank. By creating an account or using the app, you agree to these Terms and Conditions. Please read them carefully.'
       ),
 
       section1Title: t('terms.section1Title', 'Acceptance of Terms'),
       section1Item1: t('terms.section1Item1', 'By creating an account or using the app, you agree to these Terms and Conditions.'),
-      section1Item2: t('terms.section1Item2', 'You must be at least 18 years old to use ZenoPay.'),
+      section1Item2: t('terms.section1Item2', 'You must be at least 18 years old to use SwedBank.'),
       section1Item3: t('terms.section1Item3', 'You agree to provide accurate and complete information.'),
 
       section2Title: t('terms.section2Title', 'Account Registration and Security'),
@@ -71,7 +71,7 @@ export default function TermsConditionsScreen() {
       section2Item3: t('terms.section2Item3', 'One personal account per user may be allowed for certain services or features.'),
 
       section3Title: t('terms.section3Title', 'Services Available in the App'),
-      section3Item1: t('terms.section3Item1', 'ZenoPay may provide wallet-related services such as deposit, withdraw, send, receive, and transaction history.'),
+      section3Item1: t('terms.section3Item1', 'SwedBank may provide wallet-related services such as deposit, withdraw, send, receive, and transaction history.'),
       section3Item2: t('terms.section3Item2', 'The app may also include mobile shop, gift cards, top-up cards, travel information, consulate information, and internal virtual card features.'),
       section3Item3: t('terms.section3Item3', 'Some services, features, or payment methods may vary depending on account status, region, or app updates.'),
 
@@ -87,8 +87,8 @@ export default function TermsConditionsScreen() {
       section5Item3: t('terms.section5Item3', 'Wallet balances, fees, prices, and availability may change from time to time.'),
 
       section6Title: t('terms.section6Title', 'Virtual Card'),
-      section6Item1: t('terms.section6Item1', 'ZenoPay may provide an internal virtual card feature for supported services.'),
-      section6Item2: t('terms.section6Item2', 'Virtual card creation may include a one-time creation fee such as 25,000 IQD if shown in the app.'),
+      section6Item1: t('terms.section6Item1', 'SwedBank may provide an internal virtual card feature for supported services.'),
+      section6Item2: t('terms.section6Item2', 'Virtual card creation may include a one-time creation fee such as 25,000 SEK if shown in the app.'),
       section6Item3: t('terms.section6Item3', 'Certain users may be limited to one virtual card per account.'),
 
       section7Title: t('terms.section7Title', 'Mobile Shop, Gift Cards, and Top-Up'),
@@ -121,7 +121,7 @@ export default function TermsConditionsScreen() {
 
       section13Title: t('terms.section13Title', 'Limitation of Liability'),
       section13Item1: t('terms.section13Item1', 'We aim to provide a reliable service, but we do not guarantee that the app will always be uninterrupted, error-free, or available at all times.'),
-      section13Item2: t('terms.section13Item2', 'To the extent allowed by law, ZenoPay is not responsible for indirect or unexpected losses caused by outages, delays, external providers, user mistakes, or events outside our reasonable control.'),
+      section13Item2: t('terms.section13Item2', 'To the extent allowed by law, SwedBank is not responsible for indirect or unexpected losses caused by outages, delays, external providers, user mistakes, or events outside our reasonable control.'),
       section13Item3: t('terms.section13Item3', 'Your use of the app is at your own responsibility, subject to applicable law.'),
 
       section14Title: t('terms.section14Title', 'Privacy'),
@@ -134,7 +134,7 @@ export default function TermsConditionsScreen() {
       section15Item3: t('terms.section15Item3', 'Your continued use of the app after changes means you accept the updated terms.'),
 
       section16Title: t('terms.section16Title', 'Contact and Support'),
-      supportLine: t('terms.supportLine', 'Support email: info@zenopay.bond'),
+      supportLine: t('terms.supportLine', 'Support email: info@swedbank.se'),
       supportReply: t('terms.supportReply', 'We aim to respond as soon as reasonably possible.'),
     }),
     []
@@ -156,7 +156,7 @@ export default function TermsConditionsScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#EEF4FF', '#F7FAFF', '#EEF4FF']}
+        colors={['#F4F7FB', '#FFFFFF', '#F4F7FB']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
@@ -169,7 +169,7 @@ export default function TermsConditionsScreen() {
             <Ionicons
               name={isRTL ? 'arrow-forward' : 'arrow-back'}
               size={22}
-              color="#1D4ED8"
+              color="#0A1F45"
             />
           </TouchableOpacity>
 
@@ -184,7 +184,7 @@ export default function TermsConditionsScreen() {
           showsVerticalScrollIndicator={false}
         >
           <LinearGradient
-            colors={['#4B8DFF', '#2563EB', '#1D4ED8']}
+            colors={['#1E4280', '#0F2A5C', '#0A1F45']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.heroCard}
@@ -315,7 +315,7 @@ export default function TermsConditionsScreen() {
 
               <View style={[styles.supportBox, isRTL && styles.supportBoxRTL]}>
                 <View style={[styles.supportIcon, isRTL && styles.supportIconRTL]}>
-                  <Ionicons name="mail-outline" size={18} color="#2563EB" />
+                  <Ionicons name="mail-outline" size={18} color="#0F2A5C" />
                 </View>
 
                 <View style={styles.supportTextWrap}>
@@ -340,7 +340,7 @@ export default function TermsConditionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#EEF4FF',
+    backgroundColor: '#F4F7FB',
   },
 
   gradient: {
@@ -381,10 +381,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D9E5F6',
+    borderColor: '#E3E8F0',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#0F172A',
+    color: '#0F1B33',
     textAlign: 'center',
     marginHorizontal: 10,
   },
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden',
     alignItems: 'center',
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
@@ -471,8 +471,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#D9E5F6',
-    shadowColor: '#7DA8E6',
+    borderColor: '#E3E8F0',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
   introText: {
     fontSize: 14.5,
     lineHeight: 24,
-    color: '#0F172A',
+    color: '#0F1B33',
     fontWeight: '700',
   },
   sectionTitle: {
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginBottom: 10,
     marginTop: 4,
-    color: '#0F172A',
+    color: '#0F1B33',
   },
   sectionText: {
     fontSize: 14,
@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
   bulletDot: {
     fontSize: 16,
     lineHeight: 22,
-    color: '#2563EB',
+    color: '#0F2A5C',
     marginRight: 10,
     marginTop: 1,
     fontWeight: '900',
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 22,
-    color: '#0F172A',
+    color: '#0F1B33',
     fontWeight: '700',
   },
   textRTL: {
@@ -540,9 +540,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderRadius: 16,
-    backgroundColor: '#EAF2FF',
+    backgroundColor: '#E8EEF6',
     borderWidth: 1,
-    borderColor: '#D9E5F6',
+    borderColor: '#E3E8F0',
     marginTop: 8,
   },
   supportBoxRTL: {
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D9E5F6',
+    borderColor: '#E3E8F0',
     marginRight: 12,
   },
   supportIconRTL: {
@@ -569,12 +569,12 @@ const styles = StyleSheet.create({
   supportText: {
     fontSize: 14.5,
     fontWeight: '900',
-    color: '#0F172A',
+    color: '#0F1B33',
   },
   supportSubText: {
     marginTop: 4,
     fontSize: 13,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#5B6B82',
   },
 });

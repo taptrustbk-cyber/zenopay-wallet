@@ -94,7 +94,7 @@ export default function SignupScreen() {
               <Ionicons name="arrow-back" size={22} color={COLORS.green} />
             </TouchableOpacity>
 
-            <Text style={styles.headerTitle}>ZenoPay</Text>
+            <Text style={styles.headerTitle}>SwedBank</Text>
             <View style={{ width: 24 }} />
           </View>
 

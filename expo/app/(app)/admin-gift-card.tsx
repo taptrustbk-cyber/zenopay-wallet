@@ -89,7 +89,7 @@ const GIFT_TYPES = [
   { key: 'spotify', label: 'Spotify', icon: 'musical-notes-outline' as const },
 ];
 
-function formatIQD(value?: number | null) {
+function formatSEK(value?: number | null) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
@@ -430,7 +430,7 @@ export default function AdminGiftCardScreen() {
       return false;
     }
     if (!cardPriceIqd.trim()) {
-      Alert.alert('Missing price', 'Please enter price IQD.');
+      Alert.alert('Missing price', 'Please enter price SEK.');
       return false;
     }
     return true;
@@ -1134,7 +1134,7 @@ export default function AdminGiftCardScreen() {
                   />
                   <TextInput
                     style={[styles.input, styles.halfInput]}
-                    placeholder="Price IQD"
+                    placeholder="Price SEK"
                     placeholderTextColor="rgba(255,255,255,0.42)"
                     keyboardType="numeric"
                     value={cardPriceIqd}
@@ -1303,7 +1303,7 @@ export default function AdminGiftCardScreen() {
                         </View>
 
                         <Text style={styles.cardItemPrice}>
-                          Price {formatIQD(card.price_iqd)} IQD
+                          Price {formatSEK(card.price_iqd)} SEK
                         </Text>
 
                         <Text numberOfLines={2} style={styles.cardItemNotes}>

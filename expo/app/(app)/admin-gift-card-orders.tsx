@@ -50,7 +50,7 @@ type FilterStatus = 'all' | 'pending' | 'success' | 'cancelled';
 
 const NOTIFICATION_FUNCTION = 'send-notification';
 
-function formatIQD(value?: number | null) {
+function formatSEK(value?: number | null) {
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
@@ -752,8 +752,8 @@ export default function AdminGiftCardOrdersScreen() {
                   </View>
 
                   <View style={styles.infoBox}>
-                    <Text style={styles.infoLabel}>Price IQD</Text>
-                    <Text style={styles.infoValue}>{formatIQD(order.price_iqd)} IQD</Text>
+                    <Text style={styles.infoLabel}>Price SEK</Text>
+                    <Text style={styles.infoValue}>{formatSEK(order.price_iqd)} SEK</Text>
                   </View>
 
                   {!!parsed.playerId && (
@@ -1145,7 +1145,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   typeBadgeText: {
-    color: '#1D4ED8',
+    color: '#0A1F45',
     fontSize: 11,
     fontWeight: '900',
   },

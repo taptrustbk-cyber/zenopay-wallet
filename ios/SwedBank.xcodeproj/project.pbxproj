@@ -12,37 +12,37 @@
 			containerPortal = 105FC5722E9EAD3100EA8BCF /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 105FC5792E9EAD3100EA8BCF;
-			remoteInfo = ZenoPayWallet;
+			remoteInfo = SwedBank;
 		};
 		105FC5942E9EAD3200EA8BCF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 105FC5722E9EAD3100EA8BCF /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 105FC5792E9EAD3100EA8BCF;
-			remoteInfo = ZenoPayWallet;
+			remoteInfo = SwedBank;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		105FC57A2E9EAD3100EA8BCF /* ZenoPayWallet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ZenoPayWallet.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		105FC5892E9EAD3200EA8BCF /* ZenoPayWalletTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ZenoPayWalletTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		105FC5932E9EAD3200EA8BCF /* ZenoPayWalletUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ZenoPayWalletUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		105FC57A2E9EAD3100EA8BCF /* SwedBank.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwedBank.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		105FC5892E9EAD3200EA8BCF /* SwedBankTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwedBankTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		105FC5932E9EAD3200EA8BCF /* SwedBankUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwedBankUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		105FC57C2E9EAD3100EA8BCF /* ZenoPayWallet */ = {
+		105FC57C2E9EAD3100EA8BCF /* SwedBank */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ZenoPayWallet;
+			path = SwedBank;
 			sourceTree = "<group>";
 		};
-		105FC58C2E9EAD3200EA8BCF /* ZenoPayWalletTests */ = {
+		105FC58C2E9EAD3200EA8BCF /* SwedBankTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ZenoPayWalletTests;
+			path = SwedBankTests;
 			sourceTree = "<group>";
 		};
-		105FC5962E9EAD3200EA8BCF /* ZenoPayWalletUITests */ = {
+		105FC5962E9EAD3200EA8BCF /* SwedBankUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ZenoPayWalletUITests;
+			path = SwedBankUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -75,9 +75,9 @@
 		105FC5712E9EAD3100EA8BCF = {
 			isa = PBXGroup;
 			children = (
-				105FC57C2E9EAD3100EA8BCF /* ZenoPayWallet */,
-				105FC58C2E9EAD3200EA8BCF /* ZenoPayWalletTests */,
-				105FC5962E9EAD3200EA8BCF /* ZenoPayWalletUITests */,
+				105FC57C2E9EAD3100EA8BCF /* SwedBank */,
+				105FC58C2E9EAD3200EA8BCF /* SwedBankTests */,
+				105FC5962E9EAD3200EA8BCF /* SwedBankUITests */,
 				105FC57B2E9EAD3100EA8BCF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -85,9 +85,9 @@
 		105FC57B2E9EAD3100EA8BCF /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				105FC57A2E9EAD3100EA8BCF /* ZenoPayWallet.app */,
-				105FC5892E9EAD3200EA8BCF /* ZenoPayWalletTests.xctest */,
-				105FC5932E9EAD3200EA8BCF /* ZenoPayWalletUITests.xctest */,
+				105FC57A2E9EAD3100EA8BCF /* SwedBank.app */,
+				105FC5892E9EAD3200EA8BCF /* SwedBankTests.xctest */,
+				105FC5932E9EAD3200EA8BCF /* SwedBankUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,9 +95,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		105FC5792E9EAD3100EA8BCF /* ZenoPayWallet */ = {
+		105FC5792E9EAD3100EA8BCF /* SwedBank */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 105FC59D2E9EAD3200EA8BCF /* Build configuration list for PBXNativeTarget "ZenoPayWallet" */;
+			buildConfigurationList = 105FC59D2E9EAD3200EA8BCF /* Build configuration list for PBXNativeTarget "SwedBank" */;
 			buildPhases = (
 				105FC5762E9EAD3100EA8BCF /* Sources */,
 				105FC5772E9EAD3100EA8BCF /* Frameworks */,
@@ -108,18 +108,18 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				105FC57C2E9EAD3100EA8BCF /* ZenoPayWallet */,
+				105FC57C2E9EAD3100EA8BCF /* SwedBank */,
 			);
-			name = ZenoPayWallet;
+			name = SwedBank;
 			packageProductDependencies = (
 			);
-			productName = ZenoPayWallet;
-			productReference = 105FC57A2E9EAD3100EA8BCF /* ZenoPayWallet.app */;
+			productName = SwedBank;
+			productReference = 105FC57A2E9EAD3100EA8BCF /* SwedBank.app */;
 			productType = "com.apple.product-type.application";
 		};
-		105FC5882E9EAD3200EA8BCF /* ZenoPayWalletTests */ = {
+		105FC5882E9EAD3200EA8BCF /* SwedBankTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 105FC5A02E9EAD3200EA8BCF /* Build configuration list for PBXNativeTarget "ZenoPayWalletTests" */;
+			buildConfigurationList = 105FC5A02E9EAD3200EA8BCF /* Build configuration list for PBXNativeTarget "SwedBankTests" */;
 			buildPhases = (
 				105FC5852E9EAD3200EA8BCF /* Sources */,
 				105FC5862E9EAD3200EA8BCF /* Frameworks */,
@@ -131,18 +131,18 @@
 				105FC58B2E9EAD3200EA8BCF /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				105FC58C2E9EAD3200EA8BCF /* ZenoPayWalletTests */,
+				105FC58C2E9EAD3200EA8BCF /* SwedBankTests */,
 			);
-			name = ZenoPayWalletTests;
+			name = SwedBankTests;
 			packageProductDependencies = (
 			);
-			productName = ZenoPayWalletTests;
-			productReference = 105FC5892E9EAD3200EA8BCF /* ZenoPayWalletTests.xctest */;
+			productName = SwedBankTests;
+			productReference = 105FC5892E9EAD3200EA8BCF /* SwedBankTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		105FC5922E9EAD3200EA8BCF /* ZenoPayWalletUITests */ = {
+		105FC5922E9EAD3200EA8BCF /* SwedBankUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 105FC5A32E9EAD3200EA8BCF /* Build configuration list for PBXNativeTarget "ZenoPayWalletUITests" */;
+			buildConfigurationList = 105FC5A32E9EAD3200EA8BCF /* Build configuration list for PBXNativeTarget "SwedBankUITests" */;
 			buildPhases = (
 				105FC58F2E9EAD3200EA8BCF /* Sources */,
 				105FC5902E9EAD3200EA8BCF /* Frameworks */,
@@ -154,13 +154,13 @@
 				105FC5952E9EAD3200EA8BCF /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				105FC5962E9EAD3200EA8BCF /* ZenoPayWalletUITests */,
+				105FC5962E9EAD3200EA8BCF /* SwedBankUITests */,
 			);
-			name = ZenoPayWalletUITests;
+			name = SwedBankUITests;
 			packageProductDependencies = (
 			);
-			productName = ZenoPayWalletUITests;
-			productReference = 105FC5932E9EAD3200EA8BCF /* ZenoPayWalletUITests.xctest */;
+			productName = SwedBankUITests;
+			productReference = 105FC5932E9EAD3200EA8BCF /* SwedBankUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -186,7 +186,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 105FC5752E9EAD3100EA8BCF /* Build configuration list for PBXProject "ZenoPayWallet" */;
+			buildConfigurationList = 105FC5752E9EAD3100EA8BCF /* Build configuration list for PBXProject "SwedBank" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -200,9 +200,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				105FC5792E9EAD3100EA8BCF /* ZenoPayWallet */,
-				105FC5882E9EAD3200EA8BCF /* ZenoPayWalletTests */,
-				105FC5922E9EAD3200EA8BCF /* ZenoPayWalletUITests */,
+				105FC5792E9EAD3100EA8BCF /* SwedBank */,
+				105FC5882E9EAD3200EA8BCF /* SwedBankTests */,
+				105FC5922E9EAD3200EA8BCF /* SwedBankUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -258,12 +258,12 @@
 /* Begin PBXTargetDependency section */
 		105FC58B2E9EAD3200EA8BCF /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 105FC5792E9EAD3100EA8BCF /* ZenoPayWallet */;
+			target = 105FC5792E9EAD3100EA8BCF /* SwedBank */;
 			targetProxy = 105FC58A2E9EAD3200EA8BCF /* PBXContainerItemProxy */;
 		};
 		105FC5952E9EAD3200EA8BCF /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 105FC5792E9EAD3100EA8BCF /* ZenoPayWallet */;
+			target = 105FC5792E9EAD3100EA8BCF /* SwedBank */;
 			targetProxy = 105FC5942E9EAD3200EA8BCF /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -474,7 +474,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ZenoPayWallet.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ZenoPayWallet";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SwedBank.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SwedBank";
 			};
 			name = Debug;
 		};
@@ -496,7 +496,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ZenoPayWallet.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ZenoPayWallet";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SwedBank.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SwedBank";
 			};
 			name = Release;
 		};
@@ -516,7 +516,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = ZenoPayWallet;
+				TEST_TARGET_NAME = SwedBank;
 			};
 			name = Debug;
 		};
@@ -536,14 +536,14 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = ZenoPayWallet;
+				TEST_TARGET_NAME = SwedBank;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		105FC5752E9EAD3100EA8BCF /* Build configuration list for PBXProject "ZenoPayWallet" */ = {
+		105FC5752E9EAD3100EA8BCF /* Build configuration list for PBXProject "SwedBank" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				105FC59B2E9EAD3200EA8BCF /* Debug */,
@@ -552,7 +552,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		105FC59D2E9EAD3200EA8BCF /* Build configuration list for PBXNativeTarget "ZenoPayWallet" */ = {
+		105FC59D2E9EAD3200EA8BCF /* Build configuration list for PBXNativeTarget "SwedBank" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				105FC59E2E9EAD3200EA8BCF /* Debug */,
@@ -561,7 +561,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		105FC5A02E9EAD3200EA8BCF /* Build configuration list for PBXNativeTarget "ZenoPayWalletTests" */ = {
+		105FC5A02E9EAD3200EA8BCF /* Build configuration list for PBXNativeTarget "SwedBankTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				105FC5A12E9EAD3200EA8BCF /* Debug */,
@@ -570,7 +570,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		105FC5A32E9EAD3200EA8BCF /* Build configuration list for PBXNativeTarget "ZenoPayWalletUITests" */ = {
+		105FC5A32E9EAD3200EA8BCF /* Build configuration list for PBXNativeTarget "SwedBankUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				105FC5A42E9EAD3200EA8BCF /* Debug */,

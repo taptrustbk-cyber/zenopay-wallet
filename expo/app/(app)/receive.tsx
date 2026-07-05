@@ -43,28 +43,28 @@ import { Wallet } from '@/lib/types';
 export const options = { headerShown: false };
 
 const DEPOSIT_BUCKET = 'deposit-receipts';
-const MIN_DEPOSIT_IQD = 1000;
-const MAX_DEPOSIT_IQD = 5000000;
+const MIN_DEPOSIT_SEK = 1000;
+const MAX_DEPOSIT_SEK = 5000000;
 
-const DEFAULT_USDT_RATE_IQD = 1550;
+const DEFAULT_USDT_RATE_SEK = 1550;
 const DEFAULT_MIN_USDT = 5;
 const DEFAULT_MAX_USDT = 10000;
 
 const UI = {
-  bg: '#EEF4FF',
-  page: '#F7FAFF',
+  bg: '#F4F7FB',
+  page: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  text2: '#64748B',
-  text3: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  text2: '#5B6B82',
+  text3: '#9FB0C7',
+  border: '#E3E8F0',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blue2: '#3B82F6',
   blue3: '#60A5FA',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
   blueSoft2: '#DCEBFF',
 
   success: '#16A34A',
@@ -75,7 +75,7 @@ const UI = {
   dangerSoft: '#FFF1F4',
 
   white: '#FFFFFF',
-  shadow: '#7DA8E6',
+  shadow: '#A8B8CC',
 };
 
 const SHADOWS = {
@@ -171,7 +171,7 @@ function tSafe(keys: string | string[], fallback: string) {
   }
 }
 
-function formatIQD(value: number | string | null | undefined) {
+function formatSEK(value: number | string | null | undefined) {
   const num = Number(value || 0);
   if (Number.isNaN(num)) return '0';
   return num.toLocaleString('de-DE');
@@ -191,7 +191,7 @@ function parseIQDInput(value: string) {
   return onlyDigits ? Number(onlyDigits) : 0;
 }
 
-function formatIQDInput(value: string) {
+function formatSEKInput(value: string) {
   const onlyDigits = String(value || '').replace(/[^\d]/g, '');
   if (!onlyDigits) return '';
   return Number(onlyDigits).toLocaleString('de-DE');
@@ -293,14 +293,14 @@ export default function DepositScreen() {
         return {
           user_id: user.id,
           balance: 0,
-          currency: 'IQD',
+          currency: 'SEK',
           is_locked: false,
         } as Wallet;
       }
 
       return {
         ...data,
-        currency: 'IQD',
+        currency: 'SEK',
       } as Wallet;
     },
     enabled: !!user?.id,
@@ -393,7 +393,7 @@ export default function DepositScreen() {
   }, [paymentMethodsQuery.data, selectedMethodId]);
 
   const isUSDT = isUsdtTrc20Method(selectedMethod);
-  const usdtRate = Number(selectedMethod?.exchange_rate_iqd || DEFAULT_USDT_RATE_IQD);
+  const usdtRate = Number(selectedMethod?.exchange_rate_iqd || DEFAULT_USDT_RATE_SEK);
   const minUsd = Number(selectedMethod?.min_amount_usd || DEFAULT_MIN_USDT);
   const maxUsd = Number(selectedMethod?.max_amount_usd || DEFAULT_MAX_USDT);
 
@@ -401,14 +401,14 @@ export default function DepositScreen() {
     return isUSDT ? parseUSDInput(amount) : parseIQDInput(amount);
   }, [amount, isUSDT]);
 
-  const convertedIQD = useMemo(() => {
+  const convertedSEK = useMemo(() => {
     if (!isUSDT) return 0;
     return Math.round(amountNumber * usdtRate);
   }, [amountNumber, isUSDT, usdtRate]);
 
-  const displayedBalanceText = formatIQD(walletQuery.data?.balance || 0);
+  const displayedBalanceText = formatSEK(walletQuery.data?.balance || 0);
 
-  const iqdLabel = tSafe(['iqdShort', 'iqdArabic'], 'IQD');
+  const iqdLabel = tSafe(['sekShort', 'sekShort'], 'SEK');
   const amountSuffixLabel = isUSDT ? 'USD' : iqdLabel;
 
   const amountLabel = isUSDT
@@ -584,40 +584,40 @@ export default function DepositScreen() {
           );
         }
       } else {
-        if (rawAmount < MIN_DEPOSIT_IQD) {
+        if (rawAmount < MIN_DEPOSIT_SEK) {
           throw new Error(
-            `${tSafe(['deposit.minimumDepositAmountIs'], 'Minimum deposit amount is')}: ${formatIQD(
-              MIN_DEPOSIT_IQD
+            `${tSafe(['deposit.minimumDepositAmountIs'], 'Minimum deposit amount is')}: ${formatSEK(
+              MIN_DEPOSIT_SEK
             )} ${iqdLabel}`
           );
         }
 
-        if (rawAmount > MAX_DEPOSIT_IQD) {
+        if (rawAmount > MAX_DEPOSIT_SEK) {
           throw new Error(
-            `${tSafe(['deposit.maximumDepositAmountIs'], 'Maximum deposit amount is')}: ${formatIQD(
-              MAX_DEPOSIT_IQD
+            `${tSafe(['deposit.maximumDepositAmountIs'], 'Maximum deposit amount is')}: ${formatSEK(
+              MAX_DEPOSIT_SEK
             )} ${iqdLabel}`
           );
         }
       }
 
-      const finalAmountIQD = isUSDT ? Math.round(rawAmount * usdtRate) : rawAmount;
+      const finalAmountSEK = isUSDT ? Math.round(rawAmount * usdtRate) : rawAmount;
       const receiptUrl = await uploadReceiptToStorage(receiptImage);
 
       const extraNote = isUSDT
         ? `${tSafe(['deposit.usdtDepositNotePrefix'], 'USDT TRC20 Deposit')} | USD: ${formatUSD(
             rawAmount
-          )} | ${tSafe(['deposit.rateShort'], 'Rate')}: ${formatIQD(
+          )} | ${tSafe(['deposit.rateShort'], 'Rate')}: ${formatSEK(
             usdtRate
-          )} IQD/USD | IQD: ${formatIQD(finalAmountIQD)}`
+          )} SEK/USD | SEK: ${formatSEK(finalAmountSEK)}`
         : null;
 
       const finalNote = [note.trim(), extraNote].filter(Boolean).join(' | ') || null;
 
       const { error } = await supabase.from('deposit_orders').insert({
         user_id: user.id,
-        amount: finalAmountIQD,
-        currency: 'IQD',
+        amount: finalAmountSEK,
+        currency: 'SEK',
         payment_method_id: selectedMethod.id,
         sender_name: senderName.trim(),
         sender_number: senderNumber.trim(),
@@ -692,7 +692,7 @@ export default function DepositScreen() {
             <Text style={styles.methodName}>{method.name}</Text>
             {methodIsUsdt ? (
               <Text style={styles.methodSubLine}>
-                1 USD = {formatIQD(method.exchange_rate_iqd || DEFAULT_USDT_RATE_IQD)} IQD
+                1 USD = {formatSEK(method.exchange_rate_iqd || DEFAULT_USDT_RATE_SEK)} SEK
               </Text>
             ) : null}
           </View>
@@ -751,7 +751,7 @@ export default function DepositScreen() {
           </View>
 
           <LinearGradient
-            colors={['#5DA8FF', '#3B82F6', '#2563EB']}
+            colors={['#5DA8FF', '#3B82F6', '#0F2A5C']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.heroCard}
@@ -825,7 +825,7 @@ export default function DepositScreen() {
                     <Text style={styles.selectorText}>{selectedMethod.name}</Text>
                     {isUSDT ? (
                       <Text style={styles.selectorSubText}>
-                        1 USD = {formatIQD(usdtRate)} IQD
+                        1 USD = {formatSEK(usdtRate)} SEK
                       </Text>
                     ) : null}
                   </View>
@@ -848,7 +848,7 @@ export default function DepositScreen() {
                 placeholderTextColor={UI.text3}
                 value={amount}
                 onChangeText={(text) =>
-                  setAmount(isUSDT ? sanitizeUSDInput(text) : formatIQDInput(text))
+                  setAmount(isUSDT ? sanitizeUSDInput(text) : formatSEKInput(text))
                 }
                 keyboardType="decimal-pad"
                 textAlign={isRTL ? 'right' : 'left'}
@@ -870,17 +870,17 @@ export default function DepositScreen() {
                     <View style={styles.rateChip}>
                       <ArrowRightLeft size={14} color={UI.blueDark} />
                       <Text style={styles.rateChipText}>
-                        1 USD = {formatIQD(usdtRate)} IQD
+                        1 USD = {formatSEK(usdtRate)} SEK
                       </Text>
                     </View>
                   </View>
 
                   <View style={styles.rateResultRow}>
                     <Text style={styles.rateResultLabel}>
-                      {tSafe(['deposit.equivalentInIQD'], 'Equivalent in IQD')}
+                      {tSafe(['deposit.equivalentInSEK'], 'Equivalent in SEK')}
                     </Text>
                     <Text style={styles.rateResultValue}>
-                      {formatIQD(convertedIQD)} IQD
+                      {formatSEK(convertedSEK)} SEK
                     </Text>
                   </View>
                 </View>
@@ -898,11 +898,11 @@ export default function DepositScreen() {
               <View style={styles.limitBox}>
                 <Text style={styles.limitText}>
                   {tSafe(['deposit.minimumDepositAmountIs'], 'Minimum deposit amount is') +
-                    `: ${formatIQD(MIN_DEPOSIT_IQD)} ${iqdLabel}`}
+                    `: ${formatSEK(MIN_DEPOSIT_SEK)} ${iqdLabel}`}
                 </Text>
                 <Text style={styles.limitText}>
                   {tSafe(['deposit.maximumDepositAmountIs'], 'Maximum deposit amount is') +
-                    `: ${formatIQD(MAX_DEPOSIT_IQD)} ${iqdLabel}`}
+                    `: ${formatSEK(MAX_DEPOSIT_SEK)} ${iqdLabel}`}
                 </Text>
               </View>
             )}
@@ -1078,7 +1078,7 @@ export default function DepositScreen() {
               activeOpacity={0.92}
             >
               <LinearGradient
-                colors={['#79B7FF', '#4C92F7', '#2563EB']}
+                colors={['#79B7FF', '#4C92F7', '#0F2A5C']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.primaryButton}
@@ -1172,7 +1172,7 @@ export default function DepositScreen() {
                           {tSafe(['deposit.amount', 'amount'], 'Amount')}
                         </Text>
                         <Text style={styles.historyMiniValue}>
-                          {formatIQD(d.amount)} {d.currency || iqdLabel}
+                          {formatSEK(d.amount)} {d.currency || iqdLabel}
                         </Text>
                       </View>
 

@@ -27,47 +27,47 @@ export interface Theme {
   };
 }
 
-// ✅ Light theme (white + green + black)
+// ✅ Light theme (Scandinavian white + blue + gold)
 const lightTheme: Theme = {
   mode: 'light',
   colors: {
     background: '#FFFFFF',
     surface: '#FFFFFF',
     card: '#FFFFFF',
-    cardSecondary: '#F5F6FA',
-    text: '#111827',
-    textSecondary: '#6B7280',
-    primary: '#16A34A', // ✅ green as primary
-    border: '#E5E7EB',
-    success: '#16A34A',
-    error: '#EF4444',
-    icon: '#16A34A',
+    cardSecondary: '#F4F7FB',
+    text: '#0F1B33',
+    textSecondary: '#5B6B82',
+    primary: '#0F2A5C', // ✅ Swedish bank blue as primary
+    border: '#E3E8F0',
+    success: '#1F8A4C',
+    error: '#D4302A',
+    icon: '#0F2A5C',
 
-    inputBg: '#F3FBF6',
-    green: '#16A34A',
-    greenSoft: '#EAF7EF',
+    inputBg: '#F4F7FB',
+    green: '#1F8A4C',
+    greenSoft: '#EAF5EE',
   },
 };
 
-// ✅ Dark theme (modern, readable)
+// ✅ Dark theme (Scandinavian blue + gold, readable)
 const darkTheme: Theme = {
   mode: 'dark',
   colors: {
-    background: '#0B1220',
-    surface: '#0F1A2B',
-    card: '#0F1A2B',
-    cardSecondary: '#0B1220',
-    text: '#E5E7EB',
-    textSecondary: '#9CA3AF',
-    primary: '#22C55E', // green
-    border: '#1F2A3D',
-    success: '#22C55E',
+    background: '#0B1A33',
+    surface: '#112544',
+    card: '#112544',
+    cardSecondary: '#0B1A33',
+    text: '#E8EEF6',
+    textSecondary: '#9FB0C7',
+    primary: '#C9A961', // muted gold accent
+    border: '#1F3257',
+    success: '#3FB27F',
     error: '#F87171',
-    icon: '#22C55E',
+    icon: '#C9A961',
 
-    inputBg: '#0F1A2B',
-    green: '#22C55E',
-    greenSoft: '#12301E',
+    inputBg: '#112544',
+    green: '#3FB27F',
+    greenSoft: '#123023',
   },
 };
 

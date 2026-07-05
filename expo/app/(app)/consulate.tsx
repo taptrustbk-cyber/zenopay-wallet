@@ -111,16 +111,16 @@ const CONSULATES: Consulate[] = [
 const UI = {
   bg: '#F4F8FF',
   card: '#FFFFFF',
-  cardSoft: '#EEF4FF',
-  text: '#0F172A',
-  textSecondary: '#64748B',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  textSecondary: '#5B6B82',
   border: '#D9E6FF',
-  blue: '#2563EB',
-  blueDark: '#1D4ED8',
+  blue: '#0F2A5C',
+  blueDark: '#0A1F45',
   blueSoft: '#DBEAFE',
   blueSoft2: '#EFF6FF',
   white: '#FFFFFF',
-  shadow: '#1D4ED8',
+  shadow: '#0A1F45',
 };
 
 const COUNTRY_TRANSLATIONS: Record<string, Record<string, string>> = {

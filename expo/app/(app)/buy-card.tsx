@@ -152,27 +152,27 @@ const providerConfig: Record<string, { color: string; bgColor: string; logo: str
 };
 
 const UI = {
-  bg: '#EEF4FF',
-  page: '#F7FAFF',
-  headerBg: '#F7FAFF',
+  bg: '#F4F7FB',
+  page: '#FFFFFF',
+  headerBg: '#FFFFFF',
   card: '#FFFFFF',
-  cardSoft: '#F8FBFF',
-  text: '#0F172A',
-  textSoft: '#64748B',
-  text3: '#94A3B8',
-  border: '#D9E5F6',
+  cardSoft: '#F4F7FB',
+  text: '#0F1B33',
+  textSoft: '#5B6B82',
+  text3: '#9FB0C7',
+  border: '#E3E8F0',
   border2: '#DCEBFF',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blue2: '#3B82F6',
   blue3: '#60A5FA',
-  blueDark: '#1D4ED8',
-  blueSoft: '#EAF2FF',
+  blueDark: '#0A1F45',
+  blueSoft: '#E8EEF6',
   blueSoft2: '#DCEBFF',
 
-  gold: '#EAF2FF',
+  gold: '#E8EEF6',
   goldBorder: '#DCEBFF',
-  goldDark: '#1D4ED8',
+  goldDark: '#0A1F45',
   softGold: '#F4F8FF',
 
   dangerBg: '#FEF2F2',
@@ -182,20 +182,20 @@ const UI = {
   success: '#16A34A',
   successSoft: '#EAF8EF',
 
-  black: '#0F172A',
+  black: '#0F1B33',
   white: '#FFFFFF',
 };
 
 const SHADOWS = {
   card: {
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.1,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
   soft: {
-    shadowColor: '#7DA8E6',
+    shadowColor: '#A8B8CC',
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -207,8 +207,8 @@ function getProviderStyle(provider?: string | null) {
   const key = String(provider || '').toLowerCase();
   return (
     providerConfig[key] || {
-      color: '#2563EB',
-      bgColor: '#EAF2FF',
+      color: '#0F2A5C',
+      bgColor: '#E8EEF6',
       logo: '',
     }
   );
@@ -219,13 +219,13 @@ function isArabicMoneyLang() {
   return ['ar', 'cbk', 'ckb', 'kmr'].includes(lang);
 }
 
-function formatIQDLocal(value?: number | null) {
+function formatSEKLocal(value?: number | null) {
   const num = Number(value || 0);
   const formatted = Math.abs(num)
     .toFixed(0)
     .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
-  return isArabicMoneyLang() ? `${formatted} د.غ` : `${formatted} IQD`;
+  return isArabicMoneyLang() ? `${formatted} د.غ` : `${formatted} SEK`;
 }
 
 function formatNumberOnly(value?: number | null) {
@@ -567,7 +567,7 @@ export default function BuyCardScreen() {
         throw new Error(i18n.t('buyCard.walletNotFound') || 'Wallet not found.');
       }
       if (priceIqd <= 0) {
-        throw new Error(i18n.t('buyCard.priceMissingAdmin') || 'Price IQD is missing. Please set price_iqd in admin.');
+        throw new Error(i18n.t('buyCard.priceMissingAdmin') || 'Price SEK is missing. Please set price_iqd in admin.');
       }
 
       if (requiresExtraInput && !extraInputValue.trim()) {
@@ -698,7 +698,7 @@ export default function BuyCardScreen() {
     if (priceIqd <= 0) {
       Alert.alert(
         i18n.t('common.error') || 'Error',
-        i18n.t('buyCard.priceMissingAdmin') || 'Price IQD is missing. Please make sure price_iqd is set in admin.'
+        i18n.t('buyCard.priceMissingAdmin') || 'Price SEK is missing. Please make sure price_iqd is set in admin.'
       );
       return;
     }
@@ -737,7 +737,7 @@ export default function BuyCardScreen() {
       i18n.t('buyCard.confirmPurchaseTitle') || 'Confirm Purchase',
       `${i18n.t('buyCard.purchaseConfirmMessage') || 'Do you want to buy'} ${cardName} ${
         i18n.t('buyCard.for') || 'for'
-      } ${formatIQDLocal(priceIqd)}?${extraMessage}`,
+      } ${formatSEKLocal(priceIqd)}?${extraMessage}`,
       [
         {
           text: i18n.t('common.cancel') || 'Cancel',
@@ -834,8 +834,8 @@ export default function BuyCardScreen() {
             </View>
 
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>{i18n.t('buyCard.priceIqd') || 'Price IQD'}</Text>
-              <Text style={styles.detailValue}>{formatIQDLocal(priceIqd)}</Text>
+              <Text style={styles.detailLabel}>{i18n.t('buyCard.priceIqd') || 'Price SEK'}</Text>
+              <Text style={styles.detailValue}>{formatSEKLocal(priceIqd)}</Text>
             </View>
 
             {requiresExtraInput && !!extraInputValue.trim() && (
@@ -909,7 +909,7 @@ export default function BuyCardScreen() {
 
             {!!displayAmount && <Text style={styles.cardSubAmount}>{displayAmount}</Text>}
 
-            <Text style={styles.cardPriceIqd}>{formatIQDLocal(priceIqd)}</Text>
+            <Text style={styles.cardPriceIqd}>{formatSEKLocal(priceIqd)}</Text>
           </View>
 
           <View style={styles.infoCard}>
@@ -929,8 +929,8 @@ export default function BuyCardScreen() {
             </View>
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{i18n.t('buyCard.priceIqd') || 'Price IQD'}</Text>
-              <Text style={styles.infoValue}>{formatIQDLocal(priceIqd)}</Text>
+              <Text style={styles.infoLabel}>{i18n.t('buyCard.priceIqd') || 'Price SEK'}</Text>
+              <Text style={styles.infoValue}>{formatSEKLocal(priceIqd)}</Text>
             </View>
           </View>
 
@@ -990,7 +990,7 @@ export default function BuyCardScreen() {
 
           <View style={styles.balanceCard}>
             <Text style={styles.balanceLabel}>{i18n.t('buyCard.yourBalance') || 'Your Balance'}</Text>
-            <Text style={styles.balanceAmount}>{formatIQDLocal(walletQuery.data?.balance || 0)}</Text>
+            <Text style={styles.balanceAmount}>{formatSEKLocal(walletQuery.data?.balance || 0)}</Text>
           </View>
 
           {!!walletQuery.data && !hasEnoughBalance && (
@@ -1226,7 +1226,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: UI.border,
-    backgroundColor: '#F8FBFF',
+    backgroundColor: '#F4F7FB',
     paddingHorizontal: 14,
     color: UI.text,
     fontSize: 15,

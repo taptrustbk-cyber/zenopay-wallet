@@ -39,14 +39,14 @@ const UI = {
   bg: '#F8FAFC',
   card: '#FFFFFF',
   cardSoft: '#F1F5F9',
-  text: '#0F172A',
-  text2: '#64748B',
+  text: '#0F1B33',
+  text2: '#5B6B82',
   border: '#E2E8F0',
 
   green: '#16A34A',
   greenSoft: '#DCFCE7',
 
-  blue: '#2563EB',
+  blue: '#0F2A5C',
   blueSoft: '#DBEAFE',
 
   red: '#DC2626',
@@ -401,7 +401,7 @@ export default function KycDocumentsAdminScreen() {
 
     const title = isApproved ? 'KYC Approved' : 'KYC Update Required';
     const body = isApproved
-      ? 'Your KYC verification has been approved. You can now continue using your Zenopay account.'
+      ? 'Your KYC verification has been approved. You can now continue using your SwedBank account.'
       : 'Your KYC verification was not approved. Please review your documents and upload them again.';
 
     const payload = {
